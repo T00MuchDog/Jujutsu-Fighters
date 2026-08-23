@@ -34,123 +34,168 @@ class BattleScreenSpriteBoundsTest {
         assertEquals(896f, geometry.playerPlate().width, 0.0001f);
         assertEquals(896f, geometry.enemyPlate().width, 0.0001f);
         assertEquals(89.96f, geometry.playerPlate().y, 0.0001f);
-        assertEquals(489.04f, geometry.enemyPlate().y, 0.0001f);
+        assertEquals(577.04f, geometry.enemyPlate().y, 0.0001f);
         assertEquals(BattleScreen.WINDOWS_BOTTOM_SECTION_HEIGHT,
             geometry.playerPlate().y + geometry.playerPlate().height / 2f, 0.0001f);
-        assertEquals(BattleScreen.WINDOWS_ENEMY_FIGHTER_BOTTOM_Y + 10f,
+        assertEquals(BattleScreen.WINDOWS_ENEMY_FIGHTER_BOTTOM_Y + 98f,
             geometry.enemyPlate().y + geometry.enemyPlate().height * 0.52f, 0.0001f);
-        assertEquals(new Rectangle(693f, 1155.1162f, 605.2f, 136.6875f), geometry.enemyHud());
-        assertEquals(new Rectangle(1819f, 666.1163f, 629f, 136.6875f), geometry.playerHud());
+        assertEquals(new Rectangle(693f, 1155.1162f, 620.33f, 136.6875f), geometry.enemyHud());
+        assertEquals(new Rectangle(1803.275f, 666.1163f, 644.725f, 136.6875f),
+            geometry.playerHud());
         assertEquals(112f, WindowsBattleCanvas.WIDTH
             - geometry.playerHud().x - geometry.playerHud().width, 0.0001f);
         assertEquals(112f, geometry.enemyHud().x - BattleScreen.WINDOWS_EXECUTION_X, 0.0001f);
     }
 
     @Test
-    void windowsTeamGeometryScalesBothBaseplatesFromTheSingleFighterSize() {
-        BattleScreen.WindowsExecutionGeometry geometry = BattleScreen.windowsExecutionGeometry(
-            4, 3);
+    void windowsTeamPlatesAndFormationOffsetsUseTheAuthoredSizes() {
+        BattleScreen.WindowsExecutionGeometry one = BattleScreen.windowsExecutionGeometry(1, 1);
+        BattleScreen.WindowsExecutionGeometry two = BattleScreen.windowsExecutionGeometry(2, 2);
+        BattleScreen.WindowsExecutionGeometry three = BattleScreen.windowsExecutionGeometry(3, 3);
+        BattleScreen.WindowsExecutionGeometry four = BattleScreen.windowsExecutionGeometry(4, 4);
 
-        assertEquals(955f, geometry.enemyPlate().width, 0.0001f);
-        assertEquals(1132f, geometry.playerPlate().width, 0.0001f);
-        assertEquals(1081.7725f, geometry.enemyHud().y, 0.0001f);
-        assertEquals(739.46f, geometry.playerHud().y, 0.0001f);
-        assertEquals(1605f, geometry.enemyPlate().x, 0.0001f);
-        assertEquals(581f, geometry.playerPlate().x, 0.0001f);
+        assertEquals(896f, two.enemyPlate().width, 0.0001f);
+        assertEquals(896f, two.playerPlate().width, 0.0001f);
+        assertEquals(1070f, three.enemyPlate().width, 0.0001f);
+        assertEquals(1286f, three.playerPlate().width, 0.0001f);
+        assertEquals(1490f, three.enemyPlate().x, 0.0001f);
+        assertEquals(WindowsBattleCanvas.WIDTH,
+            three.enemyPlate().x + three.enemyPlate().width, 0.0001f);
+        assertEquals(610f, three.playerPlate().x, 0.0001f);
+        assertEquals(one.enemyPlate().width * 2f, four.enemyPlate().width, 0.0001f);
+        assertEquals(one.playerPlate().width * 2f, four.playerPlate().width, 0.0001f);
 
-        for (int index = 0; index < 4; index++) {
-            float centerX = geometry.enemyPlate().x + geometry.enemyPlate().width / 2f
-                + BattleScreen.fighterOffset(index, 4,
-                    BattleScreen.windowsFormationPlateWidth(geometry.enemyPlate().width), true);
-            Rectangle sprite = BattleScreen.scaledSpriteBounds(
-                centerX, geometry.enemySpriteY(), geometry.spriteSize(), 1f);
-            assertTrue(sprite.x >= BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_X);
-            assertTrue(sprite.x + sprite.width
-                <= BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_X
-                    + BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH);
-        }
+        assertEquals(-152.32f,
+            BattleScreen.fighterOffset(0, 2, two.playerPlate().width, false), 0.0001f);
+        assertEquals(1612f,
+            BattleScreen.windowsCombatantCenterX(
+                1, 3, three.playerPlate(), false), 0.0001f);
+        assertEquals(-456.96f,
+            BattleScreen.fighterOffset(2, 4, four.playerPlate().width, false), 0.0001f);
+        assertEquals(456.96f,
+            BattleScreen.fighterOffset(3, 4, four.enemyPlate().width, true), 0.0001f);
     }
 
     @Test
-    void windowsTwoFighterZonesContainConfiguredOnePointFiveScaleSprites() {
+    void windowsLargeHudMatchesTheCompactPairAcrossFormats() {
         BattleScreen.WindowsExecutionGeometry geometry = BattleScreen.windowsExecutionGeometry(
-            2, 2);
-        Rectangle playerZone = new Rectangle(
-            BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_X,
-            BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_Y,
-            BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH,
-            BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_HEIGHT);
-        Rectangle enemyZone = new Rectangle(
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_X,
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_Y,
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH,
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_HEIGHT);
-        Rectangle rightmostPlayer = null;
-        Rectangle leftmostEnemy = null;
+            3, 3);
+        BattleScreen.WindowsExecutionGeometry one = BattleScreen.windowsExecutionGeometry(1, 1);
+        BattleScreen.WindowsExecutionGeometry two = BattleScreen.windowsExecutionGeometry(2, 2);
 
-        for (int index = 0; index < 2; index++) {
-            float playerCenterX = geometry.playerPlate().x + geometry.playerPlate().width / 2f
-                + BattleScreen.fighterOffset(index, 2,
-                    BattleScreen.windowsFormationPlateWidth(geometry.playerPlate().width), false);
-            Rectangle playerSprite = BattleScreen.fittedScaledSpriteBounds(
-                playerCenterX, geometry.playerSpriteY(), geometry.spriteSize(), 1.5f, playerZone);
-            assertTrue(playerSprite.x >= BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_X);
-            assertTrue(playerSprite.x + playerSprite.width
-                <= BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_X
-                    + BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH);
-            assertTrue(playerSprite.y >= BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_Y);
-            assertTrue(playerSprite.y + playerSprite.height
-                <= BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_Y
-                    + BattleScreen.WINDOWS_PLAYER_FIGHTER_ZONE_HEIGHT);
-            if (rightmostPlayer == null || playerSprite.x > rightmostPlayer.x) {
-                rightmostPlayer = playerSprite;
-            }
+        assertEquals(302.6f, geometry.enemyHud().width, 0.0001f);
+        assertEquals(314.5f, geometry.playerHud().width, 0.0001f);
+        assertEquals(15.13f, BattleScreen.windowsHudColumnGap(3, true), 0.0001f);
+        assertEquals(15.725f, BattleScreen.windowsHudColumnGap(3, false), 0.0001f);
+        assertEquals(9.568125f, BattleScreen.windowsHudRowGap(), 0.0001f);
+        assertEquals(593f, geometry.enemyHud().x, 0.0001f);
+        assertEquals(1909.275f, geometry.playerHud().x, 0.001f);
+        assertEquals(1081.9884f, geometry.enemyHud().y, 0.001f);
+        assertEquals(739.2441f, geometry.playerHud().y, 0.001f);
 
-            float enemyCenterX = geometry.enemyPlate().x + geometry.enemyPlate().width / 2f
-                + BattleScreen.fighterOffset(index, 2,
-                    BattleScreen.windowsFormationPlateWidth(geometry.enemyPlate().width), true);
-            Rectangle enemySprite = BattleScreen.fittedScaledSpriteBounds(
-                enemyCenterX, geometry.enemySpriteY(), geometry.spriteSize(), 1.5f, enemyZone);
-            assertTrue(enemySprite.x >= BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_X);
-            assertTrue(enemySprite.x + enemySprite.width
-                <= BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_X
-                    + BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH);
-            assertTrue(enemySprite.y >= BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_Y);
-            assertTrue(enemySprite.y + enemySprite.height
-                <= BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_Y
-                    + BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_HEIGHT);
-            if (leftmostEnemy == null || enemySprite.x < leftmostEnemy.x) {
-                leftmostEnemy = enemySprite;
-            }
-        }
+        Rectangle lonePlayerHud = BattleScreen.combatantHudBounds(
+            1, 3, geometry.playerHud(), 644.725f,
+            BattleScreen.windowsHudColumnGap(3, false),
+            BattleScreen.windowsHudRowGap(), false);
+        assertEquals(644.725f, lonePlayerHud.width, 0.0001f);
+        assertEquals(geometry.playerHud().x, lonePlayerHud.x, 0.001f);
+        assertEquals(
+            geometry.playerHud().width * 2f + BattleScreen.windowsHudColumnGap(3, false),
+            lonePlayerHud.width,
+            0.001f);
 
-        assertTrue(rightmostPlayer.x + rightmostPlayer.width < leftmostEnemy.x);
+        Rectangle loneEnemyHud = BattleScreen.combatantHudBounds(
+            1, 3, geometry.enemyHud(), 620.33f,
+            BattleScreen.windowsHudColumnGap(3, true),
+            BattleScreen.windowsHudRowGap(), true);
+        assertEquals(620.33f, loneEnemyHud.width, 0.0001f);
+        assertEquals(geometry.enemyHud().x, loneEnemyHud.x, 0.001f);
+        assertEquals(
+            geometry.enemyHud().width * 2f + BattleScreen.windowsHudColumnGap(3, true),
+            one.enemyHud().width,
+            0.001f);
+        assertEquals(
+            geometry.playerHud().width * 2f + BattleScreen.windowsHudColumnGap(3, false),
+            one.playerHud().width,
+            0.001f);
+        assertEquals(one.enemyHud().width, two.enemyHud().width, 0.001f);
+        assertEquals(one.playerHud().width, two.playerHud().width, 0.001f);
     }
 
     @Test
-    void windowsFourFighterFormationFitsScaledSpritesInsideEnemyZone() {
-        BattleScreen.WindowsExecutionGeometry geometry = BattleScreen.windowsExecutionGeometry(
-            4, 4);
-        Rectangle zone = new Rectangle(
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_X,
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_Y,
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH,
-            BattleScreen.WINDOWS_ENEMY_FIGHTER_ZONE_HEIGHT);
+    void windowsTeamSpritesReuseTheirSingleFighterRenderedScale() {
+        BattleScreen.WindowsExecutionGeometry four = BattleScreen.windowsExecutionGeometry(4, 4);
+        float enemyCenterX = BattleScreen.windowsCombatantCenterX(
+            3, 4, four.enemyPlate(), true);
+        float playerCenterX = BattleScreen.windowsCombatantCenterX(
+            3, 4, four.playerPlate(), false);
 
-        for (int index = 0; index < 4; index++) {
-            float centerX = geometry.enemyPlate().x + geometry.enemyPlate().width / 2f
-                + BattleScreen.fighterOffset(index, 4,
-                    BattleScreen.windowsFormationPlateWidth(geometry.enemyPlate().width), true);
-            Rectangle sprite = BattleScreen.fittedScaledSpriteBounds(
-                centerX, geometry.enemySpriteY(), geometry.spriteSize(), 1.5f, zone);
+        Rectangle singleEnemy = BattleScreen.windowsScaledSpriteBounds(
+            BattleScreen.WINDOWS_ENEMY_FIGHTER_CENTER_X,
+            BattleScreen.WINDOWS_ENEMY_FIGHTER_BOTTOM_Y,
+            four.spriteSize(), 1.5f, true);
+        Rectangle teamEnemy = BattleScreen.windowsScaledSpriteBounds(
+            enemyCenterX, four.enemySpriteY(), four.spriteSize(), 1.5f, true);
+        Rectangle singlePlayer = BattleScreen.windowsScaledSpriteBounds(
+            BattleScreen.WINDOWS_PLAYER_FIGHTER_CENTER_X,
+            BattleScreen.WINDOWS_PLAYER_FIGHTER_BOTTOM_Y,
+            four.spriteSize(), 1.5f, false);
+        Rectangle teamPlayer = BattleScreen.windowsScaledSpriteBounds(
+            playerCenterX, four.playerSpriteY(), four.spriteSize(), 1.5f, false);
 
-            assertTrue(sprite.x >= zone.x);
-            assertTrue(sprite.x + sprite.width <= zone.x + zone.width);
-            assertTrue(sprite.y >= zone.y);
-            assertTrue(sprite.y + sprite.height <= zone.y + zone.height);
-            assertEquals(centerX, sprite.x + sprite.width / 2f, 0.0001f);
-            assertEquals(geometry.enemySpriteY(), sprite.y, 0.0001f);
-        }
+        assertEquals(448f, singleEnemy.width, 0.0001f);
+        assertEquals(singleEnemy.width, teamEnemy.width, 0.0001f);
+        assertEquals(672f, singlePlayer.width, 0.0001f);
+        assertEquals(singlePlayer.width, teamPlayer.width, 0.0001f);
+        assertEquals(enemyCenterX, teamEnemy.x + teamEnemy.width / 2f, 0.0001f);
+        assertEquals(playerCenterX, teamPlayer.x + teamPlayer.width / 2f, 0.0001f);
+    }
+
+    @Test
+    void windowsThreeFighterPlatesAndSpritesFollowTheAnnotatedMarkers() {
+        BattleScreen.WindowsExecutionGeometry threeVsTwo =
+            BattleScreen.windowsExecutionGeometry(2, 3);
+        BattleScreen.WindowsExecutionGeometry threeVsThree =
+            BattleScreen.windowsExecutionGeometry(3, 3);
+
+        assertEquals(610f, threeVsTwo.playerPlate().x, 0.0001f);
+        assertEquals(1286f, threeVsTwo.playerPlate().width, 0.0001f);
+        assertEquals(threeVsTwo.playerPlate(), threeVsThree.playerPlate());
+        assertEquals(1211f, BattleScreen.windowsCombatantCenterX(
+            0, 3, threeVsThree.playerPlate(), false), 0.0001f);
+        assertEquals(1612f, BattleScreen.windowsCombatantCenterX(
+            1, 3, threeVsThree.playerPlate(), false), 0.0001f);
+        assertEquals(882f, BattleScreen.windowsCombatantCenterX(
+            2, 3, threeVsThree.playerPlate(), false), 0.0001f);
+
+        assertEquals(1490f, threeVsThree.enemyPlate().x, 0.0001f);
+        assertEquals(1070f, threeVsThree.enemyPlate().width, 0.0001f);
+        assertEquals(WindowsBattleCanvas.WIDTH,
+            threeVsThree.enemyPlate().x + threeVsThree.enemyPlate().width, 0.0001f);
+        assertEquals(2023f, BattleScreen.windowsCombatantCenterX(
+            0, 3, threeVsThree.enemyPlate(), true), 0.0001f);
+        assertEquals(2360f, BattleScreen.windowsCombatantCenterX(
+            1, 3, threeVsThree.enemyPlate(), true), 0.0001f);
+        assertEquals(1695f, BattleScreen.windowsCombatantCenterX(
+            2, 3, threeVsThree.enemyPlate(), true), 0.0001f);
+    }
+
+    @Test
+    void windowsEnemyPlatesShareTheSameVerticalCenterAndFooting() {
+        BattleScreen.WindowsExecutionGeometry one = BattleScreen.windowsExecutionGeometry(1, 1);
+        BattleScreen.WindowsExecutionGeometry two = BattleScreen.windowsExecutionGeometry(2, 2);
+        BattleScreen.WindowsExecutionGeometry three = BattleScreen.windowsExecutionGeometry(3, 3);
+        BattleScreen.WindowsExecutionGeometry four = BattleScreen.windowsExecutionGeometry(4, 4);
+
+        assertEquals(577.04f, one.enemyPlate().y, 0.0001f);
+        assertEquals(577.04f, two.enemyPlate().y, 0.0001f);
+        assertEquals(490.04f, three.enemyPlate().y, 0.0001f);
+        assertEquals(129.04f, four.enemyPlate().y, 0.0001f);
+        float centerY = one.enemyPlate().y + one.enemyPlate().height / 2f;
+        assertEquals(centerY, two.enemyPlate().y + two.enemyPlate().height / 2f, 0.0001f);
+        assertEquals(centerY, three.enemyPlate().y + three.enemyPlate().height / 2f, 0.0001f);
+        assertEquals(centerY, four.enemyPlate().y + four.enemyPlate().height / 2f, 0.0001f);
+        assertEquals(BattleScreen.WINDOWS_ENEMY_FIGHTER_BOTTOM_Y, four.enemySpriteY(), 0.0001f);
     }
 
     @Test

@@ -168,9 +168,6 @@ public class BattleScreen implements Screen, BattleView {
     private static final float WINDOWS_FIGHTER_SCALE = 1.25f;
     static final float WINDOWS_FIGHTER_SPRITE_SIZE = 358.4f * WINDOWS_FIGHTER_SCALE;
     private static final float WINDOWS_BASE_PLATE_SIZE = WINDOWS_FIGHTER_SPRITE_SIZE * 2f;
-    // Keep team formations compact while the shared baseplate grows behind them.
-    private static final float WINDOWS_FORMATION_REFERENCE_PLATE_SIZE =
-        WINDOWS_BASE_PLATE_SIZE / WINDOWS_FIGHTER_SCALE;
     static final float WINDOWS_BOTTOM_SECTION_HEIGHT = WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT;
     static final float WINDOWS_PLAYER_FIGHTER_ZONE_X = 581f;
     static final float WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH = 1132f;
@@ -207,7 +204,23 @@ public class BattleScreen implements Screen, BattleView {
         - WINDOWS_HUD_OUTER_MARGIN - WINDOWS_PLAYER_HUD_REGION_WIDTH;
     private static final float WINDOWS_HUD_HEIGHT =
         151.875f * WINDOWS_HUD_PANEL_HEIGHT_SCALE;
-    private static final float WINDOWS_HUD_GAP = 10f;
+    private static final float WINDOWS_HUD_COLUMN_GAP_SCALE = 0.05f;
+    private static final float WINDOWS_HUD_COLUMN_GAP_MIN = 10f;
+    private static final float WINDOWS_HUD_ROW_GAP_SCALE = 0.07f;
+    private static final float WINDOWS_HUD_ROW_GAP_MIN = 8f;
+    private static final float WINDOWS_EXPANDED_HUD_EDGE_MARGIN = 12f;
+    private static final float WINDOWS_EXPANDED_PLAYER_CENTER_NUDGE = 28f;
+    // Authored from the annotated 2000x1125 screenshot, converted to 2560x1440.
+    private static final float WINDOWS_PLAYER_THREE_PLATE_X = 610f;
+    private static final float WINDOWS_PLAYER_THREE_PLATE_SIZE = 1286f;
+    private static final float WINDOWS_PLAYER_THREE_LEFT_X = 882f;
+    private static final float WINDOWS_PLAYER_THREE_MIDDLE_X = 1211f;
+    private static final float WINDOWS_PLAYER_THREE_RIGHT_X = 1612f;
+    private static final float WINDOWS_ENEMY_PLATE_UPWARD_SHIFT = 88f;
+    private static final float WINDOWS_ENEMY_THREE_PLATE_LEFT_X = 1490f;
+    private static final float WINDOWS_ENEMY_THREE_LEFT_X = 1695f;
+    private static final float WINDOWS_ENEMY_THREE_MIDDLE_X = 2023f;
+    private static final float WINDOWS_ENEMY_THREE_RIGHT_X = 2360f;
     private static final float WINDOWS_HUD_TEXT_SCALE = 0.8f;
     private static final float WINDOWS_HUD_BAR_HEIGHT_SCALE = 0.75f;
     private static final float WINDOWS_HUD_BAR_BORDER_SCALE = 0.75f;
@@ -4580,12 +4593,12 @@ public class BattleScreen implements Screen, BattleView {
             playerSpriteY = geometry.playerSpriteY();
             enemySpriteSize = geometry.spriteSize();
             playerSpriteSize = geometry.spriteSize();
-            enemyFullHudWidth = WINDOWS_ENEMY_HUD_REGION_WIDTH;
-            playerFullHudWidth = WINDOWS_PLAYER_HUD_REGION_WIDTH;
-            enemyHudColumnGap = WINDOWS_HUD_GAP;
-            playerHudColumnGap = WINDOWS_HUD_GAP;
+            enemyFullHudWidth = windowsHudLargeWidth(true);
+            playerFullHudWidth = windowsHudLargeWidth(false);
+            enemyHudColumnGap = windowsHudColumnGap(enemyCount, true);
+            playerHudColumnGap = windowsHudColumnGap(playerCount, false);
             hudHeight = WINDOWS_HUD_HEIGHT;
-            hudRowGap = WINDOWS_HUD_GAP;
+            hudRowGap = windowsHudRowGap();
         } else {
             enemyPlate.x += originX;
             enemyPlate.y += originY;
@@ -4711,60 +4724,65 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     static WindowsExecutionGeometry windowsExecutionGeometry(int enemyCount, int playerCount) {
-        float enemyPlateSize = windowsPlateSize(enemyCount, true);
-        float playerPlateSize = windowsPlateSize(playerCount, false);
-        Rectangle enemyPlate = windowsPlateBounds(
-            windowsFighterCenterX(true),
-            WINDOWS_ENEMY_FIGHTER_BOTTOM_Y,
-            enemyPlateSize);
-        // The stone artwork occupies 28% of its square texture vertically.
-        enemyPlate.y -= enemyPlate.height * BASE_PLATE_VISIBLE_HEIGHT_RATIO / 2f
-            - WINDOWS_ENEMY_PLATE_UPWARD_NUDGE;
-        Rectangle playerPlate = windowsPlayerPlateBounds(
-            windowsFighterCenterX(false), playerPlateSize);
+        float enemyPlateSize = enemyCount == 3
+            ? WindowsBattleCanvas.WIDTH - WINDOWS_ENEMY_THREE_PLATE_LEFT_X
+            : windowsPlateSize(enemyCount);
+        float playerPlateSize = playerCount == 3
+            ? WINDOWS_PLAYER_THREE_PLATE_SIZE : windowsPlateSize(playerCount);
+        float enemyCenterX = enemyCount == 3
+            ? WINDOWS_ENEMY_THREE_PLATE_LEFT_X + enemyPlateSize / 2f
+            : windowsFighterCenterX(true);
+        if (enemyCount == 4) enemyCenterX -= windowsEnemyFourFighterLeftShift();
+        float playerCenterX = playerCount == 3
+            ? WINDOWS_PLAYER_THREE_PLATE_X + playerPlateSize / 2f
+            : windowsFighterCenterX(false) + windowsExpandedPlayerRightShift(playerCount);
+
+        // Grow team plates around the current one-fighter centers.
+        Rectangle enemyPlate = windowsCenteredPlateBounds(
+            enemyCenterX, windowsEnemyPlateCenterY(), enemyPlateSize);
+        Rectangle playerPlate = windowsCenteredPlateBounds(
+            playerCenterX, WINDOWS_BOTTOM_SECTION_HEIGHT, playerPlateSize);
 
         Rectangle enemyHud = new Rectangle(
-            WINDOWS_ENEMY_HUD_REGION_X,
+            windowsHudX(enemyCount, true),
             windowsPrimaryHudY(enemyCount, true),
             windowsHudWidth(enemyCount, true),
             WINDOWS_HUD_HEIGHT);
         Rectangle playerHud = new Rectangle(
-            WINDOWS_PLAYER_HUD_REGION_X,
+            windowsHudX(playerCount, false),
             windowsPrimaryHudY(playerCount, false),
             windowsHudWidth(playerCount, false),
             WINDOWS_HUD_HEIGHT);
+
+        enemyPlate.y += WINDOWS_ENEMY_PLATE_UPWARD_SHIFT;
         return new WindowsExecutionGeometry(
             enemyPlate, playerPlate, enemyHud, playerHud,
             WINDOWS_ENEMY_FIGHTER_BOTTOM_Y, WINDOWS_PLAYER_FIGHTER_BOTTOM_Y,
             WINDOWS_FIGHTER_SPRITE_SIZE);
     }
 
-    private static Rectangle windowsPlateBounds(float centerX, float footY, float size) {
+    private static Rectangle windowsCenteredPlateBounds(
+        float centerX,
+        float centerY,
+        float size
+    ) {
         return new Rectangle(
             centerX - size / 2f,
-            footY - size * BASE_PLATE_VISIBLE_BOTTOM_RATIO,
+            centerY - size / 2f,
             size,
             size);
     }
 
-    private static Rectangle windowsPlayerPlateBounds(float centerX, float size) {
-        return new Rectangle(
-            centerX - size / 2f,
-            WINDOWS_BOTTOM_SECTION_HEIGHT - size / 2f,
-            size,
-            size);
+    private static float windowsEnemyPlateCenterY() {
+        return WINDOWS_ENEMY_FIGHTER_BOTTOM_Y
+            + WINDOWS_BASE_PLATE_SIZE * (0.5f
+                - BASE_PLATE_VISIBLE_BOTTOM_RATIO
+                - BASE_PLATE_VISIBLE_HEIGHT_RATIO / 2f)
+            + WINDOWS_ENEMY_PLATE_UPWARD_NUDGE;
     }
 
-    private static float windowsPlateSize(int combatantCount, boolean opponent) {
-        float scaledSize = WINDOWS_BASE_PLATE_SIZE * plateScale(combatantCount);
-        if (combatantCount <= 2) return scaledSize;
-        float zoneWidth = opponent
-            ? WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH : WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH;
-        return Math.min(zoneWidth, scaledSize);
-    }
-
-    static float windowsFormationPlateWidth(float plateWidth) {
-        return Math.min(plateWidth, WINDOWS_FORMATION_REFERENCE_PLATE_SIZE);
+    private static float windowsPlateSize(int combatantCount) {
+        return WINDOWS_BASE_PLATE_SIZE * plateScale(combatantCount);
     }
 
     private static float windowsFighterCenterX(boolean opponent) {
@@ -4772,10 +4790,54 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private static float windowsHudWidth(int combatantCount, boolean opponent) {
+        return combatantCount <= 2
+            ? windowsHudLargeWidth(opponent) : windowsHudSmallWidth(opponent);
+    }
+
+    private static float windowsHudSmallWidth(boolean opponent) {
         float regionWidth = opponent
             ? WINDOWS_ENEMY_HUD_REGION_WIDTH : WINDOWS_PLAYER_HUD_REGION_WIDTH;
-        return combatantCount <= 2
-            ? regionWidth : (regionWidth - WINDOWS_HUD_GAP) / 2f;
+        return regionWidth * 0.5f;
+    }
+
+    private static float windowsHudLargeWidth(boolean opponent) {
+        float smallWidth = windowsHudSmallWidth(opponent);
+        return smallWidth * 2f + windowsHudCompactGap(opponent);
+    }
+
+    private static float windowsHudX(int combatantCount, boolean opponent) {
+        if (combatantCount <= 2) {
+            return opponent
+                ? WINDOWS_ENEMY_HUD_REGION_X
+                : WindowsBattleCanvas.WIDTH - WINDOWS_HUD_OUTER_MARGIN
+                    - windowsHudLargeWidth(false);
+        }
+        if (opponent) {
+            return WINDOWS_EXECUTION_X + WINDOWS_EXPANDED_HUD_EDGE_MARGIN;
+        }
+        float groupWidth = hudGroupWidth(
+            combatantCount,
+            windowsHudWidth(combatantCount, false),
+            windowsHudColumnGap(combatantCount, false));
+        float x = WindowsBattleCanvas.WIDTH
+            - WINDOWS_EXPANDED_HUD_EDGE_MARGIN - groupWidth;
+        return x + halfRightEdgeGap(WindowsBattleCanvas.WIDTH, x, groupWidth);
+    }
+
+    static float windowsHudColumnGap(int combatantCount, boolean opponent) {
+        return windowsHudCompactGap(opponent);
+    }
+
+    private static float windowsHudCompactGap(boolean opponent) {
+        return Math.max(
+            WINDOWS_HUD_COLUMN_GAP_MIN,
+            windowsHudSmallWidth(opponent) * WINDOWS_HUD_COLUMN_GAP_SCALE);
+    }
+
+    static float windowsHudRowGap() {
+        return Math.max(
+            WINDOWS_HUD_ROW_GAP_MIN,
+            WINDOWS_HUD_HEIGHT * WINDOWS_HUD_ROW_GAP_SCALE);
     }
 
     private static float windowsPrimaryHudY(int combatantCount, boolean opponent) {
@@ -4783,11 +4845,31 @@ public class BattleScreen implements Screen, BattleView {
             ? WINDOWS_ENEMY_HUD_REGION_Y : WINDOWS_PLAYER_HUD_REGION_Y;
         float regionHeight = opponent
             ? WINDOWS_ENEMY_HUD_REGION_HEIGHT : WINDOWS_PLAYER_HUD_REGION_HEIGHT;
-        int rows = combatantCount <= 1 ? 1 : 2;
-        float groupHeight = rows * WINDOWS_HUD_HEIGHT + (rows - 1) * WINDOWS_HUD_GAP;
-        float groupBottom = regionY + (regionHeight - groupHeight) / 2f;
-        return opponent
-            ? groupBottom : groupBottom + groupHeight - WINDOWS_HUD_HEIGHT;
+        float singleHudY = regionY + (regionHeight - WINDOWS_HUD_HEIGHT) / 2f;
+        if (combatantCount <= 1) return singleHudY;
+        float rowOffset = (WINDOWS_HUD_HEIGHT + windowsHudRowGap()) / 2f;
+        return opponent ? singleHudY - rowOffset : singleHudY + rowOffset;
+    }
+
+    private static float windowsExpandedPlayerRightShift(int combatantCount) {
+        if (combatantCount < 3) return 0f;
+        float groupWidth = hudGroupWidth(
+            combatantCount,
+            windowsHudWidth(combatantCount, false),
+            windowsHudColumnGap(combatantCount, false));
+        float groupX = WindowsBattleCanvas.WIDTH
+            - WINDOWS_EXPANDED_HUD_EDGE_MARGIN - groupWidth;
+        return halfRightEdgeGap(WindowsBattleCanvas.WIDTH, groupX, groupWidth);
+    }
+
+    private static float windowsEnemyFourFighterLeftShift() {
+        float expandedPlayerCenterX = Math.max(
+            WINDOWS_PLAYER_FIGHTER_CENTER_X + WINDOWS_EXPANDED_PLAYER_CENTER_NUDGE,
+            WINDOWS_EXECUTION_X + WINDOWS_BASE_PLATE_SIZE);
+        return enemyFourFighterLeftShift(
+            WINDOWS_EXECUTION_X + WINDOWS_EXPANDED_HUD_EDGE_MARGIN,
+            WINDOWS_BASE_PLATE_SIZE * 2f,
+            expandedPlayerCenterX);
     }
 
     static void layoutSpeedControls(
@@ -4833,12 +4915,13 @@ public class BattleScreen implements Screen, BattleView {
     ) {
         List<CombatantPanel> panels = new ArrayList<>(teamSprites.size());
         float plateCenterX = plate.x + plate.width / 2f;
-        float formationPlateWidth = windowsUnified()
-            ? windowsFormationPlateWidth(plate.width) : plate.width;
         for (int i = 0; i < teamSprites.size(); i++) {
             Texture spriteTexture = teamSprites.get(i);
-            float fighterCenterX = plateCenterX
-                + fighterOffset(i, teamSprites.size(), formationPlateWidth, opponent);
+            float fighterCenterX = windowsUnified()
+                ? windowsCombatantCenterX(
+                    i, teamSprites.size(), plate, opponent)
+                : plateCenterX
+                    + fighterOffset(i, teamSprites.size(), plate.width, opponent);
             Rectangle sprite = spriteBounds(
                 spriteTexture, fighterCenterX, spriteY, spriteSize, opponent);
             Rectangle hud = combatantHudBounds(
@@ -4853,6 +4936,31 @@ public class BattleScreen implements Screen, BattleView {
                 executionTextGeometryScale(), hudTextScale, barHeightScale, barBorderScale));
         }
         return List.copyOf(panels);
+    }
+
+    static float windowsCombatantCenterX(
+        int fighterIndex,
+        int fighterCount,
+        Rectangle plate,
+        boolean opponent
+    ) {
+        if (fighterCount == 3) {
+            if (opponent) {
+                return switch (fighterIndex) {
+                    case 0 -> WINDOWS_ENEMY_THREE_MIDDLE_X;
+                    case 1 -> WINDOWS_ENEMY_THREE_RIGHT_X;
+                    default -> WINDOWS_ENEMY_THREE_LEFT_X;
+                };
+            }
+            return switch (fighterIndex) {
+                case 0 -> WINDOWS_PLAYER_THREE_MIDDLE_X;
+                case 1 -> WINDOWS_PLAYER_THREE_RIGHT_X;
+                default -> WINDOWS_PLAYER_THREE_LEFT_X;
+            };
+        }
+        float plateCenterX = plate.x + plate.width / 2f;
+        return plateCenterX + fighterOffset(
+            fighterIndex, fighterCount, plate.width, opponent);
     }
 
     private float executionTextGeometryScale() {
@@ -4999,8 +5107,7 @@ public class BattleScreen implements Screen, BattleView {
         if (!windowsUnified()) {
             return scaledSpriteBounds(centerX, bottomY, baseSize, scale);
         }
-        return fittedScaledSpriteBounds(
-            centerX, bottomY, baseSize, scale, windowsFighterZoneBounds(opponent));
+        return windowsScaledSpriteBounds(centerX, bottomY, baseSize, scale, opponent);
     }
 
     /** Scales a square sprite around its center X while preserving its ground/log-bar anchor. */
@@ -5024,6 +5131,27 @@ public class BattleScreen implements Screen, BattleView {
         float fittedSize = Math.min(baseSize * scale,
             Math.min(horizontalCapacity, verticalCapacity));
         return new Rectangle(centerX - fittedSize / 2f, bottomY, fittedSize, fittedSize);
+    }
+
+    /** Reuses the current one-fighter fitted size at every Windows formation slot. */
+    static Rectangle windowsScaledSpriteBounds(
+        float centerX,
+        float bottomY,
+        float baseSize,
+        float scale,
+        boolean opponent
+    ) {
+        Rectangle oneFighterBounds = fittedScaledSpriteBounds(
+            windowsFighterCenterX(opponent),
+            opponent ? WINDOWS_ENEMY_FIGHTER_BOTTOM_Y : WINDOWS_PLAYER_FIGHTER_BOTTOM_Y,
+            baseSize,
+            scale,
+            windowsFighterZoneBounds(opponent));
+        return new Rectangle(
+            centerX - oneFighterBounds.width / 2f,
+            bottomY,
+            oneFighterBounds.width,
+            oneFighterBounds.height);
     }
 
     private static Rectangle windowsFighterZoneBounds(boolean opponent) {

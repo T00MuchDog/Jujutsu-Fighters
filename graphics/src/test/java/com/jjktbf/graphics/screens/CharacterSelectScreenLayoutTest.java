@@ -1,5 +1,6 @@
 package com.jjktbf.graphics.screens;
 
+import com.badlogic.gdx.graphics.Color;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,5 +20,39 @@ class CharacterSelectScreenLayoutTest {
             58f, 11, 12, rowHeight, viewportHeight));
         assertEquals(0f, CharacterSelectScreen.rosterScrollOffsetForSelection(
             322f, 0, 12, rowHeight, viewportHeight));
+    }
+
+    @Test
+    void windowsRosterUsesTwentyPercentOfScreenWidth() {
+        assertEquals(512f, CharacterSelectScreen.windowsRosterWidth(2560f), 0.001f);
+        assertEquals(204.8f, CharacterSelectScreen.windowsRosterWidth(1024f), 0.001f);
+    }
+
+    @Test
+    void horizontalMoveStripUsesExplicitCardGeometry() {
+        assertEquals(244f, CharacterSelectScreen.horizontalMoveScrollMaximum(
+            3, 240f, 252f, 500f));
+        assertEquals(0f, CharacterSelectScreen.horizontalMoveScrollMaximum(
+            2, 240f, 252f, 500f));
+    }
+
+    @Test
+    void windowsProfileReservesTechniqueRowsAtTargetHeights() {
+        assertEquals(193f, CharacterSelectScreen.windowsTechniqueSectionHeight(1267f));
+        assertEquals(6, CharacterSelectScreen.windowsTechniqueVisibleRows(1267f));
+        assertEquals(168f, CharacterSelectScreen.windowsTechniqueSectionHeight(727f));
+        assertEquals(6, CharacterSelectScreen.windowsTechniqueVisibleRows(727f));
+    }
+
+    @Test
+    void statBarsUseTenEightyAndThreeHundredColorStops() {
+        assertEquals(new Color(0.920f, 0.220f, 0.180f, 1f),
+            CharacterSelectScreen.statBarColor(10, new Color()));
+        assertEquals(Color.YELLOW,
+            CharacterSelectScreen.statBarColor(80, new Color()));
+        assertEquals(new Color(0.260f, 0.820f, 0.360f, 1f),
+            CharacterSelectScreen.statBarColor(300, new Color()));
+        assertEquals(0f, CharacterSelectScreen.statBarFillRatio(10));
+        assertEquals(1f, CharacterSelectScreen.statBarFillRatio(300));
     }
 }

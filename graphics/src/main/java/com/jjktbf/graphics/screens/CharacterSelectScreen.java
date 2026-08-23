@@ -20,12 +20,15 @@ import com.jjktbf.graphics.ui.battle.BattleUiAssets;
 import com.jjktbf.graphics.ui.editor.ScrollAxes;
 import com.jjktbf.graphics.ui.battle.MoveCardView;
 import com.jjktbf.graphics.ui.profile.UiProfile;
+import com.jjktbf.model.character.Ability;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterRepository;
 import com.jjktbf.model.character.CombatStats;
+import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveRepository;
+import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.TechniqueRepository;
 
 import java.io.IOException;
@@ -66,6 +69,40 @@ public class CharacterSelectScreen implements Screen {
     private static final float WINDOWS_DESCRIPTION_TARGET_HEIGHT = 67.5f;
     private static final float HEADER_HEIGHT = 58f;
     private static final float WINDOWS_HEADER_HEIGHT = 87f;
+    /** Windows roster panel occupies one fifth of the screen width. */
+    private static final float WINDOWS_ROSTER_WIDTH_RATIO = 0.20f;
+    private static final float WINDOWS_PROFILE_PADDING = 24f;
+    private static final float WINDOWS_PROFILE_TITLE_GAP = 60f;
+    private static final float WINDOWS_PROFILE_SUMMARY_HEIGHT = 580f;
+    private static final float WINDOWS_COMPACT_PROFILE_SUMMARY_HEIGHT = 155f;
+    private static final float WINDOWS_PROFILE_SECTION_GAP = 16f;
+    private static final float WINDOWS_COMPACT_PROFILE_SECTION_GAP = 10f;
+    private static final float WINDOWS_PROFILE_SPRITE_SIZE = 444f;
+    private static final float WINDOWS_COMPACT_PROFILE_SPRITE_SIZE = 100f;
+    private static final float WINDOWS_PROFILE_BAR_HEIGHT = 34f;
+    private static final float WINDOWS_COMPACT_PROFILE_BAR_HEIGHT = 20f;
+    private static final float WINDOWS_FULL_MOVE_CARD_WIDTH = 324f;
+    private static final float WINDOWS_FULL_MOVE_CARD_HEIGHT = 302f;
+    private static final float WINDOWS_FULL_MOVE_CARD_SCALE = 1.35f;
+    private static final float WINDOWS_SHORT_MOVE_CARD_WIDTH = 240f;
+    private static final float WINDOWS_SHORT_MOVE_CARD_HEIGHT = 224f;
+    private static final float WINDOWS_SHORT_MOVE_CARD_SCALE = 1f;
+    private static final float WINDOWS_FULL_MOVES_PANEL_HEIGHT = 354f;
+    private static final float WINDOWS_SHORT_MOVES_PANEL_HEIGHT = 276f;
+    private static final float WINDOWS_HORIZONTAL_MOVE_STRIDE = 339f;
+    private static final float WINDOWS_SHORT_HORIZONTAL_MOVE_STRIDE = 252f;
+    private static final float WINDOWS_HORIZONTAL_SCROLL_STEP = 180f;
+    private static final float WINDOWS_HORIZONTAL_SCROLL_SMOOTHING = 12f;
+    private static final float WINDOWS_HORIZONTAL_SCROLLBAR_HEIGHT = 9f;
+    private static final float WINDOWS_HORIZONTAL_SCROLLBAR_MIN_THUMB = 42f;
+    /** fontSmall is logical size 15, matching Windows editor ID text. */
+    private static final float WINDOWS_MIN_SMALL_FONT_SCALE = 1f;
+    private static final float WINDOWS_STATS_FONT_SCALE = 1.20f;
+    private static final float WINDOWS_BST_FONT_SCALE = 1.60f;
+    private static final Color STAT_MIN_COLOR = new Color(0.920f, 0.220f, 0.180f, 1f);
+    private static final Color STAT_MID_COLOR = new Color(1f, 1f, 0f, 1f);
+    private static final Color STAT_MAX_COLOR = new Color(0.260f, 0.820f, 0.360f, 1f);
+    private static final Color STAT_TRACK_COLOR = new Color(0.770f, 0.790f, 0.720f, 1f);
     private static final String[] STAT_LABELS = {
         "Vitality", "Strength", "Durability", "Speed", "Combat Ability",
         "CE Reserves", "CE Efficiency", "CE Output", "Jujutsu Skill", "CT Mastery"
@@ -104,20 +141,50 @@ public class CharacterSelectScreen implements Screen {
     private final Rectangle rosterViewportBounds = new Rectangle();
     private final Rectangle detailBounds = new Rectangle();
     private final Rectangle movesViewportBounds = new Rectangle();
+    private final Rectangle movesScrollTrackBounds = new Rectangle();
+    private final Rectangle movesScrollThumbBounds = new Rectangle();
+    private final Color statBarFillColor = new Color();
     private final InputAdapter inputAdapter = new InputAdapter() {
         @Override
         public boolean scrolled(float amountX, float amountY) {
-            // The moves list scrolls vertically; snap the gesture to its dominant axis
-            // so a horizontal trackpad swipe doesn't leak its vertical component in.
             float[] dominant = ScrollAxes.dominant(amountX, amountY);
+            if (windowsLayout && scrollWindowsLearnedMoves(dominant[0], dominant[1])) {
+                return true;
+            }
             if (scrollRoster(dominant[1])) return true;
             return scrollLearnedMoves(dominant[1]);
+        }
+
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            return beginWindowsMoveScrollDrag(
+                screenX, Gdx.graphics.getHeight() - screenY, button);
+        }
+
+        @Override
+        public boolean touchDragged(int screenX, int screenY, int pointer) {
+            return dragWindowsMoveScrollbar(screenX);
+        }
+
+        @Override
+        public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+            if (!draggingWindowsMoveScrollbar || button != Input.Buttons.LEFT) return false;
+            draggingWindowsMoveScrollbar = false;
+            return true;
         }
     };
 
     private List<CharacterData> characters = List.of();
     private CharacterData movesCharacter;
     private List<Move> learnedMoves = List.of();
+    private List<Ability> profileAbilities = List.of();
+    private List<Move> profileTechniqueMoves = List.of();
+    private List<Ability> profileTechniqueAbilities = List.of();
+    private InnateTechniqueData profileTechnique;
+    private BattleCombatant profileCombatant;
+    private List<MoveCardView> windowsMoveCards = List.of();
+    private List<Integer> windowsMoveCeCosts = List.of();
+    private boolean windowsMoveCardsCompact;
     private int cursorIndex;
     private Phase phase = Phase.PLAYER;
     /**
@@ -132,7 +199,11 @@ public class CharacterSelectScreen implements Screen {
     private String loadError;
     private String learnedMovesError;
     private float movesScrollOffset;
+    private float movesScrollTarget;
     private float movesScrollMax;
+    private boolean draggingWindowsMoveScrollbar;
+    private float windowsMoveDragStartX;
+    private float windowsMoveDragStartOffset;
     private float rosterScrollOffset;
     private float rosterScrollMax;
     /**
@@ -225,6 +296,13 @@ public class CharacterSelectScreen implements Screen {
         loadError = null;
         movesCharacter = null;
         learnedMoves = List.of();
+        profileAbilities = List.of();
+        profileTechniqueMoves = List.of();
+        profileTechniqueAbilities = List.of();
+        profileTechnique = null;
+        profileCombatant = null;
+        windowsMoveCards = List.of();
+        windowsMoveCeCosts = List.of();
         learnedMovesError = null;
         resetRosterScroll();
         resetMoveScroll();
@@ -255,6 +333,7 @@ public class CharacterSelectScreen implements Screen {
     public void render(float delta) {
         clearScreen();
         layout(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        updateWindowsMoveScroll(delta);
         handleInput();
         draw();
     }
@@ -428,7 +507,9 @@ public class CharacterSelectScreen implements Screen {
         float headerHeight = windowsLayout ? WINDOWS_HEADER_HEIGHT : HEADER_HEIGHT;
         headerBounds.set(margin, height - margin - headerHeight, width - margin * 2f, headerHeight);
         float contentTop = headerBounds.y - 14f;
-        float listWidth = Math.max(230f, width * 0.29f);
+        float listWidth = windowsLayout
+            ? windowsRosterWidth(width)
+            : Math.max(230f, width * 0.29f);
         listBounds.set(margin, margin, listWidth, contentTop - margin);
         if (windowsLayout) {
             rosterViewportBounds.set(
@@ -441,8 +522,14 @@ public class CharacterSelectScreen implements Screen {
             rosterScrollOffset = clamp(rosterScrollOffset, 0f, rosterScrollMax);
             revealRosterCursor();
         }
-        detailBounds.set(listBounds.x + listBounds.width + 14f, margin,
-            width - (listBounds.x + listBounds.width + 14f) - margin, contentTop - margin);
+        if (windowsLayout) {
+            float detailX = margin + windowsRosterWidth(width) + 14f;
+            detailBounds.set(
+                detailX, margin, width - detailX - margin, contentTop - margin);
+        } else {
+            detailBounds.set(listBounds.x + listBounds.width + 14f, margin,
+                width - (listBounds.x + listBounds.width + 14f) - margin, contentTop - margin);
+        }
     }
 
     private void draw() {
@@ -518,10 +605,14 @@ public class CharacterSelectScreen implements Screen {
             CharacterData character = characters.get(i);
             // Dim a character already picked on the side currently being filled.
             boolean alreadyPicked = sidePicks.stream().anyMatch(c -> c.id.equals(character.id));
-            assets.fontMedium.setColor(i == cursorIndex
+            BitmapFont rosterFont = assets.fontMedium;
+            rosterFont.setColor(i == cursorIndex
                 ? BattleUiAssets.TEXT
                 : (alreadyPicked ? new Color(0.55f, 0.55f, 0.55f, 1f) : Color.WHITE));
-            assets.fontMedium.draw(batch, character.name, listBounds.x + 18f,
+            String rosterName = windowsLayout
+                ? fitOrEllipsize(assets.fontMedium, character.name, listBounds.width - 36f)
+                : character.name;
+            rosterFont.draw(batch, rosterName, listBounds.x + 18f,
                 rowY + (windowsLayout ? 40.5f : 27f));
         }
         // Pick badges (P1/P2 on player side, C1/C2 on cpu side) next to names.
@@ -548,6 +639,11 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private void drawCharacterPage(CharacterData character) {
+        if (windowsLayout) {
+            drawWindowsCharacterPage(character);
+            return;
+        }
+
         assets.battleUi.card.draw(batch, detailBounds.x, detailBounds.y,
             detailBounds.width, detailBounds.height);
 
@@ -662,6 +758,591 @@ public class CharacterSelectScreen implements Screen {
         drawLearnedMoves(moves, innerLeft, contentBottom, innerWidth, movesPanelHeight);
     }
 
+    private void drawWindowsCharacterPage(CharacterData character) {
+        assets.battleUi.card.draw(batch, detailBounds.x, detailBounds.y,
+            detailBounds.width, detailBounds.height);
+
+        float innerLeft = detailBounds.x + WINDOWS_PROFILE_PADDING;
+        float innerRight = detailBounds.x + detailBounds.width - WINDOWS_PROFILE_PADDING;
+        float innerTop = detailBounds.y + detailBounds.height - WINDOWS_PROFILE_PADDING;
+        float innerWidth = Math.max(0f, innerRight - innerLeft);
+
+        boolean compactLayout = detailBounds.height < 1100f;
+        BitmapFont nameFont = compactLayout ? assets.fontMedium : assets.fontXLarge;
+        nameFont.setColor(BattleUiAssets.TEXT);
+        drawBold(nameFont, character.name, innerLeft, innerTop);
+
+        float contentTop = innerTop - WINDOWS_PROFILE_TITLE_GAP;
+        float contentBottom = detailBounds.y + WINDOWS_PROFILE_PADDING;
+        float contentHeight = Math.max(0f, contentTop - contentBottom);
+        if (compactLayout && character.description != null && !character.description.isBlank()) {
+            assets.fontSmall.setColor(BattleUiAssets.MUTED);
+            assets.fontSmall.draw(batch,
+                fitOrEllipsize(assets.fontSmall, character.description, innerWidth),
+                innerLeft,
+                innerTop - 36f);
+        }
+        float requestedMovesHeight = compactLayout
+            ? WINDOWS_SHORT_MOVES_PANEL_HEIGHT : WINDOWS_FULL_MOVES_PANEL_HEIGHT;
+        float movesPanelHeight = Math.min(requestedMovesHeight, contentHeight);
+        float sectionGap = contentHeight > movesPanelHeight
+            ? (compactLayout
+                ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP)
+            : 0f;
+        float infoBottom = contentBottom + movesPanelHeight + sectionGap;
+        float infoHeight = Math.max(0f, contentTop - infoBottom);
+        List<Move> moves = learnedMovesFor(character);
+
+        if (infoHeight > 0f) {
+            Rectangle infoClip = new Rectangle(innerLeft, infoBottom, innerWidth, infoHeight);
+            beginClip(infoClip);
+            float requestedSummaryHeight = compactLayout
+                ? WINDOWS_COMPACT_PROFILE_SUMMARY_HEIGHT : WINDOWS_PROFILE_SUMMARY_HEIGHT;
+            float summaryHeight = Math.min(requestedSummaryHeight, infoHeight);
+            float summaryBottom = contentTop - summaryHeight;
+            drawWindowsProfileSummary(
+                character, innerLeft, contentTop, summaryBottom, compactLayout);
+
+            float techniqueGap = compactLayout
+                ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP;
+            float techniqueTop = summaryBottom - techniqueGap;
+            if (techniqueTop > infoBottom) {
+                drawWindowsTechniqueSection(
+                    character, innerLeft, innerWidth, techniqueTop, infoBottom, compactLayout);
+            }
+            endClip();
+        }
+
+        drawWindowsLearnedMoves(
+            moves, innerLeft, contentBottom, innerWidth, movesPanelHeight, compactLayout);
+    }
+
+    private void drawWindowsProfileSummary(
+        CharacterData character,
+        float x,
+        float top,
+        float bottom,
+        boolean compactLayout
+    ) {
+        int screenWidth = Gdx.graphics.getWidth();
+        boolean compactPortrait = compactLayout || screenWidth < 2000;
+        float frameX;
+        float spriteX;
+        float resourceX;
+        float statsX;
+        if (!compactPortrait) {
+            frameX = x;
+            spriteX = x + 8f;
+            resourceX = x;
+            statsX = x + 580f;
+        } else if (screenWidth >= 2000) {
+            frameX = x;
+            spriteX = x + 6f;
+            resourceX = x;
+            statsX = x + 390f;
+        } else if (screenWidth >= 1450) {
+            frameX = x;
+            spriteX = x + 6f;
+            resourceX = x;
+            statsX = x + 254f;
+        } else {
+            frameX = x;
+            spriteX = x + 6f;
+            resourceX = x;
+            statsX = x + 198f;
+        }
+
+        float spriteY = compactPortrait ? top - 106f : top - 452f;
+        float spriteSize = compactPortrait
+            ? WINDOWS_COMPACT_PROFILE_SPRITE_SIZE : WINDOWS_PROFILE_SPRITE_SIZE;
+        assets.battleUi.palette.draw(batch,
+            frameX,
+            compactPortrait ? top - 112f : top - 460f,
+            compactPortrait ? 112f : 460f,
+            compactPortrait ? 112f : 460f);
+        Texture sprite = assets.characterSprite(character.spriteAsset, assets.playerSprite);
+        batch.draw(sprite, spriteX, spriteY, spriteSize, spriteSize);
+
+        float barHeight = compactPortrait
+            ? WINDOWS_COMPACT_PROFILE_BAR_HEIGHT : WINDOWS_PROFILE_BAR_HEIGHT;
+        float resourceWidth = compactPortrait ? 112f : 460f;
+        float hpY = compactPortrait ? top - 132f : top - 518f;
+        float ceY = compactPortrait ? top - 155f : top - 560f;
+        CombatStats fallbackStats = new CombatStats(character.toCharacterStats(), statMode);
+        int maximumHp = profileCombatant != null
+            ? profileCombatant.getMaxHp() : fallbackStats.getMaxHp();
+        int maximumCe = profileCombatant != null
+            ? profileCombatant.getMaxCursedEnergy() : fallbackStats.getMaxCursedEnergy();
+        StatusBar hp = new StatusBar(
+            "HP", new Color(STAT_MAX_COLOR), 1.5f);
+        hp.setBounds(resourceX, hpY, resourceWidth, barHeight);
+        hp.setValues(maximumHp, maximumHp);
+        hp.draw(batch, assets.fontSmall, assets.battleUi, !compactPortrait);
+        StatusBar ce = new StatusBar(
+            "CE", new Color(0.220f, 0.500f, 0.940f, 1f), 1.5f);
+        ce.setBounds(resourceX, ceY, resourceWidth, barHeight);
+        ce.setValues(maximumCe, maximumCe);
+        ce.draw(batch, assets.fontSmall, assets.battleUi, !compactPortrait);
+
+        drawWindowsStats(character, statsX, top, bottom, compactLayout);
+    }
+
+    private void drawWindowsStats(
+        CharacterData character,
+        float x,
+        float top,
+        float bottom,
+        boolean compactLayout
+    ) {
+        int[] values = {
+            character.vitality, character.strength, character.durability, character.speed,
+            character.combatAbility, character.cursedEnergyReserves,
+            character.cursedEnergyEfficiency, character.cursedEnergyOutput,
+            character.jujutsuSkill, character.cursedTechniqueMastery
+        };
+        int screenWidth = Gdx.graphics.getWidth();
+        if (compactLayout) {
+            drawWindowsCompactStats(character, values, x, top, bottom, screenWidth);
+            return;
+        }
+
+        float barOffset;
+        float barWidth;
+        float valueRight;
+        float descriptionWidth;
+        if (screenWidth >= 2000) {
+            barOffset = 250f;
+            barWidth = 880f;
+            valueRight = 1165f;
+            descriptionWidth = 1260f;
+        } else if (screenWidth >= 1450) {
+            barOffset = 190f;
+            barWidth = 260f;
+            valueRight = 485f;
+            descriptionWidth = 485f;
+        } else {
+            barOffset = 150f;
+            barWidth = 170f;
+            valueRight = 350f;
+            descriptionWidth = 350f;
+        }
+        float rowHeight = 40f;
+        float barHeight = 20f;
+        BitmapFont font = assets.fontSmall;
+        float bstBaseline = top - 24f;
+        if (bstBaseline - 22.5f < bottom) return;
+        drawWindowsBst(character, font, x, bstBaseline);
+        float originalScaleX = font.getData().scaleX;
+        float originalScaleY = font.getData().scaleY;
+        font.getData().setScale(
+            originalScaleX * WINDOWS_STATS_FONT_SCALE,
+            originalScaleY * WINDOWS_STATS_FONT_SCALE);
+        try {
+            for (int i = 0; i < values.length; i++) {
+                float baseline = top - 78f - i * rowHeight;
+                if (baseline - rowHeight < bottom) break;
+                String value = String.valueOf(values[i]);
+                font.setColor(BattleUiAssets.TEXT);
+                drawBold(font, STAT_LABELS[i], x, baseline);
+                drawWindowsStatBar(
+                    values[i], x + barOffset, baseline - barHeight + 2f, barWidth, barHeight);
+                drawBold(font, value, x + valueRight - textWidth(font, value), baseline);
+            }
+
+            float descriptionTop = top - 475f;
+            if (descriptionTop - 32f <= bottom) return;
+            font.setColor(BattleUiAssets.MUTED);
+            font.draw(batch, "CHARACTER PROFILE", x, descriptionTop);
+            drawWindowsWrappedText(
+                character.description,
+                x,
+                descriptionTop - 32f,
+                descriptionWidth,
+                bottom,
+                BattleUiAssets.TEXT,
+                30f);
+        } finally {
+            font.getData().setScale(originalScaleX, originalScaleY);
+        }
+    }
+
+    private void drawWindowsCompactStats(
+        CharacterData character,
+        int[] values,
+        float x,
+        float top,
+        float bottom,
+        int screenWidth
+    ) {
+        float secondColumnOffset;
+        float barOffset;
+        float barWidth;
+        float valueRight;
+        if (screenWidth >= 2000) {
+            secondColumnOffset = 430f;
+            barOffset = 180f;
+            barWidth = 165f;
+            valueRight = 395f;
+        } else if (screenWidth >= 1450) {
+            secondColumnOffset = 300f;
+            barOffset = 150f;
+            barWidth = 85f;
+            valueRight = 285f;
+        } else {
+            secondColumnOffset = 240f;
+            barOffset = 125f;
+            barWidth = 55f;
+            valueRight = 225f;
+        }
+
+        BitmapFont font = assets.fontSmall;
+        float bstBaseline = top;
+        if (bstBaseline - 22.5f >= bottom) {
+            drawWindowsBst(character, font, x, bstBaseline);
+        }
+        for (int i = 0; i < values.length; i++) {
+            int column = i / 5;
+            int row = i % 5;
+            float itemX = x + column * secondColumnOffset;
+            float baseline = top - 36f - row * 24f;
+            if (baseline - 22.5f < bottom) continue;
+            String value = String.valueOf(values[i]);
+            font.setColor(BattleUiAssets.TEXT);
+            drawBold(font, STAT_LABELS[i], itemX, baseline);
+            drawWindowsStatBar(values[i], itemX + barOffset, baseline - 8f, barWidth, 10f);
+            drawBold(font, value,
+                itemX + valueRight - textWidth(font, value), baseline);
+        }
+    }
+
+    private void drawWindowsBst(
+        CharacterData character,
+        BitmapFont font,
+        float x,
+        float baseline
+    ) {
+        String total = String.valueOf(baseStatTotal(character));
+        float originalScaleX = font.getData().scaleX;
+        float originalScaleY = font.getData().scaleY;
+        font.getData().setScale(
+            originalScaleX * WINDOWS_BST_FONT_SCALE,
+            originalScaleY * WINDOWS_BST_FONT_SCALE);
+        font.setColor(BattleUiAssets.TEXT);
+        drawBold(font, "BST:", x, baseline);
+        drawBold(font, total, x + 82f, baseline);
+        font.getData().setScale(originalScaleX, originalScaleY);
+    }
+
+    private void drawWindowsStatBar(
+        int value,
+        float x,
+        float y,
+        float width,
+        float height
+    ) {
+        float edge = 2f;
+        batch.setColor(BattleUiAssets.INK);
+        batch.draw(assets.battleUi.pixel, x, y, width, height);
+        batch.setColor(STAT_TRACK_COLOR);
+        batch.draw(assets.battleUi.pixel,
+            x + edge, y + edge, width - edge * 2f, height - edge * 2f);
+        float innerWidth = Math.max(0f, width - edge * 2f);
+        float fillWidth = innerWidth * statBarFillRatio(value);
+        if (fillWidth > 0f) {
+            batch.setColor(statBarColor(value, statBarFillColor));
+            batch.draw(assets.battleUi.pixel,
+                x + edge, y + edge, fillWidth, height - edge * 2f);
+        }
+        batch.setColor(Color.WHITE);
+    }
+
+    private void drawWindowsTechniqueSection(
+        CharacterData character,
+        float x,
+        float width,
+        float top,
+        float bottom,
+        boolean compactLayout
+    ) {
+        int screenWidth = Gdx.graphics.getWidth();
+        float columnWidth;
+        float rightColumnOffset;
+        float dividerOffset;
+        float listWidth;
+        float secondMovesOffset;
+        float abilitiesOffset;
+        if (screenWidth >= 2000) {
+            columnWidth = 945f;
+            rightColumnOffset = 969f;
+            dividerOffset = 957f;
+            listWidth = 295f;
+            secondMovesOffset = 315f;
+            abilitiesOffset = 630f;
+        } else if (screenWidth >= 1450) {
+            columnWidth = 535f;
+            rightColumnOffset = 559f;
+            dividerOffset = 547f;
+            listWidth = 165f;
+            secondMovesOffset = 185f;
+            abilitiesOffset = 370f;
+        } else {
+            columnWidth = 414f;
+            rightColumnOffset = 434f;
+            dividerOffset = 424f;
+            listWidth = 124f;
+            secondMovesOffset = 145f;
+            abilitiesOffset = 290f;
+        }
+
+        String techniqueName = hasCursedTechnique(character)
+            ? character.innateTechniqueName : "NONE";
+        BitmapFont titleFont = compactLayout ? assets.fontSmall : assets.fontMedium;
+        titleFont.setColor(BattleUiAssets.TEXT);
+        String title = "CURSED TECHNIQUE: " + techniqueName;
+        titleFont.draw(batch, fitOrEllipsize(titleFont, title, width), x, top);
+
+        float contentTop = top - (compactLayout ? 24f : 36f);
+        if (contentTop - 24f <= bottom) return;
+        float rightX = x + rightColumnOffset;
+        float dividerX = x + dividerOffset;
+        batch.setColor(new Color(0.560f, 0.640f, 0.800f, 1f));
+        batch.draw(assets.battleUi.pixel,
+            dividerX, bottom, 2f, Math.max(0f, contentTop - bottom));
+        batch.setColor(Color.WHITE);
+
+        assets.fontSmall.setColor(BattleUiAssets.MUTED);
+        assets.fontSmall.draw(batch, "TECHNIQUE DESCRIPTION", x, contentTop);
+        String description = profileTechnique != null
+            && profileTechnique.description != null
+            && !profileTechnique.description.isBlank()
+                ? profileTechnique.description
+                : (hasCursedTechnique(character)
+                    ? "No technique description available."
+                    : "This character does not possess an innate cursed technique.");
+        drawWindowsWrappedText(
+            description,
+            x,
+            contentTop - 24f,
+            columnWidth,
+            bottom,
+            BattleUiAssets.TEXT);
+
+        List<String> moveNames = profileTechniqueMoves.stream().map(Move::getName).toList();
+        int secondMovesStart = (moveNames.size() + 1) / 2;
+        List<String> firstMoves = moveNames.subList(0, secondMovesStart);
+        List<String> secondMoves = moveNames.subList(secondMovesStart, moveNames.size());
+        float secondMovesX = rightX + secondMovesOffset;
+        float abilitiesX = rightX + abilitiesOffset;
+        assets.fontSmall.setColor(BattleUiAssets.MUTED);
+        assets.fontSmall.draw(batch, "MOVES", rightX, contentTop);
+        if (!secondMoves.isEmpty()) {
+            assets.fontSmall.draw(batch, "CONT.", secondMovesX, contentTop);
+        }
+        assets.fontSmall.draw(batch, "ABILITIES", abilitiesX, contentTop);
+        drawWindowsPointList(
+            firstMoves,
+            rightX,
+            contentTop - 24f,
+            listWidth,
+            bottom);
+        if (!secondMoves.isEmpty()) {
+            drawWindowsPointList(
+                secondMoves,
+                secondMovesX,
+                contentTop - 24f,
+                listWidth,
+                bottom);
+        }
+        drawWindowsPointList(
+            profileTechniqueAbilities.stream().map(Ability::getName).toList(),
+            abilitiesX,
+            contentTop - 24f,
+            listWidth,
+            bottom);
+    }
+
+    private void drawWindowsWrappedText(
+        String value,
+        float x,
+        float top,
+        float width,
+        float bottom,
+        Color color
+    ) {
+        drawWindowsWrappedText(value, x, top, width, bottom, color, 22.5f);
+    }
+
+    private void drawWindowsWrappedText(
+        String value,
+        float x,
+        float top,
+        float width,
+        float bottom,
+        Color color,
+        float lineStep
+    ) {
+        String text = value == null || value.isBlank() ? "-" : value;
+        assets.fontSmall.setColor(color);
+        float baseline = top;
+        for (String line : wrap(assets.fontSmall, text, width)) {
+            if (baseline < bottom + 4f) break;
+            assets.fontSmall.draw(batch, line, x, baseline);
+            baseline -= lineStep;
+        }
+    }
+
+    private void drawWindowsPointList(
+        List<String> values,
+        float x,
+        float top,
+        float width,
+        float bottom
+    ) {
+        if (values.isEmpty()) {
+            if (top < bottom + 4f) return;
+            assets.fontSmall.setColor(BattleUiAssets.MUTED);
+            assets.fontSmall.draw(batch, "None learned.", x, top);
+            return;
+        }
+        int capacity = Math.max(0,
+            1 + (int) Math.floor((top - bottom - 4f) / 22.5f));
+        if (capacity == 0) return;
+        int visibleCount = Math.min(values.size(), capacity);
+        boolean overflow = values.size() > capacity;
+        float baseline = top;
+        for (int i = 0; i < visibleCount; i++) {
+            String value = overflow && i == visibleCount - 1
+                ? "+" + (values.size() - visibleCount + 1) + " more"
+                : values.get(i);
+            batch.setColor(BattleUiAssets.YELLOW);
+            batch.draw(assets.battleUi.pixel, x, baseline - 10f, 6f, 6f);
+            batch.setColor(Color.WHITE);
+            assets.fontSmall.setColor(BattleUiAssets.TEXT);
+            assets.fontSmall.draw(batch,
+                fitOrEllipsize(assets.fontSmall, value, width - 15f), x + 15f, baseline);
+            baseline -= 22.5f;
+        }
+    }
+
+    private void drawWindowsLearnedMoves(
+        List<Move> moves,
+        float x,
+        float y,
+        float width,
+        float height,
+        boolean compactLayout
+    ) {
+        movesViewportBounds.set(0f, 0f, 0f, 0f);
+        movesScrollTrackBounds.set(0f, 0f, 0f, 0f);
+        movesScrollThumbBounds.set(0f, 0f, 0f, 0f);
+        movesScrollMax = 0f;
+        if (height <= 0f) return;
+
+        assets.battleUi.palette.draw(batch, x, y, width, height);
+        String title = moves.isEmpty() ? "LEARNED MOVES" : "LEARNED MOVES (" + moves.size() + ")";
+        assets.fontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.fontSmall.draw(batch, title, x + 12f, y + height - 10f);
+
+        if (learnedMovesError != null) {
+            assets.fontSmall.setColor(Color.RED);
+            assets.fontSmall.draw(batch, "MOVE DATA UNAVAILABLE", x + 12f, y + height / 2f);
+            return;
+        }
+        if (moves.isEmpty()) {
+            assets.fontSmall.setColor(BattleUiAssets.MUTED);
+            assets.fontSmall.draw(batch, "No learned moves.", x + 12f, y + height / 2f);
+            return;
+        }
+
+        float cardWidth = compactLayout
+            ? WINDOWS_SHORT_MOVE_CARD_WIDTH : WINDOWS_FULL_MOVE_CARD_WIDTH;
+        float cardHeight = compactLayout
+            ? WINDOWS_SHORT_MOVE_CARD_HEIGHT : WINDOWS_FULL_MOVE_CARD_HEIGHT;
+        float cardStride = compactLayout
+            ? WINDOWS_SHORT_HORIZONTAL_MOVE_STRIDE : WINDOWS_HORIZONTAL_MOVE_STRIDE;
+        float viewportHeight = Math.min(cardHeight, Math.max(0f, height - 34f));
+        movesViewportBounds.set(
+            x + 12f, y + 17f, Math.max(0f, width - 24f), viewportHeight);
+        if (movesViewportBounds.width <= 0f || movesViewportBounds.height <= 0f) return;
+
+        ensureWindowsMoveCards(moves, compactLayout);
+        float contentWidth = cardWidth + Math.max(0, moves.size() - 1) * cardStride;
+        movesScrollMax = horizontalMoveScrollMaximum(
+            moves.size(), cardWidth, cardStride, movesViewportBounds.width);
+        movesScrollOffset = clamp(movesScrollOffset, 0f, movesScrollMax);
+        movesScrollTarget = clamp(movesScrollTarget, 0f, movesScrollMax);
+
+        float pointerX = Gdx.input.getX();
+        float pointerY = Gdx.graphics.getHeight() - Gdx.input.getY();
+        beginClip(movesViewportBounds);
+        for (int i = 0; i < windowsMoveCards.size(); i++) {
+            MoveCardView card = windowsMoveCards.get(i);
+            float cardX = movesViewportBounds.x
+                + i * cardStride - movesScrollOffset;
+            card.getBounds().setPosition(cardX, movesViewportBounds.y);
+            card.setHovered(
+                movesViewportBounds.contains(pointerX, pointerY)
+                    && card.getBounds().contains(pointerX, pointerY));
+            int ceCost = i < windowsMoveCeCosts.size() ? windowsMoveCeCosts.get(i) : 0;
+            card.draw(batch, assets.fontSmall, assets.fontSmall, assets.battleUi, ceCost);
+        }
+        endClip();
+
+        if (movesScrollMax > 0f) {
+            layoutWindowsMoveScrollbar(x, y, width, contentWidth);
+            batch.setColor(BattleUiAssets.INK);
+            batch.draw(assets.battleUi.pixel,
+                movesScrollTrackBounds.x, movesScrollTrackBounds.y,
+                movesScrollTrackBounds.width, movesScrollTrackBounds.height);
+            batch.setColor(BattleUiAssets.YELLOW);
+            batch.draw(assets.battleUi.pixel,
+                movesScrollThumbBounds.x, movesScrollThumbBounds.y,
+                movesScrollThumbBounds.width, movesScrollThumbBounds.height);
+            batch.setColor(Color.WHITE);
+        }
+    }
+
+    private void ensureWindowsMoveCards(List<Move> moves, boolean compactLayout) {
+        if (windowsMoveCards.size() == moves.size()
+            && windowsMoveCardsCompact == compactLayout) {
+            return;
+        }
+        float cardWidth = compactLayout
+            ? WINDOWS_SHORT_MOVE_CARD_WIDTH : WINDOWS_FULL_MOVE_CARD_WIDTH;
+        float cardHeight = compactLayout
+            ? WINDOWS_SHORT_MOVE_CARD_HEIGHT : WINDOWS_FULL_MOVE_CARD_HEIGHT;
+        float cardScale = compactLayout
+            ? WINDOWS_SHORT_MOVE_CARD_SCALE : WINDOWS_FULL_MOVE_CARD_SCALE;
+        int descriptionLines = compactLayout ? 3 : 5;
+        List<MoveCardView> cards = new ArrayList<>(moves.size());
+        for (Move move : moves) {
+            cards.add(new MoveCardView(
+                move, 0f, 0f, cardScale, cardWidth, cardHeight,
+                descriptionLines, WINDOWS_MIN_SMALL_FONT_SCALE));
+        }
+        windowsMoveCards = List.copyOf(cards);
+        windowsMoveCardsCompact = compactLayout;
+    }
+
+    private void layoutWindowsMoveScrollbar(float x, float y, float width, float contentWidth) {
+        movesScrollTrackBounds.set(
+            x + 12f,
+            y + 4f,
+            Math.max(0f, width - 24f),
+            WINDOWS_HORIZONTAL_SCROLLBAR_HEIGHT);
+        float thumbWidth = Math.max(
+            WINDOWS_HORIZONTAL_SCROLLBAR_MIN_THUMB,
+            movesScrollTrackBounds.width * movesViewportBounds.width / contentWidth);
+        thumbWidth = Math.min(movesScrollTrackBounds.width, thumbWidth);
+        float travel = movesScrollTrackBounds.width - thumbWidth;
+        float progress = movesScrollMax <= 0f ? 0f : movesScrollOffset / movesScrollMax;
+        movesScrollThumbBounds.set(
+            movesScrollTrackBounds.x + travel * progress,
+            movesScrollTrackBounds.y,
+            thumbWidth,
+            movesScrollTrackBounds.height);
+    }
+
     private void drawStats(CharacterData character, float x, float width, float topY, float rowHeight,
                            BitmapFont font) {
         int[] values = {
@@ -707,9 +1388,47 @@ public class CharacterSelectScreen implements Screen {
         movesCharacter = character;
         resetMoveScroll();
         learnedMovesError = null;
+        profileAbilities = List.of();
+        profileTechniqueMoves = List.of();
+        profileTechniqueAbilities = List.of();
+        profileTechnique = windowsLayout && hasCursedTechnique(character)
+            ? techniqueRepo.findByName(character.innateTechniqueName).orElse(null)
+            : null;
+        profileCombatant = null;
+        windowsMoveCards = List.of();
+        windowsMoveCeCosts = List.of();
         try {
-            learnedMoves = character.toCharacter(
-                moveRepo, abilityRepo, techniqueRepo, cursedToolRepo).getKnownMoves();
+            com.jjktbf.model.character.Character resolved = character.toCharacter(
+                moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+            learnedMoves = resolved.getKnownMoves();
+            if (windowsLayout) {
+                profileAbilities = resolved.getAbilities();
+                try {
+                    profileCombatant = new BattleCombatant(
+                        resolved, profileAbilities, statMode);
+                } catch (RuntimeException ignored) {
+                    profileCombatant = null;
+                }
+
+                List<Integer> costs = new ArrayList<>(learnedMoves.size());
+                for (Move move : learnedMoves) {
+                    costs.add(profileCombatant != null
+                        ? profileCombatant.computeMoveCeCost(move) : move.getBaseCeCost());
+                }
+                windowsMoveCeCosts = List.copyOf(costs);
+
+                if (hasCursedTechnique(character)) {
+                    profileTechniqueMoves = learnedMoves.stream()
+                        .filter(move -> character.innateTechniqueName.equalsIgnoreCase(
+                            move.getRequiredTechniqueId()))
+                        .toList();
+                    profileTechniqueAbilities = profileAbilities.stream()
+                        .filter(ability -> "TECHNIQUE".equalsIgnoreCase(ability.getSourceType()))
+                        .filter(ability -> character.innateTechniqueName.equalsIgnoreCase(
+                            ability.getSourceValue()))
+                        .toList();
+                }
+            }
         } catch (Exception e) {
             learnedMoves = List.of();
             learnedMovesError = e.getMessage();
@@ -910,6 +1629,7 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private boolean scrollLearnedMoves(float amount) {
+        if (windowsLayout) return false;
         if (amount == 0f || movesScrollMax <= 0f) return false;
         float pointerX = Gdx.input.getX();
         float pointerY = Gdx.graphics.getHeight() - Gdx.input.getY();
@@ -919,6 +1639,71 @@ public class CharacterSelectScreen implements Screen {
             Math.min(windowsLayout ? 120f : 80f, movesViewportBounds.height * 0.55f));
         movesScrollOffset = clamp(movesScrollOffset + amount * step, 0f, movesScrollMax);
         return true;
+    }
+
+    private boolean scrollWindowsLearnedMoves(float amountX, float amountY) {
+        if (!windowsLayout || movesScrollMax <= 0f) return false;
+        float amount = amountX != 0f ? amountX : amountY;
+        if (amount == 0f) return false;
+        float pointerX = Gdx.input.getX();
+        float pointerY = Gdx.graphics.getHeight() - Gdx.input.getY();
+        if (!movesViewportBounds.contains(pointerX, pointerY)) return false;
+        movesScrollTarget = clamp(
+            movesScrollTarget + amount * WINDOWS_HORIZONTAL_SCROLL_STEP,
+            0f,
+            movesScrollMax);
+        return true;
+    }
+
+    private boolean beginWindowsMoveScrollDrag(float x, float y, int button) {
+        if (!windowsLayout || button != Input.Buttons.LEFT || movesScrollMax <= 0f) {
+            return false;
+        }
+        if (movesScrollThumbBounds.contains(x, y)) {
+            draggingWindowsMoveScrollbar = true;
+            movesScrollTarget = movesScrollOffset;
+            windowsMoveDragStartX = x;
+            windowsMoveDragStartOffset = movesScrollOffset;
+            return true;
+        }
+        if (!movesScrollTrackBounds.contains(x, y)) return false;
+
+        float travel = movesScrollTrackBounds.width - movesScrollThumbBounds.width;
+        if (travel <= 0f) return true;
+        float thumbX = clamp(
+            x - movesScrollThumbBounds.width / 2f,
+            movesScrollTrackBounds.x,
+            movesScrollTrackBounds.x + travel);
+        setWindowsMoveScroll(
+            (thumbX - movesScrollTrackBounds.x) / travel * movesScrollMax);
+        return true;
+    }
+
+    private boolean dragWindowsMoveScrollbar(float x) {
+        if (!draggingWindowsMoveScrollbar) return false;
+        float travel = movesScrollTrackBounds.width - movesScrollThumbBounds.width;
+        if (travel <= 0f) return true;
+        setWindowsMoveScroll(
+            windowsMoveDragStartOffset
+                + (x - windowsMoveDragStartX) / travel * movesScrollMax);
+        return true;
+    }
+
+    private void setWindowsMoveScroll(float value) {
+        movesScrollOffset = clamp(value, 0f, movesScrollMax);
+        movesScrollTarget = movesScrollOffset;
+    }
+
+    private void updateWindowsMoveScroll(float delta) {
+        if (!windowsLayout || draggingWindowsMoveScrollbar) return;
+        float distance = movesScrollTarget - movesScrollOffset;
+        if (Math.abs(distance) < 0.1f) {
+            movesScrollOffset = movesScrollTarget;
+            return;
+        }
+        float elapsed = Math.min(Math.max(delta, 0f), 0.05f);
+        float blend = 1f - (float) Math.exp(-WINDOWS_HORIZONTAL_SCROLL_SMOOTHING * elapsed);
+        movesScrollOffset += distance * blend;
     }
 
     private boolean scrollRoster(float amount) {
@@ -963,6 +1748,68 @@ public class CharacterSelectScreen implements Screen {
         return clamp(offset, 0f, maximumOffset);
     }
 
+    static float windowsRosterWidth(float screenWidth) {
+        return Math.max(0f, screenWidth * WINDOWS_ROSTER_WIDTH_RATIO);
+    }
+
+    static float horizontalMoveScrollMaximum(
+        int cardCount,
+        float cardWidth,
+        float cardStride,
+        float viewportWidth
+    ) {
+        if (cardCount <= 0) return 0f;
+        float contentWidth = cardWidth + (cardCount - 1) * cardStride;
+        return Math.max(0f, contentWidth - Math.max(0f, viewportWidth));
+    }
+
+    static float windowsTechniqueSectionHeight(float detailHeight) {
+        boolean compact = detailHeight < 1100f;
+        float contentHeight = Math.max(0f,
+            detailHeight - WINDOWS_PROFILE_PADDING * 2f - WINDOWS_PROFILE_TITLE_GAP);
+        float movesHeight = Math.min(
+            compact ? WINDOWS_SHORT_MOVES_PANEL_HEIGHT : WINDOWS_FULL_MOVES_PANEL_HEIGHT,
+            contentHeight);
+        float panelGap = contentHeight > movesHeight
+            ? (compact
+                ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP)
+            : 0f;
+        float infoHeight = Math.max(0f, contentHeight - movesHeight - panelGap);
+        float summaryHeight = Math.min(
+            compact
+                ? WINDOWS_COMPACT_PROFILE_SUMMARY_HEIGHT : WINDOWS_PROFILE_SUMMARY_HEIGHT,
+            infoHeight);
+        float techniqueGap = compact
+            ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP;
+        return Math.max(0f, infoHeight - summaryHeight - techniqueGap);
+    }
+
+    static int windowsTechniqueVisibleRows(float detailHeight) {
+        boolean compact = detailHeight < 1100f;
+        float reservedHeight = compact ? 52f : 64f;
+        float available = windowsTechniqueSectionHeight(detailHeight) - reservedHeight;
+        return available < 0f ? 0 : 1 + (int) Math.floor(available / 22.5f);
+    }
+
+    static float statBarFillRatio(int value) {
+        return clamp((value - 10f) / 290f, 0f, 1f);
+    }
+
+    static Color statBarColor(int value, Color output) {
+        Objects.requireNonNull(output, "output");
+        if (value <= 80) {
+            float blend = clamp((value - 10f) / 70f, 0f, 1f);
+            return output.set(STAT_MIN_COLOR).lerp(STAT_MID_COLOR, blend);
+        }
+        float blend = clamp((value - 80f) / 220f, 0f, 1f);
+        return output.set(STAT_MID_COLOR).lerp(STAT_MAX_COLOR, blend);
+    }
+
+    private static boolean hasCursedTechnique(CharacterData character) {
+        return character.innateTechniqueName != null
+            && !character.innateTechniqueName.isBlank();
+    }
+
     private float rowHeight() {
         return windowsLayout ? WINDOWS_ROW_HEIGHT : ROW_HEIGHT;
     }
@@ -993,8 +1840,12 @@ public class CharacterSelectScreen implements Screen {
 
     private void resetMoveScroll() {
         movesScrollOffset = 0f;
+        movesScrollTarget = 0f;
         movesScrollMax = 0f;
+        draggingWindowsMoveScrollbar = false;
         movesViewportBounds.set(0f, 0f, 0f, 0f);
+        movesScrollTrackBounds.set(0f, 0f, 0f, 0f);
+        movesScrollThumbBounds.set(0f, 0f, 0f, 0f);
     }
 
     private static float clamp(float value, float min, float max) {
@@ -1008,6 +1859,10 @@ public class CharacterSelectScreen implements Screen {
 
     private static float textWidth(BitmapFont font, String text) {
         return new GlyphLayout(font, text).width;
+    }
+
+    private static String fitOrEllipsize(BitmapFont font, String text, float width) {
+        return textWidth(font, text) <= width ? text : ellipsize(font, text, width);
     }
 
     private static List<String> wrap(BitmapFont font, String text, float width) {

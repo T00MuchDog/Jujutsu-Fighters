@@ -14,9 +14,9 @@ import java.util.List;
  * strongest fighter's AP tier — see
  * {@link Timeline#gridLengthForStrongestAp}); the frames and dots come from
  * {@link BattleUiAssets}. The on-screen width of the bar is set by
- * {@link PlanningPanel} so that the highest tier fills the available width
- * and lower tiers render a proportionally shorter, centered bar — keeping the
- * dot size constant across tiers.
+ * {@link PlanningPanel}. The Windows composition always fills its authored
+ * track and increases dot spacing for lower tiers; responsive profiles may
+ * still use shorter centered tracks.
  *
  * <p>The bar is a pure spatial board: it maps dot index → pixel x and hosts
  * placed {@link ActionSegmentView}s. Budget/board-assignment logic lives on

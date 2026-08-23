@@ -53,18 +53,16 @@ public class MainMenuScreen implements Screen {
     private static final float WINDOWS_MAX_RESPONSIVE_SCALE = 1.75f;
     private static final float WINDOWS_HEADER_X = 49f;
     private static final float WINDOWS_HEADER_WIDTH_INSET = 98f;
-    private static final float WINDOWS_HEADER_HEIGHT = 126f;
-    private static final float WINDOWS_HEADER_BOTTOM_FROM_TOP = 154f;
+    private static final float WINDOWS_HEADER_HEIGHT = 100.8f;
+    private static final float WINDOWS_HEADER_TOP_FROM_TOP = 28f;
     private static final float WINDOWS_SETTINGS_X = 70f;
     private static final float WINDOWS_SETTINGS_TOP_FROM_TOP = 158f;
-    private static final float WINDOWS_SETTINGS_SIZE_PER_SCALE = 184f;
+    private static final float WINDOWS_SETTINGS_SIZE_PER_SCALE = 99.36f;
+    private static final float WINDOWS_MENU_TOP_INSET = 128.8f;
     private static final float WINDOWS_MENU_HALF_WIDTH = 567f;
-    private static final float WINDOWS_MENU_FIXED_HEIGHT = 62.5f;
-    private static final float WINDOWS_MENU_SCALED_HEIGHT = 861f;
-    private static final float WINDOWS_MENU_HALF_FIXED_HEIGHT = 31.25f;
-    private static final float WINDOWS_MENU_HALF_SCALED_HEIGHT = 430.5f;
-    private static final float WINDOWS_AUTHOR_MENU_SCALED_HEIGHT = 974.4f;
-    private static final float WINDOWS_AUTHOR_MENU_HALF_SCALED_HEIGHT = 487.2f;
+    private static final float WINDOWS_MENU_FIXED_HEIGHT = 70f;
+    private static final float WINDOWS_MENU_SCALED_HEIGHT = 970.1f;
+    private static final float WINDOWS_AUTHOR_MENU_SCALED_HEIGHT = 1083.9f;
     private static final float WINDOWS_MENU_SIDE_CLEARANCE_BASE = 74f;
     private static final float WINDOWS_MENU_SIDE_CLEARANCE_SCALED = 322f;
     private static final float WINDOWS_MENU_MIN_HALF_WIDTH = 99f;
@@ -72,8 +70,7 @@ public class MainMenuScreen implements Screen {
     private static final float WINDOWS_BUTTON_HEIGHT = 96.6f;
     private static final float WINDOWS_BUTTON_PADDING = 8.4f;
     private static final float WINDOWS_TITLE_FONT_SCALE = 0.25f;
-    private static final float WINDOWS_BUTTON_FONT_SCALE = 0.525f;
-    private static final float WINDOWS_COMMAND_VIEWPORT_INSET = 168f;
+    private static final float WINDOWS_BUTTON_FONT_SCALE = 0.39375f;
 
     private enum NavigationMode {
         NONE,
@@ -527,24 +524,19 @@ public class MainMenuScreen implements Screen {
     }
 
     private void layoutWindowsMenu(int width, int height, float responsiveScale) {
-        float referenceScale = responsiveScale / WINDOWS_MAX_RESPONSIVE_SCALE;
-        float menuHeight = WINDOWS_MENU_FIXED_HEIGHT
-            + (authoringMenu
-                ? WINDOWS_AUTHOR_MENU_SCALED_HEIGHT
-                : WINDOWS_MENU_SCALED_HEIGHT) * referenceScale;
-        float menuY = height * 0.5f - WINDOWS_MENU_HALF_FIXED_HEIGHT
-            - (authoringMenu
-                ? WINDOWS_AUTHOR_MENU_HALF_SCALED_HEIGHT
-                : WINDOWS_MENU_HALF_SCALED_HEIGHT) * referenceScale;
+        float scaledMenuHeight = authoringMenu
+            ? WINDOWS_AUTHOR_MENU_SCALED_HEIGHT : WINDOWS_MENU_SCALED_HEIGHT;
+        float referenceScale = windowsMenuReferenceScale(
+            height, responsiveScale / WINDOWS_MAX_RESPONSIVE_SCALE, scaledMenuHeight);
+        float menuHeight = WINDOWS_MENU_FIXED_HEIGHT + scaledMenuHeight * referenceScale;
+        float menuY = windowsMenuY(height, menuHeight);
         float menuHalfWidth = windowsCommandViewportHalfWidth(width, referenceScale);
         float menuWidth = menuHalfWidth * 2f;
-        float viewportHeight = windowsCommandViewportHeight(height, menuHeight);
-        float viewportY = windowsCommandViewportY(height, menuHeight, menuY);
         float settingsSize = WINDOWS_SETTINGS_SIZE_PER_SCALE * responsiveScale;
 
         header.setBounds(
             WINDOWS_HEADER_X,
-            height - WINDOWS_HEADER_BOTTOM_FROM_TOP,
+            height - WINDOWS_HEADER_TOP_FROM_TOP - WINDOWS_HEADER_HEIGHT,
             width - WINDOWS_HEADER_WIDTH_INSET,
             WINDOWS_HEADER_HEIGHT);
         settingsButton.setBounds(
@@ -555,9 +547,9 @@ public class MainMenuScreen implements Screen {
             settingsSize);
         commandsScroll.setBounds(
             width * 0.5f - menuHalfWidth,
-            viewportY,
+            menuY,
             menuWidth,
-            viewportHeight);
+            menuHeight);
         commands.setExplicitPrefSize(menuWidth, menuHeight);
         title.setFontScale(WINDOWS_TITLE_FONT_SCALE);
         commandTitle.setFontScale(WINDOWS_TITLE_FONT_SCALE);
@@ -578,9 +570,17 @@ public class MainMenuScreen implements Screen {
         }
     }
 
-    static float windowsCommandViewportHeight(float screenHeight, float menuHeight) {
-        return Math.min(menuHeight,
-            Math.max(1f, screenHeight - WINDOWS_COMMAND_VIEWPORT_INSET * 2f));
+    static float windowsMenuReferenceScale(
+        float screenHeight,
+        float requestedReferenceScale,
+        float scaledMenuHeight
+    ) {
+        if (screenHeight <= 0f) return requestedReferenceScale;
+        float availableHeight = Math.max(
+            WINDOWS_MENU_FIXED_HEIGHT, screenHeight - WINDOWS_MENU_TOP_INSET);
+        float heightLimitedScale = (availableHeight - WINDOWS_MENU_FIXED_HEIGHT)
+            / scaledMenuHeight;
+        return Math.min(requestedReferenceScale, heightLimitedScale);
     }
 
     static float windowsCommandViewportHalfWidth(float screenWidth, float referenceScale) {
@@ -591,14 +591,9 @@ public class MainMenuScreen implements Screen {
             Math.max(WINDOWS_MENU_MIN_HALF_WIDTH, availableHalfWidth));
     }
 
-    static float windowsCommandViewportY(
-        float screenHeight,
-        float menuHeight,
-        float unclippedMenuY
-    ) {
-        float viewportHeight = windowsCommandViewportHeight(screenHeight, menuHeight);
-        return viewportHeight < menuHeight
-            ? (screenHeight - viewportHeight) * 0.5f : unclippedMenuY;
+    static float windowsMenuY(float screenHeight, float menuHeight) {
+        return Math.max(0f,
+            (screenHeight - WINDOWS_MENU_TOP_INSET - menuHeight) * 0.5f);
     }
 
     private void revealWindowsMenuButton(int index) {
@@ -608,7 +603,12 @@ public class MainMenuScreen implements Screen {
         }
         float responsiveScale = Math.min(1.75f, Math.max(0.80f,
             Math.min(stage.getWidth() / 1024f, stage.getHeight() / 600f)));
-        float referenceScale = responsiveScale / WINDOWS_MAX_RESPONSIVE_SCALE;
+        float scaledMenuHeight = authoringMenu
+            ? WINDOWS_AUTHOR_MENU_SCALED_HEIGHT : WINDOWS_MENU_SCALED_HEIGHT;
+        float referenceScale = windowsMenuReferenceScale(
+            stage.getHeight(),
+            responsiveScale / WINDOWS_MAX_RESPONSIVE_SCALE,
+            scaledMenuHeight);
         float rowHeight = (WINDOWS_BUTTON_HEIGHT + WINDOWS_BUTTON_PADDING * 2f)
             * referenceScale;
         float rowY = WINDOWS_COMMAND_PADDING * referenceScale
@@ -638,6 +638,7 @@ public class MainMenuScreen implements Screen {
     }
 
     @Override public void resize(int width, int height) {
+        if (windowsLayout && (width <= 0 || height <= 0)) return;
         stage.getViewport().update(width, height, true);
         layoutMenu(width, height);
     }

@@ -38,12 +38,14 @@ class TeamPlanningPanelTest {
         ActionSegment first = panel.activePlanningPanel()
             .restorePlacement(firstMove, 1, 0, "enemy-1");
         assertEquals("First", panel.activePageName());
+        assertEquals("actor-1", panel.activeActorId());
         assertEquals(0, panel.activePageIndex());
 
         assertTrue(panel.inputProcessor().keyDown(Input.Keys.RIGHT));
         ActionSegment second = panel.activePlanningPanel()
             .restorePlacement(secondMove, 11, 0, "enemy-2");
         assertEquals("Second", panel.activePageName());
+        assertEquals("actor-2", panel.activeActorId());
         assertTrue(panel.inputProcessor().keyDown(Input.Keys.LEFT));
 
         assertEquals(List.of(first), panel.activePlanningPanel().getPlan().allSegments());
@@ -135,6 +137,46 @@ class TeamPlanningPanelTest {
         assertFalse(regions.previous().overlaps(regions.next()));
         assertFalse(regions.previous().overlaps(regions.pageLabel()));
         assertFalse(regions.next().overlaps(regions.pageLabel()));
+        assertEquals(72f, regions.previous().x, 0.0001f);
+        assertEquals(162f, regions.next().x, 0.0001f);
+        assertEquals(252f, regions.pageLabel().x, 0.0001f);
+        assertEquals(505.96f, regions.previous().y, 0.0001f);
+        assertEquals(505.96f, regions.next().y, 0.0001f);
+        assertEquals(505.96f, regions.pageLabel().y, 0.0001f);
+        assertEquals(72f, regions.previous().width, 0.0001f);
+        assertEquals(72f, regions.next().width, 0.0001f);
+        assertEquals(126f, regions.pageLabel().width, 0.0001f);
+        assertEquals(32f, regions.previous().height, 0.0001f);
+        assertEquals(32f, regions.next().height, 0.0001f);
+        assertEquals(32f, regions.pageLabel().height, 0.0001f);
+        assertTrue(regions.previous().y
+            > WindowsBattleCanvas.ACTION_Y + WindowsBattleCanvas.ACTION_HEIGHT);
+    }
+
+    @Test
+    void windowsArrowInputMapsFromTheScaledBottomCanvas() {
+        TeamPlanningPanel panel = panel(move("FIRST"), move("SECOND"));
+        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setViewportTransform(0.5f, 40f, 0f, 720f);
+
+        assertTrue(panel.inputProcessor().touchDown(
+            139, 459, 0, Input.Buttons.LEFT));
+        assertEquals(1, panel.activePageIndex());
+        assertEquals("actor-2", panel.activeActorId());
+    }
+
+    @Test
+    void readOnlyTeamPlannerDisablesPagesAndAllNavigationInput() {
+        TeamPlanningPanel panel = panel(move("FIRST"), move("SECOND"));
+        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setReadOnly(true);
+
+        assertFalse(panel.inputProcessor().keyDown(Input.Keys.RIGHT));
+        assertFalse(panel.inputProcessor().touchDown(
+            180, HEIGHT - 520, 0, Input.Buttons.LEFT));
+        assertTrue(panel.isReadOnly());
+        assertTrue(panel.activePlanningPanel().isReadOnly());
+        assertEquals(0, panel.activePageIndex());
     }
 
     private static TeamPlanningPanel panel(Move first, Move second) {

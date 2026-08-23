@@ -1,12 +1,25 @@
 package com.jjktbf.graphics;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Window;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowAdapter;
 import com.jjktbf.AppPaths;
 import com.jjktbf.graphics.launch.DesktopLaunchOptions;
 import com.jjktbf.graphics.launch.DesktopPlatform;
+import org.lwjgl.glfw.GLFWNativeWin32;
+import org.lwjgl.system.JNI;
+import org.lwjgl.system.Library;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.SharedLibrary;
+
+import java.nio.IntBuffer;
+
+import static org.lwjgl.system.APIUtil.apiGetFunctionAddress;
+import static org.lwjgl.system.MemoryUtil.memAddress;
 
 /**
  * Desktop entry point for the graphics mode.
@@ -69,13 +82,20 @@ public class GraphicsMain {
         //     and invoke the native toggle once the window exists. This is
         //     exactly what pressing the green button does: the app gets its
         //     own Space.
-        //   - Windows/Linux: there is no "separate Space" concept; the
-        //     standard fullscreen is exclusive fullscreen, which setFullscreen
-        //     Mode(...) already does correctly at creation time.
+        //   - Windows: use a monitor-sized borderless window so focus changes do
+        //     not trigger an exclusive display-mode transition.
+        //   - Linux: use standard exclusive fullscreen.
         boolean mac = launchOptions.hostPlatform() == DesktopPlatform.MAC;
+        boolean windows = launchOptions.hostPlatform() == DesktopPlatform.WINDOWS;
         boolean macNativeFullscreen = mac && !launchOptions.windowed();
         if (launchOptions.windowed()) {
             config.setWindowedMode(launchOptions.windowWidth(), launchOptions.windowHeight());
+        } else if (windows) {
+            Graphics.Monitor monitor = Lwjgl3ApplicationConfiguration.getPrimaryMonitor();
+            Graphics.DisplayMode mode = Lwjgl3ApplicationConfiguration.getDisplayMode(monitor);
+            config.setWindowedMode(mode.width, mode.height);
+            config.setWindowPosition(monitor.virtualX, monitor.virtualY);
+            config.setDecorated(false);
         } else if (!mac) {
             config.setFullscreenMode(Lwjgl3ApplicationConfiguration.getDisplayMode());
         } else {
@@ -85,6 +105,13 @@ public class GraphicsMain {
         // Cocoa native fullscreen requires a resizable NSWindow. Keep the old
         // normal-Mac behavior while still allowing explicit fixed policies later.
         config.setResizable(macNativeFullscreen || launchOptions.windowed());
+        if (windows && !launchOptions.windowed()) {
+            config.setWindowListener(new Lwjgl3WindowAdapter() {
+                @Override public void created(Lwjgl3Window window) {
+                    disableWindowsWindowTransitions(window.getWindowHandle());
+                }
+            });
+        }
         config.setForegroundFPS(60);
         config.useVsync(true);
 
@@ -100,6 +127,31 @@ public class GraphicsMain {
 
         // The launching JVM still requires -XstartOnFirstThread on macOS.
         new Lwjgl3Application(game, config);
+    }
+
+    private static void disableWindowsWindowTransitions(long glfwWindowHandle) {
+        final int dwmTransitionsForceDisabled = 3;
+        try (SharedLibrary dwmApi = Library.loadNative(
+                 GraphicsMain.class, "org.lwjgl", "dwmapi");
+             MemoryStack stack = MemoryStack.stackPush()) {
+            long windowHandle = GLFWNativeWin32.glfwGetWin32Window(glfwWindowHandle);
+            long setWindowAttribute = apiGetFunctionAddress(
+                dwmApi, "DwmSetWindowAttribute");
+            IntBuffer disabled = stack.ints(1);
+            int result = JNI.invokePPI(
+                windowHandle,
+                dwmTransitionsForceDisabled,
+                memAddress(disabled),
+                Integer.BYTES,
+                setWindowAttribute);
+            if (result != 0) {
+                System.err.println(
+                    "Warning: could not disable Windows window transitions: " + result);
+            }
+        } catch (Throwable failure) {
+            System.err.println(
+                "Warning: could not disable Windows window transitions: " + failure);
+        }
     }
 
     /**

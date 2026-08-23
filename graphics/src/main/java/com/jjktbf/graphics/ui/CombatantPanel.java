@@ -29,6 +29,7 @@ public class CombatantPanel {
     private final Rectangle hudBounds;
     private final float hpBarTop;
     private final float hudScale;
+    private final float hudTextScale;
     private final float textGeometryScale;
     private final boolean showResourceValues;
     private float damageFlashRemaining;
@@ -41,12 +42,30 @@ public class CombatantPanel {
                            Rectangle plateBounds, Rectangle spriteBounds, Rectangle hudBounds,
                            float hudScale, boolean showResourceValues) {
         this(sprite, basePlate, ui, plateBounds, spriteBounds, hudBounds,
-            hudScale, showResourceValues, 1f);
+            hudScale, showResourceValues, 1f, 1f, 1f, 1f);
     }
 
     public CombatantPanel(Texture sprite, Texture basePlate, BattleUiAssets ui,
                            Rectangle plateBounds, Rectangle spriteBounds, Rectangle hudBounds,
                            float hudScale, boolean showResourceValues, float textGeometryScale) {
+        this(sprite, basePlate, ui, plateBounds, spriteBounds, hudBounds,
+            hudScale, showResourceValues, textGeometryScale, 1f, 1f, 1f);
+    }
+
+    public CombatantPanel(
+        Texture sprite,
+        Texture basePlate,
+        BattleUiAssets ui,
+        Rectangle plateBounds,
+        Rectangle spriteBounds,
+        Rectangle hudBounds,
+        float hudScale,
+        boolean showResourceValues,
+        float textGeometryScale,
+        float hudTextScale,
+        float barHeightScale,
+        float barBorderScale
+    ) {
         this.sprite = sprite;
         this.basePlate = basePlate;
         this.ui = ui;
@@ -54,19 +73,25 @@ public class CombatantPanel {
         this.spriteBounds = new Rectangle(spriteBounds);
         this.hudBounds = new Rectangle(hudBounds);
         this.hudScale = hudScale;
+        this.hudTextScale = Math.max(0.1f, hudTextScale);
         this.textGeometryScale = Math.max(1f, textGeometryScale);
         this.showResourceValues = showResourceValues;
 
         hpBar = new StatusBar("HP", new Color(0.260f, 0.820f, 0.360f, 1f),
-            this.textGeometryScale);
+            this.textGeometryScale, barBorderScale);
         ceBar = new StatusBar("CE", new Color(0.220f, 0.500f, 0.940f, 1f),
-            this.textGeometryScale);
+            this.textGeometryScale, barBorderScale);
 
-        float inset = Math.max(scaled(10f) * hudScale, hudBounds.height * 0.11f);
-        float gap = Math.max(scaled(4f) * hudScale, hudBounds.height * 0.045f);
-        float nameBandHeight = scaled(25f) * hudScale;
-        float barHeight = Math.max(scaled(18f) * hudScale,
-            Math.min(scaled(25f) * hudScale,
+        float safeBarHeightScale = Math.max(0.1f, barHeightScale);
+        float inset = Math.max(
+            scaled(10f) * hudScale * this.hudTextScale,
+            hudBounds.height * 0.11f * this.hudTextScale);
+        float gap = Math.max(
+            scaled(4f) * hudScale * safeBarHeightScale,
+            hudBounds.height * 0.045f * safeBarHeightScale);
+        float nameBandHeight = scaled(25f) * hudScale * this.hudTextScale;
+        float barHeight = Math.max(scaled(18f) * hudScale * safeBarHeightScale,
+            Math.min(scaled(25f) * hudScale * safeBarHeightScale,
                 (hudBounds.height - inset * 2f - nameBandHeight - gap) / 2f));
         float barWidth = hudBounds.width - inset * 2f;
         float ceY = hudBounds.y + inset;
@@ -149,6 +174,22 @@ public class CombatantPanel {
             batch.draw(sprite, spriteBounds.x, spriteBounds.y, spriteBounds.width, spriteBounds.height);
         }
         damageFlashRemaining = Math.max(0f, damageFlashRemaining - Math.max(0f, delta));
+    }
+
+    /** Draws a restrained white silhouette edge behind the fighter being planned. */
+    public void drawPlanningHighlight(Batch batch, Texture whiteSprite) {
+        if (whiteSprite == null) return;
+        Color previous = new Color(batch.getColor());
+        batch.setColor(1f, 1f, 1f, 0.30f);
+        batch.draw(whiteSprite,
+            spriteBounds.x - 3f, spriteBounds.y, spriteBounds.width, spriteBounds.height);
+        batch.draw(whiteSprite,
+            spriteBounds.x + 3f, spriteBounds.y, spriteBounds.width, spriteBounds.height);
+        batch.draw(whiteSprite,
+            spriteBounds.x, spriteBounds.y - 3f, spriteBounds.width, spriteBounds.height);
+        batch.draw(whiteSprite,
+            spriteBounds.x, spriteBounds.y + 3f, spriteBounds.width, spriteBounds.height);
+        batch.setColor(previous);
     }
 
     /**
@@ -242,14 +283,16 @@ public class CombatantPanel {
 
         float originalScaleX = nameFont.getData().scaleX;
         float originalScaleY = nameFont.getData().scaleY;
-        nameFont.getData().setScale(originalScaleX * hudScale, originalScaleY * hudScale);
+        nameFont.getData().setScale(
+            originalScaleX * hudScale * hudTextScale,
+            originalScaleY * hudScale * hudTextScale);
         nameLayout.setText(nameFont, name);
         float availableNameWidth = hudBounds.width - scaled(28f) * hudScale;
         if (nameLayout.width > availableNameWidth) {
             float fittedScale = availableNameWidth / nameLayout.width;
             nameFont.getData().setScale(
-                originalScaleX * hudScale * fittedScale,
-                originalScaleY * hudScale * fittedScale);
+                originalScaleX * hudScale * hudTextScale * fittedScale,
+                originalScaleY * hudScale * hudTextScale * fittedScale);
             nameLayout.setText(nameFont, name);
         }
         nameFont.setColor(BattleUiAssets.TEXT);
@@ -263,7 +306,9 @@ public class CombatantPanel {
         ceBar.update(delta);
         float originalBarScaleX = barFont.getData().scaleX;
         float originalBarScaleY = barFont.getData().scaleY;
-        barFont.getData().setScale(originalBarScaleX * hudScale, originalBarScaleY * hudScale);
+        barFont.getData().setScale(
+            originalBarScaleX * hudScale * hudTextScale,
+            originalBarScaleY * hudScale * hudTextScale);
         hpBar.draw(batch, barFont, ui, showResourceValues, offsetX);
         ceBar.draw(batch, barFont, ui, showResourceValues, offsetX);
         barFont.getData().setScale(originalBarScaleX, originalBarScaleY);

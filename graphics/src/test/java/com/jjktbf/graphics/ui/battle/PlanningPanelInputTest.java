@@ -3,6 +3,8 @@ package com.jjktbf.graphics.ui.battle;
 import com.badlogic.gdx.Input.Buttons;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
+import com.jjktbf.graphics.ui.profile.BattleUiLayout;
+import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.CombatantId;
@@ -336,15 +338,38 @@ class PlanningPanelInputTest {
         assertEquals(6, PlanningPanel.paletteColumnCount(12));
     }
 
+    @Test
+    void windowsLockInputMapsFromTheScaledBottomCanvas() {
+        PlanningPanel panel = panel(move("WINDOWS_LOCK", 10), 150);
+        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setViewportTransform(0.5f, 30f, 0f, 720f);
+
+        assertTrue(panel.inputProcessor().touchDown(113, 514, 0, Buttons.LEFT));
+        assertTrue(panel.isConfirmed());
+    }
+
+    @Test
+    void readOnlyWindowsPlannerRejectsCardAndActionClicks() {
+        PlanningPanel panel = panel(move("WINDOWS_READ_ONLY", 10), 150);
+        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setViewportTransform(0.5f, 30f, 0f, 720f);
+        panel.setReadOnly(true);
+        PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
+
+        assertFalse(input.touchDown(55, 695, 0, Buttons.LEFT));
+        assertFalse(input.touchDown(113, 514, 0, Buttons.LEFT));
+        assertTrue(panel.isReadOnly());
+        assertFalse(panel.isConfirmed());
+        assertTrue(panel.getPlan().allSegments().isEmpty());
+    }
+
     private static PlanningPanel panel(Move move, int apBudget) {
         return panel(move, apBudget, apBudget);
     }
 
     /**
-     * Builds a panel with an explicit battle grid length. The grid controls the
-     * on-screen bar width (it scales with tier), so input-mechanics tests that
-     * click at fixed pixel coordinates pass a top-tier grid (300) to keep the
-     * bar at full width; grid-sensitive tests pass their intended grid.
+     * Builds a panel with an explicit battle grid length. Windows grids share
+     * one full-width track; the grid length controls spacing and tick mapping.
      */
     private static PlanningPanel panel(Move move, int apBudget, int gridLength) {
         return new PlanningPanel(

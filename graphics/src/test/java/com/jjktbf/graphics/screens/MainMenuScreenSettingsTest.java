@@ -15,19 +15,20 @@ class MainMenuScreenSettingsTest {
     }
 
     @Test
-    void windowsCommandViewportStaysCenteredBelowHeaderAtConstrainedHeights() {
-        assertEquals(384f, MainMenuScreen.windowsCommandViewportHeight(720f, 650.4f));
-        assertEquals(168f, MainMenuScreen.windowsCommandViewportY(720f, 650.4f, 34.8f));
-
-        assertEquals(744f, MainMenuScreen.windowsCommandViewportHeight(1080f, 921f));
-        assertEquals(168f, MainMenuScreen.windowsCommandViewportY(1080f, 921f, 79.5f));
+    void windowsMenuShrinksInsteadOfClippingAtConstrainedHeights() {
+        assertEquals(521.2f / 970.1f, MainMenuScreen.windowsMenuReferenceScale(
+            720f, 1.2f / 1.75f, 970.1f), 0.001f);
+        assertEquals(881.2f / 1083.9f, MainMenuScreen.windowsMenuReferenceScale(
+            1080f, 1f, 1083.9f), 0.001f);
+        assertEquals(1f, MainMenuScreen.windowsMenuReferenceScale(
+            0f, 1f, 970.1f), 0.001f);
     }
 
     @Test
-    void windowsCommandViewportKeepsReferenceBoundsWhenMenuFits() {
-        assertEquals(923.5f, MainMenuScreen.windowsCommandViewportHeight(1440f, 923.5f));
-        assertEquals(258.25f, MainMenuScreen.windowsCommandViewportY(
-            1440f, 923.5f, 258.25f));
+    void windowsMenuCentersBetweenTitleBarAndScreenBottom() {
+        assertEquals(0f, MainMenuScreen.windowsMenuY(1080f, 951.2f), 0.001f);
+        assertEquals(135.55f, MainMenuScreen.windowsMenuY(1440f, 1040.1f), 0.001f);
+        assertEquals(0f, MainMenuScreen.windowsMenuY(720f, 591.2f), 0.001f);
     }
 
     @Test

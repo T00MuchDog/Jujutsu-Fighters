@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Rectangle;
 import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
@@ -24,6 +25,7 @@ import com.jjktbf.graphics.ui.RatioMeter;
 import com.jjktbf.graphics.ui.battle.BattleUiAssets;
 import com.jjktbf.graphics.ui.battle.PlanningPanel;
 import com.jjktbf.graphics.ui.battle.TeamPlanningPanel;
+import com.jjktbf.graphics.ui.battle.WindowsBattleCanvas;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
@@ -80,10 +82,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Graphics implementation of BattleView.
  *
- * Layout:
- *   Top half    — enemy panel (sprite + HP/CE bars)
- *   Middle      — event log (last N messages)
- *   Bottom half — player panel + planning panel
+ * Mac keeps the dedicated planner and classic execution layout. Windows uses a
+ * unified composition with a persistent top-left battle log, a top-anchored
+ * execution field, and a bottom-anchored planning/action section.
  *
  * Threading note:
  *   BattleController calls promptBattlePlan() synchronously.
@@ -154,8 +155,64 @@ public class BattleScreen implements Screen, BattleView {
     private static final float COMBATANT_HUD_SCALE     = 1.25f;
     private static final float BASE_PLATE_VISIBLE_LEFT_RATIO = 0.06f;
     private static final float BASE_PLATE_VISIBLE_BOTTOM_RATIO = 0.38f;
+    private static final float BASE_PLATE_VISIBLE_HEIGHT_RATIO = 0.28f;
+    private static final float WINDOWS_ENEMY_PLATE_UPWARD_NUDGE = 10f;
     private static final float HUD_PLATE_CLEARANCE = 12f;
     private static final int   MAX_VISIBLE_COMBATANTS_PER_SIDE = 4;
+    static final float WINDOWS_EXECUTION_X = WindowsBattleCanvas.LEFT_COLUMN_WIDTH;
+    static final float WINDOWS_EXECUTION_Y = WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT;
+    static final float WINDOWS_EXECUTION_WIDTH =
+        WindowsBattleCanvas.WIDTH - WINDOWS_EXECUTION_X;
+    static final float WINDOWS_EXECUTION_HEIGHT =
+        WindowsBattleCanvas.HEIGHT - WINDOWS_EXECUTION_Y;
+    private static final float WINDOWS_FIGHTER_SCALE = 1.25f;
+    static final float WINDOWS_FIGHTER_SPRITE_SIZE = 358.4f * WINDOWS_FIGHTER_SCALE;
+    private static final float WINDOWS_BASE_PLATE_SIZE = WINDOWS_FIGHTER_SPRITE_SIZE * 2f;
+    // Keep team formations compact while the shared baseplate grows behind them.
+    private static final float WINDOWS_FORMATION_REFERENCE_PLATE_SIZE =
+        WINDOWS_BASE_PLATE_SIZE / WINDOWS_FIGHTER_SCALE;
+    static final float WINDOWS_BOTTOM_SECTION_HEIGHT = WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT;
+    static final float WINDOWS_PLAYER_FIGHTER_ZONE_X = 581f;
+    static final float WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH = 1132f;
+    static final float WINDOWS_PLAYER_FIGHTER_ZONE_Y = WINDOWS_BOTTOM_SECTION_HEIGHT;
+    static final float WINDOWS_PLAYER_FIGHTER_ZONE_HEIGHT = WINDOWS_EXECUTION_HEIGHT;
+    static final float WINDOWS_ENEMY_FIGHTER_ZONE_X = 1605f;
+    static final float WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH = 955f;
+    static final float WINDOWS_ENEMY_FIGHTER_ZONE_Y =
+        WindowsBattleCanvas.HEIGHT - WINDOWS_FIGHTER_SPRITE_SIZE
+            - WindowsBattleCanvas.PLANNING_HEIGHT_REDUCTION;
+    static final float WINDOWS_ENEMY_FIGHTER_ZONE_HEIGHT = WINDOWS_FIGHTER_SPRITE_SIZE;
+    static final float WINDOWS_PLAYER_FIGHTER_CENTER_X =
+        WINDOWS_PLAYER_FIGHTER_ZONE_X + WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH / 2f;
+    static final float WINDOWS_ENEMY_FIGHTER_CENTER_X =
+        WINDOWS_ENEMY_FIGHTER_ZONE_X + WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH / 2f;
+    static final float WINDOWS_PLAYER_FIGHTER_BOTTOM_Y = WINDOWS_BOTTOM_SECTION_HEIGHT;
+    static final float WINDOWS_ENEMY_FIGHTER_BOTTOM_Y = WINDOWS_ENEMY_FIGHTER_ZONE_Y;
+    private static final float WINDOWS_HUD_OUTER_MARGIN = 112f;
+    private static final float WINDOWS_HUD_PANEL_WIDTH_SCALE = 0.85f;
+    private static final float WINDOWS_HUD_PANEL_HEIGHT_SCALE = 0.9f;
+    private static final float WINDOWS_ENEMY_HUD_REGION_X = WINDOWS_EXECUTION_X
+        + WINDOWS_HUD_OUTER_MARGIN;
+    private static final float WINDOWS_ENEMY_HUD_REGION_Y =
+        1110f - WindowsBattleCanvas.PLANNING_HEIGHT_REDUCTION;
+    private static final float WINDOWS_ENEMY_HUD_REGION_WIDTH =
+        712f * WINDOWS_HUD_PANEL_WIDTH_SCALE;
+    private static final float WINDOWS_ENEMY_HUD_REGION_HEIGHT = 321f;
+    private static final float WINDOWS_PLAYER_HUD_REGION_Y =
+        599f - WindowsBattleCanvas.PLANNING_HEIGHT_REDUCTION;
+    private static final float WINDOWS_PLAYER_HUD_REGION_WIDTH =
+        740f * WINDOWS_HUD_PANEL_WIDTH_SCALE;
+    private static final float WINDOWS_PLAYER_HUD_REGION_HEIGHT = 365f;
+    private static final float WINDOWS_PLAYER_HUD_REGION_X = WindowsBattleCanvas.WIDTH
+        - WINDOWS_HUD_OUTER_MARGIN - WINDOWS_PLAYER_HUD_REGION_WIDTH;
+    private static final float WINDOWS_HUD_HEIGHT =
+        151.875f * WINDOWS_HUD_PANEL_HEIGHT_SCALE;
+    private static final float WINDOWS_HUD_GAP = 10f;
+    private static final float WINDOWS_HUD_TEXT_SCALE = 0.8f;
+    private static final float WINDOWS_HUD_BAR_HEIGHT_SCALE = 0.75f;
+    private static final float WINDOWS_HUD_BAR_BORDER_SCALE = 0.75f;
+    private static final Color WINDOWS_SECTION_DIVIDER =
+        new Color(0.82f, 0.86f, 0.92f, 0.92f);
     /** Set to true when debugging timeline playback. */
     private static final boolean SHOW_TICK_COUNTER      = false;
 
@@ -163,6 +220,10 @@ public class BattleScreen implements Screen, BattleView {
     private final AssetLoader assets;
     private final SpriteBatch batch;
     private BattleUiLayout uiLayout;
+    private WindowsBattleCanvas windowsCanvas = WindowsBattleCanvas.fit(
+        WindowsBattleCanvas.WIDTH, WindowsBattleCanvas.HEIGHT);
+    private final Matrix4 batchProjection = new Matrix4();
+    private final Matrix4 batchTransform = new Matrix4();
 
     /** Guards against double-dispose of native batch resources. */
     private boolean disposed;
@@ -194,6 +255,7 @@ public class BattleScreen implements Screen, BattleView {
     private final Rectangle nextRoundBounds = new Rectangle();
     private final Rectangle fastForwardBounds = new Rectangle();
     private final Rectangle skipBounds = new Rectangle();
+    private final Rectangle windowsExecutionClip = windowsExecutionBounds();
 
     // ── Event log ─────────────────────────────────────────────────────────────
     private final List<String> logLines = new ArrayList<>();
@@ -234,8 +296,9 @@ public class BattleScreen implements Screen, BattleView {
         @Override
         public boolean scrolled(float amountX, float amountY) {
             if ((!awaitingBattleStart && !awaitingNextRound) || typingInProgress()) return false;
-            float x = Gdx.input.getX();
-            float y = Gdx.graphics.getHeight() - Gdx.input.getY();
+            float x = bottomInputX(Gdx.input.getX());
+            float y = windowsUnified()
+                ? topInputY(Gdx.input.getY()) : bottomInputY(Gdx.input.getY());
             if (!logBounds.contains(x, y)) return false;
             // amountY < 0 = wheel up (toward older history); invert so up scrolls back.
             adjustLogScroll(-amountY * LOG_SCROLL_STEP_ROWS);
@@ -443,6 +506,9 @@ public class BattleScreen implements Screen, BattleView {
 
     @Override
     public void show() {
+        windowsCanvas = WindowsBattleCanvas.fit(
+            Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        applyPhysicalBatchTransform();
         Gdx.input.setInputProcessor(null);
         logScrollInputAttached = false;
         planningPanel = null;
@@ -578,9 +644,11 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     @Override public void resize(int w, int h) {
-        batch.getProjectionMatrix().setToOrtho2D(0, 0, w, h);
+        windowsCanvas = WindowsBattleCanvas.fit(w, h);
+        applyPhysicalBatchTransform();
         if (planningPanel != null) planningPanel.resize(w, h);
         if (teamPlanningPanel != null) teamPlanningPanel.resize(w, h);
+        configurePlanningViewport();
         layoutExecutionUi(w, h);
     }
     @Override public void pause()  {}
@@ -606,17 +674,18 @@ public class BattleScreen implements Screen, BattleView {
     // -------------------------------------------------------------------------
 
     private void handleInput() {
+        updateWindowsActionBounds();
         // The new two-board PlanningPanel owns its own drag input processor and
         // Lock In button — skip the legacy click-to-toggle / ENTER flow entirely
         // while it is active.
-        if (planningPanel != null || teamPlanningPanel != null) {
+        if (planningUiEditable()) {
             fastForwardHovered = false;
             skipHovered = false;
             return;
         }
 
-        float x = Gdx.input.getX();
-        float y = Gdx.graphics.getHeight() - Gdx.input.getY();
+        float x = bottomInputX(Gdx.input.getX());
+        float y = bottomInputY(Gdx.input.getY());
         boolean controlsEnabled = playbackControlsEnabled();
         fastForwardHovered = controlsEnabled && fastForwardBounds.contains(x, y);
         skipHovered = controlsEnabled && skipBounds.contains(x, y);
@@ -659,9 +728,9 @@ public class BattleScreen implements Screen, BattleView {
                 return;
             }
 
-            nextRoundHovered = nextRoundBounds.contains(x, y);
+            nextRoundHovered = nextRoundButtonEnabled() && nextRoundBounds.contains(x, y);
 
-            if (!nextRoundConfirmed && Gdx.input.justTouched() && nextRoundHovered) {
+            if (Gdx.input.justTouched() && nextRoundHovered) {
                 if (mode == BattleMode.MULTIPLAYER) {
                     if (submitReadyNextRound()) {
                         game.audio().play(SoundCue.UI_CONFIRM);
@@ -682,6 +751,7 @@ public class BattleScreen implements Screen, BattleView {
             Gdx.input.setInputProcessor(null);
             logScrollInputAttached = false;
         }
+        nextRoundHovered = false;
     }
 
     // -------------------------------------------------------------------------
@@ -695,6 +765,10 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void drawAll() {
+        if (windowsUnified()) {
+            drawUnifiedWindows();
+            return;
+        }
         if (battleOver) { drawBattleOver(); return; }
 
         // Until the battle thread reaches the first planning phase there is
@@ -742,8 +816,85 @@ public class BattleScreen implements Screen, BattleView {
 
     }
 
+    private void drawUnifiedWindows() {
+        if (!executionUiActive) return;
+        updateDisplayedAbilityMeters();
+
+        List<CombatantHud> enemyHuds = enemyPanel != null && hasEnemyRenderState()
+            ? combatantHuds(false) : List.of();
+        List<CombatantHud> playerHuds = playerPanel != null && hasPlayerRenderState()
+            ? combatantHuds(true) : List.of();
+        CombatantPanel plannedPanel = activePlannerCombatantPanel();
+
+        applyUnifiedBatchTransform(WindowsBattleCanvas.Anchor.TOP);
+        batch.begin();
+        beginUnifiedClip(windowsExecutionClip, WindowsBattleCanvas.Anchor.TOP);
+        try {
+            drawExecutionBackground(windowsExecutionClip);
+            drawCombatantField(enemyPanels, enemyHuds.size(), plannedPanel);
+            drawCombatantField(playerPanels, playerHuds.size(), plannedPanel);
+            drawCombatantHuds(enemyPanels, enemyHuds, false);
+            if (!playerHuds.isEmpty()) {
+                drawCombatantHuds(playerPanels, playerHuds, true);
+                if (playerPanel != null && faintAnimationFor(playerPanel) == null) {
+                    miraclesMeter.draw(batch, assets.battleUi, assets.fontLarge);
+                    ratioMeter.draw(batch, assets.battleUi, assets.fontLarge);
+                }
+            }
+            if (SHOW_TICK_COUNTER) {
+                drawTickCounter(WindowsBattleCanvas.WIDTH, WindowsBattleCanvas.HEIGHT);
+            }
+            if (!planningUiEditable()) {
+                drawMoveUnleashAnimation(
+                    WINDOWS_EXECUTION_WIDTH, WINDOWS_EXECUTION_HEIGHT,
+                    WINDOWS_EXECUTION_X, WINDOWS_EXECUTION_Y);
+                drawHitFlashes(
+                    WINDOWS_EXECUTION_WIDTH, WINDOWS_EXECUTION_HEIGHT,
+                    WINDOWS_EXECUTION_X, WINDOWS_EXECUTION_Y);
+            }
+        } finally {
+            endUnifiedClip();
+        }
+        batch.end();
+
+        applyUnifiedBatchTransform(WindowsBattleCanvas.Anchor.TOP);
+        batch.begin();
+        drawLog(
+            WindowsBattleCanvas.WIDTH,
+            WindowsBattleCanvas.HEIGHT,
+            WindowsBattleCanvas.Anchor.TOP);
+        batch.end();
+
+        applyUnifiedBatchTransform(WindowsBattleCanvas.Anchor.BOTTOM);
+        updateWindowsActionBounds();
+        if (planningPanel != null) {
+            planningPanel.draw(batch, assets.fontSmall, assets.fontMedium, assets.fontLarge);
+        } else if (teamPlanningPanel != null) {
+            teamPlanningPanel.draw(batch, assets.fontSmall, assets.fontMedium, assets.fontLarge);
+        } else {
+            batch.begin();
+            drawWindowsPlanningSectionBackground();
+            batch.end();
+        }
+        batch.begin();
+        if (speedControlsVisible()) drawSpeedControls();
+        drawBattleActionButton();
+        batch.end();
+
+        applyPhysicalBatchTransform();
+        if (battleOver) drawBattleOver();
+    }
+
     /** Draw one side's shared plate and fighters from left to right. */
     private void drawCombatantField(List<CombatantPanel> panels, int visibleCount) {
+        drawCombatantField(panels, visibleCount, null);
+    }
+
+    private void drawCombatantField(
+        List<CombatantPanel> panels,
+        int visibleCount,
+        CombatantPanel plannedPanel
+    ) {
         int count = Math.min(panels.size(), visibleCount);
         if (count == 0) return;
         // SpriteBatch composites later draws on top, so the rightmost fighter stays in front.
@@ -751,6 +902,9 @@ public class BattleScreen implements Screen, BattleView {
         drawOrder.sort((left, right) -> Float.compare(left.spriteCenterX(), right.spriteCenterX()));
         panels.get(0).drawPlate(batch);
         for (CombatantPanel panel : drawOrder) {
+            if (panel == plannedPanel) {
+                panel.drawPlanningHighlight(batch, assets.whiteSilhouette(panel.spriteTexture()));
+            }
             FaintAnimation faint = faintAnimationFor(panel);
             EntranceAnimation entrance = entranceAnimationFor(panel);
             if (faint != null) {
@@ -779,7 +933,7 @@ public class BattleScreen implements Screen, BattleView {
                 if (entrance != null && entrance.animateHud) {
                     panel.drawEnteringHud(batch, assets.fontMedium, assets.fontSmall,
                         hud.name(), frameDelta, entrance.progress(), playerSide,
-                        Gdx.graphics.getWidth());
+                        windowsUnified() ? WindowsBattleCanvas.WIDTH : Gdx.graphics.getWidth());
                 } else {
                     panel.drawHud(batch, assets.fontMedium, assets.fontSmall,
                         hud.name(), frameDelta);
@@ -794,17 +948,40 @@ public class BattleScreen implements Screen, BattleView {
 
     /** Draw the selected backdrop without distorting it at different viewport sizes. */
     private void drawExecutionBackground(float screenWidth, float screenHeight) {
+        drawExecutionBackground(new Rectangle(0f, 0f, screenWidth, screenHeight));
+    }
+
+    /** Cover one execution rectangle while preserving the backdrop's aspect ratio. */
+    private void drawExecutionBackground(Rectangle bounds) {
         Texture background = assets.battleExecutionBackground;
         if (background == null) return;
 
         float scale = Math.max(
-            screenWidth / background.getWidth(),
-            screenHeight / background.getHeight()
+            bounds.width / background.getWidth(),
+            bounds.height / background.getHeight()
         );
         float width = background.getWidth() * scale;
         float height = background.getHeight() * scale;
         batch.setColor(Color.WHITE);
-        batch.draw(background, (screenWidth - width) / 2f, (screenHeight - height) / 2f, width, height);
+        batch.draw(background,
+            bounds.x + (bounds.width - width) / 2f,
+            bounds.y + (bounds.height - height) / 2f,
+            width,
+            height);
+    }
+
+    private void drawWindowsPlanningSectionBackground() {
+        assets.battleUi.palette.draw(
+            batch, 0f, 0f,
+            WindowsBattleCanvas.WIDTH, WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT);
+        batch.setColor(WINDOWS_SECTION_DIVIDER);
+        batch.draw(
+            assets.battleUi.pixel,
+            0f,
+            WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT - 2f,
+            WindowsBattleCanvas.WIDTH,
+            2f);
+        batch.setColor(Color.WHITE);
     }
 
     /** Temporary execution readout for checking timeline playback. */
@@ -827,6 +1004,14 @@ public class BattleScreen implements Screen, BattleView {
      * font stays fixed.
      */
     private void drawLog(float sw, float sh) {
+        drawLog(sw, sh, WindowsBattleCanvas.Anchor.BOTTOM);
+    }
+
+    private void drawLog(
+        float sw,
+        float sh,
+        WindowsBattleCanvas.Anchor canvasAnchor
+    ) {
         float textGeometryScale = executionTextGeometryScale();
         assets.battleUi.dialogue.draw(batch, logBounds.x, logBounds.y, logBounds.width, logBounds.height);
         assets.fontSmall.setColor(new Color(0.980f, 0.870f, 0.540f, 1f));
@@ -835,11 +1020,11 @@ public class BattleScreen implements Screen, BattleView {
             logBounds.y + logBounds.height - 14f * textGeometryScale);
 
         BitmapFont logFont = assets.fontLog;
-        float speedControlSpace = speedControlsVisible()
+        float speedControlSpace = !windowsUnified() && speedControlsVisible()
             ? logBounds.x + logBounds.width - fastForwardBounds.x
                 + 14f * textGeometryScale : 0f;
         float buttonSpace = Math.max(speedControlSpace,
-            awaitingBattleStart || awaitingNextRound
+            !windowsUnified() && (awaitingBattleStart || awaitingNextRound)
                 ? nextRoundBounds.width + 24f * textGeometryScale : 0f);
         float textWidth = Math.max(
             1f, logBounds.width - 28f * textGeometryScale - buttonSpace);
@@ -874,13 +1059,16 @@ public class BattleScreen implements Screen, BattleView {
             logBounds.width - clipInset * 2f, logBounds.height - clipInset * 2f);
         float scaleX = Gdx.graphics.getBackBufferWidth() / (float) Gdx.graphics.getWidth();
         float scaleY = Gdx.graphics.getBackBufferHeight() / (float) Gdx.graphics.getHeight();
+        Rectangle physicalClip = windowsUnified()
+            ? windowsCanvas.physicalBounds(clip, canvasAnchor)
+            : clip;
         boolean pushed = clip.width > 0f && clip.height > 0f;
         if (pushed) {
             batch.flush();
             Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
             Gdx.gl.glScissor(
-                Math.round(clip.x * scaleX), Math.round(clip.y * scaleY),
-                Math.round(clip.width * scaleX), Math.round(clip.height * scaleY));
+                Math.round(physicalClip.x * scaleX), Math.round(physicalClip.y * scaleY),
+                Math.round(physicalClip.width * scaleX), Math.round(physicalClip.height * scaleY));
         }
 
         // Bottom-anchor: walk newest → oldest, shifted down by the scroll
@@ -927,9 +1115,27 @@ public class BattleScreen implements Screen, BattleView {
         float topY = logBounds.y + logBounds.height
             - 34f * textGeometryScale + lineStep;
         float visibleHeight = topY - bottomY;
-        float contentHeight = (logLines.size()
-            + (typingLine != null ? 1 : 0)) * lineStep; // approx; renderer wraps precisely
+        float textWidth = logTextWidth(textGeometryScale);
+        int lineCount = wrapAll(logFont, textWidth).size();
+        if (typingLine != null) {
+            int shown = Math.min(typingChars, typingLine.length());
+            lineCount += wrapText(logFont, typingLine.substring(0, shown), textWidth).size();
+        }
+        float contentHeight = lineCount * lineStep;
         logScrollOffset = clampLogScroll(logScrollOffset + rows * lineStep, contentHeight, visibleHeight);
+    }
+
+    private float logTextWidth(float textGeometryScale) {
+        if (windowsUnified()) {
+            return Math.max(1f, logBounds.width - 28f * textGeometryScale);
+        }
+        float speedControlSpace = speedControlsVisible()
+            ? logBounds.x + logBounds.width - fastForwardBounds.x
+                + 14f * textGeometryScale : 0f;
+        float buttonSpace = Math.max(speedControlSpace,
+            awaitingBattleStart || awaitingNextRound
+                ? nextRoundBounds.width + 24f * textGeometryScale : 0f);
+        return Math.max(1f, logBounds.width - 28f * textGeometryScale - buttonSpace);
     }
 
     /** Wrap every retained message to {@code width} and return the flat list of lines (oldest first). */
@@ -942,12 +1148,10 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void drawBattleActionButton() {
-        if (!awaitingBattleStart && !awaitingNextRound) return;
+        if (!battleActionButtonVisible()) return;
         boolean enabled = awaitingBattleStart
             ? battleStartButtonEnabled()
-            : mode == BattleMode.LOCAL
-                ? !nextRoundConfirmed
-                : !onlineCommandPending && !localReadyForNextRound();
+            : nextRoundButtonEnabled();
         if (!enabled) {
             assets.battleUi.lockButtonDisabled.draw(batch, nextRoundBounds.x, nextRoundBounds.y,
                 nextRoundBounds.width, nextRoundBounds.height);
@@ -958,19 +1162,49 @@ public class BattleScreen implements Screen, BattleView {
             assets.battleUi.lockButton.draw(batch, nextRoundBounds.x, nextRoundBounds.y,
                 nextRoundBounds.width, nextRoundBounds.height);
         }
-        assets.fontMedium.setColor(Color.WHITE);
+        BitmapFont actionFont = windowsUnified() ? assets.fontSmall : assets.fontMedium;
+        actionFont.setColor(Color.WHITE);
         String label;
         if (awaitingBattleStart) {
             label = battleStartWaiting() ? "WAITING..." : "START BATTLE";
         } else {
-            label = (mode == BattleMode.LOCAL && nextRoundConfirmed)
-                || (mode == BattleMode.MULTIPLAYER && localReadyForNextRound())
+            label = nextRoundWaiting()
                 ? "WAITING..." : "NEXT ROUND";
         }
-        GlyphLayout layout = new GlyphLayout(assets.fontMedium, label);
-        assets.fontMedium.draw(batch, label,
+        GlyphLayout layout = new GlyphLayout(actionFont, label);
+        actionFont.draw(batch, label,
             nextRoundBounds.x + (nextRoundBounds.width - layout.width) / 2f,
             nextRoundBounds.y + (nextRoundBounds.height + layout.height) / 2f);
+    }
+
+    private boolean battleActionButtonVisible() {
+        return awaitingBattleStart || awaitingNextRound;
+    }
+
+    private boolean nextRoundButtonEnabled() {
+        if (!roundPresentationComplete()) return false;
+        if (mode == BattleMode.LOCAL) return !nextRoundConfirmed;
+        return multiplayerState != null
+            && multiplayerState.status() == MatchStatus.ACTIVE
+            && multiplayerState.phase() == BattlePhase.ROUND_END
+            && multiplayerConnectionState == MultiplayerSession.ConnectionState.CONNECTED
+            && !onlineCommandPending
+            && !localReadyForNextRound();
+    }
+
+    private boolean roundPresentationComplete() {
+        if (!awaitingNextRound || battleOver || resolvingTicks
+            || typingInProgress() || faintAnimationInProgress()
+            || entranceAnimationInProgress()) {
+            return false;
+        }
+        return mode == BattleMode.LOCAL || playbackComplete;
+    }
+
+    private boolean nextRoundWaiting() {
+        return mode == BattleMode.LOCAL
+            ? nextRoundConfirmed
+            : onlineCommandPending || localReadyForNextRound();
     }
 
     private void drawSpeedControls() {
@@ -1008,7 +1242,7 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private boolean speedControlsVisible() {
-        return executionUiActive && planningPanel == null && teamPlanningPanel == null
+        return executionUiActive && !planningUiEditable()
             && !awaitingBattleStart && !battleOver;
     }
 
@@ -1074,6 +1308,15 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void drawMoveUnleashAnimation(float screenWidth, float screenHeight) {
+        drawMoveUnleashAnimation(screenWidth, screenHeight, 0f, 0f);
+    }
+
+    private void drawMoveUnleashAnimation(
+        float screenWidth,
+        float screenHeight,
+        float originX,
+        float originY
+    ) {
         if (unleashedMoveIcon == null) return;
 
         float progress = Math.min(1f, unleashedMoveElapsed / unleashedMoveDurationSeconds);
@@ -1083,8 +1326,8 @@ public class BattleScreen implements Screen, BattleView {
         float endSize = Math.max(startSize, Math.min(240f, viewportSize * 0.34f));
         float size = startSize + (endSize - startSize) * easedGrowth;
         float width = size * unleashedMoveIcon.getWidth() / (float) unleashedMoveIcon.getHeight();
-        float centerX = screenWidth / 2f;
-        float centerY = screenHeight / 2f;
+        float centerX = originX + screenWidth / 2f;
+        float centerY = originY + screenHeight / 2f;
         if (unleashedMoveTargetPanel != null) {
             centerX = unleashedMoveTargetPanel.spriteCenterX();
             centerY = unleashedMoveTargetPanel.spriteCenterY();
@@ -1177,6 +1420,15 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void drawHitFlashes(float screenWidth, float screenHeight) {
+        drawHitFlashes(screenWidth, screenHeight, 0f, 0f);
+    }
+
+    private void drawHitFlashes(
+        float screenWidth,
+        float screenHeight,
+        float originX,
+        float originY
+    ) {
         for (HitFlash flash : hitFlashes) {
             float progress = Math.min(1f, flash.elapsed / flash.duration);
             float eased = 1f - (1f - progress) * (1f - progress);
@@ -1186,8 +1438,8 @@ public class BattleScreen implements Screen, BattleView {
             float size = startSize + (endSize - startSize) * eased;
             float width = size * flash.icon.getWidth() / (float) flash.icon.getHeight();
 
-            float centerX = screenWidth / 2f;
-            float centerY = screenHeight / 2f;
+            float centerX = originX + screenWidth / 2f;
+            float centerY = originY + screenHeight / 2f;
             if (flash.targetPanel != null) {
                 centerX = flash.targetPanel.spriteCenterX();
                 centerY = flash.targetPanel.spriteCenterY();
@@ -1608,6 +1860,7 @@ public class BattleScreen implements Screen, BattleView {
             syncLocalHpFromModel();
             initPanels();
             updatePanels();
+            showLocalPreBattlePlanner(state);
             resetPlaybackControls();
             executionUiActive = true;
             awaitingBattleStart = true;
@@ -1706,16 +1959,20 @@ public class BattleScreen implements Screen, BattleView {
             awaitingNextRound = false;
             nextRoundHovered = false;
             executionUiActive = true;
+            clearTransientAnimations();
+            teamPlanningPanel = null;
             planningPanel = new com.jjktbf.graphics.ui.battle.PlanningPanel(
                 gridLength, combatant, List.of(opponent), assets.battleUi,
                 Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
             planningPanel.setLayout(uiLayout);
+            configurePlanningViewport();
             planningPanel.setSoundPlayer(game.audio()::play);
             planningPanel.setOnConfirm(() -> {
                 game.audio().play(SoundCue.UI_PLAN_LOCK);
                 inputConfirmed = true;
             });
             Gdx.input.setInputProcessor(planningPanel.inputProcessor());
+            logScrollInputAttached = false;
             updatePanels();
             inputConfirmed = false;
         });
@@ -1784,6 +2041,8 @@ public class BattleScreen implements Screen, BattleView {
             awaitingNextRound = false;
             nextRoundHovered = false;
             executionUiActive = true;
+            clearTransientAnimations();
+            planningPanel = null;
             teamPlanningPanel = new TeamPlanningPanel(
                 gridLength,
                 controlled,
@@ -1792,12 +2051,14 @@ public class BattleScreen implements Screen, BattleView {
                 Gdx.graphics.getWidth(),
                 Gdx.graphics.getHeight());
             teamPlanningPanel.setLayout(uiLayout);
+            configurePlanningViewport();
             teamPlanningPanel.setSoundPlayer(game.audio()::play);
             teamPlanningPanel.setOnConfirm(() -> {
                 game.audio().play(SoundCue.UI_PLAN_LOCK);
                 inputConfirmed = true;
             });
             Gdx.input.setInputProcessor(teamPlanningPanel.inputProcessor());
+            logScrollInputAttached = false;
             updatePanels();
             inputConfirmed = false;
         });
@@ -2355,7 +2616,7 @@ public class BattleScreen implements Screen, BattleView {
         initOnlineMoves(local, opponent);
 
         if (state.phase() == BattlePhase.PRE_BATTLE && !isTerminal(state.status())) {
-            closePlanningPanel();
+            if (!windowsUnified()) closePlanningPanel();
             resetPlaybackControls();
             awaitingBattleStart = true;
             awaitingNextRound = false;
@@ -2372,6 +2633,8 @@ public class BattleScreen implements Screen, BattleView {
                 ? null : findRatioState(displayedPlayer.codedAbilities());
             initPanels();
             updatePanels();
+            ensureOnlinePlanner(state.roundNumber(), local, opponent, true);
+            if (teamPlanningPanel != null) teamPlanningPanel.setActionButtonShifted(false);
             if (!battleIntroLogged) {
                 battleIntroLogged = true;
                 queueLogLine("The battle between " + onlineTeamName(local)
@@ -2423,16 +2686,7 @@ public class BattleScreen implements Screen, BattleView {
             updatePanels();
             logOnlineEvents(state.recentEvents());
 
-            if (local.planSubmitted()) {
-                ensureOnlinePlanner(state.roundNumber(), local, opponent);
-                if (teamPlanningPanel != null) teamPlanningPanel.lock();
-            } else {
-                if (teamPlanningPanel != null && onlinePlanningRound == state.roundNumber()
-                    && !onlineCommandPending) {
-                    teamPlanningPanel.unlock();
-                }
-                ensureOnlinePlanner(state.roundNumber(), local, opponent);
-            }
+            ensureOnlinePlanner(state.roundNumber(), local, opponent);
             return;
         }
 
@@ -2451,12 +2705,25 @@ public class BattleScreen implements Screen, BattleView {
         PlayerState local,
         PlayerState opponent
     ) {
-        if (onlinePlanningRound == roundNumber && teamPlanningPanel != null) return;
+        ensureOnlinePlanner(roundNumber, local, opponent, false);
+    }
+
+    private void ensureOnlinePlanner(
+        int roundNumber,
+        PlayerState local,
+        PlayerState opponent,
+        boolean readOnly
+    ) {
+        if (onlinePlanningRound == roundNumber && teamPlanningPanel != null) {
+            configureOnlinePlannerAvailability(local, readOnly);
+            return;
+        }
         if (multiplayerState == null
             || multiplayerState.status() != MatchStatus.ACTIVE
-            || multiplayerConnectionState != MultiplayerSession.ConnectionState.CONNECTED
-            || resolvingTicks
-            || onlineCommandPending) {
+            || (!readOnly && (multiplayerConnectionState
+                != MultiplayerSession.ConnectionState.CONNECTED
+                || resolvingTicks
+                || onlineCommandPending))) {
             return;
         }
 
@@ -2516,6 +2783,8 @@ public class BattleScreen implements Screen, BattleView {
                 allies));
         }
         if (pages.isEmpty()) return;
+        clearTransientAnimations();
+        planningPanel = null;
         teamPlanningPanel = new TeamPlanningPanel(
             BattleTeamId.PLAYER,
             gridLength,
@@ -2525,10 +2794,31 @@ public class BattleScreen implements Screen, BattleView {
             Gdx.graphics.getHeight()
         );
         teamPlanningPanel.setLayout(uiLayout);
+        configurePlanningViewport();
         teamPlanningPanel.setSoundPlayer(game.audio()::play);
         teamPlanningPanel.setOnConfirm(this::submitOnlinePlan);
-        Gdx.input.setInputProcessor(teamPlanningPanel.inputProcessor());
         onlinePlanningRound = roundNumber;
+        configureOnlinePlannerAvailability(local, readOnly);
+    }
+
+    private void configureOnlinePlannerAvailability(PlayerState local, boolean readOnly) {
+        if (teamPlanningPanel == null) return;
+        if (readOnly) {
+            teamPlanningPanel.lock();
+            teamPlanningPanel.setReadOnly(true);
+            Gdx.input.setInputProcessor(null);
+            logScrollInputAttached = false;
+            return;
+        }
+        teamPlanningPanel.setReadOnly(false);
+        teamPlanningPanel.setActionButtonShifted(false);
+        if (onlineCommandPending || (local != null && local.planSubmitted())) {
+            teamPlanningPanel.lock();
+        } else {
+            teamPlanningPanel.unlock();
+        }
+        Gdx.input.setInputProcessor(teamPlanningPanel.inputProcessor());
+        logScrollInputAttached = false;
     }
 
     private void initOnlineMoves(PlayerState... players) {
@@ -2691,7 +2981,8 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void startMultiplayerPlayback(MatchState state, boolean returnsToPlanning) {
-        closePlanningPanel();
+        ensureOnlinePlanner(state.roundNumber(), onlinePlayer, onlineEnemy, true);
+        retainReadOnlyPlanningUi();
         resetPlaybackControls();
         playbackControlsOpen = true;
         playbackReturnsToPlanning = returnsToPlanning;
@@ -3054,11 +3345,7 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private boolean submitReadyNextRound() {
-        if (multiplayerState == null || onlineCommandPending
-            || localReadyForNextRound()
-            || multiplayerConnectionState != MultiplayerSession.ConnectionState.CONNECTED) {
-            return false;
-        }
+        if (!nextRoundButtonEnabled() || multiplayerMatchService == null) return false;
         MultiplayerMatchService.PlanSubmission submission =
             multiplayerMatchService.readyNextRound();
         if (!submission.sent()) {
@@ -3136,9 +3423,166 @@ public class BattleScreen implements Screen, BattleView {
         logScrollInputAttached = false;
     }
 
-    /** Replace a retained locked planner with the execution UI. */
+    private boolean planningUiEditable() {
+        if (planningPanel != null) return !planningPanel.isReadOnly();
+        return teamPlanningPanel != null && !teamPlanningPanel.isReadOnly();
+    }
+
+    private void updateWindowsActionBounds() {
+        if (windowsUnified()) {
+            nextRoundBounds.set(windowsActionBounds(speedControlsVisible()));
+        }
+    }
+
+    private void retainReadOnlyPlanningUi() {
+        if (!windowsUnified()) {
+            closePlanningPanel();
+            return;
+        }
+        if (planningPanel != null) {
+            planningPanel.lock();
+            planningPanel.setReadOnly(true);
+            planningPanel.setActionButtonShifted(true);
+        }
+        if (teamPlanningPanel != null) {
+            teamPlanningPanel.lock();
+            teamPlanningPanel.setReadOnly(true);
+            teamPlanningPanel.setActionButtonShifted(true);
+        }
+        Gdx.input.setInputProcessor(null);
+        logScrollInputAttached = false;
+    }
+
+    private boolean windowsUnified() {
+        return uiLayout.storedProfile() == UiProfile.WINDOWS;
+    }
+
+    private void applyPhysicalBatchTransform() {
+        float width = Math.max(1f, Gdx.graphics.getWidth());
+        float height = Math.max(1f, Gdx.graphics.getHeight());
+        batch.setProjectionMatrix(batchProjection.setToOrtho2D(0f, 0f, width, height));
+        batch.setTransformMatrix(batchTransform.idt());
+    }
+
+    private void applyUnifiedBatchTransform(WindowsBattleCanvas.Anchor anchor) {
+        float width = Math.max(1f, Gdx.graphics.getWidth());
+        float height = Math.max(1f, Gdx.graphics.getHeight());
+        batch.setProjectionMatrix(batchProjection.setToOrtho2D(0f, 0f, width, height));
+        batch.setTransformMatrix(batchTransform.idt()
+            .translate(windowsCanvas.offsetX(), windowsCanvas.offsetY(anchor), 0f)
+            .scale(windowsCanvas.scale(), windowsCanvas.scale(), 1f));
+    }
+
+    private void beginUnifiedClip(Rectangle logicalBounds, WindowsBattleCanvas.Anchor anchor) {
+        Rectangle physical = windowsCanvas.physicalBounds(logicalBounds, anchor);
+        float backBufferScaleX = Gdx.graphics.getBackBufferWidth()
+            / (float) Gdx.graphics.getWidth();
+        float backBufferScaleY = Gdx.graphics.getBackBufferHeight()
+            / (float) Gdx.graphics.getHeight();
+        batch.flush();
+        Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
+        Gdx.gl.glScissor(
+            Math.round(physical.x * backBufferScaleX),
+            Math.round(physical.y * backBufferScaleY),
+            Math.round(physical.width * backBufferScaleX),
+            Math.round(physical.height * backBufferScaleY));
+    }
+
+    private void endUnifiedClip() {
+        batch.flush();
+        Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+    }
+
+    private float bottomInputX(float physicalX) {
+        return windowsUnified() ? windowsCanvas.logicalX(physicalX) : physicalX;
+    }
+
+    private float bottomInputY(float physicalTopY) {
+        float physicalBottomY = Gdx.graphics.getHeight() - physicalTopY;
+        return windowsUnified()
+            ? windowsCanvas.logicalY(physicalBottomY, WindowsBattleCanvas.Anchor.BOTTOM)
+            : physicalBottomY;
+    }
+
+    private float topInputY(float physicalTopY) {
+        float physicalBottomY = Gdx.graphics.getHeight() - physicalTopY;
+        return windowsCanvas.logicalY(physicalBottomY, WindowsBattleCanvas.Anchor.TOP);
+    }
+
+    private void configurePlanningViewport() {
+        if (!windowsUnified()) return;
+        float offsetY = windowsCanvas.offsetY(WindowsBattleCanvas.Anchor.BOTTOM);
+        if (planningPanel != null) {
+            planningPanel.setViewportTransform(
+                windowsCanvas.scale(), windowsCanvas.offsetX(), offsetY,
+                windowsCanvas.viewportHeight());
+        }
+        if (teamPlanningPanel != null) {
+            teamPlanningPanel.setViewportTransform(
+                windowsCanvas.scale(), windowsCanvas.offsetX(), offsetY,
+                windowsCanvas.viewportHeight());
+        }
+    }
+
+    private void showLocalPreBattlePlanner(BattleState state) {
+        if (!windowsUnified()) return;
+        List<BattleCombatant> controlled = visibleCombatants(state.playerTeam());
+        if (controlled.isEmpty()) return;
+        planningPanel = null;
+        teamPlanningPanel = new TeamPlanningPanel(
+            TeamBattlePlan.gridLengthForRound(state),
+            controlled,
+            state,
+            assets.battleUi,
+            Gdx.graphics.getWidth(),
+            Gdx.graphics.getHeight());
+        teamPlanningPanel.setLayout(uiLayout);
+        teamPlanningPanel.lock();
+        teamPlanningPanel.setReadOnly(true);
+        teamPlanningPanel.setActionButtonShifted(false);
+        configurePlanningViewport();
+        Gdx.input.setInputProcessor(null);
+    }
+
+    private CombatantPanel activePlannerCombatantPanel() {
+        if (!planningUiEditable()) return null;
+        int teamPageCount = teamPlanningPanel == null ? 0 : teamPlanningPanel.pageCount();
+        if (!shouldDrawPlanningHighlight(planningPanel != null, teamPageCount)) return null;
+        String actorId = teamPlanningPanel.activeActorId();
+        if (actorId == null || actorId.isBlank()) return null;
+
+        if (mode == BattleMode.MULTIPLAYER) {
+            for (int i = 0; i < Math.min(renderOnlinePlayerTeam.size(), playerPanels.size()); i++) {
+                if (actorId.equals(renderOnlinePlayerTeam.get(i).instanceId())) {
+                    return playerPanels.get(i);
+                }
+            }
+            for (int i = 0; i < Math.min(renderOnlineEnemyTeam.size(), enemyPanels.size()); i++) {
+                if (actorId.equals(renderOnlineEnemyTeam.get(i).instanceId())) {
+                    return enemyPanels.get(i);
+                }
+            }
+            return null;
+        }
+
+        for (int i = 0; i < Math.min(renderPlayerTeam.size(), playerPanels.size()); i++) {
+            CombatantId id = renderPlayerTeam.get(i).getInstanceId();
+            if (id != null && actorId.equals(id.value())) return playerPanels.get(i);
+        }
+        for (int i = 0; i < Math.min(renderEnemyTeam.size(), enemyPanels.size()); i++) {
+            CombatantId id = renderEnemyTeam.get(i).getInstanceId();
+            if (id != null && actorId.equals(id.value())) return enemyPanels.get(i);
+        }
+        return null;
+    }
+
+    static boolean shouldDrawPlanningHighlight(boolean hasSinglePlanner, int teamPageCount) {
+        return !hasSinglePlanner && teamPageCount > 1;
+    }
+
+    /** Retain the locked Windows planner beneath execution controls. */
     private void showExecutionUi() {
-        closePlanningPanel();
+        retainReadOnlyPlanningUi();
         awaitingBattleStart = false;
         awaitingNextRound = false;
         nextRoundHovered = false;
@@ -3962,6 +4406,13 @@ public class BattleScreen implements Screen, BattleView {
 
     /** Recreates all execution widgets from the live viewport after a resize. */
     private void layoutExecutionUi(float width, float height) {
+        boolean unifiedWindows = windowsUnified();
+        float originX = unifiedWindows ? WINDOWS_EXECUTION_X : 0f;
+        float originY = unifiedWindows ? WINDOWS_EXECUTION_Y : 0f;
+        if (unifiedWindows) {
+            width = WINDOWS_EXECUTION_WIDTH;
+            height = WINDOWS_EXECUTION_HEIGHT;
+        }
         BattleUiLayout.Execution layout = uiLayout.execution;
         float textGeometryScale = executionTextGeometryScale();
         float margin = Math.min(layout.outerMarginMax,
@@ -3972,12 +4423,13 @@ public class BattleScreen implements Screen, BattleView {
         int enemyCount = visibleEnemySprites.size();
         int playerCount = visiblePlayerSprites.size();
 
+        Rectangle fieldLogBounds = unifiedWindows ? new Rectangle() : logBounds;
         float logHeight = Math.min(layout.logHeightMax,
             Math.max(layout.logHeightMin, height * layout.logHeightFraction));
         float logTop = margin + logHeight;
-        logBounds.set(0f, 3f, width, logTop - 3f);
+        fieldLogBounds.set(0f, 3f, width, logTop - 3f);
 
-        float fieldBottom = logBounds.y + logBounds.height + layout.fieldLogGap;
+        float fieldBottom = fieldLogBounds.y + fieldLogBounds.height + layout.fieldLogGap;
         float fieldTop = height - margin;
         float fieldHeight = Math.max(1f, fieldTop - fieldBottom);
 
@@ -3998,7 +4450,7 @@ public class BattleScreen implements Screen, BattleView {
             Math.max(layout.hudHeightMin,
                 fieldHeight * layout.hudHeightFraction)) * layout.hudScale;
         float playerHudY = fieldBottom + fieldHeight * layout.playerHudYOffsetFraction;
-        float playerBottomHudY = logBounds.y + logBounds.height + layout.fieldLogGap;
+        float playerBottomHudY = fieldLogBounds.y + fieldLogBounds.height + layout.fieldLogGap;
         float hudVerticalNudge = Math.max(0f, playerHudY - playerBottomHudY);
         float availableCenterGap = width - margin * 2f - fullHudWidth * 2f;
         float hudShift = Math.min(
@@ -4014,6 +4466,8 @@ public class BattleScreen implements Screen, BattleView {
             layout.hudColumnGapMin, playerHudWidth * layout.hudColumnGapFraction);
         float hudRowGap = Math.max(
             layout.hudRowGapMin, hudHeight * layout.hudRowGapFraction);
+        float enemyFullHudWidth = fullHudWidth;
+        float playerFullHudWidth = fullHudWidth;
         float playerHudGroupWidth = hudGroupWidth(
             playerCount, playerHudWidth, playerHudColumnGap);
 
@@ -4116,12 +4570,41 @@ public class BattleScreen implements Screen, BattleView {
             playerPlateSize
         );
 
+        if (unifiedWindows) {
+            WindowsExecutionGeometry geometry = windowsExecutionGeometry(enemyCount, playerCount);
+            enemyPlate.set(geometry.enemyPlate());
+            playerPlate.set(geometry.playerPlate());
+            enemyHud.set(geometry.enemyHud());
+            playerHud.set(geometry.playerHud());
+            enemySpriteY = geometry.enemySpriteY();
+            playerSpriteY = geometry.playerSpriteY();
+            enemySpriteSize = geometry.spriteSize();
+            playerSpriteSize = geometry.spriteSize();
+            enemyFullHudWidth = WINDOWS_ENEMY_HUD_REGION_WIDTH;
+            playerFullHudWidth = WINDOWS_PLAYER_HUD_REGION_WIDTH;
+            enemyHudColumnGap = WINDOWS_HUD_GAP;
+            playerHudColumnGap = WINDOWS_HUD_GAP;
+            hudHeight = WINDOWS_HUD_HEIGHT;
+            hudRowGap = WINDOWS_HUD_GAP;
+        } else {
+            enemyPlate.x += originX;
+            enemyPlate.y += originY;
+            playerPlate.x += originX;
+            playerPlate.y += originY;
+            enemyHud.x += originX;
+            enemyHud.y += originY;
+            playerHud.x += originX;
+            playerHud.y += originY;
+            enemySpriteY += originY;
+            playerSpriteY += originY;
+        }
+
         enemyPanels = buildCombatantPanels(
             visibleEnemySprites, enemyPlate, enemySpriteY, enemySpriteSize,
-            enemyHud, fullHudWidth, enemyHudColumnGap, hudRowGap, true);
+            enemyHud, enemyFullHudWidth, enemyHudColumnGap, hudRowGap, true);
         playerPanels = buildCombatantPanels(
             visiblePlayerSprites, playerPlate, playerSpriteY, playerSpriteSize,
-            playerHud, fullHudWidth, playerHudColumnGap, hudRowGap, false);
+            playerHud, playerFullHudWidth, playerHudColumnGap, hudRowGap, false);
         enemyPanel = enemyPanels.isEmpty() ? null : enemyPanels.get(0);
         playerPanel = playerPanels.isEmpty() ? null : playerPanels.get(0);
         remapFaintAnimationPanels();
@@ -4129,38 +4612,182 @@ public class BattleScreen implements Screen, BattleView {
 
         float miracleSize = Math.min(
             MiraclesMeter.sizeForViewport(height, textGeometryScale),
-            Math.min(hudHeight, width * layout.miraclesWidthFraction));
+            Math.min(playerHud.height, width * layout.miraclesWidthFraction));
         miraclesMeter.setBounds(
-            Math.max(margin, playerHud.x - miracleSize - layout.meterHudGap),
+            Math.max(originX + margin, playerHud.x - miracleSize - layout.meterHudGap),
             playerHud.y + (playerHud.height - miracleSize) / 2f,
             miracleSize,
             textGeometryScale
         );
         float ratioHeight = Math.min(
             RatioMeter.heightForViewport(height, textGeometryScale),
-            Math.min(hudHeight * 0.75f, width * layout.ratioWidthFraction));
+            Math.min(playerHud.height * 0.75f, width * layout.ratioWidthFraction));
         float ratioWidth = RatioMeter.widthForHeight(ratioHeight);
         ratioMeter.setBounds(
-            Math.max(margin, playerHud.x - ratioWidth - layout.meterHudGap),
+            Math.max(originX + margin, playerHud.x - ratioWidth - layout.meterHudGap),
             playerHud.y + (playerHud.height - ratioHeight) / 2f,
             ratioHeight,
             textGeometryScale
         );
 
-        float nextRoundWidth = Math.min(layout.nextRoundWidthMax,
-            Math.max(layout.nextRoundWidthMin, width * layout.nextRoundWidthFraction));
-        float nextRoundHeight = Math.min(
-            layout.nextRoundHeightMax,
-            Math.max(1f, logBounds.height - layout.nextRoundVerticalPadding));
-        nextRoundBounds.set(
-            logBounds.x + logBounds.width - nextRoundWidth - layout.nextRoundInset,
-            logBounds.y + layout.nextRoundInset,
-            nextRoundWidth,
-            nextRoundHeight
-        );
-        layoutSpeedControls(nextRoundBounds, logBounds.y + logBounds.height,
-            SPEED_CONTROL_SIZE_MAX, fastForwardBounds, skipBounds);
+        if (unifiedWindows) {
+            logBounds.set(windowsLogBounds());
+            nextRoundBounds.set(windowsActionBounds());
+            fastForwardBounds.set(windowsFastForwardBounds());
+            skipBounds.set(windowsSkipBounds());
+        } else {
+            float nextRoundWidth = Math.min(layout.nextRoundWidthMax,
+                Math.max(layout.nextRoundWidthMin, width * layout.nextRoundWidthFraction));
+            float nextRoundHeight = Math.min(
+                layout.nextRoundHeightMax,
+                Math.max(1f, logBounds.height - layout.nextRoundVerticalPadding));
+            nextRoundBounds.set(
+                logBounds.x + logBounds.width - nextRoundWidth - layout.nextRoundInset,
+                logBounds.y + layout.nextRoundInset,
+                nextRoundWidth,
+                nextRoundHeight
+            );
+            layoutSpeedControls(nextRoundBounds, logBounds.y + logBounds.height,
+                SPEED_CONTROL_SIZE_MAX, fastForwardBounds, skipBounds);
+        }
         updatePanels();
+    }
+
+    record WindowsExecutionGeometry(
+        Rectangle enemyPlate,
+        Rectangle playerPlate,
+        Rectangle enemyHud,
+        Rectangle playerHud,
+        float enemySpriteY,
+        float playerSpriteY,
+        float spriteSize
+    ) { }
+
+    static Rectangle windowsExecutionBounds() {
+        return new Rectangle(
+            WINDOWS_EXECUTION_X,
+            WINDOWS_EXECUTION_Y,
+            WINDOWS_EXECUTION_WIDTH,
+            WINDOWS_EXECUTION_HEIGHT);
+    }
+
+    static Rectangle windowsLogBounds() {
+        return new Rectangle(
+            0f,
+            WINDOWS_BOTTOM_SECTION_HEIGHT,
+            WindowsBattleCanvas.LEFT_COLUMN_WIDTH,
+            WindowsBattleCanvas.HEIGHT - WINDOWS_BOTTOM_SECTION_HEIGHT);
+    }
+
+    static Rectangle windowsActionBounds() {
+        return windowsActionBounds(false);
+    }
+
+    static Rectangle windowsActionBounds(boolean withPlaybackControls) {
+        return new Rectangle(
+            withPlaybackControls
+                ? WindowsBattleCanvas.PLAYBACK_ACTION_X : WindowsBattleCanvas.ACTION_X,
+            WindowsBattleCanvas.ACTION_Y,
+            WindowsBattleCanvas.ACTION_WIDTH,
+            WindowsBattleCanvas.ACTION_HEIGHT);
+    }
+
+    static Rectangle windowsFastForwardBounds() {
+        return new Rectangle(
+            WindowsBattleCanvas.SPEED_CONTROL_X,
+            WindowsBattleCanvas.ACTION_Y
+                + WindowsBattleCanvas.SPEED_CONTROL_SIZE
+                + WindowsBattleCanvas.SPEED_CONTROL_GAP,
+            WindowsBattleCanvas.SPEED_CONTROL_SIZE,
+            WindowsBattleCanvas.SPEED_CONTROL_SIZE);
+    }
+
+    static Rectangle windowsSkipBounds() {
+        return new Rectangle(
+            WindowsBattleCanvas.SPEED_CONTROL_X,
+            WindowsBattleCanvas.ACTION_Y,
+            WindowsBattleCanvas.SPEED_CONTROL_SIZE,
+            WindowsBattleCanvas.SPEED_CONTROL_SIZE);
+    }
+
+    static WindowsExecutionGeometry windowsExecutionGeometry(int enemyCount, int playerCount) {
+        float enemyPlateSize = windowsPlateSize(enemyCount, true);
+        float playerPlateSize = windowsPlateSize(playerCount, false);
+        Rectangle enemyPlate = windowsPlateBounds(
+            windowsFighterCenterX(true),
+            WINDOWS_ENEMY_FIGHTER_BOTTOM_Y,
+            enemyPlateSize);
+        // The stone artwork occupies 28% of its square texture vertically.
+        enemyPlate.y -= enemyPlate.height * BASE_PLATE_VISIBLE_HEIGHT_RATIO / 2f
+            - WINDOWS_ENEMY_PLATE_UPWARD_NUDGE;
+        Rectangle playerPlate = windowsPlayerPlateBounds(
+            windowsFighterCenterX(false), playerPlateSize);
+
+        Rectangle enemyHud = new Rectangle(
+            WINDOWS_ENEMY_HUD_REGION_X,
+            windowsPrimaryHudY(enemyCount, true),
+            windowsHudWidth(enemyCount, true),
+            WINDOWS_HUD_HEIGHT);
+        Rectangle playerHud = new Rectangle(
+            WINDOWS_PLAYER_HUD_REGION_X,
+            windowsPrimaryHudY(playerCount, false),
+            windowsHudWidth(playerCount, false),
+            WINDOWS_HUD_HEIGHT);
+        return new WindowsExecutionGeometry(
+            enemyPlate, playerPlate, enemyHud, playerHud,
+            WINDOWS_ENEMY_FIGHTER_BOTTOM_Y, WINDOWS_PLAYER_FIGHTER_BOTTOM_Y,
+            WINDOWS_FIGHTER_SPRITE_SIZE);
+    }
+
+    private static Rectangle windowsPlateBounds(float centerX, float footY, float size) {
+        return new Rectangle(
+            centerX - size / 2f,
+            footY - size * BASE_PLATE_VISIBLE_BOTTOM_RATIO,
+            size,
+            size);
+    }
+
+    private static Rectangle windowsPlayerPlateBounds(float centerX, float size) {
+        return new Rectangle(
+            centerX - size / 2f,
+            WINDOWS_BOTTOM_SECTION_HEIGHT - size / 2f,
+            size,
+            size);
+    }
+
+    private static float windowsPlateSize(int combatantCount, boolean opponent) {
+        float scaledSize = WINDOWS_BASE_PLATE_SIZE * plateScale(combatantCount);
+        if (combatantCount <= 2) return scaledSize;
+        float zoneWidth = opponent
+            ? WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH : WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH;
+        return Math.min(zoneWidth, scaledSize);
+    }
+
+    static float windowsFormationPlateWidth(float plateWidth) {
+        return Math.min(plateWidth, WINDOWS_FORMATION_REFERENCE_PLATE_SIZE);
+    }
+
+    private static float windowsFighterCenterX(boolean opponent) {
+        return opponent ? WINDOWS_ENEMY_FIGHTER_CENTER_X : WINDOWS_PLAYER_FIGHTER_CENTER_X;
+    }
+
+    private static float windowsHudWidth(int combatantCount, boolean opponent) {
+        float regionWidth = opponent
+            ? WINDOWS_ENEMY_HUD_REGION_WIDTH : WINDOWS_PLAYER_HUD_REGION_WIDTH;
+        return combatantCount <= 2
+            ? regionWidth : (regionWidth - WINDOWS_HUD_GAP) / 2f;
+    }
+
+    private static float windowsPrimaryHudY(int combatantCount, boolean opponent) {
+        float regionY = opponent
+            ? WINDOWS_ENEMY_HUD_REGION_Y : WINDOWS_PLAYER_HUD_REGION_Y;
+        float regionHeight = opponent
+            ? WINDOWS_ENEMY_HUD_REGION_HEIGHT : WINDOWS_PLAYER_HUD_REGION_HEIGHT;
+        int rows = combatantCount <= 1 ? 1 : 2;
+        float groupHeight = rows * WINDOWS_HUD_HEIGHT + (rows - 1) * WINDOWS_HUD_GAP;
+        float groupBottom = regionY + (regionHeight - groupHeight) / 2f;
+        return opponent
+            ? groupBottom : groupBottom + groupHeight - WINDOWS_HUD_HEIGHT;
     }
 
     static void layoutSpeedControls(
@@ -4206,19 +4833,24 @@ public class BattleScreen implements Screen, BattleView {
     ) {
         List<CombatantPanel> panels = new ArrayList<>(teamSprites.size());
         float plateCenterX = plate.x + plate.width / 2f;
+        float formationPlateWidth = windowsUnified()
+            ? windowsFormationPlateWidth(plate.width) : plate.width;
         for (int i = 0; i < teamSprites.size(); i++) {
             Texture spriteTexture = teamSprites.get(i);
             float fighterCenterX = plateCenterX
-                + fighterOffset(i, teamSprites.size(), plate.width, opponent);
+                + fighterOffset(i, teamSprites.size(), formationPlateWidth, opponent);
             Rectangle sprite = spriteBounds(
-                spriteTexture, fighterCenterX, spriteY, spriteSize);
+                spriteTexture, fighterCenterX, spriteY, spriteSize, opponent);
             Rectangle hud = combatantHudBounds(
                 i, teamSprites.size(), primaryHud, fullHudWidth,
                 hudColumnGap, hudRowGap, opponent);
+            float hudTextScale = windowsUnified() ? WINDOWS_HUD_TEXT_SCALE : 1f;
+            float barHeightScale = windowsUnified() ? WINDOWS_HUD_BAR_HEIGHT_SCALE : 1f;
+            float barBorderScale = windowsUnified() ? WINDOWS_HUD_BAR_BORDER_SCALE : 1f;
             panels.add(new CombatantPanel(spriteTexture,
                 i == 0 ? assets.stoneBasePlate : null,
                 assets.battleUi, plate, sprite, hud, uiLayout.execution.hudScale, !opponent,
-                executionTextGeometryScale()));
+                executionTextGeometryScale(), hudTextScale, barHeightScale, barBorderScale));
         }
         return List.copyOf(panels);
     }
@@ -4356,15 +4988,56 @@ public class BattleScreen implements Screen, BattleView {
         return (slot - (fighterCount - 1) / 2f) * spacing;
     }
 
-    private Rectangle spriteBounds(Texture sprite, float centerX, float bottomY, float baseSize) {
-        return scaledSpriteBounds(
-            centerX, bottomY, baseSize, assets.battleSpriteScale(sprite));
+    private Rectangle spriteBounds(
+        Texture sprite,
+        float centerX,
+        float bottomY,
+        float baseSize,
+        boolean opponent
+    ) {
+        float scale = assets.battleSpriteScale(sprite);
+        if (!windowsUnified()) {
+            return scaledSpriteBounds(centerX, bottomY, baseSize, scale);
+        }
+        return fittedScaledSpriteBounds(
+            centerX, bottomY, baseSize, scale, windowsFighterZoneBounds(opponent));
     }
 
     /** Scales a square sprite around its center X while preserving its ground/log-bar anchor. */
     static Rectangle scaledSpriteBounds(float centerX, float bottomY, float baseSize, float scale) {
         float scaledSize = baseSize * scale;
         return new Rectangle(centerX - scaledSize / 2f, bottomY, scaledSize, scaledSize);
+    }
+
+    /** Fits a configured sprite scale inside its Windows fighter zone without moving its feet. */
+    static Rectangle fittedScaledSpriteBounds(
+        float centerX,
+        float bottomY,
+        float baseSize,
+        float scale,
+        Rectangle zone
+    ) {
+        float horizontalCapacity = Math.max(0f, 2f * Math.min(
+            centerX - zone.x,
+            zone.x + zone.width - centerX));
+        float verticalCapacity = Math.max(0f, zone.y + zone.height - bottomY);
+        float fittedSize = Math.min(baseSize * scale,
+            Math.min(horizontalCapacity, verticalCapacity));
+        return new Rectangle(centerX - fittedSize / 2f, bottomY, fittedSize, fittedSize);
+    }
+
+    private static Rectangle windowsFighterZoneBounds(boolean opponent) {
+        return opponent
+            ? new Rectangle(
+                WINDOWS_ENEMY_FIGHTER_ZONE_X,
+                WINDOWS_ENEMY_FIGHTER_ZONE_Y,
+                WINDOWS_ENEMY_FIGHTER_ZONE_WIDTH,
+                WINDOWS_ENEMY_FIGHTER_ZONE_HEIGHT)
+            : new Rectangle(
+                WINDOWS_PLAYER_FIGHTER_ZONE_X,
+                WINDOWS_PLAYER_FIGHTER_ZONE_Y,
+                WINDOWS_PLAYER_FIGHTER_ZONE_WIDTH,
+                WINDOWS_PLAYER_FIGHTER_ZONE_HEIGHT);
     }
 
     /**
@@ -4492,9 +5165,8 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void updatePanels() {
+        updateDisplayedAbilityMeters();
         if (mode == BattleMode.MULTIPLAYER) {
-            miraclesMeter.setState(onlinePlayerMiracles);
-            ratioMeter.setState(onlinePlayerRatio);
             updateOnlineTeamPanels(
                 playerPanels, renderOnlinePlayerTeam, multiplayerSetup.playerSide());
             updateOnlineTeamPanels(
@@ -4503,12 +5175,57 @@ public class BattleScreen implements Screen, BattleView {
         }
         // LOCAL: HP follows each damage log line; CE stays live because it drains
         // at a move's start tick, before that move fires.
-        miraclesMeter.setState(renderPlayer == null
-            ? null : findMiraclesState(renderPlayer.getCodedAbilities().states()));
-        ratioMeter.setState(renderPlayer == null
-            ? null : findRatioState(renderPlayer.getCodedAbilities().states()));
         updateLocalTeamPanels(playerPanels, renderPlayerTeam);
         updateLocalTeamPanels(enemyPanels, renderEnemyTeam);
+    }
+
+    private void updateDisplayedAbilityMeters() {
+        List<CodedAbilityState> activePlannerStates = activePlannerCodedAbilityStates();
+        if (activePlannerStates != null) {
+            miraclesMeter.setState(findMiraclesState(activePlannerStates));
+            ratioMeter.setState(findRatioState(activePlannerStates));
+            return;
+        }
+        if (mode == BattleMode.MULTIPLAYER) {
+            miraclesMeter.setState(onlinePlayerMiracles);
+            ratioMeter.setState(onlinePlayerRatio);
+            return;
+        }
+        List<CodedAbilityState> primaryStates = renderPlayer == null
+            ? List.of() : renderPlayer.getCodedAbilities().states();
+        miraclesMeter.setState(findMiraclesState(primaryStates));
+        ratioMeter.setState(findRatioState(primaryStates));
+    }
+
+    /** Returns null outside Windows team planning so execution keeps its primary-fighter meters. */
+    private List<CodedAbilityState> activePlannerCodedAbilityStates() {
+        if (!windowsUnified() || teamPlanningPanel == null) return null;
+        String actorId = teamPlanningPanel.activeActorId();
+        if (actorId == null || actorId.isBlank()) return null;
+
+        if (mode == BattleMode.MULTIPLAYER) {
+            for (CharacterState combatant : renderOnlinePlayerTeam) {
+                if (actorId.equals(combatant.instanceId())) return combatant.codedAbilities();
+            }
+            for (CharacterState combatant : renderOnlineEnemyTeam) {
+                if (actorId.equals(combatant.instanceId())) return combatant.codedAbilities();
+            }
+            return null;
+        }
+
+        for (BattleCombatant combatant : renderPlayerTeam) {
+            CombatantId id = combatant.getInstanceId();
+            if (id != null && actorId.equals(id.value())) {
+                return combatant.getCodedAbilities().states();
+            }
+        }
+        for (BattleCombatant combatant : renderEnemyTeam) {
+            CombatantId id = combatant.getInstanceId();
+            if (id != null && actorId.equals(id.value())) {
+                return combatant.getCodedAbilities().states();
+            }
+        }
+        return null;
     }
 
     private void updateOnlineTeamPanels(

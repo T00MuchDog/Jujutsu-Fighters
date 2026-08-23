@@ -80,9 +80,15 @@ public final class TeamPlanningPanel {
     private float screenHeight;
     private float textGeometryScale = 1f;
     private boolean windowsTextGeometry;
+    private boolean unifiedWindowsLayout;
     private boolean submitted;
+    private boolean readOnly;
     private Runnable onConfirm = () -> { };
     private Consumer<SoundCue> soundPlayer = cue -> { };
+    private float viewportScale = 1f;
+    private float viewportOffsetX;
+    private float viewportOffsetY;
+    private float physicalViewportHeight;
 
     public TeamPlanningPanel(
         int gridLength,
@@ -211,6 +217,19 @@ public final class TeamPlanningPanel {
         submitted = true;
     }
 
+    public void setReadOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+        for (Page page : pages) page.panel().setReadOnly(readOnly);
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    public void setActionButtonShifted(boolean actionButtonShifted) {
+        for (Page page : pages) page.panel().setActionButtonShifted(actionButtonShifted);
+    }
+
     public void unlock() {
         for (Page page : pages) {
             page.panel().setAllowManualUnlock(true);
@@ -230,12 +249,30 @@ public final class TeamPlanningPanel {
         if (battleLayout == null) return;
         layout = battleLayout.copy().planner;
         windowsTextGeometry = battleLayout.storedProfile() == UiProfile.WINDOWS;
+        unifiedWindowsLayout = windowsTextGeometry;
         textGeometryScale = windowsTextGeometry ? layout.textGeometryScale : 1f;
         for (Page page : pages) {
             page.panel().setLayout(battleLayout);
             page.panel().setTeamNavigationHeader(windowsTextGeometry && pages.size() > 1);
         }
         layoutNavigation(screenWidth, screenHeight);
+    }
+
+    /** Applies the fixed-canvas transform to navigation and every planning page. */
+    public void setViewportTransform(
+        float scale,
+        float offsetX,
+        float offsetY,
+        float physicalHeight
+    ) {
+        viewportScale = Math.max(0.0001f, scale);
+        viewportOffsetX = offsetX;
+        viewportOffsetY = offsetY;
+        physicalViewportHeight = Math.max(1f, physicalHeight);
+        for (Page page : pages) {
+            page.panel().setViewportTransform(
+                viewportScale, viewportOffsetX, viewportOffsetY, physicalViewportHeight);
+        }
     }
 
     private void layoutNavigation(float width, float height) {
@@ -247,29 +284,10 @@ public final class TeamPlanningPanel {
             return;
         }
 
-        float margin = Math.min(layout.marginMax,
-            Math.max(layout.marginMin, width * layout.marginFraction));
-        boolean compact = width < layout.compactWidthThreshold;
-        float headerHeight = compact ? layout.compactHeaderHeight : layout.headerHeight;
-        float headerY = height - margin - headerHeight;
-        float buttonSize = scaled(30f);
-        float buttonY = headerY + (headerHeight - buttonSize) / 2f;
-        previousBounds.set(margin + scaled(18f), buttonY, buttonSize, buttonSize);
-        nextBounds.set(previousBounds.x + buttonSize + scaled(6f),
-            buttonY, buttonSize, buttonSize);
-
-        float headerWidth = width - margin * 2f;
-        float statX = compact
-            ? margin + scaled(12f)
-            : margin + Math.min(scaled(340f), headerWidth * 0.42f);
-        float lockX = compact
-            ? margin + headerWidth
-                - layout.compactLockButtonRightInset - layout.compactLockButtonWidth
-            : margin + headerWidth - layout.lockButtonHorizontalInset - layout.lockButtonWidth;
-        float labelX = nextBounds.x + nextBounds.width + scaled(10f);
-        float labelRight = Math.min(statX, lockX) - scaled(10f);
-        pageLabelBounds.set(labelX, buttonY,
-            Math.max(1f, labelRight - labelX), buttonSize);
+        float headerY = WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT - 32f;
+        previousBounds.set(72f, headerY, 72f, 32f);
+        nextBounds.set(162f, headerY, 72f, 32f);
+        pageLabelBounds.set(252f, headerY, 126f, 32f);
     }
 
     private float scaled(float value) {
@@ -295,15 +313,26 @@ public final class TeamPlanningPanel {
             batch.end();
             return;
         }
-        font.draw(batch, "<",
-            previousBounds.x + scaled(10f), previousBounds.y + scaled(21f));
-        font.draw(batch, ">",
-            nextBounds.x + scaled(10f), nextBounds.y + scaled(21f));
-        String pageLabel = pages.get(activePage).name() + "  " + (activePage + 1)
-            + "/" + pages.size();
-        font.draw(batch, ellipsize(font, pageLabel, pageLabelBounds.width),
-            pageLabelBounds.x, pageLabelBounds.y + scaled(21f));
+        drawCentered(batch, font, "<", previousBounds);
+        drawCentered(batch, font, ">", nextBounds);
+        drawCentered(batch, font, (activePage + 1) + "/" + pages.size(), pageLabelBounds);
+        if (readOnly) {
+            batch.setColor(0.32f, 0.32f, 0.34f, 0.62f);
+            batch.draw(ui.pixel,
+                previousBounds.x,
+                previousBounds.y,
+                pageLabelBounds.x + pageLabelBounds.width - previousBounds.x,
+                previousBounds.height);
+            batch.setColor(Color.WHITE);
+        }
         batch.end();
+    }
+
+    private static void drawCentered(Batch batch, BitmapFont font, String value, Rectangle bounds) {
+        GlyphLayout glyph = new GlyphLayout(font, value);
+        font.draw(batch, value,
+            bounds.x + (bounds.width - glyph.width) / 2f,
+            bounds.y + (bounds.height + glyph.height) / 2f);
     }
 
     private static String ellipsize(BitmapFont font, String value, float maximumWidth) {
@@ -341,6 +370,7 @@ public final class TeamPlanningPanel {
     public int activePageIndex() { return activePage; }
     public String activePageName() { return pages.get(activePage).name(); }
     public PlanningPanel activePlanningPanel() { return active(); }
+    public String activeActorId() { return active().getActorId(); }
 
     public void previousPage() {
         if (pages.size() > 1) activePage = (activePage - 1 + pages.size()) % pages.size();
@@ -356,6 +386,7 @@ public final class TeamPlanningPanel {
 
     private final class TeamPlanningInputProcessor extends InputAdapter {
         @Override public boolean keyDown(int keycode) {
+            if (readOnly) return false;
             if (keycode == Input.Keys.LEFT) {
                 previousPage();
                 return true;
@@ -368,14 +399,20 @@ public final class TeamPlanningPanel {
         }
 
         @Override public boolean touchDown(int x, int y, int pointer, int button) {
+            if (readOnly) return false;
+            float plannerX = x;
             float plannerY = screenHeight - y;
+            if (unifiedWindowsLayout) {
+                plannerX = (x - viewportOffsetX) / viewportScale;
+                plannerY = (physicalViewportHeight - y - viewportOffsetY) / viewportScale;
+            }
             if (button == Input.Buttons.LEFT && pages.size() > 1) {
-                if (previousBounds.contains(x, plannerY)) {
+                if (previousBounds.contains(plannerX, plannerY)) {
                     previousPage();
                     soundPlayer.accept(SoundCue.UI_CONFIRM);
                     return true;
                 }
-                if (nextBounds.contains(x, plannerY)) {
+                if (nextBounds.contains(plannerX, plannerY)) {
                     nextPage();
                     soundPlayer.accept(SoundCue.UI_CONFIRM);
                     return true;
@@ -385,18 +422,22 @@ public final class TeamPlanningPanel {
         }
 
         @Override public boolean touchDragged(int x, int y, int pointer) {
+            if (readOnly) return false;
             return active().inputProcessor().touchDragged(x, y, pointer);
         }
 
         @Override public boolean touchUp(int x, int y, int pointer, int button) {
+            if (readOnly) return false;
             return active().inputProcessor().touchUp(x, y, pointer, button);
         }
 
         @Override public boolean mouseMoved(int x, int y) {
+            if (readOnly) return false;
             return active().inputProcessor().mouseMoved(x, y);
         }
 
         @Override public boolean scrolled(float amountX, float amountY) {
+            if (readOnly) return false;
             return active().inputProcessor().scrolled(amountX, amountY);
         }
     }

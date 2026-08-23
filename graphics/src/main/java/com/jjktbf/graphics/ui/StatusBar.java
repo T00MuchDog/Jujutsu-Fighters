@@ -18,6 +18,7 @@ public class StatusBar {
     private final String label;
     private final Color fillColor;
     private final float textGeometryScale;
+    private final float borderScale;
     private final Color healthFillColor = new Color();
 
     private float x;
@@ -37,9 +38,19 @@ public class StatusBar {
     }
 
     public StatusBar(String label, Color fillColor, float textGeometryScale) {
+        this(label, fillColor, textGeometryScale, 1f);
+    }
+
+    public StatusBar(
+        String label,
+        Color fillColor,
+        float textGeometryScale,
+        float borderScale
+    ) {
         this.label = label;
         this.fillColor = fillColor;
         this.textGeometryScale = Math.max(1f, textGeometryScale);
+        this.borderScale = Math.max(0.1f, borderScale);
     }
 
     public void setBounds(float x, float y, float width, float height) {
@@ -93,7 +104,7 @@ public class StatusBar {
         float drawX = x + offsetX;
         float trackX = drawX + labelWidth;
         float trackWidth = Math.max(1f, width - labelWidth);
-        float edge = scaled(3f);
+        float edge = scaled(3f) * borderScale;
 
         batch.setColor(BattleUiAssets.INK);
         batch.draw(ui.pixel, drawX, y, width, height);

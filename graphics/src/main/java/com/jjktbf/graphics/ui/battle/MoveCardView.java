@@ -33,6 +33,8 @@ public class MoveCardView {
     private final Rectangle bounds;
     private final float geometryScale;
     private final int descriptionLineCount;
+    private final float minimumTextScale;
+    private final boolean strictTextFloor;
     private boolean disabled;
     private boolean hovered;
     private boolean dragging;
@@ -60,10 +62,44 @@ public class MoveCardView {
         float height,
         int descriptionLineCount
     ) {
+        this(move, x, y, geometryScale, width, height, descriptionLineCount, 0.3f, false);
+    }
+
+    /**
+     * Creates a card with an explicit text-fitting floor. Existing planner cards
+     * keep their historical fitting loop; profile previews can opt out of shrinking.
+     */
+    public MoveCardView(
+        Move move,
+        float x,
+        float y,
+        float geometryScale,
+        float width,
+        float height,
+        int descriptionLineCount,
+        float minimumTextScale
+    ) {
+        this(move, x, y, geometryScale, width, height,
+            descriptionLineCount, minimumTextScale, true);
+    }
+
+    private MoveCardView(
+        Move move,
+        float x,
+        float y,
+        float geometryScale,
+        float width,
+        float height,
+        int descriptionLineCount,
+        float minimumTextScale,
+        boolean strictTextFloor
+    ) {
         this.move = move;
         this.geometryScale = Math.max(1f, geometryScale);
         this.bounds = new Rectangle(x, y, Math.max(1f, width), Math.max(1f, height));
         this.descriptionLineCount = Math.max(1, descriptionLineCount);
+        this.minimumTextScale = Math.max(0.1f, Math.min(1f, minimumTextScale));
+        this.strictTextFloor = strictTextFloor;
     }
 
     public Move getMove()                    { return move; }
@@ -260,17 +296,18 @@ public class MoveCardView {
         float roleIconSize = scaled(ROLE_ICON_SIZE);
         font.setColor(ink);
         drawFitted(batch, font, move.getName(), textX, y + h - scaled(24f),
-            textW - roleIconSize - scaled(4f), 1);
+            textW - roleIconSize - scaled(4f), 1, minimumTextScale, strictTextFloor);
         drawRoleIcon(batch, ui, x + w - roleIconSize - scaled(10f),
             y + h - roleIconSize - scaled(18f), disabled);
         font.setColor(disabled ? BattleUiAssets.MUTED : type);
-        drawFitted(batch, font, typeNameFor(move), textX, y + h - scaled(48f), textW, 1);
+        drawFitted(batch, font, typeNameFor(move), textX, y + h - scaled(48f),
+            textW, 1, minimumTextScale, strictTextFloor);
 
         font.setColor(ink);
         descriptionX = textX;
         descriptionTop = y + h - scaled(74f);
         descriptionLayout = KeywordTextLayout.build(
-            font, move.getDescription(), textW, descriptionLineCount, 0.3f, 0.7f);
+            font, move.getDescription(), textW, descriptionLineCount, minimumTextScale, 0.7f);
         descriptionLayout.draw(
             batch,
             font,
@@ -285,10 +322,12 @@ public class MoveCardView {
         statFont.setColor(ink);
         drawStatColumn(batch, statFont, textX, y + scaled(55f) + extraActionBarHeight,
             y + scaled(35f) + extraActionBarHeight,
-            accuracyLabel(move), powerLabel(move), geometryScale);
+            accuracyLabel(move), powerLabel(move), geometryScale,
+            minimumTextScale, strictTextFloor);
         if (move.hasCeCost()) {
             drawCeCostBar(batch, statFont, ui, x + w - scaled(48f),
-                y + scaled(24f) + extraActionBarHeight, actualCeCost, geometryScale);
+                y + scaled(24f) + extraActionBarHeight, actualCeCost,
+                geometryScale, minimumTextScale, strictTextFloor);
         }
     }
 
@@ -372,16 +411,27 @@ public class MoveCardView {
 
     /** Draws every word inside a fixed card area, reducing pixel size only if needed. */
     private static void drawFitted(Batch batch, BitmapFont font, String value, float x, float y,
-                                   float maxWidth, int maxLines) {
+                                   float maxWidth, int maxLines, float minimumScale,
+                                   boolean strictTextFloor) {
         String text = value == null || value.isBlank() ? "-" : value;
         float originalScaleX = font.getData().scaleX;
         float originalScaleY = font.getData().scaleY;
         List<String> lines = List.of(text);
 
-        for (float scale = 1f; scale >= 0.30f; scale -= 0.10f) {
-            font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
-            lines = wrap(font, text, maxWidth);
-            if (lines.size() <= maxLines) break;
+        if (strictTextFloor) {
+            float scale = 1f;
+            while (true) {
+                font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
+                lines = wrap(font, text, maxWidth);
+                if (lines.size() <= maxLines || scale <= minimumScale + 0.001f) break;
+                scale = Math.max(minimumScale, scale - 0.10f);
+            }
+        } else {
+            for (float scale = 1f; scale >= 0.30f; scale -= 0.10f) {
+                font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
+                lines = wrap(font, text, maxWidth);
+                if (lines.size() <= maxLines) break;
+            }
         }
 
         if (lines.size() > maxLines) {
@@ -400,15 +450,24 @@ public class MoveCardView {
     /** Draws the accuracy and power stats in the left side of the stat area. */
     private static void drawStatColumn(Batch batch, BitmapFont font, float x,
                                        float upperY, float lowerY, String upper, String lower,
-                                       float geometryScale) {
+                                       float geometryScale, float minimumScale,
+                                       boolean strictTextFloor) {
         float originalScaleX = font.getData().scaleX;
         float originalScaleY = font.getData().scaleY;
         float columnWidth = 120f * geometryScale;
 
-        for (float scale = 0.70f; scale >= 0.30f; scale -= 0.10f) {
-            font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
-            if (fits(font, upper, columnWidth) && fits(font, lower, columnWidth)) {
-                break;
+        if (strictTextFloor) {
+            float scale = Math.max(0.70f, minimumScale);
+            while (true) {
+                font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
+                if (fits(font, upper, columnWidth) && fits(font, lower, columnWidth)) break;
+                if (scale <= minimumScale + 0.001f) break;
+                scale = Math.max(minimumScale, scale - 0.10f);
+            }
+        } else {
+            for (float scale = 0.70f; scale >= 0.30f; scale -= 0.10f) {
+                font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
+                if (fits(font, upper, columnWidth) && fits(font, lower, columnWidth)) break;
             }
         }
 
@@ -419,7 +478,8 @@ public class MoveCardView {
 
     /** Draws the CE label and its cost in the reserved right-hand stat area. */
     private static void drawCeCostBar(Batch batch, BitmapFont font, BattleUiAssets ui,
-                                      float x, float y, int cost, float geometryScale) {
+                                      float x, float y, int cost, float geometryScale,
+                                      float minimumScale, boolean strictTextFloor) {
         float barWidth = CE_BAR_W * geometryScale;
         float barHeight = CE_BAR_H * geometryScale;
         float edge = 2f * geometryScale;
@@ -432,20 +492,33 @@ public class MoveCardView {
 
         font.setColor(Color.BLACK);
         drawCentered(batch, font, "CE", x,
-            y + barHeight + 20f * geometryScale, barWidth, barWidth);
+            y + barHeight + 20f * geometryScale, barWidth, barWidth,
+            minimumScale, strictTextFloor);
         font.setColor(Color.WHITE);
         drawCentered(batch, font, String.valueOf(cost), x,
             y + (barHeight + font.getCapHeight()) / 2f,
-            barWidth, barWidth - 6f * geometryScale);
+            barWidth, barWidth - 6f * geometryScale,
+            minimumScale, strictTextFloor);
     }
 
     private static void drawCentered(Batch batch, BitmapFont font, String value, float x, float y,
-                                     float width, float maxTextWidth) {
+                                     float width, float maxTextWidth, float minimumScale,
+                                     boolean strictTextFloor) {
         float originalScaleX = font.getData().scaleX;
         float originalScaleY = font.getData().scaleY;
-        for (float scale = 1f; scale >= 0.30f; scale -= 0.10f) {
-            font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
-            if (width(font, value) <= maxTextWidth) break;
+        if (strictTextFloor) {
+            float scale = 1f;
+            while (true) {
+                font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
+                if (width(font, value) <= maxTextWidth) break;
+                if (scale <= minimumScale + 0.001f) break;
+                scale = Math.max(minimumScale, scale - 0.10f);
+            }
+        } else {
+            for (float scale = 1f; scale >= 0.30f; scale -= 0.10f) {
+                font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
+                if (width(font, value) <= maxTextWidth) break;
+            }
         }
         font.draw(batch, value, x + (width - width(font, value)) / 2f, y);
         font.getData().setScale(originalScaleX, originalScaleY);

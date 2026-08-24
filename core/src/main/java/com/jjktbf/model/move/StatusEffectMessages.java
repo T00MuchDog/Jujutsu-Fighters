@@ -25,6 +25,7 @@ public final class StatusEffectMessages {
         String target = targetName == null || targetName.isBlank() ? "Someone" : targetName;
         if (type == StatusEffectType.SLEEP) return target + " fell asleep!";
         if (type == StatusEffectType.STAGGER) return target + " was staggered!";
+        if (type == StatusEffectType.RESTRAINED) return target + " was restrained!";
         return "";
     }
 }

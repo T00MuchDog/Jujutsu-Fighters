@@ -10,6 +10,7 @@ import com.jjktbf.model.character.CombatStats;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CodedAbilities;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
+import com.jjktbf.model.character.coded.CodedAbilityState;
 // Explicit import to avoid ambiguity with java.lang.Character
 import com.jjktbf.model.character.Character;
 import com.jjktbf.model.move.Move;
@@ -19,8 +20,12 @@ import com.jjktbf.model.move.StatusEffectType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.IntPredicate;
 
 /**
@@ -88,6 +93,7 @@ public class BattleCombatant {
     private AbilityApplicator.AbilityFlags abilityFlags;
     private List<Ability> abilities;
     private CodedAbilities codedAbilities;
+    private final Map<String, BoundedResource> boundedResources = new LinkedHashMap<>();
 
     /** Inactive authored forms retain their profile and independent HP for this battle. */
     private final Map<String, FormState> inactiveFormStates = new HashMap<>();
@@ -144,6 +150,34 @@ public class BattleCombatant {
 
     // --- Round's two-board battle plan (offensive + defensive) ---
     private BattlePlan plan;
+
+    private static final class BoundedResource {
+        private final String key;
+        private String label;
+        private int current;
+        private int maximum;
+
+        private BoundedResource(String key, String label, int current, int maximum) {
+            this.key = key;
+            this.label = label;
+            this.current = current;
+            this.maximum = maximum;
+        }
+
+        private CodedAbilityState state() {
+            return new CodedAbilityState(key, label, current, maximum);
+        }
+    }
+
+    /** Result of one all-or-nothing bounded-resource transaction. */
+    public record BoundedResourceTransaction(
+        boolean success,
+        List<CodedAbilityState> changedStates
+    ) {
+        private static BoundedResourceTransaction failed() {
+            return new BoundedResourceTransaction(false, List.of());
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Construction
@@ -267,6 +301,13 @@ public class BattleCombatant {
             abilityTriggerHistory.put(key, new ArrayList<>(value)));
         abilityFightStartProcessed = profile.abilityFightStartProcessed;
         lastAbilityRoundStartRound = profile.lastAbilityRoundStartRound;
+        for (AbilityEffectData definition : abilityFlags.boundedResourceDefinitions) {
+            defineBoundedResource(
+                definition.resourceKey,
+                definition.resourceLabel,
+                definition.resourceCapacity == null ? 1 : definition.resourceCapacity,
+                definition.resourceStartValue == null ? 0 : definition.resourceStartValue);
+        }
     }
 
     /**
@@ -687,6 +728,7 @@ public class BattleCombatant {
 
     public boolean addStatusEffect(StatusEffect effect) {
         if (effect == null || rejectsStatus(effect)) return false;
+        if (effect.getType().refreshesOnReapply()) removeStatusEffects(effect.getType());
         activeEffects.add(effect);
         clampPoolsToMaximums();
         return true;
@@ -702,6 +744,7 @@ public class BattleCombatant {
                 && ticks == 0 && affectsNextPlanning(effect.getType());
             if (appliedAtRoundEnd || waitsForNextPlanning) rounds++;
         }
+        if (effect.getType().refreshesOnReapply()) removeStatusEffects(effect.getType());
         activeEffects.add(new StatusEffect(
             effect.getType(), rounds, ticks, effect.getMagnitude(),
             effect.getPerTickRemovalChance()));
@@ -865,12 +908,11 @@ public class BattleCombatant {
     /**
      * Attach a runtime ability effect with an optional {@code refreshGroup}.
      *
-     * <p>When {@code refreshGroup} is non-null, any existing runtime effect sharing
+     * <p>When {@code refreshGroup} is nonblank, any existing runtime effect sharing
      * that group is removed first, so re-applying the same buff <b>refreshes</b>
      * (resets its duration) instead of stacking. A {@code null} group keeps the
      * default additive-stack behaviour used by data-driven abilities. The group is
-     * a runtime-only tag — it is not persisted on {@link AbilityEffectData} and so
-     * has no effect on JSON data or editor tooling.
+     * an authorable tag carried by {@link AbilityEffectData}.
      */
     public void addRuntimeAbilityEffect(
         AbilityEffectData effect,
@@ -879,10 +921,14 @@ public class BattleCombatant {
         String refreshGroup
     ) {
         if (effect == null || effect.type == null) return;
-        if (refreshGroup != null) {
-            runtimeAbilityEffects.removeIf(existing -> refreshGroup.equals(existing.refreshGroup));
+        String normalizedRefreshGroup = refreshGroup == null || refreshGroup.isBlank()
+            ? null : refreshGroup.trim();
+        if (normalizedRefreshGroup != null) {
+            runtimeAbilityEffects.removeIf(existing ->
+                normalizedRefreshGroup.equals(existing.refreshGroup));
         }
-        runtimeAbilityEffects.add(new RuntimeAbilityEffect(effect, currentRound, phase, refreshGroup));
+        runtimeAbilityEffects.add(new RuntimeAbilityEffect(
+            effect, currentRound, phase, normalizedRefreshGroup));
         clampPoolsToMaximums();
     }
 
@@ -1196,6 +1242,7 @@ public class BattleCombatant {
             }
             if (type == AbilityEffectType.TEMP_STAT_ADD
                 || type == AbilityEffectType.TEMP_STAT_MULTIPLY
+                || type == AbilityEffectType.TEMP_STAT_PERCENT
                 || type == AbilityEffectType.TEMP_STAT_SET_VALUE) {
                 try {
                     com.jjktbf.model.character.StatKey key =
@@ -1355,6 +1402,15 @@ public class BattleCombatant {
         Map<com.jjktbf.model.character.StatKey, Double> statusAmounts =
             new java.util.EnumMap<>(com.jjktbf.model.character.StatKey.class);
         for (StatusEffect effect : activeEffects) {
+            if (effect.getType().isStatMultiplier()) {
+                AbilityEffectData multiplier = new AbilityEffectData();
+                multiplier.type = AbilityEffectType.STAT_MULTIPLY.name();
+                multiplier.stat = effect.getType().baseStat().fieldName;
+                multiplier.doubleValue = effect.getType().statMultiplier();
+                modifiers.add(multiplier);
+                continue;
+            }
+            if (!effect.getType().isStatModifier()) continue;
             com.jjktbf.model.character.StatKey stat = effect.getType().baseStat();
             if (stat == null) continue;
             statusAmounts.merge(stat,
@@ -1422,6 +1478,117 @@ public class BattleCombatant {
     public int getBfsExpiresAfterRound()                  { return bfsExpiresAfterRound; }
     public List<Ability> getAbilities()                   { return abilities; }
     public CodedAbilities getCodedAbilities()              { return codedAbilities; }
+
+    /** Define or resize a generic player-visible resource without resetting an existing value. */
+    public CodedAbilityState defineBoundedResource(
+        String key,
+        String label,
+        int capacity,
+        int startValue
+    ) {
+        String normalized = normalizeResourceKey(key);
+        if (normalized == null || capacity < 1) {
+            throw new IllegalArgumentException("A resource key and positive capacity are required.");
+        }
+        if (CodedAbilityRegistry.supportsStateKey(normalized)) {
+            throw new IllegalArgumentException(
+                "A bounded resource cannot reuse coded state key " + normalized + ".");
+        }
+        BoundedResource existing = boundedResources.get(normalized);
+        if (existing == null) {
+            existing = new BoundedResource(
+                normalized,
+                label == null || label.isBlank() ? normalized : label.trim(),
+                Math.max(0, Math.min(capacity, startValue)),
+                capacity);
+            boundedResources.put(normalized, existing);
+        } else {
+            existing.label = label == null || label.isBlank() ? existing.label : label.trim();
+            existing.maximum = capacity;
+            existing.current = Math.min(existing.current, capacity);
+        }
+        return existing.state();
+    }
+
+    /** Current generic or compiled ability state, addressed case-insensitively. */
+    public Optional<CodedAbilityState> abilityState(String key) {
+        String normalized = normalizeResourceKey(key);
+        BoundedResource resource = normalized == null ? null : boundedResources.get(normalized);
+        return resource == null ? codedAbilities.state(key) : Optional.of(resource.state());
+    }
+
+    /** All player-visible ability and generic resource states. */
+    public List<CodedAbilityState> abilityStates() {
+        List<CodedAbilityState> states = new ArrayList<>(codedAbilities.states());
+        boundedResources.values().stream().map(BoundedResource::state).forEach(states::add);
+        return List.copyOf(states);
+    }
+
+    public OptionalInt boundedResourceValue(String key) {
+        String normalized = normalizeResourceKey(key);
+        BoundedResource resource = normalized == null ? null : boundedResources.get(normalized);
+        return resource == null ? OptionalInt.empty() : OptionalInt.of(resource.current);
+    }
+
+    public boolean canTransactBoundedResources(
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        return validateBoundedResourceTransaction(
+            sourceKey, sourceAmount, targetKey, targetAmount) != null;
+    }
+
+    /** Consume and gain resource values atomically; no value changes on failure. */
+    public BoundedResourceTransaction transactBoundedResources(
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        ResourceTransactionValues values = validateBoundedResourceTransaction(
+            sourceKey, sourceAmount, targetKey, targetAmount);
+        if (values == null) return BoundedResourceTransaction.failed();
+
+        if (values.source != null) values.source.current -= sourceAmount;
+        if (values.target != null) values.target.current += targetAmount;
+        List<CodedAbilityState> changed = new ArrayList<>();
+        if (values.source != null) changed.add(values.source.state());
+        if (values.target != null && values.target != values.source) {
+            changed.add(values.target.state());
+        }
+        return new BoundedResourceTransaction(true, List.copyOf(changed));
+    }
+
+    private record ResourceTransactionValues(BoundedResource source, BoundedResource target) { }
+
+    private ResourceTransactionValues validateBoundedResourceTransaction(
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        if (sourceAmount < 0 || targetAmount < 0
+            || (long) sourceAmount + targetAmount == 0L) return null;
+        BoundedResource source = sourceAmount == 0
+            ? null : boundedResources.get(normalizeResourceKey(sourceKey));
+        BoundedResource target = targetAmount == 0
+            ? null : boundedResources.get(normalizeResourceKey(targetKey));
+        if ((sourceAmount > 0 && source == null) || (targetAmount > 0 && target == null)) return null;
+        if (source != null && source.current < sourceAmount) return null;
+        if (source == target) {
+            long finalValue = (long) source.current - sourceAmount + targetAmount;
+            return finalValue >= 0L && finalValue <= source.maximum
+                ? new ResourceTransactionValues(source, target) : null;
+        }
+        if (target != null && (long) target.current + targetAmount > target.maximum) return null;
+        return new ResourceTransactionValues(source, target);
+    }
+
+    private static String normalizeResourceKey(String key) {
+        return key == null || key.isBlank() ? null : key.trim().toUpperCase(Locale.ROOT);
+    }
 
     /**
      * Compute this combatant's current defense value (dynamic — depends on current CE).

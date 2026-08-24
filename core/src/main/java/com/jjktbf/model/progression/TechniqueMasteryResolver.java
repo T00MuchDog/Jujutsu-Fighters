@@ -72,6 +72,26 @@ public final class TechniqueMasteryResolver {
                 values, TechniqueMasteryProgressions.CODED_STACK_COUNT,
                 source.codedStackCount, mastery);
         }
+        if (source.resourceCapacity != null) {
+            resolved.resourceCapacity = TechniqueMasteryProgressions.resolve(
+                values, TechniqueMasteryProgressions.RESOURCE_CAPACITY,
+                source.resourceCapacity, mastery);
+        }
+        if (source.resourceStartValue != null) {
+            resolved.resourceStartValue = TechniqueMasteryProgressions.resolve(
+                values, TechniqueMasteryProgressions.RESOURCE_START_VALUE,
+                source.resourceStartValue, mastery);
+        }
+        if (source.sourceResourceAmount != null) {
+            resolved.sourceResourceAmount = TechniqueMasteryProgressions.resolve(
+                values, TechniqueMasteryProgressions.SOURCE_RESOURCE_AMOUNT,
+                source.sourceResourceAmount, mastery);
+        }
+        if (source.targetResourceAmount != null) {
+            resolved.targetResourceAmount = TechniqueMasteryProgressions.resolve(
+                values, TechniqueMasteryProgressions.TARGET_RESOURCE_AMOUNT,
+                source.targetResourceAmount, mastery);
+        }
         resolved.codedParameters = resolveCodedParameters(
             source.codedParameters, values, mastery);
         return resolved;
@@ -185,6 +205,10 @@ public final class TechniqueMasteryResolver {
             || TechniqueMasteryProgressions.MAGNITUDE.equals(field)
             || TechniqueMasteryProgressions.PER_TICK_REMOVAL_CHANCE.equals(field)
             || TechniqueMasteryProgressions.USES.equals(field)
-            || TechniqueMasteryProgressions.CODED_STACK_COUNT.equals(field);
+            || TechniqueMasteryProgressions.CODED_STACK_COUNT.equals(field)
+            || TechniqueMasteryProgressions.RESOURCE_CAPACITY.equals(field)
+            || TechniqueMasteryProgressions.RESOURCE_START_VALUE.equals(field)
+            || TechniqueMasteryProgressions.SOURCE_RESOURCE_AMOUNT.equals(field)
+            || TechniqueMasteryProgressions.TARGET_RESOURCE_AMOUNT.equals(field);
     }
 }

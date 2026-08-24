@@ -225,8 +225,8 @@ public enum AbilityConditionType {
             catch (Exception ex) { return path + " needs a valid status."; }
         }
         if (type.uses(CODED_ABILITY)
-            && !CodedAbilityRegistry.supportsStateKey(condition.codedAbilityKey)) {
-            return path + " needs a valid coded state.";
+            && (condition.codedAbilityKey == null || condition.codedAbilityKey.isBlank())) {
+            return path + " needs a coded state or bounded resource key.";
         }
         if (type.uses(TICK) && (condition.tick == null || condition.tick < 1)) {
             return path + " timeline point must be at least 1.";

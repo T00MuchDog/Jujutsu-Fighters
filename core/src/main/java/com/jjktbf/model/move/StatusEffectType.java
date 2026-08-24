@@ -63,6 +63,9 @@ public enum StatusEffectType {
     /** Prevents actions while active and ends on damage, natural recovery, or round expiry. */
     SLEEP("Sleep", 0, 0.05),
 
+    /** Halves Speed and rolls Strength-based escape plus a separate action stun each tick. */
+    RESTRAINED("Restrained", StatKey.SPEED, 0.5),
+
     /** Round-duration poison template. Magnitude is flat damage per round. */
     POISON("Poison", 1);
 
@@ -71,21 +74,26 @@ public enum StatusEffectType {
     private final BattleStatKey battleStat;
     private final int direction;
     private final double defaultPerTickRemovalChance;
+    private final Double statMultiplier;
 
     StatusEffectType(String displayName, StatKey baseStat, int direction) {
-        this(displayName, baseStat, null, direction, 0.0);
+        this(displayName, baseStat, null, direction, 0.0, null);
     }
 
     StatusEffectType(String displayName, BattleStatKey battleStat, int direction) {
-        this(displayName, null, battleStat, direction, 0.0);
+        this(displayName, null, battleStat, direction, 0.0, null);
     }
 
     StatusEffectType(String displayName, int direction) {
-        this(displayName, null, null, direction, 0.0);
+        this(displayName, null, null, direction, 0.0, null);
     }
 
     StatusEffectType(String displayName, int direction, double defaultPerTickRemovalChance) {
-        this(displayName, null, null, direction, defaultPerTickRemovalChance);
+        this(displayName, null, null, direction, defaultPerTickRemovalChance, null);
+    }
+
+    StatusEffectType(String displayName, StatKey baseStat, double statMultiplier) {
+        this(displayName, baseStat, null, 0, 0.0, statMultiplier);
     }
 
     StatusEffectType(
@@ -93,13 +101,15 @@ public enum StatusEffectType {
         StatKey baseStat,
         BattleStatKey battleStat,
         int direction,
-        double defaultPerTickRemovalChance
+        double defaultPerTickRemovalChance,
+        Double statMultiplier
     ) {
         this.displayName = displayName;
         this.baseStat = baseStat;
         this.battleStat = battleStat;
         this.direction = direction;
         this.defaultPerTickRemovalChance = defaultPerTickRemovalChance;
+        this.statMultiplier = statMultiplier;
     }
 
     public String displayName() {
@@ -116,7 +126,16 @@ public enum StatusEffectType {
 
     /** True when this status modifies a base or derived combat stat. */
     public boolean isStatModifier() {
-        return baseStat != null || battleStat != null;
+        return statMultiplier == null && (baseStat != null || battleStat != null);
+    }
+
+    /** True when the status multiplies a base stat instead of adding a magnitude. */
+    public boolean isStatMultiplier() {
+        return statMultiplier != null && baseStat != null;
+    }
+
+    public double statMultiplier() {
+        return statMultiplier == null ? 1.0 : statMultiplier;
     }
 
     /** Whether this status uses the descriptor's magnitude field. */
@@ -141,6 +160,11 @@ public enum StatusEffectType {
 
     public double signedMagnitude(double magnitude) {
         return direction * magnitude;
+    }
+
+    /** Whether applying this status again replaces its existing instance. */
+    public boolean refreshesOnReapply() {
+        return this == RESTRAINED;
     }
 
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */

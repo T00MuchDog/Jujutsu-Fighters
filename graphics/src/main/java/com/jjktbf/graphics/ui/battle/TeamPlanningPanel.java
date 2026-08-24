@@ -40,12 +40,10 @@ public final class TeamPlanningPanel {
         int ceBudget,
         int maxCe,
         CodedAbilityState miraclesState,
-        Integer maxActiveSummons,
-        int activeSummonCount,
-        Map<String, String> moveRestrictions,
         List<PlanningPanel.TargetOption> targets,
         PlanState restoredPlan,
-        List<PlanningPanel.TargetOption> allies
+        List<PlanningPanel.TargetOption> allies,
+        List<CodedAbilityState> abilityStates
     ) {
         public PageSpec(
             String actorId,
@@ -56,12 +54,11 @@ public final class TeamPlanningPanel {
             int ceBudget,
             int maxCe,
             CodedAbilityState miraclesState,
-            Map<String, String> moveRestrictions,
             List<PlanningPanel.TargetOption> targets,
             PlanState restoredPlan
         ) {
             this(actorId, name, moves, ceCosts, apBudget, ceBudget, maxCe, miraclesState,
-                null, 0, moveRestrictions, targets, restoredPlan, List.of());
+                targets, restoredPlan, List.of(), List.of());
         }
     }
 
@@ -144,13 +141,11 @@ public final class TeamPlanningPanel {
                 spec.ceBudget(),
                 spec.maxCe(),
                 spec.miraclesState(),
-                spec.maxActiveSummons(),
-                spec.activeSummonCount(),
                 ui,
                 screenWidth,
                 screenHeight);
-            panel.setMoveRestrictions(spec.moveRestrictions());
             panel.setAllyOptions(spec.allies());
+            panel.setAbilityStates(spec.abilityStates());
             restorePlan(panel, spec);
             addPage(spec.name(), panel);
         }

@@ -5,7 +5,9 @@ import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
+import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.move.AoeType;
@@ -13,6 +15,8 @@ import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveData;
+import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
 import org.junit.jupiter.api.Test;
@@ -388,6 +392,15 @@ class PlanningPanelInputTest {
         assertTrue(panel.getPlan().allSegments().isEmpty());
     }
 
+    @Test
+    void authoritativeRestoreBypassesPostResolutionResourceValidation() {
+        Move move = resourceSpendingMove();
+        PlanningPanel panel = panel(move, 150);
+        panel.setAbilityStates(List.of(new CodedAbilityState("SUPPLY", "Supply", 0, 3)));
+
+        assertNotNull(panel.restorePlacement(move, 1, 0, List.of()));
+    }
+
     private static PlanningPanel panel(Move move, int apBudget) {
         return panel(move, apBudget, apBudget);
     }
@@ -452,6 +465,25 @@ class PlanningPanelInputTest {
         data.aoeType = AoeType.MULTIPLE.name();
         data.aoeTargetCount = targetCount;
         return data.toMove();
+    }
+
+    private static Move resourceSpendingMove() {
+        MoveEffectData effect = AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            .createDefaultMoveEffect();
+        effect.effectId = "effect-000000";
+        effect.trigger = MoveEffectTrigger.ON_START.name();
+        effect.sourceResourceKey = "SUPPLY";
+        effect.sourceResourceAmount = 1;
+        effect.targetResourceKey = null;
+        effect.targetResourceAmount = 0;
+        return new Move.Builder("SPEND_RESOURCE")
+            .name("Spend Resource")
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY))
+            .apCost(1)
+            .unleashPoint(1)
+            .effects(List.of(effect))
+            .build();
     }
 
     private static Move returnCommand() {

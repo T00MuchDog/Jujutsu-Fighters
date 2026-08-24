@@ -2382,6 +2382,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 .filter(AbilityEffectType::isMoveAvailabilityConstraint)
                 .toList();
         }
+        if (trigger == MoveEffectTrigger.ON_START) {
+            return List.of(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE);
+        }
         List<AbilityEffectType> preferred = List.of(
             AbilityEffectType.TEMP_STAT_PERCENT,
             AbilityEffectType.BATTLE_STAT_PERCENT,
@@ -2395,6 +2398,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .filter(AbilityEffectType::isMoveEffect)
             .filter(type -> !type.isAccuracyPriority())
             .filter(type -> !type.isMoveAvailabilityConstraint())
+            .filter(type -> type != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE)
             .filter(type -> !types.contains(type))
             .forEach(types::add);
         return List.copyOf(types);

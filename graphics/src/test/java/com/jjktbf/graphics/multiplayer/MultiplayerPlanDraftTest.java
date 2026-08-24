@@ -90,7 +90,7 @@ class MultiplayerPlanDraftTest {
     }
 
     @Test
-    void serverRestrictedMoveCannotEnterTheDraft() {
+    void serverRestrictedMoveMayStillEnterTheDraft() {
         MultiplayerPlanDraft draft = new MultiplayerPlanDraft();
         draft.beginRound(1, 20, 20);
         MoveState restricted = move(
@@ -98,9 +98,9 @@ class MultiplayerPlanDraftTest {
 
         MultiplayerPlanDraft.AddResult result = draft.addFirstFit(restricted);
 
-        assertEquals(MultiplayerPlanDraft.AddStatus.MOVE_RESTRICTED, result.status());
-        assertFalse(draft.canAdd(restricted));
-        assertTrue(draft.placements().isEmpty());
+        assertTrue(result.added());
+        assertTrue(draft.canAdd(restricted));
+        assertEquals(1, draft.placements().size());
     }
 
     @Test

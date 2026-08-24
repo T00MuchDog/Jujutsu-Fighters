@@ -29,6 +29,7 @@ import com.jjktbf.multiplayer.protocol.ActionSegmentStatus;
 import com.jjktbf.multiplayer.protocol.BattleEventState;
 import com.jjktbf.multiplayer.protocol.BattleEventType;
 import com.jjktbf.multiplayer.protocol.BattlePhase;
+import com.jjktbf.multiplayer.protocol.BoundedResourceTransactionState;
 import com.jjktbf.multiplayer.protocol.CharacterState;
 import com.jjktbf.multiplayer.protocol.CommandResult;
 import com.jjktbf.multiplayer.protocol.CommandType;
@@ -84,7 +85,6 @@ public final class HeadlessBattleSession {
     private static final String INVALID_ACTOR = "INVALID_ACTOR";
     private static final String INVALID_TARGET = "INVALID_TARGET";
     private static final String INVALID_MOVE = "INVALID_MOVE";
-    private static final String MOVE_RESTRICTED = "MOVE_RESTRICTED";
     private static final String MOVE_CAP_REACHED = "MOVE_CAP_REACHED";
     private static final String INVALID_PLACEMENT = "INVALID_PLACEMENT";
     private static final String INSUFFICIENT_AP = "INSUFFICIENT_AP";
@@ -501,21 +501,6 @@ public final class HeadlessBattleSession {
                     "Move is not known by the authoritative actor.",
                     index,
                     placement.moveId()
-                );
-            }
-            String restriction = MoveAvailability.restrictionReason(
-                battleState,
-                actor,
-                move,
-                canonicalPlan.allSegments().stream().map(ActionSegment::getMove).toList()
-            );
-            if (restriction != null) {
-                return rejectPlacement(
-                    commandId,
-                    MOVE_RESTRICTED,
-                    restriction,
-                    index,
-                    move.getId()
                 );
             }
             if (!canonicalPlan.hasRemainingUses(move)) {
@@ -1292,7 +1277,7 @@ public final class HeadlessBattleSession {
             combatant.getConsecutiveBfsHits(),
             bfsExpiry,
             combatant.getActiveEffects().stream().map(this::statusEffectState).toList(),
-            combatant.getCodedAbilities().states(),
+            combatant.abilityStates(),
             combatant.getCharacter().getKnownMoves().stream()
                 .map(move -> moveState(combatant, move))
                 .toList(),
@@ -1360,7 +1345,14 @@ public final class HeadlessBattleSession {
             move.getDefenseTargetCount(),
             move.getPairTargeting().name(),
             move.getAttackLaunchMode() == null ? null : move.getAttackLaunchMode().name(),
-            move.getAttackLaunchMoveId()
+            move.getAttackLaunchMoveId(),
+            MoveAvailability.guaranteedBoundedResourceTransactions(combatant, move).stream()
+                .map(effect -> new BoundedResourceTransactionState(
+                    effect.sourceResourceKey,
+                    effect.sourceResourceAmount == null ? 0 : effect.sourceResourceAmount,
+                    effect.targetResourceKey,
+                    effect.targetResourceAmount == null ? 0 : effect.targetResourceAmount))
+                .toList()
         );
     }
 
@@ -1560,7 +1552,8 @@ public final class HeadlessBattleSession {
     }
 
     private String moveRestrictionReason(BattleCombatant combatant, Move move) {
-        return MoveAvailability.restrictionReason(battleState, combatant, move);
+        return MoveAvailability.restrictionReasonWithoutBoundedResources(
+            battleState, combatant, move);
     }
 
     private boolean canUseSharedPlanningVersion(
@@ -1660,7 +1653,7 @@ public final class HeadlessBattleSession {
             combatant.getMaxHp(),
             combatant.getCurrentCe(),
             combatant.getMaxCursedEnergy(),
-            combatant.getCodedAbilities().states(),
+            combatant.abilityStates(),
             combatant.getInstanceId().value(),
             combatant.getCharacter().getId(),
             combatant.getCharacter().getName()

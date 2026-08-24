@@ -309,7 +309,7 @@ public final class DamageCalculator {
 
         // --- 4. Apply defensive block before Defense ---
         double attackValue = component.getBasePower()
-            * attacker.getAbilityFlags().basePowerMultiplierFor(move)
+            * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
             * power;
         if (activeBlockSegment != null) {
             if (perfectBlock) {

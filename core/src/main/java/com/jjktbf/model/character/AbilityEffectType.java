@@ -17,6 +17,7 @@ import static com.jjktbf.model.character.AbilityEffectParameter.DURATION;
 import static com.jjktbf.model.character.AbilityEffectParameter.INTEGER;
 import static com.jjktbf.model.character.AbilityEffectParameter.MAGNITUDE;
 import static com.jjktbf.model.character.AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE;
+import static com.jjktbf.model.character.AbilityEffectParameter.STAT_MULTIPLIER_CURVE;
 import static com.jjktbf.model.character.AbilityEffectParameter.ABILITY_ID;
 import static com.jjktbf.model.character.AbilityEffectParameter.CHARACTER_ID;
 import static com.jjktbf.model.character.AbilityEffectParameter.TRANSFORMATION_HP;
@@ -32,6 +33,15 @@ import static com.jjktbf.model.character.AbilityEffectParameter.USES;
 import static com.jjktbf.model.character.AbilityEffectParameter.BATTLE_STAT;
 import static com.jjktbf.model.character.AbilityEffectParameter.CODED_FEATURE;
 import static com.jjktbf.model.character.AbilityEffectParameter.CODED_ACTION;
+import static com.jjktbf.model.character.AbilityEffectParameter.RESOURCE_KEY;
+import static com.jjktbf.model.character.AbilityEffectParameter.RESOURCE_LABEL;
+import static com.jjktbf.model.character.AbilityEffectParameter.RESOURCE_CAPACITY;
+import static com.jjktbf.model.character.AbilityEffectParameter.RESOURCE_START_VALUE;
+import static com.jjktbf.model.character.AbilityEffectParameter.SOURCE_RESOURCE;
+import static com.jjktbf.model.character.AbilityEffectParameter.SOURCE_RESOURCE_AMOUNT;
+import static com.jjktbf.model.character.AbilityEffectParameter.TARGET_RESOURCE;
+import static com.jjktbf.model.character.AbilityEffectParameter.TARGET_RESOURCE_AMOUNT;
+import static com.jjktbf.model.character.AbilityEffectParameter.REFRESH_GROUP;
 
 /**
  * Mechanical effects that can be composed into an ability.
@@ -136,6 +146,10 @@ public enum AbilityEffectType {
         "Multiply move base power",
         "Multiplies the configured base power of matching moves before power and defense are applied.",
         MOVE_SCOPE, DECIMAL),
+    MOVE_BASE_POWER_SCALE_BY_STAT(
+        "Scale move base power by stat",
+        "Scales matching moves' configured base power along a piecewise-linear curve from the current scaled stat: the configured minimum multiplier at 10, x1 at 80, and the configured maximum multiplier at scaled stat maximum.",
+        STAT, MOVE_SCOPE, STAT_MULTIPLIER_CURVE),
     INCOMING_DAMAGE_MULTIPLY(
         "Multiply incoming damage",
         "Multiplies damage taken from matching moves. 0.95 reduces it by 5%.",
@@ -250,31 +264,31 @@ public enum AbilityEffectType {
     TEMP_STAT_ADD(
         "Timed character stat change",
         "Adds or subtracts from a character stat for the configured rounds and ticks.",
-        STAT, TARGET, INTEGER, DURATION),
+        STAT, TARGET, INTEGER, DURATION, REFRESH_GROUP),
     TEMP_STAT_MULTIPLY(
         "Timed character stat multiplier",
         "Multiplies a character stat for the configured rounds and ticks.",
-        STAT, TARGET, DECIMAL, DURATION),
+        STAT, TARGET, DECIMAL, DURATION, REFRESH_GROUP),
     TEMP_STAT_SET_VALUE(
         "Timed character stat set",
         "Sets a character stat to an exact value for the configured rounds and ticks.",
-        STAT, TARGET, INTEGER, DURATION),
+        STAT, TARGET, INTEGER, DURATION, REFRESH_GROUP),
     TEMP_STAT_PERCENT(
         "Stat percentage",
         "Adds or subtracts a percentage of the scaled character stat for the configured rounds and ticks. Percentage effects stack additively with each other.",
-        STAT, TARGET, DECIMAL, DURATION),
+        STAT, TARGET, DECIMAL, DURATION, REFRESH_GROUP),
     BATTLE_STAT_ADD(
         "Timed battle stat change",
         "Adds to a derived battle value for the configured rounds and ticks.",
-        BATTLE_STAT, TARGET, DECIMAL, DURATION),
+        BATTLE_STAT, TARGET, DECIMAL, DURATION, REFRESH_GROUP),
     BATTLE_STAT_MULTIPLY(
         "Timed battle stat multiplier",
         "Multiplies a derived battle value for the configured rounds and ticks.",
-        BATTLE_STAT, TARGET, DECIMAL, DURATION),
+        BATTLE_STAT, TARGET, DECIMAL, DURATION, REFRESH_GROUP),
     BATTLE_STAT_PERCENT(
         "Battle stat percentage",
         "Adds or subtracts a percentage of the scaled derived battle value for the configured rounds and ticks. Percentage effects stack additively with each other.",
-        BATTLE_STAT, TARGET, DECIMAL, DURATION),
+        BATTLE_STAT, TARGET, DECIMAL, DURATION, REFRESH_GROUP),
     BATTLE_STAT_ODDS_MULTIPLY(
         "Multiply battle-stat odds",
         "Permanently multiplies the odds of a probability battle stat. A factor of 2 doubles odds without directly doubling probability.",
@@ -324,6 +338,15 @@ public enum AbilityEffectType {
         "Exchange attack targets",
         "Transposes the selected pair for matching future single-target attacks. Area-of-effect attacks are unaffected.",
         MOVE_SCOPE, DURATION, USES),
+    DEFINE_BOUNDED_RESOURCE(
+        "Define bounded resource",
+        "Creates a named player-visible resource with a capacity and initial value.",
+        RESOURCE_KEY, RESOURCE_LABEL, RESOURCE_CAPACITY, RESOURCE_START_VALUE),
+    TRANSACT_BOUNDED_RESOURCE(
+        "Change bounded resources",
+        "Atomically consumes one named resource and adds to another. Either side may be omitted for a pure gain or spend.",
+        TARGET, SOURCE_RESOURCE, SOURCE_RESOURCE_AMOUNT,
+        TARGET_RESOURCE, TARGET_RESOURCE_AMOUNT),
     MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE(
         "Block while shikigami is active",
         "Prevents this move from being used while the selected owned shikigami is active on the field.",
@@ -360,7 +383,8 @@ public enum AbilityEffectType {
             IGNORE_DAMAGE, DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE,
             GUARANTEE_NEXT_HIT, GUARANTEE_NEXT_DODGE, GUARANTEE_NEXT_BLACK_FLASH,
              CANCEL_NEXT_MOVE, STUN_CURRENT_ACTION, TEMP_LOCK_MOVE_TAG, TAUNT,
-             EXCHANGE_ATTACK_TARGETS, SUMMON_CHARACTER,
+             EXCHANGE_ATTACK_TARGETS, TRANSACT_BOUNDED_RESOURCE,
+             SUMMON_CHARACTER,
              TRANSFORM_CHARACTER,
             DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
             CODED_MOVE_ACTION);
@@ -433,6 +457,8 @@ public enum AbilityEffectType {
         effect.stat = null;
         effect.intValue = null;
         effect.doubleValue = null;
+        effect.minimumStatMultiplier = null;
+        effect.maximumStatMultiplier = null;
         effect.moveTag = null;
         effect.moveId = null;
         effect.abilityId = null;
@@ -447,6 +473,15 @@ public enum AbilityEffectType {
         effect.magnitude = null;
         effect.perTickRemovalChance = null;
         effect.uses = null;
+        effect.refreshGroup = null;
+        effect.resourceKey = null;
+        effect.resourceLabel = null;
+        effect.resourceCapacity = null;
+        effect.resourceStartValue = null;
+        effect.sourceResourceKey = null;
+        effect.sourceResourceAmount = null;
+        effect.targetResourceKey = null;
+        effect.targetResourceAmount = null;
         effect.masteryProgression = null;
 
         if (uses(STAT)) effect.stat = StatKey.VITALITY.fieldName;
@@ -481,6 +516,10 @@ public enum AbilityEffectType {
             case CE_COST_MULTIPLY, MOVE_ACCURACY_MULTIPLY,
                  OPPONENT_ACCURACY_MULTIPLY, DAMAGE_MULTIPLY, MOVE_BASE_POWER_MULTIPLY,
                  INCOMING_DAMAGE_MULTIPLY, MODIFY_DEFENSE -> effect.doubleValue = 1.10;
+            case MOVE_BASE_POWER_SCALE_BY_STAT -> {
+                effect.minimumStatMultiplier = 0.5;
+                effect.maximumStatMultiplier = 2.0;
+            }
             case DEFENSE_FROM_DURABILITY -> effect.doubleValue = 4.0 / 3.0;
             case MOVE_ACCURACY_ADD, OPPONENT_ACCURACY_ADD -> effect.intValue = 10;
             case NEVER_MISS, NEVER_HIT -> effect.intValue = 1;
@@ -574,6 +613,18 @@ public enum AbilityEffectType {
                 effect.durationTicks = 10;
                 effect.uses = 1;
             }
+            case DEFINE_BOUNDED_RESOURCE -> {
+                effect.resourceKey = "RESOURCE";
+                effect.resourceLabel = "Resource";
+                effect.resourceCapacity = 3;
+                effect.resourceStartValue = 0;
+            }
+            case TRANSACT_BOUNDED_RESOURCE -> {
+                effect.target = AbilityEffectTarget.SELF.name();
+                effect.sourceResourceAmount = 0;
+                effect.targetResourceKey = "RESOURCE";
+                effect.targetResourceAmount = 1;
+            }
             case SUMMON_CHARACTER -> {
                 // No target needed — the summon joins the owner's team.
                 effect.characterId = null;
@@ -619,6 +670,14 @@ public enum AbilityEffectType {
         if (uses(STAT) && isBlank(effect.stat)) effect.stat = defaults.stat;
         if (uses(INTEGER) && effect.intValue == null) effect.intValue = defaults.intValue;
         if (uses(DECIMAL) && effect.doubleValue == null) effect.doubleValue = defaults.doubleValue;
+        if (uses(STAT_MULTIPLIER_CURVE)) {
+            if (effect.minimumStatMultiplier == null) {
+                effect.minimumStatMultiplier = defaults.minimumStatMultiplier;
+            }
+            if (effect.maximumStatMultiplier == null) {
+                effect.maximumStatMultiplier = defaults.maximumStatMultiplier;
+            }
+        }
         if (uses(MOVE_SCOPE) && (this == LOCK_MOVE_TAG || this == TEMP_LOCK_MOVE_TAG)
             && isBlank(effect.moveTag)) {
             effect.moveTag = defaults.moveTag;
@@ -646,6 +705,20 @@ public enum AbilityEffectType {
         }
         if (uses(USES) && effect.uses == null) effect.uses = defaults.uses;
         if (uses(BATTLE_STAT) && isBlank(effect.stringValue)) effect.stringValue = defaults.stringValue;
+        if (uses(RESOURCE_KEY) && isBlank(effect.resourceKey)) effect.resourceKey = defaults.resourceKey;
+        if (uses(RESOURCE_LABEL) && isBlank(effect.resourceLabel)) effect.resourceLabel = defaults.resourceLabel;
+        if (uses(RESOURCE_CAPACITY) && effect.resourceCapacity == null) {
+            effect.resourceCapacity = defaults.resourceCapacity;
+        }
+        if (uses(RESOURCE_START_VALUE) && effect.resourceStartValue == null) {
+            effect.resourceStartValue = defaults.resourceStartValue;
+        }
+        if (uses(SOURCE_RESOURCE_AMOUNT) && effect.sourceResourceAmount == null) {
+            effect.sourceResourceAmount = defaults.sourceResourceAmount;
+        }
+        if (uses(TARGET_RESOURCE_AMOUNT) && effect.targetResourceAmount == null) {
+            effect.targetResourceAmount = defaults.targetResourceAmount;
+        }
     }
 
     /** Remove stale values so persisted JSON contains only parameters this type reads. */
@@ -663,6 +736,10 @@ public enum AbilityEffectType {
         if (!uses(STAT)) effect.stat = null;
         if (!uses(INTEGER)) effect.intValue = null;
         if (!uses(DECIMAL)) effect.doubleValue = null;
+        if (!uses(STAT_MULTIPLIER_CURVE)) {
+            effect.minimumStatMultiplier = null;
+            effect.maximumStatMultiplier = null;
+        }
         if (!uses(MOVE_SCOPE)) effect.moveTag = null;
         if (!uses(MOVE_ID)) effect.moveId = null;
         if (!uses(ABILITY_ID)) effect.abilityId = null;
@@ -679,6 +756,15 @@ public enum AbilityEffectType {
         if (!uses(MAGNITUDE)) effect.magnitude = null;
         if (!uses(PER_TICK_REMOVAL_CHANCE)) effect.perTickRemovalChance = null;
         if (!uses(USES)) effect.uses = null;
+        if (!uses(REFRESH_GROUP)) effect.refreshGroup = null;
+        if (!uses(RESOURCE_KEY)) effect.resourceKey = null;
+        if (!uses(RESOURCE_LABEL)) effect.resourceLabel = null;
+        if (!uses(RESOURCE_CAPACITY)) effect.resourceCapacity = null;
+        if (!uses(RESOURCE_START_VALUE)) effect.resourceStartValue = null;
+        if (!uses(SOURCE_RESOURCE)) effect.sourceResourceKey = null;
+        if (!uses(SOURCE_RESOURCE_AMOUNT)) effect.sourceResourceAmount = null;
+        if (!uses(TARGET_RESOURCE)) effect.targetResourceKey = null;
+        if (!uses(TARGET_RESOURCE_AMOUNT)) effect.targetResourceAmount = null;
         if (!uses(BATTLE_STAT) && !uses(TECHNIQUE) && !uses(STATUS_TYPE)) effect.stringValue = null;
         Set<String> allowedProgressions = masteryProgressionFields(effect);
         if (effect.masteryProgression != null) {
@@ -706,6 +792,11 @@ public enum AbilityEffectType {
         }
         if (uses(INTEGER) && effect.intValue == null) return "Enter an integer value.";
         if (uses(DECIMAL) && !isFinite(effect.doubleValue)) return "Enter a valid decimal value.";
+        if (uses(STAT_MULTIPLIER_CURVE)
+            && (!isFinite(effect.minimumStatMultiplier)
+                || !isFinite(effect.maximumStatMultiplier))) {
+            return "Enter valid minimum- and maximum-stat multipliers.";
+        }
         if (uses(MOVE_SCOPE) && !isBlank(effect.moveTag)) {
             try {
                 MoveTag.valueOf(effect.moveTag);
@@ -797,6 +888,37 @@ public enum AbilityEffectType {
             }
             catch (Exception ex) { return "Choose a valid battle stat."; }
         }
+        if (uses(RESOURCE_KEY) && isBlank(effect.resourceKey)) return "Enter a resource key.";
+        if (uses(RESOURCE_LABEL) && isBlank(effect.resourceLabel)) return "Enter a resource label.";
+        if (uses(RESOURCE_CAPACITY)
+            && (effect.resourceCapacity == null || effect.resourceCapacity < 1)) {
+            return "Resource capacity must be at least 1.";
+        }
+        if (uses(RESOURCE_START_VALUE)
+            && (effect.resourceStartValue == null || effect.resourceStartValue < 0
+                || (effect.resourceCapacity != null
+                    && effect.resourceStartValue > effect.resourceCapacity))) {
+            return "Resource start value must be between 0 and its capacity.";
+        }
+        if (uses(SOURCE_RESOURCE_AMOUNT)
+            && (effect.sourceResourceAmount == null || effect.sourceResourceAmount < 0)) {
+            return "Source resource amount cannot be negative.";
+        }
+        if (uses(TARGET_RESOURCE_AMOUNT)
+            && (effect.targetResourceAmount == null || effect.targetResourceAmount < 0)) {
+            return "Target resource amount cannot be negative.";
+        }
+        if (this == TRANSACT_BOUNDED_RESOURCE) {
+            boolean hasSource = !isBlank(effect.sourceResourceKey)
+                && effect.sourceResourceAmount != null && effect.sourceResourceAmount > 0;
+            boolean hasTarget = !isBlank(effect.targetResourceKey)
+                && effect.targetResourceAmount != null && effect.targetResourceAmount > 0;
+            if (!hasSource && !hasTarget) return "Configure a resource gain or spend.";
+            if (effect.sourceResourceAmount != null && effect.sourceResourceAmount > 0
+                && isBlank(effect.sourceResourceKey)) return "Enter the source resource key.";
+            if (effect.targetResourceAmount != null && effect.targetResourceAmount > 0
+                && isBlank(effect.targetResourceKey)) return "Enter the target resource key.";
+        }
         if (uses(CODED_FEATURE) && !CodedAbilityRegistry.supportsAbilityEffect(
             effect.codedAbilityKey, effect.codedFeature)) {
             return "Choose a supported coded effect.";
@@ -867,6 +989,12 @@ public enum AbilityEffectType {
                 ? "Percentage must be greater than 0% and no more than 100%." : null;
             case BATTLE_STAT_ADD -> effect.doubleValue == 0.0
                 ? "Enter a non-zero amount." : null;
+            case MOVE_BASE_POWER_SCALE_BY_STAT ->
+                effect.minimumStatMultiplier <= 0.0 || effect.maximumStatMultiplier <= 0.0
+                    ? "Stat-scaled multipliers must be greater than 0."
+                    : effect.minimumStatMultiplier == 1.0
+                        && effect.maximumStatMultiplier == 1.0
+                        ? "At least one stat-scaled multiplier must differ from 1.0." : null;
             default -> null;
         };
         if (literalError != null) return literalError;
@@ -918,6 +1046,18 @@ public enum AbilityEffectType {
             }
             if (effect.codedParameters != null) fields.addAll(effect.codedParameters.keySet());
         }
+        if (uses(RESOURCE_CAPACITY)) {
+            fields.add(TechniqueMasteryProgressions.RESOURCE_CAPACITY);
+        }
+        if (uses(RESOURCE_START_VALUE)) {
+            fields.add(TechniqueMasteryProgressions.RESOURCE_START_VALUE);
+        }
+        if (uses(SOURCE_RESOURCE_AMOUNT)) {
+            fields.add(TechniqueMasteryProgressions.SOURCE_RESOURCE_AMOUNT);
+        }
+        if (uses(TARGET_RESOURCE_AMOUNT)) {
+            fields.add(TechniqueMasteryProgressions.TARGET_RESOURCE_AMOUNT);
+        }
         return Collections.unmodifiableSet(fields);
     }
 
@@ -935,7 +1075,7 @@ public enum AbilityEffectType {
                    UNLOCK_TECHNIQUE, AUTO_STATUS_APPLY, DEFENSE_FROM_DURABILITY,
                    SET_JUJUTSU_ART_SLOTS, MAX_ACTIVE_SUMMONS,
                    SUMMON_CE_UPKEEP_PER_ACTIVE_TICK, NEVER_MISS, NEVER_HIT,
-                   BATTLE_STAT_ODDS_MULTIPLY -> true;
+                   BATTLE_STAT_ODDS_MULTIPLY, DEFINE_BOUNDED_RESOURCE -> true;
             default -> false;
         };
     }

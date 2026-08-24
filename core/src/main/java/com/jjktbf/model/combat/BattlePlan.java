@@ -258,6 +258,7 @@ public class BattlePlan {
         List<ActionSegment> all = new ArrayList<>();
         all.addAll(offensive.getSegments());
         all.addAll(defensive.getSegments());
+        all.sort(java.util.Comparator.comparingInt(ActionSegment::getStartTick));
         return all;
     }
 

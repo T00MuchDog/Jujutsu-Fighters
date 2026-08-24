@@ -14,7 +14,6 @@ public final class MultiplayerPlanDraft {
     public enum AddStatus {
         ADDED,
         INVALID_MOVE,
-        MOVE_RESTRICTED,
         MOVE_CAP_REACHED,
         INSUFFICIENT_AP,
         INSUFFICIENT_CE,
@@ -101,9 +100,6 @@ public final class MultiplayerPlanDraft {
         if (!valid(move)) {
             return new AddResult(AddStatus.INVALID_MOVE, null);
         }
-        if (!move.available()) {
-            return new AddResult(AddStatus.MOVE_RESTRICTED, null);
-        }
         if (!hasRemainingUses(move)) {
             return new AddResult(AddStatus.MOVE_CAP_REACHED, null);
         }
@@ -139,7 +135,7 @@ public final class MultiplayerPlanDraft {
 
     public boolean canAdd(MoveState move, List<String> targetIds) {
         List<String> selectedTargets = distinctTargets(targetIds);
-        if (!valid(move) || !move.available() || !hasRemainingUses(move)
+        if (!valid(move) || !hasRemainingUses(move)
             || apUsed + move.apCost() > apBudget
             || ceUsed + move.effectiveCeCost() > ceBudget
             || !validTargetSelection(move, null, targetIds, selectedTargets)) {

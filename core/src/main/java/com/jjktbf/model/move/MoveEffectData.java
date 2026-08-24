@@ -154,8 +154,29 @@ public class MoveEffectData extends AbilityEffectData {
             && moveTrigger != MoveEffectTrigger.ON_FIRE) {
             return "Exchange attack targets must use On fire.";
         }
+        if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && moveTrigger != MoveEffectTrigger.ON_START) {
+            return "Bounded resource transactions must use On move start.";
+        }
+        if (effectType != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && moveTrigger == MoveEffectTrigger.ON_START) {
+            return "Only bounded resource transactions may use On move start.";
+        }
+        if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && !AbilityConditionType.ALWAYS.name().equalsIgnoreCase(resolvedCondition().type)) {
+            return "Bounded resource transactions must always apply.";
+        }
+        if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && (Boolean.TRUE.equals(activationChanceEnabled)
+                || activationMasteryProgression != null)) {
+            return "Bounded resource transactions cannot roll an activation chance.";
+        }
         if (target != null) {
             AbilityEffectTarget effectTarget = AbilityEffectTarget.valueOf(target);
+            if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                && effectTarget != AbilityEffectTarget.SELF) {
+                return "Bounded resource transactions must target self.";
+            }
             if ((effectTarget == AbilityEffectTarget.PAIR_FIRST
                     || effectTarget == AbilityEffectTarget.PAIR_SECOND
                     || effectTarget == AbilityEffectTarget.PAIR_BOTH)

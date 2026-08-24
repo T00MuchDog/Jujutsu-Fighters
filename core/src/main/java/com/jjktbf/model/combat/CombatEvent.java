@@ -39,6 +39,7 @@ public class CombatEvent {
 
         // Generic effect resolution
         EFFECT_FAILED,
+        RESOURCE_CHANGED,
 
         // Damage
         DAMAGE_DEALT,

@@ -4,6 +4,7 @@ package com.jjktbf.model.move;
 public enum MoveEffectTrigger {
     AVAILABILITY("Move availability"),
     ACCURACY_CHECK("Accuracy check"),
+    ON_START("On move start"),
     ON_FIRE("On move fire"),
     ON_HIT("On hit"),
     ON_BLOCK("On block"),

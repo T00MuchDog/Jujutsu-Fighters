@@ -153,6 +153,8 @@ public final class AbilityApplicator {
                         flags.basePowerMultiplier *= nvl(eff.doubleValue, 1.0);
                         flags.basePowerMultiplierEffects.add(eff);
                     }
+                    case MOVE_BASE_POWER_SCALE_BY_STAT ->
+                        flags.statScaledBasePowerEffects.add(eff);
                     case INCOMING_DAMAGE_MULTIPLY -> {
                         flags.incomingDamageMultiplier *= nvl(eff.doubleValue, 1.0);
                         flags.incomingDamageMultiplierEffects.add(eff);
@@ -189,6 +191,7 @@ public final class AbilityApplicator {
                         if (eff.moveTag != null) flags.lockedMoveTags.add(eff.moveTag);
                     }
                     case AUTO_STATUS_APPLY -> flags.autoStatusEffects.add(eff);
+                    case DEFINE_BOUNDED_RESOURCE -> flags.boundedResourceDefinitions.add(eff.copy());
 
                     case UNLOCK_TECHNIQUE  -> {
                         // Technique access is resolved once at construction, not per
@@ -216,6 +219,7 @@ public final class AbilityApplicator {
                           DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE, GUARANTEE_NEXT_HIT,
                            GUARANTEE_NEXT_DODGE, GUARANTEE_NEXT_BLACK_FLASH,
                            CANCEL_NEXT_MOVE, TEMP_LOCK_MOVE_TAG,
+                           TRANSACT_BOUNDED_RESOURCE,
                            DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
                            SUMMON_CHARACTER -> { }
                 }
@@ -469,6 +473,7 @@ public final class AbilityApplicator {
         public Double  defenseFromDurabilityMultiplier = null;
         public final java.util.List<AbilityEffectData> damageMultiplierEffects = new java.util.ArrayList<>();
         public final java.util.List<AbilityEffectData> basePowerMultiplierEffects = new java.util.ArrayList<>();
+        public final java.util.List<AbilityEffectData> statScaledBasePowerEffects = new java.util.ArrayList<>();
         // Incoming damage taken — applied to matching moves against this combatant.
         public double  incomingDamageMultiplier = 1.0;
         public final java.util.List<AbilityEffectData> incomingDamageMultiplierEffects = new java.util.ArrayList<>();
@@ -502,6 +507,8 @@ public final class AbilityApplicator {
 
         // Status automation
         public final java.util.List<AbilityEffectData> autoStatusEffects = new java.util.ArrayList<>();
+        public final java.util.List<AbilityEffectData> boundedResourceDefinitions =
+            new java.util.ArrayList<>();
 
         /** Add one legacy continuous effect to this flag set. */
         public void addEffect(AbilityEffectData effect) {
@@ -545,6 +552,8 @@ public final class AbilityApplicator {
                     basePowerMultiplier *= nvl(effect.doubleValue, 1.0);
                     basePowerMultiplierEffects.add(effect);
                 }
+                case MOVE_BASE_POWER_SCALE_BY_STAT ->
+                    statScaledBasePowerEffects.add(effect);
                 case INCOMING_DAMAGE_MULTIPLY -> {
                     incomingDamageMultiplier *= nvl(effect.doubleValue, 1.0);
                     incomingDamageMultiplierEffects.add(effect);
@@ -573,6 +582,7 @@ public final class AbilityApplicator {
                 case UNLOCK_MOVE -> { if (effect.moveId != null) unlockedMoveIds.add(effect.moveId); }
                 case LOCK_MOVE_TAG -> { if (effect.moveTag != null) lockedMoveTags.add(effect.moveTag); }
                 case AUTO_STATUS_APPLY -> autoStatusEffects.add(effect);
+                case DEFINE_BOUNDED_RESOURCE -> boundedResourceDefinitions.add(effect.copy());
                 case POISON_IMMUNITY -> poisonImmune = true;
                 case SOUL_AWARE_ATTACKS -> soulAwareAttacks = true;
                 default -> { }
@@ -613,12 +623,14 @@ public final class AbilityApplicator {
             copy.neverHitEffects.addAll(neverHitEffects);
             copy.damageMultiplierEffects.addAll(damageMultiplierEffects);
             copy.basePowerMultiplierEffects.addAll(basePowerMultiplierEffects);
+            copy.statScaledBasePowerEffects.addAll(statScaledBasePowerEffects);
             copy.incomingDamageMultiplier = incomingDamageMultiplier;
             copy.incomingDamageMultiplierEffects.addAll(incomingDamageMultiplierEffects);
             copy.grantedMoveIds.addAll(grantedMoveIds);
             copy.unlockedMoveIds.addAll(unlockedMoveIds);
             copy.lockedMoveTags.addAll(lockedMoveTags);
             copy.autoStatusEffects.addAll(autoStatusEffects);
+            copy.boundedResourceDefinitions.addAll(boundedResourceDefinitions);
             return copy;
         }
 
@@ -727,12 +739,44 @@ public final class AbilityApplicator {
             return multiplier;
         }
 
-        public double basePowerMultiplierFor(com.jjktbf.model.move.Move move) {
+        public double basePowerMultiplierFor(
+            com.jjktbf.model.move.Move move,
+            java.util.function.ToIntFunction<StatKey> currentScaledStat
+        ) {
             double multiplier = 1.0;
             for (AbilityEffectData effect : basePowerMultiplierEffects) {
                 if (appliesTo(effect, move)) multiplier *= nvl(effect.doubleValue, 1.0);
             }
+            for (AbilityEffectData effect : statScaledBasePowerEffects) {
+                if (!appliesTo(effect, move)) continue;
+                StatKey stat = resolveStatKey(effect.stat);
+                if (stat == null) continue;
+                multiplier *= statMultiplierAt(effect, currentScaledStat.applyAsInt(stat));
+            }
             return multiplier;
+        }
+
+        private static double statMultiplierAt(AbilityEffectData effect, int scaledStat) {
+            int minimum = StatScale.scale(CharacterStats.MIN_STAT);
+            int baseline = StatScale.scale(CharacterStats.BASELINE);
+            int maximum = StatScale.scale(CharacterStats.MAX_STAT);
+            double low = nvl(effect.minimumStatMultiplier, 1.0);
+            double high = nvl(effect.maximumStatMultiplier, 1.0);
+            if (scaledStat <= minimum) return low;
+            if (scaledStat < baseline) {
+                return interpolate(low, 1.0, scaledStat, minimum, baseline);
+            }
+            if (scaledStat < maximum) {
+                return interpolate(1.0, high, scaledStat, baseline, maximum);
+            }
+            return high;
+        }
+
+        private static double interpolate(
+            double startValue, double endValue, int value, int start, int end
+        ) {
+            double progress = (value - (double) start) / (end - (double) start);
+            return startValue + (endValue - startValue) * progress;
         }
 
         public double incomingDamageMultiplierFor(com.jjktbf.model.move.Move move) {
@@ -749,13 +793,14 @@ public final class AbilityApplicator {
                 || opponentAccuracyBonus != 0 || opponentAccuracyMultiplier != 1.0
                 || !neverMissEffects.isEmpty() || !neverHitEffects.isEmpty()
                 || damageMultiplier != 1.0 || basePowerMultiplier != 1.0 || defenseMultiplier != 1.0
+                || !statScaledBasePowerEffects.isEmpty()
                 || defenseFromDurabilityMultiplier != null
                 || incomingDamageMultiplier != 1.0
                 || bfChanceBonus != 0.0 || apBarBonus != 0 || ceCostPerRound != 0
                 || maxActiveSummons != null || summonCeUpkeepPerActiveTick != 0.0
                 || jujutsuArtSlots != null
                 || !grantedMoveIds.isEmpty() || !unlockedMoveIds.isEmpty() || !lockedMoveTags.isEmpty()
-                || !autoStatusEffects.isEmpty();
+                || !autoStatusEffects.isEmpty() || !boundedResourceDefinitions.isEmpty();
         }
     }
 }

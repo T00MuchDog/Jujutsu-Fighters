@@ -160,6 +160,10 @@
     "description": "Damage suffered by a Cursed Speech user after attempting a command."
   },
   {
+    "term": "RESTRAINED",
+    "description": "A status that halves Speed. At each tick, the target can break free based on Strength; otherwise, it has a 5% chance to have its current action Stunned."
+  },
+  {
     "term": "ROUND",
     "description": "One complete planning and resolution cycle."
   },

@@ -363,20 +363,13 @@ public class ConditionTreeEditor extends Table {
             addRow(fields, "Status", box);
         }
         if (type.uses(AbilityConditionParameter.CODED_ABILITY)) {
-            List<CodedAbilityRegistry.StateKey> states = CodedAbilityRegistry.stateKeys();
-            SelectBox<String> box = new DynamicSelectBox<>(skin, uiProfile);
-            box.setItems(states.stream()
-                .map(CodedAbilityRegistry.StateKey::label)
-                .toArray(String[]::new));
-            box.setSelected(states.stream()
-                .filter(state -> state.key().equalsIgnoreCase(condition.codedAbilityKey))
-                .map(CodedAbilityRegistry.StateKey::label)
-                .findFirst().orElse(states.get(0).label()));
-            box.addListener(change(() -> condition.codedAbilityKey = states.stream()
-                .filter(state -> state.label().equals(box.getSelected()))
-                .map(CodedAbilityRegistry.StateKey::key)
-                .findFirst().orElse(states.get(0).key())));
-            addRow(fields, "Coded state", box);
+            TextField field = new TextField(
+                condition.codedAbilityKey == null ? "" : condition.codedAbilityKey, skin);
+            field.addListener(change(() -> {
+                String value = field.getText().trim();
+                condition.codedAbilityKey = value.isEmpty() ? null : value;
+            }));
+            addRow(fields, "State / resource key", field);
         }
         if (type.uses(AbilityConditionParameter.TICK)) {
             TextField field = integerField(condition.tick);

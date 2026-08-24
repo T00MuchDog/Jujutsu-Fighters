@@ -295,6 +295,7 @@ public class CombatResolver {
                 if (finishBattleIfNeeded(state, events, tick)) return events;
             }
 
+            processRestrainedStatuses(state, tick, events);
             processPerTickStatusRemoval(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
 
@@ -497,6 +498,47 @@ public class CombatResolver {
         }
     }
 
+    /** Resolve restraint escape and action-stun rolls before this tick's actions fire. */
+    private void processRestrainedStatuses(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (BattleCombatant combatant : state.activeCombatants()) {
+            if (!combatant.hasEffect(StatusEffectType.RESTRAINED)) continue;
+            double breakoutChance = restraintBreakoutChance(
+                combatant.getRuntimeStat(StatKey.STRENGTH));
+            if (rng.nextDouble() < breakoutChance) {
+                combatant.removeStatusEffects(StatusEffectType.RESTRAINED);
+                events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+                    .source(combatant).target(combatant).tick(tick)
+                    .message(combatant.getCharacter().getName()
+                        + " breaks free from the restraint!")
+                    .build());
+                events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+                    AbilityTrigger.Type.STATUS_REMOVED,
+                    combatant,
+                    StatusEffectType.RESTRAINED,
+                    tick)));
+                continue;
+            }
+            if (rng.nextDouble() >= 0.05 || !combatant.stunCurrentAction(tick)) continue;
+            events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                .source(combatant).target(combatant).tick(tick)
+                .message(combatant.getCharacter().getName()
+                    + " loses their action while struggling against the restraint!")
+                .build());
+        }
+    }
+
+    /** Strength-scaled escape odds for the generic restrained status. */
+    public static double restraintBreakoutChance(int scaledStrength) {
+        int strength = Math.max(10, scaledStrength);
+        if (strength <= 450) return Math.max(0.01, strength / 1000.0);
+        if (strength >= 472) return 0.50;
+        return 0.45 + (strength - 450) * (0.05 / 22.0);
+    }
+
     /** Resolve configured status self-removal before this tick's actions can fire. */
     private void processPerTickStatusRemoval(
         BattleState state,
@@ -552,12 +594,28 @@ public class CombatResolver {
             if (!combatant.isActive()) return;
             if (segment.isStunned()) continue;
             if (segment.getStartTick() == tick) {
+                if (stopSleepingStart(
+                        combatant, segment.getMove(), segment, tick, events)) {
+                    continue;
+                }
+                if (stopMoveLockedByAbility(
+                        combatant, segment.getMove(), segment, tick, events)) {
+                    continue;
+                }
                 if (stopMoveUnavailableForActiveSummon(
+                    state, combatant, segment.getMove(), segment, tick, events)) {
+                    continue;
+                }
+                if (stopMoveUnavailableForSummonState(
                     state, combatant, segment.getMove(), segment, tick, events)) {
                     continue;
                 }
                 if (stopPlannedMoveUnknownToCurrentForm(
                         combatant, segment, tick, events)) {
+                    continue;
+                }
+                if (stopMoveUnavailableForBoundedResource(
+                        combatant, segment.getMove(), segment, tick, events)) {
                     continue;
                 }
                 if (combatant.consumeMoveCancellation()) {
@@ -569,8 +627,8 @@ public class CombatResolver {
                         .build());
                     continue;
                 }
-                if (segment.getActualCeCost() <= 0) continue;
-                if (!combatant.hasCe(segment.getActualCeCost())) {
+                int ceCost = segment.getActualCeCost();
+                if (ceCost > 0 && !combatant.hasCe(ceCost)) {
                     segment.stun();
                     events.add(CombatEvent.of(CombatEvent.Type.CE_DEPLETED)
                         .source(combatant)
@@ -581,7 +639,12 @@ public class CombatResolver {
                         .build());
                     continue;
                 }
-                int drained = combatant.drainCe(segment.getActualCeCost());
+                events.addAll(abilityActivations.processMoveEffects(
+                    state, combatant, List.of(), segment.getMove(),
+                    MoveEffectTrigger.ON_START, -1, tick,
+                    List.of(), List.of()));
+                if (ceCost <= 0) continue;
+                int drained = combatant.drainCe(ceCost);
                 events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
                     .source(combatant)
                     .move(segment.getMove())
@@ -1055,6 +1118,8 @@ public class CombatResolver {
         }
         if (stopMoveUnavailableForActiveSummon(
             state, launcher, launchedMove, null, tick, events)) return;
+        if (stopMoveUnavailableForBoundedResource(
+            launcher, launchedMove, null, tick, events)) return;
         if (launcher.consumeMoveCancellation()) {
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
                 .target(launcher).move(launchedMove).tick(tick)
@@ -1072,6 +1137,9 @@ public class CombatResolver {
                 .build());
             return;
         }
+        events.addAll(abilityActivations.processMoveEffects(
+            state, launcher, List.of(), launchedMove,
+            MoveEffectTrigger.ON_START, -1, tick, List.of(), List.of()));
         if (cost > 0) {
             int drained = launcher.drainCe(cost);
             events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
@@ -1267,6 +1335,75 @@ public class CombatResolver {
         return result.target();
     }
 
+    /**
+     * A segment whose user is asleep when it starts never gets going. Sleep
+     * acquired after the start tick is still caught at the fire tick by
+     * {@link #stopSleepingAction}.
+     */
+    private static boolean stopSleepingStart(
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (!attacker.hasEffect(StatusEffectType.SLEEP)) return false;
+        if (segment != null) segment.stun();
+        events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+            .source(attacker).target(attacker).move(move).tick(tick)
+            .message(attacker.getCharacter().getName() + " tried to use "
+                + move.getName() + " but was asleep!")
+            .build());
+        return true;
+    }
+
+    /** Stop a segment whose move tag is locked by an active ability at its start. */
+    private static boolean stopMoveLockedByAbility(
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (attacker.getAbilityFlags().lockedMoveTags.stream().noneMatch(move::hasTag)) {
+            return false;
+        }
+        if (segment != null) segment.stun();
+        events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+            .source(attacker).target(attacker).move(move).tick(tick)
+            .message(moveFailedMessage(attacker, move))
+            .build());
+        return true;
+    }
+
+    /**
+     * Stop a summoning segment whose shikigami cannot currently be summoned
+     * (already active or pending, destroyed, on cooldown, or over the cap).
+     * Duplicates whose earlier twin has not fired yet slip past this and are
+     * still dropped by the enqueue gate when the effect resolves.
+     */
+    private static boolean stopMoveUnavailableForSummonState(
+        BattleState state,
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (state != null) {
+            for (String definitionId : MoveAvailability.summonedDefinitionIds(move)) {
+                if (state.summonRestrictionReason(attacker, definitionId) == null) continue;
+                if (segment != null) segment.stun();
+                events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                    .source(attacker).target(attacker).move(move).tick(tick)
+                    .message(moveFailedMessage(attacker, move))
+                    .build());
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean stopMoveUnavailableForActiveSummon(
         BattleState state,
         BattleCombatant attacker,
@@ -1282,6 +1419,24 @@ public class CombatResolver {
         // A move re-validated as unavailable mid-round (e.g. its shikigami was
         // summoned earlier this same round) uses the generic failure message —
         // the same wording every other failed move reports with.
+        events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+            .source(attacker).target(attacker).move(move).tick(tick)
+            .message(moveFailedMessage(attacker, move))
+            .build());
+        return true;
+    }
+
+    private boolean stopMoveUnavailableForBoundedResource(
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        String reason = MoveAvailability.boundedResourceRestrictionReason(
+            attacker, move, List.of());
+        if (reason == null) return false;
+        if (segment != null) segment.stun();
         events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
             .source(attacker).target(attacker).move(move).tick(tick)
             .message(moveFailedMessage(attacker, move))

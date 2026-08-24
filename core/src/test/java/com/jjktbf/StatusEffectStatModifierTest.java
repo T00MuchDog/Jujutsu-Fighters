@@ -355,6 +355,7 @@ class StatusEffectStatModifierTest {
 
     private static long effectsFor(StatKey stat, boolean increase) {
         return List.of(StatusEffectType.values()).stream()
+            .filter(StatusEffectType::isStatModifier)
             .filter(type -> type.baseStat() == stat)
             .filter(type -> (type.signedMagnitude(1.0) > 0) == increase)
             .count();
@@ -362,6 +363,7 @@ class StatusEffectStatModifierTest {
 
     private static long effectsFor(BattleStatKey stat, boolean increase) {
         return List.of(StatusEffectType.values()).stream()
+            .filter(StatusEffectType::isStatModifier)
             .filter(type -> type.battleStat() == stat)
             .filter(type -> (type.signedMagnitude(1.0) > 0) == increase)
             .count();

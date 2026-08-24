@@ -1096,4 +1096,66 @@
     "uses" : 1
   } ],
   "masteryThreshold" : 70
+}, {
+  "id" : "000047",
+  "name" : "Strength Amplification",
+  "flavourText" : "Playful Cloud converts the wielder's physical might directly into striking force, making the three-section staff as dangerous as the hands that wield it.",
+  "mechanicText" : "While PLAYFUL CLOUD is equipped, STAFF move BASE POWER scales with current scaled STRENGTH: x0.2 at 10, x1 at 80, and x5 at scaled maximum.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_TOOL",
+  "sourceValue" : "000002",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "MOVE_BASE_POWER_SCALE_BY_STAT",
+    "stat" : "strength",
+    "minimumStatMultiplier" : 0.2,
+    "maximumStatMultiplier" : 5.0,
+    "moveTag" : "STAFF"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000048",
+  "name" : "Blood Manipulation Reserves",
+  "flavourText" : "A prepared supply of blood supports immediate techniques, while deliberate compression turns that limited reserve into denser ammunition.",
+  "mechanicText" : "Begin battle with 3 BLOOD SUPPLY. CONVERGENCE converts it into COMPRESSION. COMPRESSION capacity is 1 at CTM 0, 2 at CTM 50, 3 at CTM 90, 4 at CTM 160, and 5 at CTM 250.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Blood Manipulation",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DEFINE_BOUNDED_RESOURCE",
+    "resourceKey" : "BLOOD_SUPPLY",
+    "resourceLabel" : "Blood Supply",
+    "resourceCapacity" : 3,
+    "resourceStartValue" : 3
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "DEFINE_BOUNDED_RESOURCE",
+    "resourceKey" : "COMPRESSION",
+    "resourceLabel" : "Compression",
+    "resourceCapacity" : 1,
+    "resourceStartValue" : 0,
+    "masteryProgression" : {
+      "resourceCapacity" : {
+        "mode" : "BENCHMARKS",
+        "benchmarks" : [ {
+          "mastery" : 0,
+          "value" : 1
+        }, {
+          "mastery" : 50,
+          "value" : 2
+        }, {
+          "mastery" : 90,
+          "value" : 3
+        }, {
+          "mastery" : 160,
+          "value" : 4
+        }, {
+          "mastery" : 250,
+          "value" : 5
+        } ]
+      }
+    }
+  } ],
+  "masteryThreshold" : 0
 } ]

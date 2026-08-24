@@ -20,6 +20,7 @@ import com.jjktbf.graphics.multiplayer.MatchWebSocketClient;
 import com.jjktbf.graphics.multiplayer.MultiplayerMatchService;
 import com.jjktbf.graphics.multiplayer.MultiplayerSession;
 import com.jjktbf.graphics.ui.CombatantPanel;
+import com.jjktbf.graphics.ui.AbilityStateMeter;
 import com.jjktbf.graphics.ui.MiraclesMeter;
 import com.jjktbf.graphics.ui.RatioMeter;
 import com.jjktbf.graphics.ui.battle.BattleUiAssets;
@@ -30,6 +31,7 @@ import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.model.character.Character;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.character.coded.MiraclesAbility;
@@ -47,6 +49,8 @@ import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
+import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.multiplayer.protocol.BattleEventState;
@@ -251,6 +255,7 @@ public class BattleScreen implements Screen, BattleView {
     private List<CombatantPanel> enemyPanels = List.of();
     private final MiraclesMeter miraclesMeter = new MiraclesMeter();
     private final RatioMeter ratioMeter = new RatioMeter();
+    private final AbilityStateMeter abilityStateMeter = new AbilityStateMeter();
     private Texture playerSprite;
     private Texture enemySprite;
     /** Per-side execution sprites in the same order as the local or online render roster. */
@@ -265,6 +270,8 @@ public class BattleScreen implements Screen, BattleView {
     private List<CharacterState> renderOnlineEnemyTeam = List.of();
     /** Event-synchronised local HP snapshots, keyed by combatant identity. */
     private final Map<BattleCombatant, LocalHpState> localHpStates =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<BattleCombatant, List<CodedAbilityState>> localAbilityStates =
         new java.util.concurrent.ConcurrentHashMap<>();
     private final Rectangle logBounds = new Rectangle();
     private final Rectangle nextRoundBounds = new Rectangle();
@@ -426,6 +433,9 @@ public class BattleScreen implements Screen, BattleView {
     /** Multiplayer resource playback for every displayed fighter, not just roster slot zero. */
     private final Map<OnlineCombatantKey, OnlineResourceState> onlineResourceStates =
         new HashMap<>();
+    /** Event-synchronised ability states for multiplayer playback. */
+    private final Map<OnlineCombatantKey, List<CodedAbilityState>> onlineAbilityStates =
+        new HashMap<>();
 
     public BattleScreen(JJKGame game, AssetLoader assets) {
         this(game, assets, BattleUiLayout.defaults(UiProfile.MAC));
@@ -457,7 +467,9 @@ public class BattleScreen implements Screen, BattleView {
         renderOnlinePlayerTeam = List.of();
         renderOnlineEnemyTeam = List.of();
         localHpStates.clear();
+        localAbilityStates.clear();
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         playerPanels = List.of();
         enemyPanels = List.of();
         playerTeamSprites = java.util.List.of();
@@ -483,7 +495,9 @@ public class BattleScreen implements Screen, BattleView {
         renderOnlinePlayerTeam = List.of();
         renderOnlineEnemyTeam = List.of();
         localHpStates.clear();
+        localAbilityStates.clear();
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
     }
 
     /** Associates local controller callbacks with the current battle run. */
@@ -563,7 +577,9 @@ public class BattleScreen implements Screen, BattleView {
         entranceAnimations.clear();
         presentedLocalFaints.clear();
         localHpStates.clear();
+        localAbilityStates.clear();
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         playbackEvents = List.of();
         playbackActionTicks = List.of();
         playbackRound = -1;
@@ -828,6 +844,7 @@ public class BattleScreen implements Screen, BattleView {
             if (playerPanel != null && faintAnimationFor(playerPanel) == null) {
                 miraclesMeter.draw(batch, assets.battleUi, assets.fontLarge);
                 ratioMeter.draw(batch, assets.battleUi, assets.fontLarge);
+                abilityStateMeter.draw(batch, assets.battleUi, assets.fontSmall);
             }
         }
         drawLog(sw, sh);
@@ -863,6 +880,7 @@ public class BattleScreen implements Screen, BattleView {
                 if (playerPanel != null && faintAnimationFor(playerPanel) == null) {
                     miraclesMeter.draw(batch, assets.battleUi, assets.fontLarge);
                     ratioMeter.draw(batch, assets.battleUi, assets.fontLarge);
+                    abilityStateMeter.draw(batch, assets.battleUi, assets.fontSmall);
                 }
             }
             if (SHOW_TICK_COUNTER) {
@@ -1947,6 +1965,7 @@ public class BattleScreen implements Screen, BattleView {
         postLocal(() -> {
             syncLocalBattlefield(state);
             syncLocalHpFromModel();
+            syncLocalAbilityStatesFromModel();
             initPanels();
             updatePanels();
             showLocalPreBattlePlanner(state);
@@ -2043,6 +2062,7 @@ public class BattleScreen implements Screen, BattleView {
                 List.of(combatant),
                 opponent == null ? List.of() : List.of(opponent));
             syncLocalHpFromModel();
+            syncLocalAbilityStatesFromModel();
             initPanels();
             awaitingBattleStart = false;
             awaitingNextRound = false;
@@ -2125,6 +2145,7 @@ public class BattleScreen implements Screen, BattleView {
         postLocal(() -> {
             syncLocalBattlefield(state);
             syncLocalHpFromModel();
+            syncLocalAbilityStatesFromModel();
             initPanels();
             awaitingBattleStart = false;
             awaitingNextRound = false;
@@ -2275,6 +2296,7 @@ public class BattleScreen implements Screen, BattleView {
                     }
                 });
             }
+            applyLocalAbilityEvent(e);
             if (hasLocalPlaybackEffect(e)) {
                 final CombatEvent ev = e;
                 // Apply this event's resource delta and enqueue any log line ON
@@ -2297,6 +2319,8 @@ public class BattleScreen implements Screen, BattleView {
                 // battle thread behind a blank screen. The lines still type
                 // out, they just don't block (see displayMessage).
                 if (executionUiActive && shouldLog(e)) waitForLogLine();
+            } else if (e.getCodedAbilityState() != null && !skipRoundRequested) {
+                postLocal(this::updatePanels);
             }
             if (e.getType() == CombatEvent.Type.COMBATANT_DEFEATED) {
                 if (skipRoundRequested) {
@@ -2837,16 +2861,12 @@ public class BattleScreen implements Screen, BattleView {
                     "SUMMON".equalsIgnoreCase(combatant.role())))
                 .toList();
             Map<String, Integer> ceCosts = new HashMap<>();
-            Map<String, String> moveRestrictions = new HashMap<>();
             List<Move> availableMoves = new ArrayList<>();
             for (MoveState moveState : character.knownMoves()) {
                 try {
                     Move move = toDisplayMove(moveState);
                     availableMoves.add(move);
                     ceCosts.put(move.getId(), moveState.effectiveCeCost());
-                    if (!moveState.available()) {
-                        moveRestrictions.put(move.getId(), moveState.restrictionReason());
-                    }
                 } catch (RuntimeException failure) {
                     addLogLine("Could not display move " + moveState.name() + ".");
                 }
@@ -2864,15 +2884,10 @@ public class BattleScreen implements Screen, BattleView {
                 ceBudget,
                 character.maxCe(),
                 findMiraclesState(character.codedAbilities()),
-                character.maxActiveSummons(),
-                (int) local.combatants().stream()
-                    .filter(BattleScreen::isActiveCombatant)
-                    .filter(candidate -> character.instanceId().equals(candidate.summonerId()))
-                    .count(),
-                moveRestrictions,
                 targets,
                 character.plan(),
-                allies));
+                allies,
+                character.codedAbilities()));
         }
         if (pages.isEmpty()) return;
         clearTransientAnimations();
@@ -2979,6 +2994,25 @@ public class BattleScreen implements Screen, BattleView {
                 null,
                 Map.of(),
                 null));
+        List<MoveEffectData> planningEffects = new ArrayList<>();
+        for (var transaction : state.boundedResourceTransactions()) {
+            MoveEffectData effect = AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                .createDefaultMoveEffect();
+            effect.effectId = "online-resource-" + planningEffects.size();
+            effect.trigger = MoveEffectTrigger.ON_START.name();
+            effect.sourceResourceKey = transaction.sourceResourceKey();
+            effect.sourceResourceAmount = transaction.sourceResourceAmount();
+            effect.targetResourceKey = transaction.targetResourceKey();
+            effect.targetResourceAmount = transaction.targetResourceAmount();
+            planningEffects.add(effect);
+        }
+        for (String definitionId : state.summonedCharacterIds()) {
+            MoveEffectData effect = AbilityEffectType.SUMMON_CHARACTER.createDefaultMoveEffect();
+            effect.effectId = "online-summon-" + planningEffects.size();
+            effect.trigger = MoveEffectTrigger.ON_FIRE.name();
+            effect.characterId = definitionId;
+            planningEffects.add(effect);
+        }
 
         Move.Builder builder = new Move.Builder(state.moveId())
             .name(state.name())
@@ -3008,6 +3042,7 @@ public class BattleScreen implements Screen, BattleView {
             .defenseTargetCount(TargetListSupport.moveStateDefenseTargetCount(state))
             .pairTargeting(TargetListSupport.moveStatePairTargeting(state))
             .freeMove(true);
+        if (!planningEffects.isEmpty()) builder.effects(planningEffects);
         if (TargetListSupport.moveStateAoeType(state) != null) {
             builder.aoeType(TargetListSupport.moveStateAoeType(state))
                 .aoeTargetCount(TargetListSupport.moveStateAoeTargetCount(state));
@@ -3377,6 +3412,13 @@ public class BattleScreen implements Screen, BattleView {
         boolean displayedPrimarySource = sourceKey != null
             && sourceKey.equals(onlineKey(multiplayerSetup.playerSide(), displayedOnlinePrimary(true)));
         CodedAbilityState codedAbilityState = event.codedAbilityState();
+        OnlineCombatantKey abilityOwnerKey = event.type() == BattleEventType.RESOURCE_CHANGED
+            && targetKey != null ? targetKey : sourceKey;
+        if (codedAbilityState != null && abilityOwnerKey != null) {
+            onlineAbilityStates.put(abilityOwnerKey, withAbilityState(
+                onlineAbilityStates.getOrDefault(abilityOwnerKey, List.of()),
+                codedAbilityState));
+        }
         if (displayedPrimarySource && event.sourceSide() == multiplayerSetup.playerSide()
             && codedAbilityState != null
             && MiraclesAbility.KEY.equals(codedAbilityState.key())) {
@@ -4028,6 +4070,7 @@ public class BattleScreen implements Screen, BattleView {
         if (!playerTeamSprites.isEmpty()) playerSprite = playerTeamSprites.get(0);
         if (!enemyTeamSprites.isEmpty()) enemySprite = enemyTeamSprites.get(0);
         localHpStates.remove(defeated);
+        localAbilityStates.remove(defeated);
         for (BattleCombatant combatant : players) {
             localHpStates.putIfAbsent(combatant,
                 new LocalHpState(combatant.getCurrentHp(), combatant.getMaxHp()));
@@ -4078,6 +4121,7 @@ public class BattleScreen implements Screen, BattleView {
         }
         localHpStates.putIfAbsent(summon,
             new LocalHpState(summon.getCurrentHp(), summon.getMaxHp()));
+        localAbilityStates.putIfAbsent(summon, summon.abilityStates());
         layoutExecutionUi(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         return true;
     }
@@ -4237,6 +4281,7 @@ public class BattleScreen implements Screen, BattleView {
 
     private void seedOnlineResourcesFromCurrentState() {
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         seedOnlineResourcesFromCurrentState(
             multiplayerSetup.playerSide(), renderOnlinePlayerTeam);
         seedOnlineResourcesFromCurrentState(
@@ -4248,13 +4293,16 @@ public class BattleScreen implements Screen, BattleView {
         List<CharacterState> combatants
     ) {
         for (CharacterState combatant : combatants) {
-            onlineResourceStates.put(onlineKey(side, combatant),
+            OnlineCombatantKey key = onlineKey(side, combatant);
+            onlineResourceStates.put(key,
                 OnlineResourceState.from(combatant));
+            onlineAbilityStates.put(key, combatant.codedAbilities());
         }
     }
 
     private void seedOnlineResourcesFromRoundStart(MatchState state) {
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         seedOnlineResourcesFromRoundStart(
             state, multiplayerSetup.playerSide(), renderOnlinePlayerTeam);
         seedOnlineResourcesFromRoundStart(
@@ -4281,7 +4329,24 @@ public class BattleScreen implements Screen, BattleView {
                 : new OnlineResourceState(
                     start.currentHp(), start.maxHp(), start.currentCe(), start.maxCe());
             onlineResourceStates.put(onlineKey(side, combatant), resources);
+            onlineAbilityStates.put(onlineKey(side, combatant), start == null
+                ? combatant.codedAbilities() : start.codedAbilities());
         }
+    }
+
+    private static List<CodedAbilityState> withAbilityState(
+        List<CodedAbilityState> states,
+        CodedAbilityState changed
+    ) {
+        List<CodedAbilityState> updated = new ArrayList<>(states == null ? List.of() : states);
+        for (int index = 0; index < updated.size(); index++) {
+            if (updated.get(index).key().equalsIgnoreCase(changed.key())) {
+                updated.set(index, changed);
+                return List.copyOf(updated);
+            }
+        }
+        updated.add(changed);
+        return List.copyOf(updated);
     }
 
     /** Restores pre-event resources when the server's tick-zero snapshot is post-resolution. */
@@ -4363,6 +4428,7 @@ public class BattleScreen implements Screen, BattleView {
 
         onlineResourceStates.put(onlineKey(side, combatant),
             OnlineResourceState.full(combatant));
+        onlineAbilityStates.put(onlineKey(side, combatant), combatant.codedAbilities());
         if (playerSide) {
             syncOnlineBattlefield(updated, renderOnlineEnemyTeam);
         } else {
@@ -4471,6 +4537,7 @@ public class BattleScreen implements Screen, BattleView {
             syncOnlineBattlefield(renderOnlinePlayerTeam, current);
         }
         onlineResourceStates.remove(defeated);
+        onlineAbilityStates.remove(defeated);
         clearTransientPanelReferences(oldPanel);
         if (playerSide) {
             CharacterState primary = displayedOnlinePrimary(true);
@@ -4800,6 +4867,7 @@ public class BattleScreen implements Screen, BattleView {
         playerPanel = playerPanels.isEmpty() ? null : playerPanels.get(0);
         remapFaintAnimationPanels();
         remapEntranceAnimationPanels();
+        updateDisplayedAbilityMeters();
 
         float miracleSize = Math.min(
             MiraclesMeter.sizeForViewport(height, textGeometryScale),
@@ -4820,6 +4888,22 @@ public class BattleScreen implements Screen, BattleView {
             ratioHeight,
             textGeometryScale
         );
+        float resourceWidth = Math.min(250f * textGeometryScale,
+            Math.max(170f * textGeometryScale, playerHud.width * 0.42f));
+        float resourceRowHeight = Math.min(38f * textGeometryScale,
+            Math.max(28f * textGeometryScale, playerHud.height * 0.24f));
+        float resourceHeight = abilityStateMeter.stateCount() == 0 ? 0f
+            : abilityStateMeter.stateCount() * (resourceRowHeight + 4f) - 4f;
+        float bespokeMeterWidth = 0f;
+        if (miraclesMeter.isVisible()) bespokeMeterWidth = miracleSize;
+        if (ratioMeter.isVisible()) bespokeMeterWidth = Math.max(bespokeMeterWidth, ratioWidth);
+        abilityStateMeter.setBounds(
+            Math.max(originX + margin, playerHud.x - bespokeMeterWidth
+                - (bespokeMeterWidth > 0f ? layout.meterHudGap : 0f)
+                - resourceWidth - layout.meterHudGap),
+            playerHud.y + (playerHud.height - resourceHeight) / 2f,
+            resourceWidth,
+            resourceRowHeight);
 
         if (unifiedWindows) {
             logBounds.set(windowsLogBounds());
@@ -5373,6 +5457,16 @@ public class BattleScreen implements Screen, BattleView {
         }
     }
 
+    private void syncLocalAbilityStatesFromModel() {
+        localAbilityStates.clear();
+        for (BattleCombatant combatant : renderPlayerTeam) {
+            localAbilityStates.put(combatant, combatant.abilityStates());
+        }
+        for (BattleCombatant combatant : renderEnemyTeam) {
+            localAbilityStates.put(combatant, combatant.abilityStates());
+        }
+    }
+
     /** Restores pre-batch HP when the field had to be bound after the model advanced. */
     private void rewindLocalHpEvents(List<CombatEvent> events) {
         for (int i = events.size() - 1; i >= 0; i--) {
@@ -5414,6 +5508,16 @@ public class BattleScreen implements Screen, BattleView {
                 new LocalHpState(Math.max(0, amount), current.maxHp());
             default -> current;
         });
+    }
+
+    private void applyLocalAbilityEvent(CombatEvent event) {
+        CodedAbilityState changed = event.getCodedAbilityState();
+        if (changed == null) return;
+        BattleCombatant owner = event.getType() == CombatEvent.Type.RESOURCE_CHANGED
+            && event.getTarget() != null ? event.getTarget() : event.getSource();
+        if (owner == null) return;
+        localAbilityStates.compute(owner, (ignored, states) ->
+            withAbilityState(states == null ? List.of() : states, changed));
     }
 
     private void refreshLocalFormSprite(CombatEvent event) {
@@ -5490,17 +5594,24 @@ public class BattleScreen implements Screen, BattleView {
         if (activePlannerStates != null) {
             miraclesMeter.setState(findMiraclesState(activePlannerStates));
             ratioMeter.setState(findRatioState(activePlannerStates));
+            abilityStateMeter.setStates(activePlannerStates);
             return;
         }
         if (mode == BattleMode.MULTIPLAYER) {
             miraclesMeter.setState(onlinePlayerMiracles);
             ratioMeter.setState(onlinePlayerRatio);
+            CharacterState displayedPlayer = displayedOnlinePrimary(true);
+            OnlineCombatantKey key = onlineKey(multiplayerSetup.playerSide(), displayedPlayer);
+            abilityStateMeter.setStates(displayedPlayer == null ? List.of()
+                : onlineAbilityStates.getOrDefault(key, displayedPlayer.codedAbilities()));
             return;
         }
         List<CodedAbilityState> primaryStates = renderPlayer == null
-            ? List.of() : renderPlayer.getCodedAbilities().states();
+            ? List.of() : localAbilityStates.getOrDefault(
+                renderPlayer, renderPlayer.abilityStates());
         miraclesMeter.setState(findMiraclesState(primaryStates));
         ratioMeter.setState(findRatioState(primaryStates));
+        abilityStateMeter.setStates(primaryStates);
     }
 
     /** Returns null outside Windows team planning so execution keeps its primary-fighter meters. */
@@ -5511,10 +5622,18 @@ public class BattleScreen implements Screen, BattleView {
 
         if (mode == BattleMode.MULTIPLAYER) {
             for (CharacterState combatant : renderOnlinePlayerTeam) {
-                if (actorId.equals(combatant.instanceId())) return combatant.codedAbilities();
+                if (actorId.equals(combatant.instanceId())) {
+                    return onlineAbilityStates.getOrDefault(
+                        onlineKey(multiplayerSetup.playerSide(), combatant),
+                        combatant.codedAbilities());
+                }
             }
             for (CharacterState combatant : renderOnlineEnemyTeam) {
-                if (actorId.equals(combatant.instanceId())) return combatant.codedAbilities();
+                if (actorId.equals(combatant.instanceId())) {
+                    PlayerSide enemySide = opposite(multiplayerSetup.playerSide());
+                    return onlineAbilityStates.getOrDefault(
+                        onlineKey(enemySide, combatant), combatant.codedAbilities());
+                }
             }
             return null;
         }
@@ -5522,13 +5641,13 @@ public class BattleScreen implements Screen, BattleView {
         for (BattleCombatant combatant : renderPlayerTeam) {
             CombatantId id = combatant.getInstanceId();
             if (id != null && actorId.equals(id.value())) {
-                return combatant.getCodedAbilities().states();
+                return localAbilityStates.getOrDefault(combatant, combatant.abilityStates());
             }
         }
         for (BattleCombatant combatant : renderEnemyTeam) {
             CombatantId id = combatant.getInstanceId();
             if (id != null && actorId.equals(id.value())) {
-                return combatant.getCodedAbilities().states();
+                return localAbilityStates.getOrDefault(combatant, combatant.abilityStates());
             }
         }
         return null;

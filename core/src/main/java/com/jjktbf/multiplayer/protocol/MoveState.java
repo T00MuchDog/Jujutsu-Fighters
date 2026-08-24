@@ -38,7 +38,8 @@ public record MoveState(
     int defenseTargetCount,
     String pairTargeting,
     String attackLaunchMode,
-    String attackLaunchMoveId
+    String attackLaunchMoveId,
+    List<BoundedResourceTransactionState> boundedResourceTransactions
 ) {
     public MoveState {
         tags = tags == null ? List.of() : List.copyOf(tags);
@@ -50,6 +51,50 @@ public record MoveState(
         pairTargeting = CombatantPairTargeting.fromName(pairTargeting).name();
         AttackLaunchMode launchMode = AttackLaunchMode.fromName(attackLaunchMode);
         attackLaunchMode = launchMode == null ? null : launchMode.name();
+        boundedResourceTransactions = boundedResourceTransactions == null
+            ? List.of() : List.copyOf(boundedResourceTransactions);
+    }
+
+    /** Source-compatible constructor for protocol-v19 callers. */
+    public MoveState(
+        String moveId,
+        String name,
+        String description,
+        String category,
+        List<String> tags,
+        PlanBoard board,
+        int basePower,
+        List<HitComponentState> hitComponents,
+        double baseAccuracy,
+        boolean neverMiss,
+        int apCost,
+        int unleashPoint,
+        boolean hasCeCost,
+        int baseCeCost,
+        int effectiveCeCost,
+        int minCeCost,
+        int maxCeCost,
+        int moveCap,
+        boolean available,
+        String restrictionReason,
+        String summonCharacterId,
+        List<String> summonedCharacterIds,
+        String aoeType,
+        int aoeTargetCount,
+        String commandMode,
+        String requiredTechniqueId,
+        String defenseTargeting,
+        int defenseTargetCount,
+        String pairTargeting,
+        String attackLaunchMode,
+        String attackLaunchMoveId
+    ) {
+        this(moveId, name, description, category, tags, board, basePower, hitComponents,
+            baseAccuracy, neverMiss, apCost, unleashPoint, hasCeCost, baseCeCost,
+            effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
+            summonCharacterId, summonedCharacterIds, aoeType, aoeTargetCount, commandMode,
+            requiredTechniqueId, defenseTargeting, defenseTargetCount, pairTargeting,
+            attackLaunchMode, attackLaunchMoveId, List.of());
     }
 
     /** Source-compatible constructor for callers predating hybrid launch metadata. */

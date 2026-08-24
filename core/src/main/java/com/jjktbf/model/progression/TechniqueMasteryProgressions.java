@@ -20,6 +20,10 @@ public final class TechniqueMasteryProgressions {
     public static final String AMOUNT = "amount";
     public static final String TICK = "tick";
     public static final String ROUND = "round";
+    public static final String RESOURCE_CAPACITY = "resourceCapacity";
+    public static final String RESOURCE_START_VALUE = "resourceStartValue";
+    public static final String SOURCE_RESOURCE_AMOUNT = "sourceResourceAmount";
+    public static final String TARGET_RESOURCE_AMOUNT = "targetResourceAmount";
 
     private TechniqueMasteryProgressions() {
     }

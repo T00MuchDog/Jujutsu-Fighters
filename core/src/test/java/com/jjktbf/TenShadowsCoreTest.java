@@ -155,9 +155,21 @@ class TenShadowsCoreTest {
         TeamBattlePlan teamPlan = new TeamBattlePlan(BattleTeamId.PLAYER, gridLength);
         teamPlan.put(summoner.getInstanceId(), actorPlan);
 
-        String error = teamPlan.validationError(state);
-        assertNotNull(error);
-        assertTrue(error.contains("Maximum active summons reached"));
+        assertNull(teamPlan.validationError(state),
+            "over-cap summon plans are no longer rejected at planning time");
+
+        summoner.setPlan(actorPlan);
+        summoner.setTimeline(actorPlan.toLegacyTimeline());
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+        List<CombatEvent> events = new CombatResolver(new SeededRandomSource(1L))
+            .resolveRound(state);
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_STUNNED
+                && event.getMove() == summonNue),
+            "the over-cap summon fails at its start tick instead");
+        assertFalse(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_FIRED
+                && event.getMove() == summonNue));
     }
 
     @Test

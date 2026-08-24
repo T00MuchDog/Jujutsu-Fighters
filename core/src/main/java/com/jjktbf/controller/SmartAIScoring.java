@@ -315,7 +315,7 @@ final class SmartAIScoring {
             power = Math.max(0.0, attacker.modifyBattleStat(BattleStatKey.POWER, power));
 
             double attackValue = component.getBasePower()
-                * attacker.getAbilityFlags().basePowerMultiplierFor(move)
+                * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
                 * power;
             double defense = Math.max(1.0, target.computeCurrentDefense(1));
             int damage = (int) Math.round(

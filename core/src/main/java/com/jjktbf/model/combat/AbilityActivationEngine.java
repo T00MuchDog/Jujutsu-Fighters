@@ -285,6 +285,7 @@ public final class AbilityActivationEngine {
             return AbilityTrigger.attackHit(owner, target, move, component, tick);
         }
         AbilityTrigger.Type type = trigger == MoveEffectTrigger.ON_FIRE
+            || trigger == MoveEffectTrigger.ON_START
             ? AbilityTrigger.Type.MOVE_USED : AbilityTrigger.Type.MOVE_BLOCKED;
         return AbilityTrigger.move(type, owner, target, move, tick);
     }
@@ -871,7 +872,8 @@ public final class AbilityActivationEngine {
                  GUARANTEE_NEXT_BLACK_FLASH, CANCEL_NEXT_MOVE,
                  TEMP_LOCK_MOVE_TAG -> {
                 for (BattleCombatant target : targets) {
-                    addRuntimeEffect(state, owner, target, effect, tick, events);
+                    addRuntimeEffect(
+                        state, owner, target, effect, tick, events, effect.refreshGroup);
                 }
             }
             case TAUNT -> {
@@ -901,6 +903,45 @@ public final class AbilityActivationEngine {
                         .build());
                 }
             }
+            case DEFINE_BOUNDED_RESOURCE -> {
+                for (BattleCombatant target : targets) {
+                    var resourceState = target.defineBoundedResource(
+                        effect.resourceKey,
+                        effect.resourceLabel,
+                        value(effect.resourceCapacity),
+                        value(effect.resourceStartValue));
+                    events.add(CombatEvent.of(CombatEvent.Type.RESOURCE_CHANGED)
+                        .source(owner).target(target).move(move)
+                        .componentIndex(effectComponentIndex).tick(tick)
+                        .codedAbilityState(resourceState)
+                        .message(resourceMessage(target, resourceState))
+                        .build());
+                }
+            }
+            case TRANSACT_BOUNDED_RESOURCE -> {
+                for (BattleCombatant target : targets) {
+                    BattleCombatant.BoundedResourceTransaction result =
+                        target.transactBoundedResources(
+                            effect.sourceResourceKey, value(effect.sourceResourceAmount),
+                            effect.targetResourceKey, value(effect.targetResourceAmount));
+                    if (!result.success()) {
+                        events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                            .source(owner).target(target).move(move)
+                            .componentIndex(effectComponentIndex).tick(tick)
+                            .message("The resource transaction failed.")
+                            .build());
+                        continue;
+                    }
+                    for (var resourceState : result.changedStates()) {
+                        events.add(CombatEvent.of(CombatEvent.Type.RESOURCE_CHANGED)
+                            .source(owner).target(target).move(move)
+                            .componentIndex(effectComponentIndex).tick(tick)
+                            .codedAbilityState(resourceState)
+                            .message(resourceMessage(target, resourceState))
+                            .build());
+                    }
+                }
+            }
             case STUN_CURRENT_ACTION -> {
                 for (BattleCombatant target : targets) {
                     if (!target.stunCurrentAction(tick)) continue;
@@ -917,7 +958,7 @@ public final class AbilityActivationEngine {
                  CE_COST_TO_MINIMUM, CE_COST_MULTIPLY, MOVE_ACCURACY_ADD,
                  MOVE_ACCURACY_MULTIPLY, OPPONENT_ACCURACY_ADD,
                  OPPONENT_ACCURACY_MULTIPLY, NEVER_MISS, NEVER_HIT, DAMAGE_MULTIPLY,
-                  MOVE_BASE_POWER_MULTIPLY, BF_CHANCE_ADD,
+                  MOVE_BASE_POWER_MULTIPLY, MOVE_BASE_POWER_SCALE_BY_STAT, BF_CHANCE_ADD,
                  MODIFY_DEFENSE, MODIFY_AP_BAR, LOCK_MOVE_TAG, COST_CE_PER_ROUND ->
                 addRuntimeEffect(state, owner, owner, effect, tick, events);
             case AUTO_STATUS_APPLY -> {
@@ -1293,6 +1334,14 @@ public final class AbilityActivationEngine {
         };
     }
 
+    private static String resourceMessage(
+        BattleCombatant target,
+        com.jjktbf.model.character.coded.CodedAbilityState resource
+    ) {
+        return target.getCharacter().getName() + "'s " + resource.displayName()
+            + " is now " + resource.currentValue() + "/" + resource.maximumValue() + ".";
+    }
+
     private static boolean statusPredicate(
         AbilityConditionData condition,
         BattleCombatant owner,
@@ -1318,7 +1367,7 @@ public final class AbilityActivationEngine {
         boolean atOrAbove
     ) {
         return anyActor(condition, owner, enemy, state, targetLocal, combatant ->
-            combatant.getCodedAbilities().state(condition.codedAbilityKey)
+            combatant.abilityState(condition.codedAbilityKey)
                 .map(codedState -> atOrAbove
                     ? codedState.currentValue() >= conditionAmount(condition, owner)
                     : codedState.currentValue() <= conditionAmount(condition, owner))

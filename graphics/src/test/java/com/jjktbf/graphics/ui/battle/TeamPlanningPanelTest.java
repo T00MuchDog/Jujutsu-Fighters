@@ -208,7 +208,6 @@ class TeamPlanningPanelTest {
             0,
             0,
             null,
-            Map.of(),
             List.of(
                 new PlanningPanel.TargetOption("enemy-1", "Enemy 1"),
                 new PlanningPanel.TargetOption("enemy-2", "Enemy 2")

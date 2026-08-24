@@ -482,6 +482,24 @@ public class EffectListEditor extends Table {
                 () -> masteryDecimalLiteral(type, effect.doubleValue));
         }
 
+        if (type.uses(AbilityEffectParameter.STAT_MULTIPLIER_CURVE)) {
+            TextField minimumMultiplier = nonNegativeDecimalField(effect.minimumStatMultiplier);
+            minimumMultiplier.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.minimumStatMultiplier = parseDouble(minimumMultiplier.getText());
+                }
+            });
+            addRow(fields, "Multiplier at scaled stat 10", minimumMultiplier);
+
+            TextField maximumMultiplier = nonNegativeDecimalField(effect.maximumStatMultiplier);
+            maximumMultiplier.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.maximumStatMultiplier = parseDouble(maximumMultiplier.getText());
+                }
+            });
+            addRow(fields, "Multiplier at scaled stat maximum", maximumMultiplier);
+        }
+
         if (type.uses(AbilityEffectParameter.MOVE_ID)) {
             SelectBox<String> moveBox = new DynamicSelectBox<>(skin, uiProfile);
             moveBox.setItems(moveReferenceLabels(effect.moveId));
@@ -627,7 +645,9 @@ public class EffectListEditor extends Table {
             String pairFirst = "Pair first";
             String pairSecond = "Pair second";
             String pairBoth = "Pair both";
-            if (moveEffectEditor) {
+            if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE) {
+                targetBox.setItems(self);
+            } else if (moveEffectEditor) {
                 targetBox.setItems(self, enemy, ally, both, selfAndAlly,
                     pairFirst, pairSecond, pairBoth);
             } else {
@@ -759,6 +779,72 @@ public class EffectListEditor extends Table {
             addRow(fields, "Uses (-1 = unlimited)", uses);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.USES,
                 () -> effect.uses == null ? 0 : effect.uses);
+        }
+
+        if (type.uses(AbilityEffectParameter.REFRESH_GROUP)) {
+            TextField group = textField(effect.refreshGroup);
+            group.addListener(onChange(() -> {
+                String value = group.getText().trim();
+                effect.refreshGroup = value.isEmpty() ? null : value;
+            }));
+            addRow(fields, "Refresh group (optional)", group);
+        }
+
+        if (type.uses(AbilityEffectParameter.RESOURCE_KEY)) {
+            TextField key = textField(effect.resourceKey);
+            key.addListener(onChange(() -> effect.resourceKey = key.getText().trim()));
+            addRow(fields, "Resource key", key);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_LABEL)) {
+            TextField label = textField(effect.resourceLabel);
+            label.addListener(onChange(() -> effect.resourceLabel = label.getText().trim()));
+            addRow(fields, "Display name", label);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_CAPACITY)) {
+            TextField capacity = nonNegativeIntegerField(effect.resourceCapacity);
+            capacity.addListener(onChange(() ->
+                effect.resourceCapacity = parseInteger(capacity.getText())));
+            addRow(fields, "Capacity", capacity);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.RESOURCE_CAPACITY,
+                () -> effect.resourceCapacity == null ? 0 : effect.resourceCapacity);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_START_VALUE)) {
+            TextField start = nonNegativeIntegerField(effect.resourceStartValue);
+            start.addListener(onChange(() ->
+                effect.resourceStartValue = parseInteger(start.getText())));
+            addRow(fields, "Starting value", start);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.RESOURCE_START_VALUE,
+                () -> effect.resourceStartValue == null ? 0 : effect.resourceStartValue);
+        }
+        if (type.uses(AbilityEffectParameter.SOURCE_RESOURCE)) {
+            TextField key = textField(effect.sourceResourceKey);
+            key.addListener(onChange(() -> effect.sourceResourceKey = key.getText().trim()));
+            addRow(fields, "Resource to spend (optional)", key);
+        }
+        if (type.uses(AbilityEffectParameter.SOURCE_RESOURCE_AMOUNT)) {
+            TextField amount = nonNegativeIntegerField(effect.sourceResourceAmount);
+            amount.addListener(onChange(() ->
+                effect.sourceResourceAmount = parseInteger(amount.getText())));
+            addRow(fields, "Spend amount", amount);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.SOURCE_RESOURCE_AMOUNT,
+                () -> effect.sourceResourceAmount == null ? 0 : effect.sourceResourceAmount);
+        }
+        if (type.uses(AbilityEffectParameter.TARGET_RESOURCE)) {
+            TextField key = textField(effect.targetResourceKey);
+            key.addListener(onChange(() -> effect.targetResourceKey = key.getText().trim()));
+            addRow(fields, "Resource to gain (optional)", key);
+        }
+        if (type.uses(AbilityEffectParameter.TARGET_RESOURCE_AMOUNT)) {
+            TextField amount = nonNegativeIntegerField(effect.targetResourceAmount);
+            amount.addListener(onChange(() ->
+                effect.targetResourceAmount = parseInteger(amount.getText())));
+            addRow(fields, "Gain amount", amount);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.TARGET_RESOURCE_AMOUNT,
+                () -> effect.targetResourceAmount == null ? 0 : effect.targetResourceAmount);
         }
 
         return fields;
@@ -903,10 +989,22 @@ public class EffectListEditor extends Table {
         table.add(actor).growX().row();
     }
 
+    private static ChangeListener onChange(Runnable action) {
+        return new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                action.run();
+            }
+        };
+    }
+
     private TextField integerField(Integer value) {
         TextField field = new HoverTextField(value == null ? "" : String.valueOf(value), skin);
         field.setTextFieldFilter((textField, character) -> Character.isDigit(character) || character == '-');
         return field;
+    }
+
+    private TextField textField(String value) {
+        return new HoverTextField(value == null ? "" : value, skin);
     }
 
     private TextField nonNegativeIntegerField(Integer value) {
@@ -968,6 +1066,12 @@ public class EffectListEditor extends Table {
                 summary.append(" | x").append(formatNumber(effect.doubleValue));
             }
         }
+        if (type.uses(AbilityEffectParameter.STAT_MULTIPLIER_CURVE)
+            && effect.minimumStatMultiplier != null && effect.maximumStatMultiplier != null) {
+            summary.append(" | x").append(formatNumber(effect.minimumStatMultiplier))
+                .append(" @ 10 -> x1 @ 80 -> x")
+                .append(formatNumber(effect.maximumStatMultiplier)).append(" @ max");
+        }
         if (type.uses(AbilityEffectParameter.MOVE_ID) && effect.moveId != null) {
             summary.append(" | ").append(moveReferenceLabel(effect.moveId));
         }
@@ -1017,6 +1121,26 @@ public class EffectListEditor extends Table {
         }
         if (type.uses(AbilityEffectParameter.USES)) {
             summary.append(" | ").append(effect.uses).append(" uses");
+        }
+        if (type.uses(AbilityEffectParameter.REFRESH_GROUP)
+            && effect.refreshGroup != null && !effect.refreshGroup.isBlank()) {
+            summary.append(" | refresh ").append(effect.refreshGroup);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_KEY)) {
+            summary.append(" | ").append(effect.resourceLabel)
+                .append(" [").append(effect.resourceKey).append("] ")
+                .append(effect.resourceStartValue).append('/')
+                .append(effect.resourceCapacity);
+        }
+        if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE) {
+            if (effect.sourceResourceAmount != null && effect.sourceResourceAmount > 0) {
+                summary.append(" | -").append(effect.sourceResourceAmount)
+                    .append(' ').append(effect.sourceResourceKey);
+            }
+            if (effect.targetResourceAmount != null && effect.targetResourceAmount > 0) {
+                summary.append(" | +").append(effect.targetResourceAmount)
+                    .append(' ').append(effect.targetResourceKey);
+            }
         }
         return summary.toString();
     }

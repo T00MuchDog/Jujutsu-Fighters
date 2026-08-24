@@ -2,16 +2,30 @@ package com.jjktbf.model.combat;
 
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.StatusEffect;
+import com.jjktbf.model.character.AbilityConditionData;
+import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectType;
+import com.jjktbf.model.character.AbilityEffectData;
+import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.progression.TechniqueMasteryResolver;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-/** Shared battle-time policy for whether an actor may currently select a move. */
+/**
+ * Shared battle-time policy for whether an actor's move would currently work.
+ * Planning is never gated on this: players may place any move on the timeline,
+ * and moves that would not work fail at their first tick instead. The policy
+ * remains the input for AI move selection and for the resolver's start-tick
+ * failure checks.
+ */
 public final class MoveAvailability {
 
     private MoveAvailability() { }
@@ -38,12 +52,45 @@ public final class MoveAvailability {
         Move move,
         List<Move> alreadyPlannedMoves
     ) {
+        return restrictionReason(state, actor, move, alreadyPlannedMoves, true);
+    }
+
+    /** Availability checks that do not depend on the actor's current bounded resources. */
+    public static String restrictionReasonWithoutBoundedResources(
+        BattleState state,
+        BattleCombatant actor,
+        Move move
+    ) {
+        return restrictionReason(state, actor, move, List.of(), false);
+    }
+
+    public static String restrictionReasonWithoutBoundedResources(
+        BattleState state,
+        BattleCombatant actor,
+        Move move,
+        List<Move> alreadyPlannedMoves
+    ) {
+        return restrictionReason(state, actor, move, alreadyPlannedMoves, false);
+    }
+
+    private static String restrictionReason(
+        BattleState state,
+        BattleCombatant actor,
+        Move move,
+        List<Move> alreadyPlannedMoves,
+        boolean checkBoundedResources
+    ) {
         if (actor == null || move == null) return "A valid actor and move are required.";
         if (actor.hasEffect(StatusEffectType.SLEEP)) {
             return "Cannot act while asleep.";
         }
         if (actor.getAbilityFlags().lockedMoveTags.stream().anyMatch(move::hasTag)) {
             return "Restricted by an active ability.";
+        }
+        if (checkBoundedResources) {
+            String resourceRestriction = boundedResourceRestrictionReason(
+                actor, move, alreadyPlannedMoves);
+            if (resourceRestriction != null) return resourceRestriction;
         }
         if (state != null) {
             String activeSummonRestriction = activeOwnedSummonRestrictionReason(
@@ -105,6 +152,215 @@ public final class MoveAvailability {
             }
         }
         return null;
+    }
+
+    /** Restriction contributed by guaranteed move-start resource transactions. */
+    public static String boundedResourceRestrictionReason(
+        BattleCombatant actor,
+        Move move,
+        List<Move> alreadyPlannedMoves
+    ) {
+        if (actor == null || move == null) return null;
+        Map<String, Integer> values = new LinkedHashMap<>();
+        Map<String, Integer> maximums = new LinkedHashMap<>();
+        if (alreadyPlannedMoves != null) {
+            for (Move planned : alreadyPlannedMoves) {
+                String reason = applyBoundedResourceTransactions(
+                    actor, planned, values, maximums);
+                if (reason != null) return reason;
+            }
+        }
+        return applyBoundedResourceTransactions(actor, move, values, maximums);
+    }
+
+    /** Validate a complete chronological move sequence against the actor's current resources. */
+    public static String boundedResourcePlanRestrictionReason(
+        BattleCombatant actor,
+        List<Move> plannedMoves
+    ) {
+        if (actor == null) return null;
+        Map<String, Integer> values = new LinkedHashMap<>();
+        Map<String, Integer> maximums = new LinkedHashMap<>();
+        if (plannedMoves == null) return null;
+        for (Move planned : plannedMoves) {
+            String reason = applyBoundedResourceTransactions(
+                actor, planned, values, maximums);
+            if (reason != null) return reason;
+        }
+        return null;
+    }
+
+    /** Client-side equivalent using bounded-resource states supplied by the server. */
+    public static String boundedResourceRestrictionReason(
+        List<CodedAbilityState> states,
+        Move move,
+        List<Move> alreadyPlannedMoves
+    ) {
+        if (move == null) return null;
+        Map<String, Integer> values = new LinkedHashMap<>();
+        Map<String, Integer> maximums = new LinkedHashMap<>();
+        if (states != null) {
+            for (CodedAbilityState state : states) {
+                if (state == null || state.key() == null || state.key().isBlank()) continue;
+                String key = normalizedResourceKey(state.key());
+                values.put(key, state.currentValue());
+                maximums.put(key, state.maximumValue());
+            }
+        }
+        if (alreadyPlannedMoves != null) {
+            for (Move planned : alreadyPlannedMoves) {
+                String reason = applyBoundedResourceTransactions(
+                    null, planned, values, maximums);
+                if (reason != null) return reason;
+            }
+        }
+        return applyBoundedResourceTransactions(null, move, values, maximums);
+    }
+
+    /** Validate a complete chronological move sequence from wire-visible resource states. */
+    public static String boundedResourcePlanRestrictionReason(
+        List<CodedAbilityState> states,
+        List<Move> plannedMoves
+    ) {
+        Map<String, Integer> values = new LinkedHashMap<>();
+        Map<String, Integer> maximums = new LinkedHashMap<>();
+        if (states != null) {
+            for (CodedAbilityState state : states) {
+                if (state == null || state.key() == null || state.key().isBlank()) continue;
+                String key = normalizedResourceKey(state.key());
+                values.put(key, state.currentValue());
+                maximums.put(key, state.maximumValue());
+            }
+        }
+        if (plannedMoves == null) return null;
+        for (Move planned : plannedMoves) {
+            String reason = applyBoundedResourceTransactions(
+                null, planned, values, maximums);
+            if (reason != null) return reason;
+        }
+        return null;
+    }
+
+    private static String applyBoundedResourceTransactions(
+        BattleCombatant actor,
+        Move move,
+        Map<String, Integer> values,
+        Map<String, Integer> maximums
+    ) {
+        for (AbilityEffectData transaction : boundedResourceTransactions(actor, move)) {
+            int sourceAmount = transaction.sourceResourceAmount == null
+                ? 0 : transaction.sourceResourceAmount;
+            int targetAmount = transaction.targetResourceAmount == null
+                ? 0 : transaction.targetResourceAmount;
+            String sourceKey = sourceAmount == 0
+                ? null : normalizedResourceKey(transaction.sourceResourceKey);
+            String targetKey = targetAmount == 0
+                ? null : normalizedResourceKey(transaction.targetResourceKey);
+            if (sourceAmount > 0 && sourceKey == null) {
+                return "Required resource is not available.";
+            }
+            if (targetAmount > 0 && targetKey == null) {
+                return "The resource transaction cannot be completed.";
+            }
+            Integer sourceValue = sourceKey == null ? null
+                : resourceValue(actor, sourceKey, values, maximums);
+            Integer targetValue = targetKey == null ? null
+                : resourceValue(actor, targetKey, values, maximums);
+            if (sourceKey != null && sourceValue == null) {
+                return "Required resource is not available: " + sourceKey + ".";
+            }
+            if (targetKey != null && targetValue == null) {
+                return "The resource transaction cannot be completed.";
+            }
+            if (sourceValue != null && sourceValue < sourceAmount) {
+                return "Not enough " + sourceKey + ".";
+            }
+            if (sourceKey != null && sourceKey.equals(targetKey)) {
+                long finalValue = (long) sourceValue - sourceAmount + targetAmount;
+                if (finalValue < 0L || finalValue > maximums.get(sourceKey)) {
+                    return "The resource transaction cannot be completed.";
+                }
+                values.put(sourceKey, (int) finalValue);
+                continue;
+            }
+            if (targetValue != null && (long) targetValue + targetAmount > maximums.get(targetKey)) {
+                return "The resource transaction cannot be completed.";
+            }
+            if (sourceKey != null) values.put(sourceKey, sourceValue - sourceAmount);
+            if (targetKey != null) values.put(targetKey, targetValue + targetAmount);
+        }
+        return null;
+    }
+
+    private static Integer resourceValue(
+        BattleCombatant actor,
+        String key,
+        Map<String, Integer> values,
+        Map<String, Integer> maximums
+    ) {
+        if (values.containsKey(key)) return values.get(key);
+        if (actor == null) return null;
+        var current = actor.boundedResourceValue(key);
+        if (current.isEmpty()) return null;
+        var state = actor.abilityState(key).orElseThrow();
+        values.put(key, current.getAsInt());
+        maximums.put(key, state.maximumValue());
+        return current.getAsInt();
+    }
+
+    public static List<AbilityEffectData> guaranteedBoundedResourceTransactions(
+        BattleCombatant actor,
+        Move move
+    ) {
+        if (actor == null || move == null || !move.usesUnifiedEffects()) return List.of();
+        int mastery = TechniqueMasteryResolver.masteryOf(actor);
+        return move.effectsFor(MoveEffectTrigger.ON_START, -1).stream()
+            .filter(effect -> AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.name()
+                .equalsIgnoreCase(effect.type))
+            .filter(effect -> guaranteed(effect, mastery))
+            .map(effect -> TechniqueMasteryResolver.resolve(effect, mastery))
+            .toList();
+    }
+
+    private static List<AbilityEffectData> boundedResourceTransactions(
+        BattleCombatant actor,
+        Move move
+    ) {
+        if (actor != null) return guaranteedBoundedResourceTransactions(actor, move);
+        if (move == null || !move.usesUnifiedEffects()) return List.of();
+        return move.effectsFor(MoveEffectTrigger.ON_START, -1).stream()
+            .filter(effect -> AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.name()
+                .equalsIgnoreCase(effect.type))
+            .filter(effect -> guaranteed(effect, 0))
+            .map(effect -> (AbilityEffectData) effect)
+            .toList();
+    }
+
+    private static boolean guaranteed(MoveEffectData effect, int mastery) {
+        return effect.resolvedActivationChance(mastery) >= 1.0
+            && guaranteedCondition(effect.condition);
+    }
+
+    private static boolean guaranteedCondition(AbilityConditionData condition) {
+        if (condition == null) return true;
+        AbilityConditionType type;
+        try {
+            type = AbilityConditionType.fromName(condition.type);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        if (type == AbilityConditionType.ALWAYS) return true;
+        if (condition.children == null || condition.children.isEmpty()) return false;
+        if (type == AbilityConditionType.ALL) {
+            return condition.children.stream().allMatch(MoveAvailability::guaranteedCondition);
+        }
+        return type == AbilityConditionType.ANY
+            && condition.children.stream().anyMatch(MoveAvailability::guaranteedCondition);
+    }
+
+    private static String normalizedResourceKey(String key) {
+        return key == null || key.isBlank()
+            ? null : key.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     /** Every shikigami definition this move may summon, in effect order. */

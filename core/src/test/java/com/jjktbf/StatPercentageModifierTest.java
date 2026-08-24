@@ -101,6 +101,26 @@ class StatPercentageModifierTest {
         assertNull(battle.magnitude);
     }
 
+    @Test
+    void oneRoundSpeedPercentBuffSurvivesUntilTheNextRoundCompletes() {
+        BattleCombatant combatant = combatant();
+        int baseSpeed = combatant.getEffectiveStats().getSpeed();
+        AbilityEffectData effect = statPercent(StatKey.SPEED, 0.20);
+        effect.durationRounds = 1;
+        effect.durationTicks = 0;
+
+        combatant.addRuntimeAbilityEffect(
+            effect, 1, com.jjktbf.model.combat.BattleState.Phase.RESOLUTION,
+            "SPEED_REFRESH");
+        int boostedSpeed = combatant.getEffectiveStats().getSpeed();
+        assertTrue(boostedSpeed > baseSpeed);
+
+        combatant.tickRoundEffects(1);
+        assertEquals(boostedSpeed, combatant.getEffectiveStats().getSpeed());
+        combatant.tickRoundEffects(2);
+        assertEquals(baseSpeed, combatant.getEffectiveStats().getSpeed());
+    }
+
     private static AbilityEffectData statPercent(StatKey stat, double fraction) {
         AbilityEffectData effect = AbilityEffectType.TEMP_STAT_PERCENT.createDefault();
         effect.stat = stat.fieldName;

@@ -12,6 +12,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Align;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
+import com.jjktbf.graphics.ui.AbilityStateMeter;
 import com.jjktbf.graphics.ui.MiraclesMeter;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
@@ -26,7 +27,6 @@ import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.BattleState;
-import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
@@ -102,12 +102,11 @@ public class PlanningPanel {
     private final com.jjktbf.model.character.AbilityApplicator.AbilityFlags abilityFlags;
     private final Map<String, Integer> authoritativeCeCosts;
     private final BattleCombatant localCombatant;
-    private final Integer maxActiveSummons;
-    private final int activeSummonCount;
     private BattleState localBattleState;
-    private Map<String, String> moveRestrictions = Map.of();
+    private List<CodedAbilityState> abilityStates = List.of();
     private final BattleUiAssets ui;
     private final MiraclesMeter miraclesMeter = new MiraclesMeter();
+    private final AbilityStateMeter abilityStateMeter = new AbilityStateMeter();
     private BattleUiLayout.Planner layout = new BattleUiLayout.Planner();
     private boolean windowsTextGeometry;
 
@@ -231,10 +230,8 @@ public class PlanningPanel {
         this.abilityFlags = combatant.getAbilityFlags();
         this.authoritativeCeCosts = Map.of();
         this.localCombatant = combatant;
-        this.maxActiveSummons = combatant.getAbilityFlags().maxActiveSummons;
-        this.activeSummonCount = 0;
         this.ui = ui;
-        miraclesMeter.setState(findMiraclesState(combatant.getCodedAbilities().states()));
+        setAbilityStates(combatant.abilityStates());
         knownMoves.addAll(combatant.getCharacter().getKnownMoves());
         createBars();
         resize(screenWidth, screenHeight);
@@ -274,7 +271,7 @@ public class PlanningPanel {
         float screenHeight
     ) {
         this(gridLength, null, List.of(), moves, ceCosts, apBudget, ceBudget, maxCe,
-            miraclesState, null, 0, ui, screenWidth, screenHeight);
+            miraclesState, ui, screenWidth, screenHeight);
     }
 
     public PlanningPanel(
@@ -287,26 +284,6 @@ public class PlanningPanel {
         int ceBudget,
         int maxCe,
         CodedAbilityState miraclesState,
-        BattleUiAssets ui,
-        float screenWidth,
-        float screenHeight
-    ) {
-        this(gridLength, actorId, targetOptions, moves, ceCosts, apBudget, ceBudget, maxCe,
-            miraclesState, null, 0, ui, screenWidth, screenHeight);
-    }
-
-    public PlanningPanel(
-        int gridLength,
-        String actorId,
-        List<TargetOption> targetOptions,
-        List<Move> moves,
-        Map<String, Integer> ceCosts,
-        int apBudget,
-        int ceBudget,
-        int maxCe,
-        CodedAbilityState miraclesState,
-        Integer maxActiveSummons,
-        int activeSummonCount,
         BattleUiAssets ui,
         float screenWidth,
         float screenHeight
@@ -321,10 +298,9 @@ public class PlanningPanel {
         this.abilityFlags = null;
         this.authoritativeCeCosts = ceCosts == null ? Map.of() : Map.copyOf(ceCosts);
         this.localCombatant = null;
-        this.maxActiveSummons = maxActiveSummons;
-        this.activeSummonCount = Math.max(0, activeSummonCount);
         this.ui = ui;
         miraclesMeter.setState(miraclesState);
+        abilityStateMeter.setStates(miraclesState == null ? List.of() : List.of(miraclesState));
         if (moves != null) knownMoves.addAll(moves);
         createBars();
         resize(screenWidth, screenHeight);
@@ -342,8 +318,9 @@ public class PlanningPanel {
         this.localBattleState = state;
     }
 
-    public void setMoveRestrictions(Map<String, String> restrictions) {
-        this.moveRestrictions = restrictions == null ? Map.of() : Map.copyOf(restrictions);
+    public void setAbilityStates(List<CodedAbilityState> states) {
+        abilityStates = states == null ? List.of() : List.copyOf(states);
+        abilityStateMeter.setStates(abilityStates);
     }
 
     /** Applies profile metrics and immediately reflows the production planner. */
@@ -570,7 +547,9 @@ public class PlanningPanel {
             .map(CombatantId::new)
             .distinct()
             .toList();
-        return place(move, startTick, ceCost, targets);
+        ActionSegment segment = plan.place(move, startTick, ceCost);
+        if (segment != null) setTargets(segment, targets);
+        return segment;
     }
 
     private ActionSegment place(Move move, int startTick, int ceCost, List<CombatantId> targets) {
@@ -708,6 +687,17 @@ public class PlanningPanel {
         } else {
             miraclesBounds.set(0f, 0f, 0f, 0f);
         }
+        if (abilityStateMeter.stateCount() > 0) {
+            float resourceWidth = Math.min(280f, Math.max(180f, width * 0.24f));
+            float resourceRowHeight = Math.max(26f, scaled(30f));
+            float resourceHeight = abilityStateMeter.stateCount() * (resourceRowHeight + 4f) - 4f;
+            float resourceY = boardAreaTop - layout.miraclesTopGap - resourceHeight;
+            abilityStateMeter.setBounds(
+                headerBounds.x, resourceY, resourceWidth, resourceRowHeight);
+            boardAreaTop = resourceY - layout.miraclesBottomGap;
+        } else {
+            abilityStateMeter.setBounds(0f, 0f, 0f, 0f);
+        }
 
         // The bar grows with the fight's AP tier while keeping the dot spacing
         // fixed: dot spacing is calibrated so the original DEFAULT_GRID_LENGTH
@@ -763,6 +753,7 @@ public class PlanningPanel {
         offenseLabelBounds.set(388f, 483f - verticalShift, 126f, 40f);
         defenseLabelBounds.set(388f, 389f - verticalShift, 126f, 40f);
         miraclesBounds.set(0f, 0f, 0f, 0f);
+        abilityStateMeter.setBounds(0f, 0f, 0f, 0f);
 
         paletteBounds.set(18f, 18f, 2524f, 344f - verticalShift);
         buildPalette(1);
@@ -967,8 +958,7 @@ public class PlanningPanel {
                 card.setDisplayDescription(MoveDescriptionVariables.resolve(
                     move, TechniqueMasteryResolver.masteryOf(localCombatant)));
             }
-            boolean restricted = isMoveRestricted(move);
-            card.setDisabled(readOnly || restricted || !plan.canPlace(move, ceCost(move)));
+            card.setDisabled(readOnly || !plan.canPlace(move, ceCost(move)));
             card.setHovered(i == hoveredCard);
             card.setDragging(move == draggingMove);
         }
@@ -993,19 +983,6 @@ public class PlanningPanel {
         }
     }
 
-    private boolean isMoveRestricted(Move move) {
-        if (moveRestrictions.containsKey(move.getId())) return true;
-        List<Move> alreadyPlannedMoves = plan.allSegments().stream()
-            .map(ActionSegment::getMove)
-            .toList();
-        if (localCombatant != null) {
-            return MoveAvailability.restrictionReason(
-                localBattleState, localCombatant, move, alreadyPlannedMoves) != null;
-        }
-        return MoveAvailability.plannedSummonRestrictionReason(
-            move, alreadyPlannedMoves, maxActiveSummons, activeSummonCount) != null;
-    }
-
     public void draw(Batch batch, BitmapFont font, BitmapFont titleFont, BitmapFont statFont) {
         updatePaletteScrollAnimation(Gdx.graphics.getDeltaTime());
         refresh();
@@ -1016,6 +993,7 @@ public class PlanningPanel {
             drawHeader(batch, font, titleFont);
             drawActorName(batch, font);
             miraclesMeter.draw(batch, ui, statFont);
+            abilityStateMeter.draw(batch, ui, statFont);
         }
         drawTimelineLabel(batch, font, offensiveBar, "OFFENSE", ui.offenseIcon, BattleUiAssets.OFFENSE);
         drawTimelineLabel(batch, font, defensiveBar, "DEFENSE", ui.defenseIcon, BattleUiAssets.DEFENSE);
@@ -1691,7 +1669,7 @@ public class PlanningPanel {
             List<CombatantId> targets = draggingSegment == null
                 ? defaultTargets(move) : originalTargets;
             boolean droppedOnTimeline = barFor(draggingBoard).getBounds().contains(dragMouseX, dragMouseY);
-            ActionSegment placed = isMoveRestricted(move) ? null : clickingMoveCard
+            ActionSegment placed = clickingMoveCard
                 ? placeFirstFit(move, ceCost(move), targets)
                 : droppedOnTimeline && snapValid
                     ? place(move, draggingTick, ceCost(move), targets) : null;
@@ -1829,7 +1807,6 @@ public class PlanningPanel {
             }
             draggingTick = availableTick > 0 ? availableTick : requestedTick;
             snapValid = availableTick > 0
-                && !isMoveRestricted(move)
                 && plan.canPlace(move, ceCost(move));
         }
 

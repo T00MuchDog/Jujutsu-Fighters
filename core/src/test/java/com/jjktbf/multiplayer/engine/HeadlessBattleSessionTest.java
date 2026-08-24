@@ -17,6 +17,8 @@ import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
+import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
 import com.jjktbf.multiplayer.protocol.BattleEventType;
@@ -270,6 +272,38 @@ class HeadlessBattleSessionTest {
         assertFalse(result.accepted());
         assertEquals("MOVE_CAP_REACHED", result.error().code());
         assertEquals(before, session.snapshot());
+    }
+
+    @Test
+    void authoritativeResourceValidationUsesChronologicalPlacementOrder() {
+        Move convert = resourceMove("CONVERT", "SUPPLY", 1, "CHARGE", 1);
+        Move spend = resourceMove("SPEND", "CHARGE", 1, null, 0);
+        Ability resources = boundedResourceAbility();
+        CharacterStats stats = new CharacterStats.Builder().build();
+        Character playerOne = new SorcererCharacter(
+            "character-1", "Character One", stats, null,
+            List.of(convert, spend), List.of(resources));
+        Move opponentMove = physicalAttack("OPPONENT_MOVE", 1, true);
+        Character playerTwo = new SorcererCharacter(
+            "character-2", "Character Two", stats, null, List.of(opponentMove));
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One", playerOne, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", playerTwo, PlayerSide.PLAYER_TWO),
+            112L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK);
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+
+        CommandResult result = session.applyCommand(
+            "player-1",
+            command(session, "out-of-order-resource-plan",
+                new PlanPlacement(spend.getId(), 2, PLAYER_ONE_ID, List.of()),
+                new PlanPlacement(convert.getId(), 1, PLAYER_ONE_ID, List.of())));
+
+        assertTrue(result.accepted());
     }
 
     @Test
@@ -1335,6 +1369,52 @@ class HeadlessBattleSessionTest {
             .aoeType(aoeType)
             .aoeTargetCount(targetCount)
             .freeMove(true)
+            .build();
+    }
+
+    private static Ability boundedResourceAbility() {
+        AbilityEffectData supply = AbilityEffectType.DEFINE_BOUNDED_RESOURCE.createDefault();
+        supply.resourceKey = "SUPPLY";
+        supply.resourceLabel = "Supply";
+        supply.resourceCapacity = 1;
+        supply.resourceStartValue = 1;
+        AbilityEffectData charge = AbilityEffectType.DEFINE_BOUNDED_RESOURCE.createDefault();
+        charge.resourceKey = "CHARGE";
+        charge.resourceLabel = "Charge";
+        charge.resourceCapacity = 1;
+        charge.resourceStartValue = 0;
+        AbilityData data = new AbilityData();
+        data.id = "RESOURCES";
+        data.name = "Resources";
+        data.category = "PASSIVE";
+        data.sourceType = "CHARACTER";
+        data.effects = List.of(supply, charge);
+        return new Ability(data);
+    }
+
+    private static Move resourceMove(
+        String id,
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        MoveEffectData effect = AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            .createDefaultMoveEffect();
+        effect.effectId = "effect-000000";
+        effect.trigger = MoveEffectTrigger.ON_START.name();
+        effect.sourceResourceKey = sourceKey;
+        effect.sourceResourceAmount = sourceAmount;
+        effect.targetResourceKey = targetKey;
+        effect.targetResourceAmount = targetAmount;
+        return new Move.Builder(id)
+            .name(id)
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY))
+            .apCost(1)
+            .unleashPoint(1)
+            .freeMove(true)
+            .effects(List.of(effect))
             .build();
     }
 

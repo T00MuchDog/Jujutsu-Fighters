@@ -266,7 +266,7 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(19, joined.protocolVersion());
+        assertEquals(20, joined.protocolVersion());
         assertEquals(42L, joined.stateVersion());
         assertEquals(1_700_000_060_000L, messages.get(6).disconnectDeadline());
         assertEquals(1_700_000_090_000L, joined.state().planningDeadline());

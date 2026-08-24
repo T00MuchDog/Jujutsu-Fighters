@@ -60,6 +60,12 @@ public class AbilityEffectData {
     /** Double parameter: multiply factor, BF chance addition, damage factor. */
     public Double doubleValue;
 
+    /** Multiplier at the game's minimum scaled stat for a stat-scaling curve. */
+    public Double minimumStatMultiplier;
+
+    /** Multiplier at the game's maximum scaled stat for a stat-scaling curve. */
+    public Double maximumStatMultiplier;
+
     // ── Move filtering ────────────────────────────────────────────────────────
     /** Move tag name to filter on (e.g. "PHYSICAL", "INNATE_TECHNIQUE"). Null = all moves. */
     public String moveTag;
@@ -112,6 +118,34 @@ public class AbilityEffectData {
     /** Number of times a consumable effect may be used. -1 means unlimited. */
     public Integer uses;
 
+    /** Optional key that replaces an existing timed effect from the same group. */
+    public String refreshGroup;
+
+    // ── Generic bounded resources ─────────────────────────────────────────────
+    /** Stable case-insensitive key for a resource definition. */
+    public String resourceKey;
+
+    /** Player-facing name for a resource definition. */
+    public String resourceLabel;
+
+    /** Maximum value for a resource definition. */
+    public Integer resourceCapacity;
+
+    /** Initial value for a resource definition. */
+    public Integer resourceStartValue;
+
+    /** Resource consumed by an atomic transaction. */
+    public String sourceResourceKey;
+
+    /** Amount consumed from {@link #sourceResourceKey}. */
+    public Integer sourceResourceAmount;
+
+    /** Resource increased by an atomic transaction. */
+    public String targetResourceKey;
+
+    /** Amount added to {@link #targetResourceKey}. */
+    public Integer targetResourceAmount;
+
     /** Optional per-field CTM formulas or benchmark tables. */
     public Map<String, TechniqueMasteryProgressionData> masteryProgression;
 
@@ -140,6 +174,8 @@ public class AbilityEffectData {
         this.stat = source.stat;
         this.intValue = source.intValue;
         this.doubleValue = source.doubleValue;
+        this.minimumStatMultiplier = source.minimumStatMultiplier;
+        this.maximumStatMultiplier = source.maximumStatMultiplier;
         this.moveTag = source.moveTag;
         this.moveId = source.moveId;
         this.abilityId = source.abilityId;
@@ -155,6 +191,15 @@ public class AbilityEffectData {
         this.magnitude = source.magnitude;
         this.perTickRemovalChance = source.perTickRemovalChance;
         this.uses = source.uses;
+        this.refreshGroup = source.refreshGroup;
+        this.resourceKey = source.resourceKey;
+        this.resourceLabel = source.resourceLabel;
+        this.resourceCapacity = source.resourceCapacity;
+        this.resourceStartValue = source.resourceStartValue;
+        this.sourceResourceKey = source.sourceResourceKey;
+        this.sourceResourceAmount = source.sourceResourceAmount;
+        this.targetResourceKey = source.targetResourceKey;
+        this.targetResourceAmount = source.targetResourceAmount;
         this.masteryProgression = TechniqueMasteryProgressions.copy(source.masteryProgression);
     }
 
@@ -262,6 +307,8 @@ public class AbilityEffectData {
             + (stat        != null ? " stat=" + stat : "")
             + (intValue    != null ? " int=" + intValue : "")
             + (doubleValue != null ? " dbl=" + doubleValue : "")
+            + (minimumStatMultiplier != null ? " minStat=x" + minimumStatMultiplier : "")
+            + (maximumStatMultiplier != null ? " maxStat=x" + maximumStatMultiplier : "")
             + (moveTag     != null ? " tag=" + moveTag : "")
             + (moveId      != null ? " move=" + moveId : "")
             + (abilityId   != null ? " ability=" + abilityId : "")

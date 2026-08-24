@@ -1000,8 +1000,8 @@
     "id" : "node-000000",
     "contentType" : "MOVE",
     "contentId" : "000092",
-    "x" : 80.0,
-    "y" : 260.0,
+    "x" : 68.0,
+    "y" : 275.0,
     "prerequisites" : [ {
       "type" : "MASTERY",
       "minimum" : 0
@@ -1010,13 +1010,9 @@
     "id" : "node-000001",
     "contentType" : "MOVE",
     "contentId" : "000093",
-    "x" : 400.0,
-    "y" : 260.0,
+    "x" : 242.99988,
+    "y" : 486.00003,
     "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000000",
-      "attached" : true
-    }, {
       "type" : "MASTERY",
       "minimum" : 10
     } ]
@@ -1024,11 +1020,135 @@
     "id" : "node-000002",
     "contentType" : "MOVE",
     "contentId" : "000095",
-    "x" : 720.0,
-    "y" : 260.0,
+    "x" : 456.0,
+    "y" : 361.99994,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 20
+    } ]
+  }, {
+    "id" : "node-000003",
+    "contentType" : "MOVE",
+    "contentId" : "000094",
+    "x" : 454.99963,
+    "y" : 223.00005,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 30
+    } ]
+  }, {
+    "id" : "node-000004",
+    "contentType" : "MOVE",
+    "contentId" : "000096",
+    "x" : 684.0001,
+    "y" : 501.0,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 40
+    } ]
+  }, {
+    "id" : "node-000005",
+    "contentType" : "MOVE",
+    "contentId" : "000097",
+    "x" : 766.0001,
+    "y" : 289.99997,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 50
+    } ]
+  }, {
+    "id" : "node-000006",
+    "contentType" : "MOVE",
+    "contentId" : "000098",
+    "x" : 1009.0002,
+    "y" : 408.00003,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 60
+    } ]
+  }, {
+    "id" : "node-000007",
+    "contentType" : "MOVE",
+    "contentId" : "000099",
+    "x" : 1343.9998,
+    "y" : 291.9999,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 65
+    }, {
+      "type" : "NODE",
+      "nodeId" : "node-000006",
+      "attached" : true
+    } ]
+  }, {
+    "id" : "node-000008",
+    "contentType" : "ABILITY",
+    "contentId" : "000046",
+    "x" : 1682.0,
+    "y" : 292.99997,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 70
+    } ]
+  }, {
+    "id" : "node-000009",
+    "contentType" : "MOVE",
+    "contentId" : "000100",
+    "x" : 1009.99976,
+    "y" : 163.00003,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 80
+    } ]
+  }, {
+    "id" : "node-000010",
+    "contentType" : "MOVE",
+    "contentId" : "000101",
+    "x" : 451.0,
+    "y" : 82.000046,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 40
+    }, {
+      "type" : "NODE",
+      "nodeId" : "node-000003",
+      "attached" : true
+    } ]
+  } ]
+}, {
+  "id" : "000005",
+  "name" : "Blood Manipulation",
+  "description" : "An inherited Kamo clan technique that controls prepared blood for physical enhancement, binding projectiles, slicing attacks, and high-pressure ranged strikes.",
+  "skillTree" : [ {
+    "id" : "node-000000",
+    "contentType" : "ABILITY",
+    "contentId" : "000048",
+    "x" : 40.0,
+    "y" : 325.0,
+    "prerequisites" : [ ]
+  }, {
+    "id" : "node-000001",
+    "contentType" : "MOVE",
+    "contentId" : "000104",
+    "x" : 360.0,
+    "y" : 175.0,
     "prerequisites" : [ {
       "type" : "NODE",
-      "nodeId" : "node-000001",
+      "nodeId" : "node-000000",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 0
+    } ]
+  }, {
+    "id" : "node-000002",
+    "contentType" : "MOVE",
+    "contentId" : "000105",
+    "x" : 360.0,
+    "y" : 475.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000000",
       "attached" : true
     }, {
       "type" : "MASTERY",
@@ -1037,9 +1157,9 @@
   }, {
     "id" : "node-000003",
     "contentType" : "MOVE",
-    "contentId" : "000094",
-    "x" : 1040.0,
-    "y" : 260.0,
+    "contentId" : "000106",
+    "x" : 700.0,
+    "y" : 500.0,
     "prerequisites" : [ {
       "type" : "NODE",
       "nodeId" : "node-000002",
@@ -1051,100 +1171,48 @@
   }, {
     "id" : "node-000004",
     "contentType" : "MOVE",
-    "contentId" : "000096",
-    "x" : 1360.0,
-    "y" : 260.0,
-    "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000003",
-      "attached" : true
-    }, {
-      "type" : "MASTERY",
-      "minimum" : 40
-    } ]
-  }, {
-    "id" : "node-000005",
-    "contentType" : "MOVE",
-    "contentId" : "000097",
-    "x" : 1680.0,
-    "y" : 260.0,
-    "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000004",
-      "attached" : true
-    }, {
-      "type" : "MASTERY",
-      "minimum" : 50
-    } ]
-  }, {
-    "id" : "node-000006",
-    "contentType" : "MOVE",
-    "contentId" : "000098",
-    "x" : 2000.0,
-    "y" : 260.0,
-    "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000005",
-      "attached" : true
-    }, {
-      "type" : "MASTERY",
-      "minimum" : 60
-    } ]
-  }, {
-    "id" : "node-000007",
-    "contentType" : "MOVE",
-    "contentId" : "000099",
-    "x" : 2320.0,
-    "y" : 260.0,
-    "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000006",
-      "attached" : true
-    }, {
-      "type" : "MASTERY",
-      "minimum" : 65
-    } ]
-  }, {
-    "id" : "node-000008",
-    "contentType" : "ABILITY",
-    "contentId" : "000046",
-    "x" : 2640.0,
-    "y" : 260.0,
-    "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000007",
-      "attached" : true
-    }, {
-      "type" : "MASTERY",
-      "minimum" : 70
-    } ]
-  }, {
-    "id" : "node-000009",
-    "contentType" : "MOVE",
-    "contentId" : "000100",
-    "x" : 2960.0,
-    "y" : 260.0,
-    "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000008",
-      "attached" : true
-    }, {
-      "type" : "MASTERY",
-      "minimum" : 80
-    } ]
-  }, {
-    "id" : "node-000010",
-    "contentType" : "MOVE",
-    "contentId" : "000101",
-    "x" : 1040.0,
-    "y" : 520.0,
+    "contentId" : "000107",
+    "x" : 700.0,
+    "y" : 150.0,
     "prerequisites" : [ {
       "type" : "NODE",
       "nodeId" : "node-000001",
       "attached" : true
     }, {
       "type" : "MASTERY",
-      "minimum" : 40
+      "minimum" : 45
+    } ]
+  }, {
+    "id" : "node-000005",
+    "contentType" : "MOVE",
+    "contentId" : "000108",
+    "x" : 1050.0,
+    "y" : 325.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000003",
+      "attached" : true
+    }, {
+      "type" : "NODE",
+      "nodeId" : "node-000004",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 55
+    } ]
+  }, {
+    "id" : "node-000006",
+    "contentType" : "MOVE",
+    "contentId" : "000109",
+    "x" : 1400.0,
+    "y" : 325.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000005",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 70
     } ]
   } ]
 } ]

@@ -31,6 +31,7 @@ import com.jjktbf.model.move.MoveRepository;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.TechniqueRepository;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.text.MoveDescriptionVariables;
 
 import java.io.IOException;
@@ -755,7 +756,7 @@ public class CharacterSelectScreen implements Screen {
         drawStats(character, rightX, rightWidth, contentTop, statsRowHeight, detailFont);
         float descriptionTop = contentTop - STAT_LABELS.length * statsRowHeight
             - (windowsLayout ? 21f : 14f);
-        drawDescription(character.description, rightX, rightWidth, descriptionTop, infoBottom, detailFont);
+        drawDescription(displayDescription(character), rightX, rightWidth, descriptionTop, infoBottom, detailFont);
 
         drawLearnedMoves(moves, innerLeft, contentBottom, innerWidth, movesPanelHeight);
     }
@@ -780,7 +781,7 @@ public class CharacterSelectScreen implements Screen {
         if (compactLayout && character.description != null && !character.description.isBlank()) {
             assets.fontSmall.setColor(BattleUiAssets.MUTED);
             assets.fontSmall.draw(batch,
-                fitOrEllipsize(assets.fontSmall, character.description, innerWidth),
+                fitOrEllipsize(assets.fontSmall, displayDescription(character), innerWidth),
                 innerLeft,
                 innerTop - 36f);
         }
@@ -956,7 +957,7 @@ public class CharacterSelectScreen implements Screen {
             font.setColor(BattleUiAssets.MUTED);
             font.draw(batch, "CHARACTER PROFILE", x, descriptionTop);
             drawWindowsWrappedText(
-                character.description,
+                displayDescription(character),
                 x,
                 descriptionTop - 32f,
                 descriptionWidth,
@@ -1375,6 +1376,16 @@ public class CharacterSelectScreen implements Screen {
         return character.vitality + character.strength + character.durability + character.speed
             + character.combatAbility + character.cursedEnergyReserves + character.cursedEnergyEfficiency
             + character.cursedEnergyOutput + character.jujutsuSkill + character.cursedTechniqueMastery;
+    }
+
+    /**
+     * Display copy for a character blurb: resolves {@code *move:id*} /
+     * {@code *ability:id*} reference tokens against the loaded repositories so
+     * roster text never shows raw tokens or stale names.
+     */
+    private String displayDescription(CharacterData character) {
+        return ContentNameTokens.resolve(character.description,
+            CharacterData.descriptionNameLookup(moveRepo, abilityRepo));
     }
 
     private void drawDescription(String description, float x, float width, float topY, float bottomY,

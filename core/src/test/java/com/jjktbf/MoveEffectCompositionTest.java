@@ -9,6 +9,7 @@ import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.SorcererCharacter;
+import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.RatioAbility;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.AbilityActivationEngine;
@@ -18,6 +19,9 @@ import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.RandomSource;
+import com.jjktbf.model.move.AttackLaunchMode;
+import com.jjktbf.model.move.DefenseTiming;
+import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveData;
@@ -63,6 +67,32 @@ class MoveEffectCompositionTest {
     }
 
     @Test
+    void canonicalSimpleDomainUsesGenericParryCounter() throws IOException {
+        List<MoveData> moves = MAPPER.readValue(movesPath().toFile(), new TypeReference<>() { });
+        MoveData simpleDomain = moves.stream()
+            .filter(move -> "000026".equals(move.id))
+            .findFirst().orElseThrow();
+
+        assertEquals(DefenseType.PARRY.name(), simpleDomain.defenseType);
+        assertEquals(1, simpleDomain.potency);
+        assertEquals(DefenseTiming.REACTION.name(), simpleDomain.defenseTiming);
+        assertEquals(1, simpleDomain.defenseUses);
+        assertTrue(simpleDomain.blockAffectedTags == null || simpleDomain.blockAffectedTags.isEmpty());
+        assertEquals(AttackLaunchMode.ON_DEFENCE.name(), simpleDomain.attackLaunchMode);
+        assertEquals("000025", simpleDomain.attackLaunchMoveId);
+        assertNotNull(simpleDomain.attackLaunchCondition);
+        assertEquals(AbilityConditionType.MOVE_TAG_USED.name(),
+            simpleDomain.attackLaunchCondition.type);
+        assertEquals(AbilityConditionActor.ENEMY.name(),
+            simpleDomain.attackLaunchCondition.actor);
+        assertEquals(MoveTag.MELEE.name(), simpleDomain.attackLaunchCondition.moveTag);
+        MoveEffectData activation = simpleDomain.effects.stream()
+            .filter(effect -> "NEW_SHADOW_STYLE".equals(effect.codedAbilityKey))
+            .findFirst().orElseThrow();
+        assertNull(activation.codedTarget);
+    }
+
+    @Test
     void utilityTagCombinesWithOtherPurposesWithoutChangingTheDerivedCategory() {
         // Hybrid DEFENSIVE+UTILITY: stays defensive, on-fire rows remain in the
         // unified effect list under the ON_FIRE trigger.
@@ -80,6 +110,8 @@ class MoveEffectCompositionTest {
         coded.codedAbilityKey = "NEW_SHADOW_STYLE";
         coded.codedAction = "ACTIVATE_SIMPLE_DOMAIN";
         coded.codedTarget = "000027";
+        CodedAbilityRegistry.prepareMoveEffect(coded);
+        assertNull(coded.codedTarget);
         coded.target = AbilityEffectTarget.SELF.name();
         coded.trigger = MoveEffectTrigger.ON_FIRE.name();
         simpleDomain.effects = new java.util.ArrayList<>(List.of(coded));

@@ -69,10 +69,10 @@ public class Ability {
                 throw new IllegalArgumentException(
                     "Move-only effect in ability '" + name + "': " + type.displayName());
             }
-            if (!type.uses(AbilityEffectParameter.DURATION)) continue;
+            if (!type.uses(AbilityEffectParameter.DURATION, effect)) continue;
             int rounds = effect.durationRounds == null ? -1 : effect.durationRounds;
             int ticks = effect.durationTicks == null ? 0 : effect.durationTicks;
-            if (type.uses(AbilityEffectParameter.STATUS_TYPE)) {
+            if (type.uses(AbilityEffectParameter.STATUS_TYPE, effect)) {
                 StatusEffectType status;
                 try {
                     status = StatusEffectType.fromName(effect.stringValue);

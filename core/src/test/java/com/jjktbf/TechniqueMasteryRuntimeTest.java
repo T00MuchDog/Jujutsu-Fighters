@@ -35,12 +35,16 @@ class TechniqueMasteryRuntimeTest {
 
     @Test
     void genericEffectsAndEveryConditionNumberUseIntegerAuthoredUnits() {
-        AbilityEffectData percent = AbilityEffectType.HEAL_HP_PERCENT.createDefault();
+        AbilityEffectData percent = AbilityEffectType.HEAL_HP.createDefault();
+        percent.valueMode = AbilityEffectType.ValueMode.PERCENT.name();
+        AbilityEffectType.HEAL_HP.prepare(percent);
         percent.masteryProgression = Map.of(
             TechniqueMasteryProgressions.DOUBLE_VALUE, formula("ctm / 2"));
         assertEquals(0.4, TechniqueMasteryResolver.resolve(percent, 80).doubleValue);
 
-        AbilityEffectData decimalPoints = AbilityEffectType.BATTLE_STAT_ADD.createDefault();
+        AbilityEffectData decimalPoints = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        decimalPoints.statType = AbilityEffectType.StatType.BATTLE.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(decimalPoints);
         decimalPoints.masteryProgression = Map.of(
             TechniqueMasteryProgressions.DOUBLE_VALUE, formula("ctm / 10"));
         assertEquals(8.0, TechniqueMasteryResolver.resolve(decimalPoints, 80).doubleValue);

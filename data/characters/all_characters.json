@@ -45,7 +45,7 @@
 }, {
   "id" : "000002",
   "name" : "Miwa Kasumi",
-  "description" : "A diligent swordswoman without an innate cursed technique. Miwa combines disciplined sword combat with New Shadow Style, holding Simple Domain until an opponent commits to an attack.",
+  "description" : "A diligent swordswoman without an innate cursed technique. Miwa combines disciplined sword combat with *ability:000005*, holding *move:000026* until an opponent commits to an attack.",
   "spriteAsset" : "assets/sprites/characters/miwa_frontsprite.png",
   "equippedWeaponTypes" : [ "KATANA" ],
   "equippedCursedToolIds" : [ ],
@@ -86,7 +86,7 @@
 }, {
   "id" : "000004",
   "name" : "Megumi Fushiguro (Fearsome Womb)",
-  "description" : "A first-year sorcerer beginning to wield the Ten Shadows Technique, summoning shikigami through shadows and directing them alongside his own attacks.",
+  "description" : "A first-year sorcerer beginning to wield the *ability:000013*, summoning shikigami through shadows and directing them alongside his own attacks.",
   "spriteAsset" : "assets/sprites/characters/megumi_frontsprite.png",
   "innateTechniqueName" : "Ten Shadows",
   "vitality" : 45,
@@ -127,7 +127,7 @@
 }, {
   "id" : "000006",
   "name" : "Megumi Fushiguro (Kyoto Goodwill Event)",
-  "description" : "A more experienced Megumi who combines close combat, fluid shadow movement, stronger shikigami, and both Totality and Well's Unknown Abyss to pressure opponents from every range.",
+  "description" : "A more experienced Megumi who combines close combat, *move:000048*, stronger shikigami, and both *ability:000019* and *ability:000032* to pressure opponents from every range.",
   "spriteAsset" : "assets/sprites/characters/megumi_frontsprite.png",
   "innateTechniqueName" : "Ten Shadows",
   "vitality" : 55,
@@ -237,7 +237,7 @@
 }, {
   "id" : "000011",
   "name" : "Great Serpent Orochi",
-  "description" : "A massive serpentine shikigami that coils around prey before closing in with a devouring lunge.",
+  "description" : "A massive serpentine shikigami that coils around prey before closing in with *move:000058*.",
   "spriteAsset" : "assets/sprites/shikigami/GreatSerpentOrochi_frontsprite.png",
   "type" : "SHIKIGAMI",
   "directlySelectable" : false,
@@ -259,7 +259,7 @@
 }, {
   "id" : "000012",
   "name" : "Divine Dog Totality",
-  "description" : "A Divine Dog empowered through Totality, concentrating inherited strength into overwhelming speed and claws.",
+  "description" : "A Divine Dog empowered through *ability:000019*, concentrating inherited strength into overwhelming speed and claws.",
   "spriteAsset" : "assets/sprites/shikigami/DivineDogTotality_frontsprite.png",
   "type" : "SHIKIGAMI",
   "directlySelectable" : false,
@@ -303,7 +303,7 @@
 }, {
   "id" : "000014",
   "name" : "Toad/Nue Fusion",
-  "description" : "A temporary fusion of Toad and Nue summoned through Well's Unknown Abyss — a winged swarm that binds enemies from above. Weaker than a Totality, it may be destroyed without losing its component shikigami.",
+  "description" : "A temporary fusion of *ability:000025* and *ability:000024* summoned through *ability:000032* — a winged swarm that binds enemies from above. Weaker than a *ability:000019*, it may be destroyed without losing its component shikigami.",
   "spriteAsset" : "assets/sprites/shikigami/ToadNueFusion_frontsprite.png",
   "type" : "SHIKIGAMI",
   "directlySelectable" : false,
@@ -327,7 +327,7 @@
 }, {
   "id" : "000015",
   "name" : "Toge Inumaki",
-  "description" : "A second-year sorcerer who channels Cursed Speech through the markings around his mouth, forcing commands upon everyone who hears him while enduring the technique's recoil.",
+  "description" : "A second-year sorcerer who channels *ability:000030* through the markings around his mouth, forcing commands upon everyone who hears him while enduring the technique's recoil.",
   "spriteAsset" : "assets/sprites/characters/inumaki_frontsprite.png",
   "innateTechniqueName" : "Cursed Speech",
   "equippedWeaponTypes" : [ ],
@@ -370,7 +370,7 @@
 }, {
   "id" : "000017",
   "name" : "Panda (Kyoto Goodwill Event)",
-  "description" : "A self-sustaining abrupt-mutation cursed corpse created by Masamichi Yaga. Panda's balanced core combines exceptional toughness and intelligence with two compatible sibling cores, though only Gorilla is available during the Kyoto Goodwill Event.",
+  "description" : "A self-sustaining abrupt-mutation cursed corpse created by Masamichi Yaga. Panda's balanced core combines exceptional toughness and intelligence with two compatible sibling cores, though only *ability:000038* is available during the Kyoto Goodwill Event.",
   "spriteAsset" : "assets/sprites/characters/panda_frontsprite.png",
   "type" : "CURSED_CORPSE",
   "directlySelectable" : true,
@@ -393,7 +393,7 @@
 }, {
   "id" : "000018",
   "name" : "Panda (Gorilla Core)",
-  "description" : "Panda's power-oriented Gorilla core. It overwhelms opponents with greater strength and speed and can transmit a Drumming Beat through their guard, but burns cursed energy rapidly.",
+  "description" : "Panda's power-oriented *ability:000038*. It overwhelms opponents with greater strength and speed and can channel *move:000087* through their guard, but burns cursed energy rapidly.",
   "spriteAsset" : "assets/sprites/characters/pandaGorilla_frontsprite.png",
   "type" : "CURSED_CORPSE",
   "directlySelectable" : false,
@@ -455,8 +455,8 @@
   "jujutsuSkill" : 95,
   "combatAbility" : 90,
   "cursedTechniqueMastery" : 95,
-  "moveIds" : [ "000000", "000001", "000013", "000027", "000028", "000102", "000103", "000104", "000019", "000105", "000106", "000107", "000108", "000109" ],
-  "availableMoveIds" : [ "000000", "000001", "000013", "000019", "000027", "000028", "000102", "000103", "000104", "000105", "000106", "000107", "000108", "000109" ],
+  "moveIds" : [ "000000", "000001", "000013", "000027", "000028", "000102", "000103", "000019", "000104", "000105", "000106", "000107", "000108" ],
+  "availableMoveIds" : [ "000000", "000001", "000013", "000019", "000027", "000028", "000102", "000103", "000104", "000105", "000106", "000107", "000108" ],
   "abilityIds" : [ "000048" ],
   "availableAbilityIds" : [ "000048" ]
 } ]

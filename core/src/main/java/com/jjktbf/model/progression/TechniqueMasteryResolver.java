@@ -9,7 +9,7 @@ import com.jjktbf.model.move.StatusEffect;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Resolves authored per-field progressions into concrete battle-time values. */
+/** Resolves authored per-field stat progressions into concrete battle-time values. */
 public final class TechniqueMasteryResolver {
 
     private TechniqueMasteryResolver() {
@@ -23,77 +23,92 @@ public final class TechniqueMasteryResolver {
     }
 
     public static AbilityEffectData resolve(AbilityEffectData source, int mastery) {
-        if (source == null || source.masteryProgression == null
-            || source.masteryProgression.isEmpty()) {
+        return resolve(source, source == null ? null : source.masteryProgression, mastery,
+            TechniqueMasteryProgressions.CTM_VARIABLE);
+    }
+
+    /** Resolve an effect against a named stat progression without mutating its authored data. */
+    public static AbilityEffectData resolve(
+        AbilityEffectData source,
+        Map<String, TechniqueMasteryProgressionData> progressions,
+        int progressionValue,
+        String variableName
+    ) {
+        if (source == null || progressions == null || progressions.isEmpty()) {
             return source;
         }
         AbilityEffectData resolved = source.copy();
         AbilityEffectType type = AbilityEffectType.fromName(source.type);
-        Map<String, TechniqueMasteryProgressionData> values = source.masteryProgression;
+        Map<String, TechniqueMasteryProgressionData> values = progressions;
         if (source.intValue != null) {
             resolved.intValue = TechniqueMasteryProgressions.resolve(
-                values, TechniqueMasteryProgressions.INT_VALUE, source.intValue, mastery);
+                values, TechniqueMasteryProgressions.INT_VALUE, source.intValue,
+                progressionValue, variableName);
         }
         if (source.doubleValue != null) {
-            TechniqueMasteryProgressionData progression = values.get(
+            TechniqueMasteryProgressionData fieldProgression = values.get(
                 TechniqueMasteryProgressions.DOUBLE_VALUE);
-            if (progression != null) {
-                int authored = progression.resolve(mastery);
-                resolved.doubleValue = type == AbilityEffectType.BATTLE_STAT_ADD
+            if (fieldProgression != null) {
+                int authored = fieldProgression.resolve(progressionValue, variableName);
+                resolved.doubleValue = type.storesDecimalAsPoints(source)
                     ? (double) authored : authored / 100.0;
             }
         }
         if (source.durationRounds != null) {
             resolved.durationRounds = TechniqueMasteryProgressions.resolve(
-                values, TechniqueMasteryProgressions.DURATION_ROUNDS,
-                source.durationRounds, mastery);
+                values, TechniqueMasteryProgressions.DURATION_ROUNDS, source.durationRounds,
+                progressionValue, variableName);
         }
         if (source.durationTicks != null) {
             resolved.durationTicks = TechniqueMasteryProgressions.resolve(
-                values, TechniqueMasteryProgressions.DURATION_TICKS,
-                source.durationTicks, mastery);
+                values, TechniqueMasteryProgressions.DURATION_TICKS, source.durationTicks,
+                progressionValue, variableName);
         }
         if (source.magnitude != null) {
-            TechniqueMasteryProgressionData progression = values.get(
+            TechniqueMasteryProgressionData fieldProgression = values.get(
                 TechniqueMasteryProgressions.MAGNITUDE);
-            if (progression != null) resolved.magnitude = (double) progression.resolve(mastery);
+            if (fieldProgression != null) {
+                resolved.magnitude = (double) fieldProgression.resolve(
+                    progressionValue, variableName);
+            }
         }
         if (source.perTickRemovalChance != null) {
-            resolved.perTickRemovalChance = resolvePercent(
+            resolved.perTickRemovalChance = TechniqueMasteryProgressions.resolvePercent(
                 values, TechniqueMasteryProgressions.PER_TICK_REMOVAL_CHANCE,
-                source.perTickRemovalChance, mastery);
+                source.perTickRemovalChance, progressionValue, variableName);
         }
         if (source.uses != null) {
             resolved.uses = TechniqueMasteryProgressions.resolve(
-                values, TechniqueMasteryProgressions.USES, source.uses, mastery);
+                values, TechniqueMasteryProgressions.USES, source.uses,
+                progressionValue, variableName);
         }
         if (source.codedStackCount != null) {
             resolved.codedStackCount = TechniqueMasteryProgressions.resolve(
                 values, TechniqueMasteryProgressions.CODED_STACK_COUNT,
-                source.codedStackCount, mastery);
+                source.codedStackCount, progressionValue, variableName);
         }
         if (source.resourceCapacity != null) {
             resolved.resourceCapacity = TechniqueMasteryProgressions.resolve(
                 values, TechniqueMasteryProgressions.RESOURCE_CAPACITY,
-                source.resourceCapacity, mastery);
+                source.resourceCapacity, progressionValue, variableName);
         }
         if (source.resourceStartValue != null) {
             resolved.resourceStartValue = TechniqueMasteryProgressions.resolve(
                 values, TechniqueMasteryProgressions.RESOURCE_START_VALUE,
-                source.resourceStartValue, mastery);
+                source.resourceStartValue, progressionValue, variableName);
         }
         if (source.sourceResourceAmount != null) {
             resolved.sourceResourceAmount = TechniqueMasteryProgressions.resolve(
                 values, TechniqueMasteryProgressions.SOURCE_RESOURCE_AMOUNT,
-                source.sourceResourceAmount, mastery);
+                source.sourceResourceAmount, progressionValue, variableName);
         }
         if (source.targetResourceAmount != null) {
             resolved.targetResourceAmount = TechniqueMasteryProgressions.resolve(
                 values, TechniqueMasteryProgressions.TARGET_RESOURCE_AMOUNT,
-                source.targetResourceAmount, mastery);
+                source.targetResourceAmount, progressionValue, variableName);
         }
         resolved.codedParameters = resolveCodedParameters(
-            source.codedParameters, values, mastery);
+            source.codedParameters, values, progressionValue, variableName);
         return resolved;
     }
 
@@ -129,7 +144,8 @@ public final class TechniqueMasteryResolver {
             return StatusEffect.coded(
                 source.getCodedAbilityKey(), source.getCodedAction(), source.getCodedTarget(),
                 stackCount,
-                resolveCodedParameters(source.getCodedParameters(), values, mastery),
+                resolveCodedParameters(source.getCodedParameters(), values, mastery,
+                    TechniqueMasteryProgressions.CTM_VARIABLE),
                 source.getMasteryProgression());
         }
         int rounds = TechniqueMasteryProgressions.resolve(
@@ -181,7 +197,8 @@ public final class TechniqueMasteryResolver {
     private static Map<String, Integer> resolveCodedParameters(
         Map<String, Integer> parameters,
         Map<String, TechniqueMasteryProgressionData> progressions,
-        int mastery
+        int progressionValue,
+        String variableName
     ) {
         if ((parameters == null || parameters.isEmpty())
             && (progressions == null || progressions.isEmpty())) {
@@ -192,7 +209,7 @@ public final class TechniqueMasteryResolver {
         if (progressions == null) return resolved;
         for (Map.Entry<String, TechniqueMasteryProgressionData> entry : progressions.entrySet()) {
             if (isGenericField(entry.getKey()) || entry.getValue() == null) continue;
-            resolved.put(entry.getKey(), entry.getValue().resolve(mastery));
+            resolved.put(entry.getKey(), entry.getValue().resolve(progressionValue, variableName));
         }
         return resolved;
     }

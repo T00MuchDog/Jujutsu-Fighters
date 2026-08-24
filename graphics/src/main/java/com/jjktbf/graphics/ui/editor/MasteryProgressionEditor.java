@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.jjktbf.graphics.ui.DynamicSelectBox;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.progression.TechniqueMasteryProgressionData;
+import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,7 +23,7 @@ import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
-/** Per-field formula/benchmark editor with a live CTM 0..300 preview. */
+/** Per-field formula/benchmark editor with a live bounded-stat preview. */
 public final class MasteryProgressionEditor extends Table {
 
     private final String field;
@@ -33,6 +34,8 @@ public final class MasteryProgressionEditor extends Table {
     private final Skin skin;
     private final UiProfile uiProfile;
     private final boolean windowsLayout;
+    private final String statLabel;
+    private final String variableName;
     private final Container<Actor> details = new Container<>();
 
     public MasteryProgressionEditor(
@@ -44,6 +47,21 @@ public final class MasteryProgressionEditor extends Table {
         UiProfile uiProfile,
         Skin skin
     ) {
+        this(field, literalValue, getter, setter, onDirty, uiProfile, skin,
+            "CTM", TechniqueMasteryProgressions.CTM_VARIABLE);
+    }
+
+    public MasteryProgressionEditor(
+        String field,
+        IntSupplier literalValue,
+        Supplier<Map<String, TechniqueMasteryProgressionData>> getter,
+        Consumer<Map<String, TechniqueMasteryProgressionData>> setter,
+        Runnable onDirty,
+        UiProfile uiProfile,
+        Skin skin,
+        String statLabel,
+        String variableName
+    ) {
         super(skin);
         this.field = field;
         this.literalValue = literalValue;
@@ -53,13 +71,15 @@ public final class MasteryProgressionEditor extends Table {
         this.uiProfile = uiProfile;
         this.windowsLayout = uiProfile == UiProfile.WINDOWS;
         this.skin = skin;
+        this.statLabel = statLabel;
+        this.variableName = variableName;
         defaults().left().pad(3).growX();
         rebuild();
     }
 
     private void rebuild() {
         clearChildren();
-        CheckBox enabled = new CheckBox(" Scale this value with CTM", skin);
+        CheckBox enabled = new CheckBox(" Scale this value with " + statLabel, skin);
         enabled.setChecked(progression() != null);
         enabled.addListener(change(() -> {
             if (enabled.isChecked()) {
@@ -114,12 +134,14 @@ public final class MasteryProgressionEditor extends Table {
             Label preview = previewLabel(data);
             formula.addListener(change(() -> {
                 data.formula = formula.getText();
-                preview.setText(previewText(data));
+                preview.setText(previewText(data, variableName, statLabel));
                 onDirty.run();
             }));
             addRow(table, "Formula", formula);
             Label hint = new Label(
-                "Use ctm, integers, + - * / %, parentheses, min, max, and clamp. Result floors to an integer.",
+                "Use " + variableName
+                    + ", integers, + - * / %, parentheses, min, max, and clamp. "
+                    + "Result floors to an integer.",
                 skin, "small");
             hint.setColor(skin.get("text-dim", Color.class));
             hint.setWrap(true);
@@ -146,16 +168,16 @@ public final class MasteryProgressionEditor extends Table {
             mastery.addListener(change(() -> {
                 Integer parsed = parseInteger(mastery.getText());
                 if (parsed != null) benchmark.mastery = parsed;
-                preview.setText(previewText(data));
+                preview.setText(previewText(data, variableName, statLabel));
                 onDirty.run();
             }));
             value.addListener(change(() -> {
                 Integer parsed = parseInteger(value.getText());
                 if (parsed != null) benchmark.value = parsed;
-                preview.setText(previewText(data));
+                preview.setText(previewText(data, variableName, statLabel));
                 onDirty.run();
             }));
-            row.add(new Label("CTM", skin)).padRight(3);
+            row.add(new Label(statLabel, skin)).padRight(3);
             row.add(mastery).width(windowsLayout ? 105f : 70f).padRight(6);
             row.add(new Label("Value", skin)).padRight(3);
             row.add(value).width(windowsLayout ? 135f : 90f);
@@ -186,18 +208,27 @@ public final class MasteryProgressionEditor extends Table {
     }
 
     private Label previewLabel(TechniqueMasteryProgressionData data) {
-        Label label = new Label(previewText(data), skin, "small");
+        Label label = new Label(previewText(data, variableName, statLabel), skin, "small");
         label.setWrap(true);
         return label;
     }
 
     static String previewText(TechniqueMasteryProgressionData data) {
-        String error = data == null ? "Progression is missing." : data.validationError();
+        return previewText(data, TechniqueMasteryProgressions.CTM_VARIABLE, "CTM");
+    }
+
+    private static String previewText(
+        TechniqueMasteryProgressionData data,
+        String variableName,
+        String statLabel
+    ) {
+        String error = data == null ? "Progression is missing."
+            : data.validationError(variableName, statLabel);
         if (error != null) return "Invalid progression: " + error;
         StringBuilder text = new StringBuilder("Preview: ");
-        for (int mastery = 0; mastery <= 300; mastery += 20) {
-            if (mastery > 0) text.append(" | ");
-            text.append(mastery).append(": ").append(data.resolve(mastery));
+        for (int value = 0; value <= 300; value += 20) {
+            if (value > 0) text.append(" | ");
+            text.append(value).append(": ").append(data.resolve(value, variableName));
         }
         return text.toString();
     }

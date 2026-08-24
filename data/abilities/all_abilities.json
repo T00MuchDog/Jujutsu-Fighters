@@ -199,7 +199,7 @@
   "id" : "000005",
   "name" : "New Shadow Style",
   "flavourText" : "A learned school of swordsmanship and barrier techniques developed so sorcerers without inherited techniques can defend themselves against superior jujutsu.",
-  "mechanicText" : "Make BATTO KATANA DRAWING and SIMPLE DOMAIN AVAILABLE to learn.",
+  "mechanicText" : "Make *move:000025* and *move:000026* AVAILABLE to learn.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -216,7 +216,7 @@
   "id" : "000006",
   "name" : "Simple Domain Binding Vow",
   "flavourText" : "Miwa anchors both feet to the point where her stance began, sacrificing all movement to maintain the boundary.",
-  "mechanicText" : "Using another move while SIMPLE DOMAIN is active dispels SIMPLE DOMAIN.",
+  "mechanicText" : "Using another move while *move:000026* is active dispels *move:000026*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -244,7 +244,7 @@
   "id" : "000008",
   "name" : "Vessel of Sukuna",
   "flavourText" : "A body capable of containing the King of Curses bears qualities beyond those of an ordinary vessel.",
-  "mechanicText" : "Grant access to FREAK OF NATURE, IMMUNE TO POISONS, and VESSEL.",
+  "mechanicText" : "Grant access to *ability:000009*, *ability:000010*, and *ability:000011*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -308,7 +308,7 @@
   "id" : "000011",
   "name" : "Vessel",
   "flavourText" : "Two souls inhabit one body while preserving the boundary between them.",
-  "mechanicText" : "Grant access to VISUALISE THE SOUL.",
+  "mechanicText" : "Grant access to *ability:000012*.",
   "category" : "PASSIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000008",
@@ -379,7 +379,7 @@
   "id" : "000015",
   "name" : "Partially Realised Heavenly Restriction",
   "flavourText" : "A binding placed upon Maki at birth suppresses her jujutsu potential in exchange for a body that has only begun to realise its inhuman potential.",
-  "mechanicText" : "Grant access to FREAK OF NATURE, JUJUTSU INAPTITUDE, HEAVENLY BODY, and PARTIAL RESISTANCE TO CURSES.",
+  "mechanicText" : "Grant access to *ability:000009*, *ability:000016*, *ability:000017*, and *ability:000018*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -482,7 +482,7 @@
   "id" : "000020",
   "name" : "Shadows Unravel",
   "flavourText" : "When the last of the user's cursed energy fades, every maintained shadow loses its form and returns to darkness.",
-  "mechanicText" : "At 0 CE, DESUMMON every owned SHIKIGAMI.",
+  "mechanicText" : "At 0 CE, *move:000049* every owned SHIKIGAMI.",
   "category" : "ACTIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ten Shadows",
@@ -504,7 +504,7 @@
   "id" : "000021",
   "name" : "Ten Shadows Shikigami",
   "flavourText" : "This familiar is sustained through its summoner's shadow and may withdraw into it at will.",
-  "mechanicText" : "Unlock DESUMMON.",
+  "mechanicText" : "Unlock *move:000049*.",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -517,7 +517,7 @@
   "id" : "000022",
   "name" : "White Dog",
   "flavourText" : "The white Divine Dog pursues cursed traces with exceptional speed and precision.",
-  "mechanicText" : "Unlock DIVINE DOG BITE and TRACKING POUNCE",
+  "mechanicText" : "Unlock *move:000050* and *move:000051*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -534,7 +534,7 @@
   "id" : "000023",
   "name" : "Black Dog",
   "flavourText" : "The black Divine Dog brings greater force to the hunt, ripping apart anything it corners.",
-  "mechanicText" : "Unlock DIVINE DOG BITE and RENDING POUNCE",
+  "mechanicText" : "Unlock *move:000050* and *move:000052*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -551,7 +551,7 @@
   "id" : "000024",
   "name" : "Nue",
   "flavourText" : "Nue dominates the air and channels cursed lightning through its wings and talons.",
-  "mechanicText" : "Unlock SKY RESCUE, ELECTRIFIED TALONS and LIGHTNING DISCHARGE. Drain 0.35 CE from the summoner each active tick.",
+  "mechanicText" : "Unlock *move:000081*, *move:000053* and *move:000054*. Drain 0.35 CE from the summoner each active tick.",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -572,7 +572,7 @@
   "id" : "000025",
   "name" : "Toad",
   "flavourText" : "Toad controls space with a long, powerful tongue suited to striking and binding prey.",
-  "mechanicText" : "Unlock TONGUE RESCUE, TONGUE LASH and BINDING TONGUE",
+  "mechanicText" : "Unlock *move:000084*, *move:000055* and *move:000056*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -593,7 +593,7 @@
   "id" : "000026",
   "name" : "Great Serpent",
   "flavourText" : "Great Serpent overwhelms prey with its immense coils before swallowing the opening whole.",
-  "mechanicText" : "Unlock COILING GUARD, SERPENT CONSTRICT and DEVOURING LUNGE",
+  "mechanicText" : "Unlock *move:000082*, *move:000057* and *move:000058*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -613,8 +613,8 @@
 }, {
   "id" : "000027",
   "name" : "Divine Dog Totality",
-  "flavourText" : "Totality concentrates the Divine Dogs' inherited power into a predator of extraordinary speed and force.",
-  "mechanicText" : "Unlock RESCUE SPRINT, TOTALITY CLAW and PREDATOR RUSH",
+  "flavourText" : "*ability:000019* concentrates the Divine Dogs' inherited power into a predator of extraordinary speed and force.",
+  "mechanicText" : "Unlock *move:000083*, *move:000059* and *move:000060*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -635,7 +635,7 @@
   "id" : "000028",
   "name" : "Max Elephant",
   "flavourText" : "Max Elephant manifests overwhelming mass and a vast volume of water through the user's shadow.",
-  "mechanicText" : "Unlock CRUSHING STOMP and WATER DELUGE",
+  "mechanicText" : "Unlock *move:000061* and *move:000062*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -651,8 +651,8 @@
 }, {
   "id" : "000029",
   "name" : "Toad/Nue Fusion",
-  "flavourText" : "Through Well's Unknown Abyss, Toad and Nue merge into a winged swarm that binds enemies from above while striking with coordinated tongues and talons.",
-  "mechanicText" : "Unlock WINGED TONGUE SNARE and AERIAL SWARM. Drain 0.45 CE from the summoner each active tick.",
+  "flavourText" : "Through *ability:000032*, *ability:000025* and *ability:000024* merge into a winged swarm that binds enemies from above while striking with coordinated tongues and talons.",
+  "mechanicText" : "Unlock *move:000063* and *move:000064*. Drain 0.45 CE from the summoner each active tick.",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -684,7 +684,7 @@
   "id" : "000031",
   "name" : "Refined Commands",
   "flavourText" : "Careful diction and disciplined cursed-energy control make each command harder to resist without increasing its strain.",
-  "mechanicText" : "At CTM 60, add min(20, CTM / 12) percentage points to CURSED SPEECH command success chance.",
+  "mechanicText" : "At CTM 60, add min(20, CTM / 12) percentage points to *ability:000030* command success chance.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Cursed Speech",
@@ -707,8 +707,8 @@
 }, {
   "id" : "000032",
   "name" : "Well's Unknown Abyss",
-  "flavourText" : "Two living shikigami are drawn together into a single composite shadow — a temporary union weaker than any Totality, but one that may be broken apart and reformed freely, for its components never truly die.",
-  "mechanicText" : "Unlock WELLS UNKNOWN ABYSS shikigami: temporary fusions of two living shikigami. Weaker than Totality, but destroyed at no lasting cost.",
+  "flavourText" : "Two living shikigami are drawn together into a single composite shadow — a temporary union weaker than any *ability:000019*, but one that may be broken apart and reformed freely, for its components never truly die.",
+  "mechanicText" : "Unlock WELLS UNKNOWN ABYSS shikigami: temporary fusions of two living shikigami. Weaker than *ability:000019*, but destroyed at no lasting cost.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ten Shadows",
@@ -748,8 +748,8 @@
 }, {
   "id" : "000035",
   "name" : "Three Sibling Cores",
-  "flavourText" : "Panda was born with three compatible cores: Panda, Gorilla, and an elder sister whose form is not available during the Kyoto Goodwill Event.",
-  "mechanicText" : "Grant access to PANDA CORE, PANDA CORE SUCCESSION, GORILLA CORE, and GORILLA CORE SUCCESSION.",
+  "flavourText" : "Panda was born with three compatible cores: *ability:000036*, *ability:000038*, and an elder sister whose form is not available during the Kyoto Goodwill Event.",
+  "mechanicText" : "Grant access to *ability:000036*, *ability:000037*, *ability:000038*, and *ability:000039*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -774,7 +774,7 @@
   "id" : "000036",
   "name" : "Panda Core",
   "flavourText" : "Panda's balanced core combines sharp judgment, resilient defense, and the dexterity to protect his allies.",
-  "mechanicText" : "Grant GORILLA MODE.",
+  "mechanicText" : "Grant *move:000085*.",
   "category" : "PASSIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000035",
@@ -787,8 +787,8 @@
 }, {
   "id" : "000037",
   "name" : "Panda Core Succession",
-  "flavourText" : "When the Panda core can no longer sustain the body, Panda shifts control to his surviving Gorilla core.",
-  "mechanicText" : "At 0 HP, transform into GORILLA MODE at its stored HP, or full HP if it has not yet entered battle.",
+  "flavourText" : "When the *ability:000036* can no longer sustain the body, Panda shifts control to his surviving *ability:000038*.",
+  "mechanicText" : "At 0 HP, transform into *move:000085* at its stored HP, or full HP if it has not yet entered battle.",
   "category" : "ACTIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000036",
@@ -813,7 +813,7 @@
   "id" : "000038",
   "name" : "Gorilla Core",
   "flavourText" : "The short-tempered Gorilla core sacrifices efficiency for explosive strength, speed, and the power to send vibrations through an opponent's guard.",
-  "mechanicText" : "Grant GORILLA PUMMEL, UNBLOCKABLE DRUMMING BEAT, and RETURN TO PANDA CORE. Pay 40 CE at the start of each round.",
+  "mechanicText" : "Grant *move:000086*, *move:000087*, and *move:000088*. Pay 40 CE at the start of each round.",
   "category" : "PASSIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000035",
@@ -838,8 +838,8 @@
 }, {
   "id" : "000039",
   "name" : "Gorilla Core Succession",
-  "flavourText" : "If the Gorilla core is destroyed while the Panda core still lives, control returns to Panda's balanced form.",
-  "mechanicText" : "At 0 HP, return to PANDA CORE at its stored HP. The transformation fails if PANDA CORE was already defeated.",
+  "flavourText" : "If the *ability:000038* is destroyed while the *ability:000036* still lives, control returns to Panda's balanced form.",
+  "mechanicText" : "At 0 HP, return to *ability:000036* at its stored HP. The transformation fails if *ability:000036* was already defeated.",
   "category" : "ACTIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000038",
@@ -1050,7 +1050,10 @@
   } ],
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "TEMP_STAT_PERCENT",
+    "type" : "TIMED_STAT_MODIFIER",
+    "statType" : "CORE",
+    "statOperation" : "CHANGE",
+    "valueMode" : "PERCENT",
     "stat" : "combatAbility",
     "doubleValue" : 0.1,
     "target" : "SELF",
@@ -1089,11 +1092,10 @@
   } ],
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "GUARANTEE_NEXT_DODGE",
-    "target" : "SELF",
-    "durationRounds" : 0,
-    "durationTicks" : 1,
-    "uses" : 1
+    "type" : "APPLY_NEVER_HIT",
+    "intValue" : 5,
+    "accuracyDuration" : "NEXT_ATTACK",
+    "target" : "SELF"
   } ],
   "masteryThreshold" : 70
 }, {
@@ -1117,7 +1119,7 @@
   "id" : "000048",
   "name" : "Blood Manipulation Reserves",
   "flavourText" : "A prepared supply of blood supports immediate techniques, while deliberate compression turns that limited reserve into denser ammunition.",
-  "mechanicText" : "Begin battle with 3 BLOOD SUPPLY. CONVERGENCE converts it into COMPRESSION. COMPRESSION capacity is 1 at CTM 0, 2 at CTM 50, 3 at CTM 90, 4 at CTM 160, and 5 at CTM 250.",
+  "mechanicText" : "Begin battle with 3 BLOOD SUPPLY. *move:000107* converts it into COMPRESSION. COMPRESSION capacity is 1 at CTM 0, 2 at CTM 50, 3 at CTM 90, 4 at CTM 160, and 5 at CTM 250.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Blood Manipulation",

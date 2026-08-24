@@ -218,7 +218,7 @@ public final class MoveDescriptionVariables {
         return switch (field) {
             case TechniqueMasteryProgressions.INT_VALUE -> format(resolved.intValue);
             case TechniqueMasteryProgressions.DOUBLE_VALUE ->
-                displaysDoubleAsPercent(type)
+                displaysDoubleAsPercent(type, source)
                     ? formatPercent(resolved.doubleValue) : format(resolved.doubleValue);
             case TechniqueMasteryProgressions.DURATION_ROUNDS ->
                 format(resolved.durationRounds);
@@ -260,7 +260,8 @@ public final class MoveDescriptionVariables {
                 default -> "Value";
             };
             case TechniqueMasteryProgressions.DOUBLE_VALUE ->
-                displaysDoubleAsPercent(type) ? "Percentage" : "Multiplier or decimal value";
+                displaysDoubleAsPercent(type, effect)
+                    ? "Percentage" : "Multiplier or decimal value";
             case TechniqueMasteryProgressions.DURATION_ROUNDS -> "Duration rounds";
             case TechniqueMasteryProgressions.DURATION_TICKS -> "Duration AP ticks";
             case TechniqueMasteryProgressions.MAGNITUDE -> "Magnitude";
@@ -271,12 +272,11 @@ public final class MoveDescriptionVariables {
         };
     }
 
-    private static boolean displaysDoubleAsPercent(AbilityEffectType type) {
-        return switch (type) {
-            case BF_CHANCE_ADD, HEAL_HP_PERCENT, RESTORE_CE_PERCENT, DRAIN_CE_PERCENT,
-                 DEAL_MAX_HP_DAMAGE, TEMP_STAT_PERCENT, BATTLE_STAT_PERCENT -> true;
-            default -> false;
-        };
+    private static boolean displaysDoubleAsPercent(
+        AbilityEffectType type,
+        AbilityEffectData effect
+    ) {
+        return type == AbilityEffectType.BF_CHANCE_ADD || type.isPercentageValue(effect);
     }
 
     private static String humanize(String value) {

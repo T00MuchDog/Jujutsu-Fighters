@@ -37,7 +37,8 @@ class MoveDescriptionVariablesTest {
 
     @Test
     void percentagesAndMultipliersUseEditorFacingUnits() {
-        MoveEffectData percentage = effect("effect-000000", AbilityEffectType.HEAL_HP_PERCENT);
+        MoveEffectData percentage = effect("effect-000000", AbilityEffectType.HEAL_HP);
+        percentage.valueMode = AbilityEffectType.ValueMode.PERCENT.name();
         percentage.doubleValue = 0.25;
         percentage.masteryProgression = Map.of(
             TechniqueMasteryProgressions.DOUBLE_VALUE,

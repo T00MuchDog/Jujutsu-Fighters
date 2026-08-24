@@ -2,6 +2,8 @@ package com.jjktbf;
 
 import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.CharacterStats;
+import com.jjktbf.model.character.AbilityEffectData;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.BattleCombatant;
@@ -183,6 +185,72 @@ class MultiHitMoveTest {
             .filter(event -> event.getType() == CombatEvent.Type.MOVE_BLOCKED)
             .map(CombatEvent::getComponentIndex)
             .toList());
+    }
+
+    @Test
+    void nextAttackNeverMissTierCoversEveryHitComponent() {
+        Move move = attackBuilder("TEMPORARY_NEVER_MISS")
+            .baseAccuracy(0.01)
+            .neverMiss(false)
+            .hitComponents(List.of(
+                component(1, MoveCategory.PHYSICAL, 0, false, true),
+                component(1, MoveCategory.PHYSICAL, 0, false, true)))
+            .build();
+        BattleCombatant attacker = combatant("A", "Attacker", 120, List.of(move));
+        BattleCombatant defender = combatant("D", "Defender", 80, List.of());
+        AbilityEffectData tier = AbilityEffectType.APPLY_NEVER_MISS.createDefault();
+        tier.intValue = 3;
+        tier.accuracyDuration = AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name();
+        attacker.addRuntimeAbilityEffect(tier);
+
+        Timeline timeline = new Timeline(10);
+        assertNotNull(timeline.placeAt(move, 1, 0));
+        attacker.setTimeline(timeline);
+        defender.setTimeline(new Timeline(10));
+        BattleState state = new BattleState(attacker, defender);
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+
+        List<CombatEvent> events = new CombatResolver(new FixedRandom(1.0)).resolveRound(state);
+
+        assertEquals(2, damageEvents(events, move).size());
+        assertEquals(0, attacker.consumeNeverMissTier(),
+            "the temporary tier must be consumed after the complete attack");
+    }
+
+    @Test
+    void nextAttackTierBelongsToTheFirstLaunchedDelayedAttack() {
+        Move delayed = attackBuilder("DELAYED_TIER_ATTACK")
+            .baseAccuracy(0.01)
+            .neverMiss(false)
+            .hitComponents(List.of(
+                component(1, MoveCategory.PHYSICAL, 4, false, true)))
+            .build();
+        Move later = attackBuilder("LATER_INSTANT_ATTACK")
+            .baseAccuracy(0.01)
+            .neverMiss(false)
+            .basePower(1)
+            .build();
+        BattleCombatant attacker = combatant(
+            "A", "Attacker", 120, List.of(delayed, later));
+        BattleCombatant defender = combatant("D", "Defender", 80, List.of());
+        AbilityEffectData tier = AbilityEffectType.APPLY_NEVER_MISS.createDefault();
+        tier.intValue = 3;
+        tier.accuracyDuration = AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name();
+        attacker.addRuntimeAbilityEffect(tier);
+
+        Timeline timeline = new Timeline(10);
+        assertNotNull(timeline.placeAt(delayed, 1, 0));
+        assertNotNull(timeline.placeAt(later, 3, 0));
+        attacker.setTimeline(timeline);
+        defender.setTimeline(new Timeline(10));
+        BattleState state = new BattleState(attacker, defender);
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+
+        List<CombatEvent> events = new CombatResolver(new FixedRandom(1.0)).resolveRound(state);
+
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_MISSED && event.getMove() == later));
+        assertEquals(1, damageEvents(events, delayed).size());
     }
 
     @Test

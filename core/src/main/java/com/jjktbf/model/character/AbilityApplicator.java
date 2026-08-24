@@ -209,15 +209,12 @@ public final class AbilityApplicator {
                     case SOUL_AWARE_ATTACKS -> flags.soulAwareAttacks = true;
 
                     // Applied by AbilityActivationEngine when an active condition is met.
-                    case HEAL_HP, HEAL_HP_PERCENT, RESTORE_CE, RESTORE_CE_PERCENT,
-                         DRAIN_CE, DRAIN_CE_PERCENT, DEAL_DIRECT_DAMAGE, DEAL_MAX_HP_DAMAGE,
+                    case HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE,
                          INSTANT_KILL, APPLY_STATUS, REMOVE_STATUS, CLEAR_STATUSES,
-                          TEMP_STAT_ADD, TEMP_STAT_MULTIPLY, TEMP_STAT_SET_VALUE,
-                          BATTLE_STAT_ADD, BATTLE_STAT_MULTIPLY, BATTLE_STAT_PERCENT,
-                          TEMP_STAT_PERCENT,
+                          TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
                           STUN_CURRENT_ACTION, IGNORE_DAMAGE,
-                          DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE, GUARANTEE_NEXT_HIT,
-                           GUARANTEE_NEXT_DODGE, GUARANTEE_NEXT_BLACK_FLASH,
+                          DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS,
+                           APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,
                            CANCEL_NEXT_MOVE, TEMP_LOCK_MOVE_TAG,
                            TRANSACT_BOUNDED_RESOURCE,
                            DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
@@ -324,23 +321,34 @@ public final class AbilityApplicator {
                 && type != AbilityEffectType.STAT_SET_VALUE
                 && type != AbilityEffectType.TEMP_STAT_SET_VALUE
                 && type != AbilityEffectType.STAT_ADD
-                && type != AbilityEffectType.TEMP_STAT_ADD
                 && type != AbilityEffectType.STAT_MULTIPLY
-                && type != AbilityEffectType.TEMP_STAT_MULTIPLY
-                && type != AbilityEffectType.TEMP_STAT_PERCENT
+                && type != AbilityEffectType.TIMED_STAT_MODIFIER
                 && type != AbilityEffectType.STAT_DIVIDE) continue;
+            if (type == AbilityEffectType.TIMED_STAT_MODIFIER
+                && AbilityEffectType.statType(effect) != AbilityEffectType.StatType.CORE) {
+                continue;
+            }
             StatKey key = resolveStatKey(effect.stat);
             if (key == null) continue;
             switch (type) {
                 case STAT_SET_MIN -> overrides.put(key, 0);
                 case STAT_SET_VALUE, TEMP_STAT_SET_VALUE ->
                     overrides.put(key, nvl(effect.intValue, 0));
-                case STAT_ADD, TEMP_STAT_ADD ->
+                case STAT_ADD ->
                     additions.merge(key, nvl(effect.intValue, 0), Integer::sum);
-                case STAT_MULTIPLY, TEMP_STAT_MULTIPLY ->
+                case STAT_MULTIPLY ->
                     multipliers.merge(key, nvl(effect.doubleValue, 1.0), (a, b) -> a * b);
-                case TEMP_STAT_PERCENT ->
-                    percents.merge(key, nvl(effect.doubleValue, 0.0), Double::sum);
+                case TIMED_STAT_MODIFIER -> {
+                    if (AbilityEffectType.statOperation(effect)
+                        == AbilityEffectType.StatOperation.MULTIPLY) {
+                        multipliers.merge(key, nvl(effect.doubleValue, 1.0), (a, b) -> a * b);
+                    } else if (AbilityEffectType.valueMode(effect)
+                        == AbilityEffectType.ValueMode.PERCENT) {
+                        percents.merge(key, nvl(effect.doubleValue, 0.0), Double::sum);
+                    } else {
+                        additions.merge(key, nvl(effect.intValue, 0), Integer::sum);
+                    }
+                }
                 case STAT_DIVIDE -> {
                     double divisor = effect.doubleValue != null && effect.doubleValue != 0
                         ? effect.doubleValue : 1.0;

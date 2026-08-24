@@ -606,7 +606,6 @@ class MoveEditorScreenTest {
         MoveData.StatusEffectData coded = new MoveData.StatusEffectData();
         coded.codedAbilityKey = "NEW_SHADOW_STYLE";
         coded.codedAction = "ACTIVATE_SIMPLE_DOMAIN";
-        coded.codedTarget = "000027";
         defense.selfEffects = new ArrayList<>(List.of(coded));
 
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(defense);
@@ -711,18 +710,14 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void moveResequencingRemapsCodedReactionMoveReferences() {
+    void moveResequencingRemapsAttackLaunchMoveReferences() {
         MoveData domain = new MoveData();
-        MoveData.StatusEffectData reaction = new MoveData.StatusEffectData();
-        reaction.codedAbilityKey = "NEW_SHADOW_STYLE";
-        reaction.codedAction = "ACTIVATE_SIMPLE_DOMAIN";
-        reaction.codedTarget = "000027";
-        domain.selfEffects = new ArrayList<>(List.of(reaction));
+        domain.attackLaunchMoveId = "000027";
 
-        MoveEditorScreen.remapCodedMoveTargets(
+        MoveEditorScreen.remapAttackLaunchMoveTargets(
             List.of(domain), Map.of("000027", "000026"));
 
-        assertEquals("000026", reaction.codedTarget);
+        assertEquals("000026", domain.attackLaunchMoveId);
     }
 
     @Test
@@ -763,7 +758,7 @@ class MoveEditorScreenTest {
         effect.condition = AbilityConditionData.all(List.of(used));
         move.effects = new ArrayList<>(List.of(effect));
 
-        MoveEditorScreen.remapCodedMoveTargets(
+        MoveEditorScreen.remapMoveEffectConditions(
             List.of(move), Map.of("000027", "000026"));
 
         assertEquals("000026", effect.condition.children.get(0).moveId);

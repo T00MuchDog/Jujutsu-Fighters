@@ -273,7 +273,7 @@ public final class CodedAbilityRegistry {
                 effect.codedTarget = CursedSpeechAbility.DONT_MOVE;
             }
             effect.codedStackCount = null;
-        } else if (!NewShadowStyleAbility.KEY.equals(key)) {
+        } else {
             effect.codedTarget = null;
             effect.codedStackCount = null;
         }

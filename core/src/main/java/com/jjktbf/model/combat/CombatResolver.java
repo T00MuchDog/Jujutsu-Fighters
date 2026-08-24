@@ -290,6 +290,9 @@ public class CombatResolver {
             regenerateFighterCursedEnergy(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
 
+            events.addAll(abilityActivations.processOverTimeCeDrains(state, tick));
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+
             if (isChargeableTick(state, tick)) {
                 chargeSummonUpkeep(state, tick, events);
                 if (finishBattleIfNeeded(state, events, tick)) return events;
@@ -458,7 +461,7 @@ public class CombatResolver {
         }
         try {
             for (BattleCombatant combatant : combatants) {
-                combatant.tickTimelineEffects();
+                combatant.tickTimelineEffects(state.getRoundNumber(), tick);
                 events.addAll(combatant.getCodedAbilities().tickTimelineEffects(tick));
                 expiredByCombatant.put(combatant, combatant.drainExpiredStatusEffects());
             }
@@ -713,6 +716,8 @@ public class CombatResolver {
          * Keyed by combatant instance id.
          */
         private final Map<CombatantId, boolean[]> connectedByTarget;
+        private final int temporaryNeverMissTier;
+        private final Map<CombatantId, Integer> temporaryNeverHitTierByTarget;
         private int pendingRecoilDamage;
         private HitComponent recoilComponent;
         private final List<BattleCombatant> recoilTargets = new ArrayList<>();
@@ -728,6 +733,14 @@ public class CombatResolver {
             return counterAttemptedBy.add(defenderId);
         }
 
+        private int temporaryNeverMissTier() {
+            return temporaryNeverMissTier;
+        }
+
+        private int temporaryNeverHitTier(BattleCombatant defender) {
+            return temporaryNeverHitTierByTarget.getOrDefault(defender.getInstanceId(), 0);
+        }
+
         private MoveExecution(
             FiringEntry entry,
             Map<CombatantId, Boolean> forceFullBlockByTarget,
@@ -740,8 +753,12 @@ public class CombatResolver {
             this.launchTick = launchTick;
             this.launchSequence = launchSequence;
             this.targets = List.copyOf(targets);
+            this.temporaryNeverMissTier = entry.attacker.consumeNeverMissTier();
+            this.temporaryNeverHitTierByTarget = new LinkedHashMap<>();
             this.connectedByTarget = new LinkedHashMap<>();
             for (BattleCombatant target : targets) {
+                temporaryNeverHitTierByTarget.put(
+                    target.getInstanceId(), target.consumeNeverHitTier());
                 connectedByTarget.put(target.getInstanceId(),
                     new boolean[entry.segment.getMove().getHitComponents().size()]);
             }
@@ -1590,7 +1607,9 @@ public class CombatResolver {
             // revert this to `launchTick < tick` — that re-enables the old rule
             // where a not-yet-fired same-tick defense contested regardless of speed.
             true,
-            trigger -> abilityActivations.onAttackConnected(state, trigger));
+            trigger -> abilityActivations.onAttackConnected(state, trigger),
+            execution.temporaryNeverMissTier(),
+            execution.temporaryNeverHitTier(defender));
         events.addAll(result.getCodedEvents());
         execution.addRecoil(result.getRecoilDamage(), component, defender);
 
@@ -2229,7 +2248,9 @@ public class CombatResolver {
         if (trigger != defenceResolutionTrigger(move.getDefenseType())) return;
         if (incomingExecution == null
             || !incomingExecution.markCounterAttempt(defender.getInstanceId())) return;
-        if (!abilityActivations.allowsAttackLaunch(state, defender, attacker, move, tick)) {
+        if (!abilityActivations.allowsAttackLaunch(
+                state, defender, attacker, move,
+                incomingExecution.entry.segment.getMove(), tick)) {
             return;
         }
         if (move.referencesAttackMove()) {

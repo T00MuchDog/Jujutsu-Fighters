@@ -16,13 +16,13 @@ import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.Equipment;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
-import com.jjktbf.model.character.coded.NewShadowStyleAbility;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
 import com.jjktbf.model.technique.TechniqueSkillTree;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.weapon.CursedToolData;
 
 import java.io.IOException;
@@ -197,8 +197,18 @@ public final class ContentCatalog {
         }
 
         Map<String, Move> movesById = new LinkedHashMap<>();
-        Map<String, List<MoveEffectData>> codedEffectsByMoveId =
-            new LinkedHashMap<>();
+        Map<String, String> moveNamesById = new LinkedHashMap<>();
+        for (MoveData definition : moveDefinitions) {
+            moveNamesById.put(definition.id, definition.name);
+        }
+        Map<String, String> abilityNamesById = new LinkedHashMap<>();
+        for (AbilityData definition : abilityDefinitions) {
+            if (definition != null) {
+                abilityNamesById.put(definition.id, definition.name);
+            }
+        }
+        ContentNameTokens.NameLookup descriptionNames =
+            ContentNameTokens.of(moveNamesById, abilityNamesById);
         for (MoveData definition : moveDefinitions) {
             if (definition.requiredCursedToolId != null
                 && !definition.requiredCursedToolId.isBlank()
@@ -206,12 +216,24 @@ public final class ContentCatalog {
                 throw invalid(MOVES_RESOURCE, "move " + definition.id
                     + " references unknown cursed tool " + definition.requiredCursedToolId);
             }
+            if (definition.isDefenceAttackHybrid()
+                && definition.attackLaunchMoveId != null
+                && !definition.attackLaunchMoveId.isBlank()) {
+                String launchMoveId = definition.attackLaunchMoveId.trim();
+                if (definition.id.equals(launchMoveId)) {
+                    throw invalid(MOVES_RESOURCE, "move " + definition.id
+                        + " cannot launch itself as its attack");
+                }
+                if (!moveDataById.containsKey(launchMoveId)) {
+                    throw invalid(MOVES_RESOURCE, "move " + definition.id
+                        + " references unknown attack launch move " + launchMoveId);
+                }
+            }
             definition.migrateLegacyEffects();
             // Coded bindings now live on effect rows (self or on-hit), not on the
             // move. Validate every coded effect row against the registry allow-list.
             // Keep these rows because legacy on-hit migration clears the DTO field.
             List<MoveEffectData> codedEffects = codedEffectRows(definition);
-            codedEffectsByMoveId.put(definition.id, codedEffects);
             for (MoveEffectData effect : codedEffects) {
                 if (!CodedAbilityRegistry.supportsEffect(
                     effect.codedAbilityKey,
@@ -222,7 +244,7 @@ public final class ContentCatalog {
                 }
             }
             try {
-                Move move = definition.toMoveResolved(moveDataById::get);
+                Move move = definition.toMoveResolved(moveDataById::get, descriptionNames);
                 movesById.put(definition.id, move);
             } catch (IllegalArgumentException exception) {
                 throw invalid(MOVES_RESOURCE,
@@ -230,15 +252,6 @@ public final class ContentCatalog {
             }
         }
         for (MoveData definition : moveDefinitions) {
-            for (MoveEffectData effect : codedEffectsByMoveId.get(definition.id)) {
-                if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)
-                    && NewShadowStyleAbility.ACTIVATE_SIMPLE_DOMAIN.equalsIgnoreCase(effect.codedAction)
-                        && !NewShadowStyleAbility.isValidReactionMove(
-                            movesById.get(effect.codedTarget))) {
-                        throw invalid(MOVES_RESOURCE, "Simple Domain move " + definition.id
-                            + " must reference a physical, reinforced, stunning melee KATANA move");
-                    }
-            }
             for (MoveEffectData effect : definition.effects == null
                 ? List.<MoveEffectData>of() : definition.effects) {
                 if (effect == null) continue;
@@ -444,7 +457,9 @@ public final class ContentCatalog {
                 summaries.add(new CharacterSummary(
                     definition.id,
                     definition.name,
-                    Objects.requireNonNullElse(definition.description, "")
+                    ContentNameTokens.resolve(
+                        Objects.requireNonNullElse(definition.description, ""),
+                        descriptionNames)
                 ));
             }
         }

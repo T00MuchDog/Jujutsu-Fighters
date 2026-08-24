@@ -30,7 +30,6 @@ import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.TransformationHpMode;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
-import com.jjktbf.model.character.coded.NewShadowStyleAbility;
 import com.jjktbf.model.character.coded.RatioAbility;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveTag;
@@ -330,10 +329,10 @@ public class EffectListEditor extends Table {
         fields.defaults().pad(4).left().growX();
         boolean tickOnlyStatus = isTickOnlyStatus(effect, type);
         boolean roundOnlyStatus = isRoundOnlyStatus(effect, type);
-        TextField durationField = type.uses(AbilityEffectParameter.DURATION)
+        TextField durationField = type.uses(AbilityEffectParameter.DURATION, effect)
             && !tickOnlyStatus
             ? integerField(effect.durationRounds) : null;
-        TextField durationTicksField = type.uses(AbilityEffectParameter.DURATION)
+        TextField durationTicksField = type.uses(AbilityEffectParameter.DURATION, effect)
             && !roundOnlyStatus ? nonNegativeIntegerField(effect.durationTicks) : null;
         TextField perTickRemovalChanceField = type.uses(
             AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE)
@@ -412,7 +411,129 @@ public class EffectListEditor extends Table {
             addCodedMoveActionFields(fields, effect, refreshFields);
         }
 
-        if (type.uses(AbilityEffectParameter.STAT)) {
+        if (type.uses(AbilityEffectParameter.STAT_TYPE)) {
+            SelectBox<String> statTypeBox = new DynamicSelectBox<>(skin, uiProfile);
+            statTypeBox.setItems(java.util.Arrays.stream(AbilityEffectType.StatType.values())
+                .map(value -> value.label).toArray(String[]::new));
+            statTypeBox.setSelected(AbilityEffectType.selectedStatType(effect).label);
+            statTypeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.StatType selected = java.util.Arrays.stream(
+                            AbilityEffectType.StatType.values())
+                        .filter(value -> value.label.equals(statTypeBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.StatType.CORE);
+                    effect.statType = selected.name();
+                    effect.stat = selected == AbilityEffectType.StatType.CORE
+                        ? StatKey.VITALITY.fieldName : null;
+                    effect.stringValue = selected == AbilityEffectType.StatType.BATTLE
+                        ? BattleStatKey.MAX_AP.name() : null;
+                    effect.intValue = null;
+                    effect.doubleValue = null;
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Stat type", statTypeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.STAT_OPERATION)) {
+            SelectBox<String> operationBox = new DynamicSelectBox<>(skin, uiProfile);
+            operationBox.setItems(java.util.Arrays.stream(AbilityEffectType.StatOperation.values())
+                .map(value -> value.label).toArray(String[]::new));
+            operationBox.setSelected(AbilityEffectType.selectedStatOperation(effect).label);
+            operationBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.StatOperation selected = java.util.Arrays.stream(
+                            AbilityEffectType.StatOperation.values())
+                        .filter(value -> value.label.equals(operationBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.StatOperation.CHANGE);
+                    effect.statOperation = selected.name();
+                    effect.valueMode = selected == AbilityEffectType.StatOperation.CHANGE
+                        ? AbilityEffectType.ValueMode.FLAT.name() : null;
+                    effect.intValue = null;
+                    effect.doubleValue = null;
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Operation", operationBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.CE_DRAIN_MODE)) {
+            SelectBox<String> drainModeBox = new DynamicSelectBox<>(skin, uiProfile);
+            drainModeBox.setItems(java.util.Arrays.stream(AbilityEffectType.CeDrainMode.values())
+                .map(value -> value.label).toArray(String[]::new));
+            drainModeBox.setSelected(AbilityEffectType.selectedCeDrainMode(effect).label);
+            drainModeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.CeDrainMode selected = java.util.Arrays.stream(
+                            AbilityEffectType.CeDrainMode.values())
+                        .filter(value -> value.label.equals(drainModeBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.CeDrainMode.INSTANT);
+                    effect.ceDrainMode = selected.name();
+                    if (selected == AbilityEffectType.CeDrainMode.OVER_TIME) {
+                        if (effect.durationRounds == null) effect.durationRounds = 1;
+                        if (effect.durationTicks == null) effect.durationTicks = 0;
+                    } else {
+                        effect.durationRounds = null;
+                        effect.durationTicks = null;
+                        effect.ceEfficiencyProgression = null;
+                    }
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Drain timing", drainModeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.VALUE_MODE, effect)) {
+            SelectBox<String> valueModeBox = new DynamicSelectBox<>(skin, uiProfile);
+            String percentageLabel = type == AbilityEffectType.TIMED_STAT_MODIFIER
+                ? "Scaled percentage" : "Maximum percentage";
+            valueModeBox.setItems(AbilityEffectType.ValueMode.FLAT.label, percentageLabel);
+            valueModeBox.setSelected(AbilityEffectType.selectedValueMode(effect)
+                == AbilityEffectType.ValueMode.FLAT
+                    ? AbilityEffectType.ValueMode.FLAT.label : percentageLabel);
+            valueModeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.valueMode = AbilityEffectType.ValueMode.FLAT.label.equals(
+                        valueModeBox.getSelected())
+                            ? AbilityEffectType.ValueMode.FLAT.name()
+                            : AbilityEffectType.ValueMode.PERCENT.name();
+                    effect.intValue = null;
+                    effect.doubleValue = null;
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Value type", valueModeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.ACCURACY_DURATION)) {
+            SelectBox<String> durationModeBox = new DynamicSelectBox<>(skin, uiProfile);
+            durationModeBox.setItems(java.util.Arrays.stream(
+                    AbilityEffectType.AccuracyDuration.values())
+                .map(value -> value.label).toArray(String[]::new));
+            durationModeBox.setSelected(
+                AbilityEffectType.selectedAccuracyDuration(effect).label);
+            durationModeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.AccuracyDuration selected = java.util.Arrays.stream(
+                            AbilityEffectType.AccuracyDuration.values())
+                        .filter(value -> value.label.equals(durationModeBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.AccuracyDuration.NEXT_ATTACK);
+                    effect.accuracyDuration = selected.name();
+                    effect.durationRounds = selected == AbilityEffectType.AccuracyDuration.DURATION
+                        ? 1 : null;
+                    effect.durationTicks = selected == AbilityEffectType.AccuracyDuration.DURATION
+                        ? 0 : null;
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Applies for", durationModeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.STAT, effect)) {
             SelectBox<String> statBox = new DynamicSelectBox<>(skin, uiProfile);
             statBox.setItems(statLabels());
             statBox.setSelected(statLabel(effect.stat));
@@ -425,7 +546,7 @@ public class EffectListEditor extends Table {
             addRow(fields, "Stat", statBox);
         }
 
-        if (type.uses(AbilityEffectParameter.BATTLE_STAT)) {
+        if (type.uses(AbilityEffectParameter.BATTLE_STAT, effect)) {
             SelectBox<String> statBox = new DynamicSelectBox<>(skin, uiProfile);
             statBox.setItems(java.util.Arrays.stream(BattleStatKey.values())
                 .map(stat -> stat.label).toArray(String[]::new));
@@ -454,20 +575,22 @@ public class EffectListEditor extends Table {
             addRow(fields, type == AbilityEffectType.LOCK_MOVE_TAG ? "Move tag" : "Affected moves", scopeBox);
         }
 
-        if (type.uses(AbilityEffectParameter.INTEGER)) {
+        if (type.uses(AbilityEffectParameter.INTEGER, effect)) {
             TextField integer = integerField(effect.intValue);
             integer.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     effect.intValue = parseInteger(integer.getText());
                 }
             });
-            addRow(fields, integerLabel(type), integer);
+            addRow(fields, integerLabel(type, effect), integer);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.INT_VALUE,
+                () -> effect.intValue == null ? 0 : effect.intValue);
+            addCeEfficiencyProgression(fields, effect, TechniqueMasteryProgressions.INT_VALUE,
                 () -> effect.intValue == null ? 0 : effect.intValue);
         }
 
-        if (type.uses(AbilityEffectParameter.DECIMAL)) {
-            boolean percentage = isPercentage(type);
+        if (type.uses(AbilityEffectParameter.DECIMAL, effect)) {
+            boolean percentage = isPercentage(type, effect);
             Double displayed = percentage && effect.doubleValue != null
                 ? effect.doubleValue * 100.0 : effect.doubleValue;
             TextField decimal = decimalField(displayed);
@@ -477,9 +600,11 @@ public class EffectListEditor extends Table {
                     effect.doubleValue = percentage && value != null ? value / 100.0 : value;
                 }
             });
-            addRow(fields, decimalLabel(type), decimal);
+            addRow(fields, decimalLabel(type, effect), decimal);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.DOUBLE_VALUE,
-                () -> masteryDecimalLiteral(type, effect.doubleValue));
+                () -> masteryDecimalLiteral(type, effect, effect.doubleValue));
+            addCeEfficiencyProgression(fields, effect, TechniqueMasteryProgressions.DOUBLE_VALUE,
+                () -> masteryDecimalLiteral(type, effect, effect.doubleValue));
         }
 
         if (type.uses(AbilityEffectParameter.STAT_MULTIPLIER_CURVE)) {
@@ -695,7 +820,7 @@ public class EffectListEditor extends Table {
             addRow(fields, "Apply when", timingBox);
         }
 
-        if (type.uses(AbilityEffectParameter.DURATION)) {
+        if (type.uses(AbilityEffectParameter.DURATION, effect)) {
             if (tickOnlyStatus) {
                 effect.durationRounds = 0;
                 if (effect.durationTicks == null || effect.durationTicks <= 0) {
@@ -874,6 +999,27 @@ public class EffectListEditor extends Table {
         fields.add(editor).colspan(2).growX().row();
     }
 
+    private void addCeEfficiencyProgression(
+        Table fields,
+        AbilityEffectData effect,
+        String field,
+        java.util.function.IntSupplier literal
+    ) {
+        AbilityEffectType type = safeType(effect.type);
+        if (!type.ceEfficiencyProgressionFields(effect).contains(field)) return;
+        MasteryProgressionEditor editor = new MasteryProgressionEditor(
+            field,
+            literal,
+            () -> effect.ceEfficiencyProgression,
+            value -> effect.ceEfficiencyProgression = value,
+            onDirty,
+            uiProfile,
+            skin,
+            "Cursed Energy Efficiency",
+            TechniqueMasteryProgressions.CE_EFFICIENCY_VARIABLE);
+        fields.add(editor).colspan(2).growX().row();
+    }
+
     private void addCodedMoveActionFields(
         Table fields,
         AbilityEffectData effect,
@@ -928,27 +1074,6 @@ public class EffectListEditor extends Table {
                 }
             });
             addRow(fields, "Command mode", mode);
-        } else if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)) {
-            List<MoveData> candidates = moves.stream()
-                .filter(EffectListEditor::isSimpleDomainReactionMove)
-                .toList();
-            SelectBox<String> reaction = new DynamicSelectBox<>(skin, uiProfile);
-            reaction.setItems(candidates.stream().map(EffectListEditor::moveLabel)
-                .toArray(String[]::new));
-            if (!candidates.isEmpty()) {
-                String selected = candidates.stream()
-                    .filter(move -> java.util.Objects.equals(move.id, effect.codedTarget))
-                    .map(EffectListEditor::moveLabel)
-                    .findFirst().orElse(moveLabel(candidates.get(0)));
-                reaction.setSelected(selected);
-                effect.codedTarget = moveIdFromLabel(selected);
-                reaction.addListener(new ChangeListener() {
-                    @Override public void changed(ChangeEvent event, Actor actor) {
-                        effect.codedTarget = moveIdFromLabel(reaction.getSelected());
-                    }
-                });
-            }
-            addRow(fields, "Reaction move", reaction);
         }
 
         effect.codedParameters = CodedAbilityRegistry.prepareEffectParameters(
@@ -971,9 +1096,13 @@ public class EffectListEditor extends Table {
         }
     }
 
-    private static int masteryDecimalLiteral(AbilityEffectType type, Double value) {
+    private static int masteryDecimalLiteral(
+        AbilityEffectType type,
+        AbilityEffectData effect,
+        Double value
+    ) {
         if (value == null) return 0;
-        return type == AbilityEffectType.BATTLE_STAT_ADD
+        return type.storesDecimalAsPoints(effect)
             ? (int) Math.floor(value)
             : (int) Math.floor(value * 100.0);
     }
@@ -1038,13 +1167,31 @@ public class EffectListEditor extends Table {
             summary.append(" | ").append(codedAction(effect).label());
             if (effect.codedTarget != null) summary.append(" -> ").append(effect.codedTarget);
         }
-        if (type.uses(AbilityEffectParameter.STAT) && effect.stat != null) {
+        if (type.uses(AbilityEffectParameter.STAT_TYPE)) {
+            summary.append(" | ").append(AbilityEffectType.selectedStatType(effect).label)
+                .append(" | ").append(AbilityEffectType.selectedStatOperation(effect).label);
+        }
+        if (type.uses(AbilityEffectParameter.CE_DRAIN_MODE)) {
+            summary.append(" | ").append(AbilityEffectType.selectedCeDrainMode(effect).label);
+            if (effect.ceEfficiencyProgression != null
+                && !effect.ceEfficiencyProgression.isEmpty()) {
+                summary.append(" | CEE scaled");
+            }
+        }
+        if (type.uses(AbilityEffectParameter.VALUE_MODE, effect)) {
+            summary.append(" | ").append(AbilityEffectType.selectedValueMode(effect).label);
+        }
+        if (type.uses(AbilityEffectParameter.ACCURACY_DURATION)) {
+            summary.append(" | ").append(
+                AbilityEffectType.selectedAccuracyDuration(effect).label);
+        }
+        if (type.uses(AbilityEffectParameter.STAT, effect) && effect.stat != null) {
             summary.append(" | ").append(statLabel(effect.stat));
         }
         if (type.uses(AbilityEffectParameter.MOVE_SCOPE)) {
             summary.append(" | ").append(moveScopeLabel(effect.moveTag));
         }
-        if (type.uses(AbilityEffectParameter.INTEGER) && effect.intValue != null) {
+        if (type.uses(AbilityEffectParameter.INTEGER, effect) && effect.intValue != null) {
             summary.append(" | ");
             if (type != AbilityEffectType.MAX_ACTIVE_SUMMONS
                 && !type.isAccuracyPriority() && effect.intValue >= 0) {
@@ -1052,11 +1199,10 @@ public class EffectListEditor extends Table {
             }
             summary.append(effect.intValue);
         }
-        if (type.uses(AbilityEffectParameter.DECIMAL) && effect.doubleValue != null) {
-            if (isPercentage(type)) {
+        if (type.uses(AbilityEffectParameter.DECIMAL, effect) && effect.doubleValue != null) {
+            if (isPercentage(type, effect)) {
                 double pct = effect.doubleValue * 100.0;
-                boolean signed = type == AbilityEffectType.TEMP_STAT_PERCENT
-                    || type == AbilityEffectType.BATTLE_STAT_PERCENT;
+                boolean signed = type == AbilityEffectType.TIMED_STAT_MODIFIER;
                 summary.append(" | ");
                 if (signed && pct > 0) summary.append('+');
                 summary.append(formatNumber(pct)).append('%');
@@ -1110,13 +1256,13 @@ public class EffectListEditor extends Table {
                     effect.perTickRemovalChance * 100.0)).append("%/tick");
             }
         }
-        if (type.uses(AbilityEffectParameter.BATTLE_STAT) && effect.stringValue != null) {
+        if (type.uses(AbilityEffectParameter.BATTLE_STAT, effect) && effect.stringValue != null) {
             summary.append(" | ").append(battleStatLabel(effect.stringValue));
         }
         if (type.uses(AbilityEffectParameter.TARGET) && !type.uses(AbilityEffectParameter.STATUS_TYPE)) {
             summary.append(" -> ").append(effect.target);
         }
-        if (type.uses(AbilityEffectParameter.DURATION)) {
+        if (type.uses(AbilityEffectParameter.DURATION, effect)) {
             summary.append(" | ").append(durationLabel(effect));
         }
         if (type.uses(AbilityEffectParameter.USES)) {
@@ -1343,11 +1489,6 @@ public class EffectListEditor extends Table {
         return referenceIdFromLabel(label);
     }
 
-    private static boolean isSimpleDomainReactionMove(MoveData move) {
-        try { return NewShadowStyleAbility.isValidReactionMove(move.toMove()); }
-        catch (Exception exception) { return false; }
-    }
-
     private String[] abilityReferenceLabels(String currentId) {
         List<String> labels = new ArrayList<>();
         labels.add(SELECT_ABILITY);
@@ -1493,9 +1634,9 @@ public class EffectListEditor extends Table {
             : label;
     }
 
-    private static String integerLabel(AbilityEffectType type) {
+    private static String integerLabel(AbilityEffectType type, AbilityEffectData effect) {
         return switch (type) {
-            case NEVER_MISS, NEVER_HIT -> "Tier (1-5)";
+            case NEVER_MISS, NEVER_HIT, APPLY_NEVER_MISS, APPLY_NEVER_HIT -> "Tier (1-5)";
             case STAT_ADD -> "Amount (+/-)";
             case STAT_SET_VALUE -> "Exact value";
             case STAT_ALLOCATION_MINIMUM -> "Minimum allocation";
@@ -1505,35 +1646,44 @@ public class EffectListEditor extends Table {
             case MODIFY_AP_BAR -> "AP change (+/-)";
             case COST_CE_PER_ROUND -> "CE cost per round";
             case MAX_ACTIVE_SUMMONS -> "Maximum active summons";
-            case HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE, DAMAGE_SHIELD -> "Amount";
-            case TEMP_STAT_ADD -> "Amount (+/-)";
+            case HEAL_HP, RESTORE_CE, DEAL_DIRECT_DAMAGE, DAMAGE_SHIELD -> "Amount";
+            case DRAIN_CE -> AbilityEffectType.selectedCeDrainMode(effect)
+                == AbilityEffectType.CeDrainMode.OVER_TIME ? "CE per tick" : "Amount";
+            case TIMED_STAT_MODIFIER -> "Amount (+/-)";
             case TEMP_STAT_SET_VALUE -> "Exact value";
             default -> "Value";
         };
     }
 
-    private static String decimalLabel(AbilityEffectType type) {
+    private static String decimalLabel(AbilityEffectType type, AbilityEffectData effect) {
+        if (isPercentage(type, effect)) return "Percentage (+/-)";
+        if (type == AbilityEffectType.TIMED_STAT_MODIFIER
+            && AbilityEffectType.selectedStatOperation(effect)
+                == AbilityEffectType.StatOperation.CHANGE) {
+            return "Amount (+/-)";
+        }
         return switch (type) {
             case STAT_DIVIDE -> "Divisor";
             case BF_CHANCE_ADD -> "Chance change % (+/-)";
             case CE_COST_ALTER -> "CE cost multiplier";
-            case HEAL_HP_PERCENT, RESTORE_CE_PERCENT, DRAIN_CE_PERCENT,
-                 DEAL_MAX_HP_DAMAGE -> "Percentage";
-            case TEMP_STAT_PERCENT, BATTLE_STAT_PERCENT -> "Percentage (+/-)";
-            case BATTLE_STAT_ADD -> "Amount (+/-)";
             case SUMMON_CE_UPKEEP_PER_ACTIVE_TICK -> "CE per active tick";
             default -> "Multiplier";
         };
     }
 
-    private static boolean isPercentage(AbilityEffectType type) {
+    private static boolean isPercentage(
+        AbilityEffectType type,
+        AbilityEffectData effect
+    ) {
         return type == AbilityEffectType.BF_CHANCE_ADD
-            || type == AbilityEffectType.HEAL_HP_PERCENT
-            || type == AbilityEffectType.RESTORE_CE_PERCENT
-            || type == AbilityEffectType.DRAIN_CE_PERCENT
-            || type == AbilityEffectType.DEAL_MAX_HP_DAMAGE
-            || type == AbilityEffectType.TEMP_STAT_PERCENT
-            || type == AbilityEffectType.BATTLE_STAT_PERCENT;
+            || type.isAmountModeEffect()
+                && AbilityEffectType.selectedValueMode(effect)
+                    == AbilityEffectType.ValueMode.PERCENT
+            || type == AbilityEffectType.TIMED_STAT_MODIFIER
+                && AbilityEffectType.selectedStatOperation(effect)
+                    == AbilityEffectType.StatOperation.CHANGE
+                && AbilityEffectType.selectedValueMode(effect)
+                    == AbilityEffectType.ValueMode.PERCENT;
     }
 
     private static String battleStatLabel(String value) {

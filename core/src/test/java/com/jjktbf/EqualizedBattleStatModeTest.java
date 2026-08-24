@@ -122,7 +122,8 @@ class EqualizedBattleStatModeTest {
         progression.mode = TechniqueMasteryProgressionData.FORMULA;
         progression.formula = "ctm/3";
         AbilityEffectData percentage = new AbilityEffectData();
-        percentage.type = AbilityEffectType.HEAL_HP_PERCENT.name();
+        percentage.type = AbilityEffectType.HEAL_HP.name();
+        percentage.valueMode = AbilityEffectType.ValueMode.PERCENT.name();
         percentage.doubleValue = 0.0;
         percentage.masteryProgression = Map.of(
             TechniqueMasteryProgressions.DOUBLE_VALUE, progression);

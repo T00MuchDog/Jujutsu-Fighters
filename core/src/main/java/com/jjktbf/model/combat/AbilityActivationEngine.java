@@ -89,6 +89,29 @@ public final class AbilityActivationEngine {
         return events;
     }
 
+    /** Apply every active over-time CE drain before this tick's actions begin. */
+    public List<CombatEvent> processOverTimeCeDrains(BattleState state, int tick) {
+        if (state == null) return List.of();
+        List<CombatEvent> events = new ArrayList<>();
+        ArrayDeque<AbilityTrigger> followUps = new ArrayDeque<>();
+        for (BattleCombatant target : state.activeCombatants()) {
+            for (BattleCombatant.OverTimeCeDrain drain : target.getOverTimeCeDrains()) {
+                int requested = amount(drain.effect(), target.getMaxCursedEnergy());
+                int drained = target.drainCe(requested);
+                if (drained <= 0) continue;
+                events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
+                    .source(drain.source()).target(target).intValue(drained).tick(tick)
+                    .build());
+                followUps.add(AbilityTrigger.amount(
+                    AbilityTrigger.Type.CE_LOST, target, null, drained, tick));
+            }
+        }
+        while (!followUps.isEmpty()) {
+            events.addAll(process(state, followUps.removeFirst()));
+        }
+        return events;
+    }
+
     /**
      * Evaluate and execute the shared effect primitives attached to one move
      * trigger. The trigger is implicit and always matches; each row may add an
@@ -256,6 +279,23 @@ public final class AbilityActivationEngine {
         Move move,
         int tick
     ) {
+        return allowsAttackLaunch(state, owner, enemy, move, null, tick);
+    }
+
+    /**
+     * Evaluate a Defensive+Attack hybrid's attack-launch gate with the defended
+     * incoming move available to event conditions. This lets an ON_DEFENCE launch
+     * condition inspect the attack it just stopped, while preserving the wrapper
+     * move's existing MOVE_BLOCKED launch context for older authored conditions.
+     */
+    public boolean allowsAttackLaunch(
+        BattleState state,
+        BattleCombatant owner,
+        BattleCombatant enemy,
+        Move move,
+        Move incomingMove,
+        int tick
+    ) {
         if (move == null) return false;
         int mastery = TechniqueMasteryResolver.masteryOf(owner);
         AbilityConditionData resolved = move.getAttackLaunchCondition() == null
@@ -265,7 +305,12 @@ public final class AbilityActivationEngine {
             move.launchesAttackOnDefence()
                 ? AbilityTrigger.Type.MOVE_BLOCKED : AbilityTrigger.Type.MOVE_USED,
             owner, enemy, move, tick);
-        if (!evaluateMoveCondition(resolved, owner, enemy, state, trigger, List.of(trigger))) {
+        List<AbilityTrigger> launchContext = new ArrayList<>(List.of(trigger));
+        if (move.launchesAttackOnDefence() && incomingMove != null) {
+            launchContext.add(AbilityTrigger.move(
+                AbilityTrigger.Type.MOVE_USED, enemy, owner, incomingMove, tick));
+        }
+        if (!evaluateMoveCondition(resolved, owner, enemy, state, trigger, launchContext)) {
             return false;
         }
         if (!move.isAttackLaunchChanceEnabled()) return true;
@@ -714,11 +759,9 @@ public final class AbilityActivationEngine {
         List<BattleCombatant> targets = targets(
             effect, owner, enemy, state, moveContext, moveTargets, moveAllies, pairTargets);
         switch (type) {
-            case HEAL_HP, HEAL_HP_PERCENT -> {
+            case HEAL_HP -> {
                 for (BattleCombatant target : targets) {
-                    int requested = type == AbilityEffectType.HEAL_HP
-                        ? value(effect.intValue)
-                        : (int) Math.round(target.getMaxHp() * value(effect.doubleValue));
+                    int requested = amount(effect, target.getMaxHp());
                     int healed = target.heal(requested);
                     if (healed <= 0) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.HP_RESTORED)
@@ -728,11 +771,9 @@ public final class AbilityActivationEngine {
                     followUps.add(AbilityTrigger.amount(AbilityTrigger.Type.HEALED, target, null, healed, tick));
                 }
             }
-            case RESTORE_CE, RESTORE_CE_PERCENT -> {
+            case RESTORE_CE -> {
                 for (BattleCombatant target : targets) {
-                    int requested = type == AbilityEffectType.RESTORE_CE
-                        ? value(effect.intValue)
-                        : (int) Math.round(target.getMaxCursedEnergy() * value(effect.doubleValue));
+                    int requested = amount(effect, target.getMaxCursedEnergy());
                     int restored = target.restoreCe(requested);
                     if (restored <= 0) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.CE_RESTORED)
@@ -742,11 +783,17 @@ public final class AbilityActivationEngine {
                     followUps.add(AbilityTrigger.amount(AbilityTrigger.Type.CE_RESTORED, target, null, restored, tick));
                 }
             }
-            case DRAIN_CE, DRAIN_CE_PERCENT -> {
+            case DRAIN_CE -> {
+                if (AbilityEffectType.ceDrainMode(effect)
+                    == AbilityEffectType.CeDrainMode.OVER_TIME) {
+                    AbilityEffectData scaled = resolveCeDrainCeEfficiency(effect, owner);
+                    for (BattleCombatant target : targets) {
+                        addRuntimeEffect(state, owner, target, scaled, tick, events);
+                    }
+                    return;
+                }
                 for (BattleCombatant target : targets) {
-                    int requested = type == AbilityEffectType.DRAIN_CE
-                        ? value(effect.intValue)
-                        : (int) Math.round(target.getMaxCursedEnergy() * value(effect.doubleValue));
+                    int requested = amount(effect, target.getMaxCursedEnergy());
                     int drained = target.drainCe(requested);
                     if (drained <= 0) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
@@ -756,11 +803,10 @@ public final class AbilityActivationEngine {
                     followUps.add(AbilityTrigger.amount(AbilityTrigger.Type.CE_LOST, target, null, drained, tick));
                 }
             }
-            case DEAL_DIRECT_DAMAGE, DEAL_MAX_HP_DAMAGE, INSTANT_KILL -> {
+            case DEAL_DIRECT_DAMAGE, INSTANT_KILL -> {
                 for (BattleCombatant target : targets) {
                     int requested = switch (type) {
-                        case DEAL_DIRECT_DAMAGE -> value(effect.intValue);
-                        case DEAL_MAX_HP_DAMAGE -> (int) Math.round(target.getMaxHp() * value(effect.doubleValue));
+                        case DEAL_DIRECT_DAMAGE -> amount(effect, target.getMaxHp());
                         case INSTANT_KILL -> 0;
                         default -> 0;
                     };
@@ -865,10 +911,9 @@ public final class AbilityActivationEngine {
                         owner, target, previousMaxHp, previousMaxCe, tick, events);
                 }
             }
-            case TEMP_STAT_ADD, TEMP_STAT_MULTIPLY, TEMP_STAT_SET_VALUE, TEMP_STAT_PERCENT,
-                 BATTLE_STAT_ADD, BATTLE_STAT_MULTIPLY, BATTLE_STAT_PERCENT,
+            case TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
                  IGNORE_DAMAGE, DAMAGE_SHIELD,
-                 SURVIVE_FATAL_DAMAGE, GUARANTEE_NEXT_HIT, GUARANTEE_NEXT_DODGE,
+                 SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS, APPLY_NEVER_HIT,
                  GUARANTEE_NEXT_BLACK_FLASH, CANCEL_NEXT_MOVE,
                  TEMP_LOCK_MOVE_TAG -> {
                 for (BattleCombatant target : targets) {
@@ -1440,7 +1485,7 @@ public final class AbilityActivationEngine {
         int previousMaxHp = target.getMaxHp();
         int previousMaxCe = target.getMaxCursedEnergy();
         target.addRuntimeAbilityEffect(
-            effect, state.getRoundNumber(), state.getCurrentPhase(), refreshGroup);
+            effect, state.getRoundNumber(), state.getCurrentPhase(), refreshGroup, source, tick);
         appendResourceMaximumEvents(
             source, target, previousMaxHp, previousMaxCe, tick, events);
     }
@@ -1534,6 +1579,31 @@ public final class AbilityActivationEngine {
 
     private static double ratio(int current, int maximum) {
         return maximum <= 0 ? 0.0 : (double) current / maximum;
+    }
+
+    private static int amount(AbilityEffectData effect, int maximum) {
+        return AbilityEffectType.valueMode(effect) == AbilityEffectType.ValueMode.FLAT
+            ? value(effect.intValue)
+            : (int) Math.round(maximum * value(effect.doubleValue));
+    }
+
+    private static AbilityEffectData resolveCeDrainCeEfficiency(
+        AbilityEffectData effect,
+        BattleCombatant source
+    ) {
+        if (effect.ceEfficiencyProgression == null || effect.ceEfficiencyProgression.isEmpty()) {
+            return effect;
+        }
+        // Match CTM progression's standard/equalized stat policy at application time.
+        int efficiency = source == null || source.getEffectiveStats() == null ? 0
+            : Math.max(0, Math.min(CharacterStats.MAX_STAT,
+                source.getStatMode().masteryForProgression(
+                    source.getEffectiveStats().getCursedEnergyEfficiency())));
+        AbilityEffectData resolved = TechniqueMasteryResolver.resolve(
+            effect, effect.ceEfficiencyProgression, efficiency,
+            TechniqueMasteryProgressions.CE_EFFICIENCY_VARIABLE);
+        resolved.ceEfficiencyProgression = null;
+        return resolved;
     }
 
     private static int value(Integer value) { return value == null ? 0 : value; }

@@ -10,6 +10,7 @@ import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.progression.TechniqueMasteryProgressionData;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
+import com.jjktbf.model.text.ContentNameTokens;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -628,11 +629,25 @@ public class MoveData {
      * {@link #toMove()} so {@code data::toMove} method references stay exact.
      */
     public Move toMoveResolved(java.util.function.Function<String, MoveData> attackLaunchMoves) {
-        return toMoveResolved(attackLaunchMoves, new java.util.HashSet<>());
+        return toMoveResolved(attackLaunchMoves, (ContentNameTokens.NameLookup) null);
+    }
+
+    /**
+     * Full conversion, additionally resolving {@code *move:id*} /
+     * {@code *ability:id*} reference tokens in the description to the
+     * referenced content's current name. A null lookup keeps the authored
+     * description verbatim, which suits authoring editors and unit tests.
+     */
+    public Move toMoveResolved(
+        java.util.function.Function<String, MoveData> attackLaunchMoves,
+        ContentNameTokens.NameLookup descriptionNames
+    ) {
+        return toMoveResolved(attackLaunchMoves, descriptionNames, new java.util.HashSet<>());
     }
 
     private Move toMoveResolved(
         java.util.function.Function<String, MoveData> attackLaunchMoves,
+        ContentNameTokens.NameLookup descriptionNames,
         Set<String> seen
     ) {
         MoveCategory cat = derivedCategory();
@@ -642,7 +657,8 @@ public class MoveData {
         Move.Builder b = new Move.Builder(id)
             .name(name)
             .moveType(effectiveMoveType())
-            .description(description != null ? description : "")
+            .description(ContentNameTokens.resolve(
+                description != null ? description : "", descriptionNames))
             .category(cat)
             .pool(derivedPool())
             .basePower(basePower)
@@ -697,7 +713,8 @@ public class MoveData {
         if (launchMoveId != null && attackLaunchMoves != null && seen.add(id)) {
             MoveData referenced = attackLaunchMoves.apply(launchMoveId);
             if (referenced != null) {
-                b.attackLaunchMove(referenced.toMoveResolved(attackLaunchMoves, seen));
+                b.attackLaunchMove(
+                    referenced.toMoveResolved(attackLaunchMoves, descriptionNames, seen));
             }
         }
 
@@ -1093,12 +1110,15 @@ public class MoveData {
             : effects.stream().filter(java.util.Objects::nonNull).map(MoveEffectData::copy)
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         if (effects != null) {
+            for (MoveEffectData effect : migrated) {
+                changed |= effect.migrateLegacyType();
+            }
             if (legacyStun && migrated.stream().noneMatch(MoveData::isStunEffect)) {
                 migrated.add(stunCurrentActionEffect());
                 changed = true;
             }
             effects = migrated;
-            AbilityData.ensureEffectIds(effects);
+            changed |= AbilityData.ensureEffectIds(effects);
             return changed;
         }
         if (summonCharacterId != null && !summonCharacterId.isBlank()) {

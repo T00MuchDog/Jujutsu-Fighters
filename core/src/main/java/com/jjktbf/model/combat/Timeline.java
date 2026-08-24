@@ -354,6 +354,18 @@ public class Timeline {
         return null;
     }
 
+    /**
+     * Remove an armed reaction that has not resolved yet. This is used by
+     * effects that explicitly end a readied defensive stance before it reacts.
+     */
+    public boolean cancelArmedReaction(String moveId) {
+        if (moveId == null || moveId.isBlank()) return false;
+        return segments.removeIf(segment -> segment.hasFired()
+            && !segment.isReactionTriggered()
+            && segment.getMove().isReactionDefense()
+            && moveId.equals(segment.getMove().getId()));
+    }
+
     public ActionSegment activeBlockAt(
         int tick,
         Move incomingMove,

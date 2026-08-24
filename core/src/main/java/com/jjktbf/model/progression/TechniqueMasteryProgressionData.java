@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Persisted formula or step-based progression driven by cursed technique mastery. */
+/** Persisted formula or step-based progression driven by a bounded combat stat. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TechniqueMasteryProgressionData {
@@ -18,6 +18,7 @@ public class TechniqueMasteryProgressionData {
     public String formula;
     public List<BenchmarkData> benchmarks;
     private transient String cachedFormula;
+    private transient String cachedVariableName;
     private transient TechniqueMasteryFormula.Expression cachedExpression;
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -54,65 +55,78 @@ public class TechniqueMasteryProgressionData {
 
     /** Returns {@code null} when valid, otherwise a deterministic description. */
     public String validationError() {
+        return validationError(TechniqueMasteryProgressions.CTM_VARIABLE, "CTM");
+    }
+
+    /** Validate this progression against its authored formula variable. */
+    public String validationError(String variableName, String variableLabel) {
         if (mode == null) return "Progression mode is required";
-        if (FORMULA.equals(mode)) return formulaValidationError();
+        if (FORMULA.equals(mode)) return formulaValidationError(variableName, variableLabel);
         if (BENCHMARKS.equals(mode)) return benchmarkValidationError();
         return "Progression mode must be FORMULA or BENCHMARKS";
     }
 
-    /** Resolves the progression after clamping CTM to the authored 0..300 range. */
+    /** Resolves the progression after clamping its input to the authored 0..300 range. */
     public int resolve(int ctm) {
-        int clampedCtm = Math.max(0, Math.min(300, ctm));
+        return resolve(ctm, TechniqueMasteryProgressions.CTM_VARIABLE);
+    }
+
+    /** Resolve this progression using the configured formula variable. */
+    public int resolve(int value, String variableName) {
+        int clampedValue = Math.max(0, Math.min(300, value));
         if (FORMULA.equals(mode)) {
             if (formula == null || formula.isBlank()) {
-                throw new IllegalStateException("Invalid technique mastery progression: Formula is required");
+                throw new IllegalStateException("Invalid stat progression: Formula is required");
             }
-            return expression()
-                .evaluate(TechniqueMasteryFormula.Rational.of(clampedCtm))
+            return expression(variableName)
+                .evaluate(TechniqueMasteryFormula.Rational.of(clampedValue))
                 .floorToInt();
         }
         if (!BENCHMARKS.equals(mode)) {
             throw new IllegalStateException(
-                "Invalid technique mastery progression: unknown mode " + mode);
+                "Invalid stat progression: unknown mode " + mode);
         }
         String benchmarkError = benchmarkValidationError();
         if (benchmarkError != null) {
             throw new IllegalStateException(
-                "Invalid technique mastery progression: " + benchmarkError);
+                "Invalid stat progression: " + benchmarkError);
         }
 
-        int value = benchmarks.get(0).value;
+        int resolved = benchmarks.get(0).value;
         for (BenchmarkData benchmark : benchmarks) {
-            if (benchmark.mastery > clampedCtm) break;
-            value = benchmark.value;
+            if (benchmark.mastery > clampedValue) break;
+            resolved = benchmark.value;
         }
-        return value;
+        return resolved;
     }
 
-    private String formulaValidationError() {
+    private String formulaValidationError(String variableName, String variableLabel) {
         if (formula == null || formula.isBlank()) return "Formula is required";
 
         TechniqueMasteryFormula.Expression expression;
         try {
-            expression = expression();
+            expression = expression(variableName);
         } catch (TechniqueMasteryFormula.FormulaException exception) {
             return "Invalid formula: " + exception.getMessage();
         }
 
-        for (int ctm = 0; ctm <= 300; ctm++) {
+        for (int value = 0; value <= 300; value++) {
             try {
-                expression.evaluate(TechniqueMasteryFormula.Rational.of(ctm)).floorToInt();
+                expression.evaluate(TechniqueMasteryFormula.Rational.of(value)).floorToInt();
             } catch (TechniqueMasteryFormula.FormulaException exception) {
-                return "Invalid formula at CTM " + ctm + ": " + exception.getMessage();
+                return "Invalid formula at " + variableLabel + " " + value + ": "
+                    + exception.getMessage();
             }
         }
         return null;
     }
 
-    private TechniqueMasteryFormula.Expression expression() {
-        if (cachedExpression == null || !java.util.Objects.equals(cachedFormula, formula)) {
-            cachedExpression = TechniqueMasteryFormula.parse(formula);
+    private TechniqueMasteryFormula.Expression expression(String variableName) {
+        if (cachedExpression == null || !java.util.Objects.equals(cachedFormula, formula)
+            || !java.util.Objects.equals(cachedVariableName, variableName)) {
+            cachedExpression = TechniqueMasteryFormula.parse(formula, variableName);
             cachedFormula = formula;
+            cachedVariableName = variableName;
         }
         return cachedExpression;
     }

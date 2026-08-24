@@ -143,12 +143,12 @@ class ContentCatalogTest {
         assertEquals(120, stats.getVitality());
         assertEquals(90, stats.getStrength());
         assertEquals(80, stats.getDurability());
-        assertEquals(100, stats.getSpeed());
+        assertEquals(105, stats.getSpeed());
         assertEquals(90, stats.getCursedEnergyReserves());
-        assertEquals(120, stats.getCursedEnergyEfficiency());
+        assertEquals(140, stats.getCursedEnergyEfficiency());
         assertEquals(90, stats.getCursedEnergyOutput());
-        assertEquals(100, stats.getJujutsuSkill());
-        assertEquals(100, stats.getCombatAbility());
+        assertEquals(140, stats.getJujutsuSkill());
+        assertEquals(110, stats.getCombatAbility());
         assertEquals(80, stats.getCursedTechniqueMastery());
 
         Map<String, Move> moves = todo.getKnownMoves().stream()

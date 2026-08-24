@@ -373,7 +373,7 @@
   },
   {
     "term": "Simple Domain",
-    "description": "A New Shadow Style stance that intercepts the next Melee or Ranged attack."
+    "description": "A New Shadow Style stance that automatically parries the next attack at Potency 1, then answers a Melee parry with Sword Quick Draw."
   },
   {
     "term": "Sidestep",

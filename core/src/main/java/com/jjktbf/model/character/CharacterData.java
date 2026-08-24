@@ -10,6 +10,7 @@ import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
 import com.jjktbf.model.technique.TechniqueRepository;
 import com.jjktbf.model.technique.TechniqueSkillTree;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.weapon.CursedToolData;
 import com.jjktbf.model.weapon.CursedToolRepository;
 
@@ -232,6 +233,8 @@ public class CharacterData {
 
         validateSelectedMoveNodes(moveRepo, techniques, prerequisiteWaiver);
 
+        ContentNameTokens.NameLookup descriptionNames =
+            descriptionNameLookup(moveRepo, abilityRepo);
         for (String moveId : resolvedMoveIds) {
                 if (moveId == null || moveId.isBlank()) {
                     System.err.println("[WARN] Blank move ID skipped for character '" + name + "'");
@@ -241,7 +244,8 @@ public class CharacterData {
                 if (found.isPresent()) {
                     try {
                         moves.add(found.get().toMoveResolved(
-                            launchId -> moveRepo.findById(launchId).orElse(null)));
+                            launchId -> moveRepo.findById(launchId).orElse(null),
+                            descriptionNames));
                     } catch (Exception e) {
                         System.err.println("[WARN] Could not build move " + moveId + ": " + e.getMessage());
                     }
@@ -277,6 +281,27 @@ public class CharacterData {
     }
 
     /**
+     * Name lookup for {@code *move:id*} / {@code *ability:id*} description
+     * reference tokens, built from whatever repositories are at hand. Null
+     * repositories resolve nothing, so tests building partial graphs keep
+     * authored text verbatim.
+     */
+    public static ContentNameTokens.NameLookup descriptionNameLookup(
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo
+    ) {
+        return (type, id) -> {
+            if (id == null) return null;
+            if (ContentNameTokens.MOVE_PREFIX.equalsIgnoreCase(type)) {
+                return moveRepo == null ? null
+                    : moveRepo.findById(id).map(move -> move.name).orElse(null);
+            }
+            return abilityRepo == null ? null
+                : abilityRepo.findById(id).map(ability -> ability.name).orElse(null);
+        };
+    }
+
+    /**
      * Resolve this character's {@link Equipment} (base weapons plus cursed
      * tools). Fails loudly on unknown weapon types and unknown tool ids.
      */
@@ -296,10 +321,13 @@ public class CharacterData {
                 List.of());
         }
         List<Move> allMoves = new ArrayList<>();
+        ContentNameTokens.NameLookup descriptionNames =
+            descriptionNameLookup(moveRepo, abilityRepo);
         for (MoveData move : moveRepo.getAll()) {
             try {
                 allMoves.add(move.toMoveResolved(
-                    launchId -> moveRepo.findById(launchId).orElse(null)));
+                    launchId -> moveRepo.findById(launchId).orElse(null),
+                    descriptionNames));
             } catch (RuntimeException exception) {
                 System.err.println("[WARN] Invalid move " + move.id
                     + " cannot be granted by equipment: " + exception.getMessage());

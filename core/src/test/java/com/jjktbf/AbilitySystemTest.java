@@ -86,6 +86,70 @@ class AbilitySystemTest {
     }
 
     @Test
+    void malformedEffectSelectorsReturnValidationErrors() {
+        AbilityEffectData amount = AbilityEffectType.HEAL_HP.createDefault();
+        amount.valueMode = "INVALID";
+        assertEquals(AbilityEffectType.ValueMode.FLAT,
+            AbilityEffectType.selectedValueMode(amount));
+        assertEquals("Choose flat amount or maximum percentage.",
+            AbilityEffectType.HEAL_HP.validationError(amount));
+
+        AbilityEffectData stat = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        stat.statType = "INVALID";
+        assertEquals(AbilityEffectType.StatType.CORE,
+            AbilityEffectType.selectedStatType(stat));
+        assertEquals("Choose a core or battle stat.",
+            AbilityEffectType.TIMED_STAT_MODIFIER.validationError(stat));
+
+        stat = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        stat.statOperation = "INVALID";
+        assertEquals(AbilityEffectType.StatOperation.CHANGE,
+            AbilityEffectType.selectedStatOperation(stat));
+        assertEquals("Choose change or multiply.",
+            AbilityEffectType.TIMED_STAT_MODIFIER.validationError(stat));
+
+        AbilityEffectData accuracy = AbilityEffectType.APPLY_NEVER_MISS.createDefault();
+        accuracy.accuracyDuration = "INVALID";
+        assertEquals(AbilityEffectType.AccuracyDuration.NEXT_ATTACK,
+            AbilityEffectType.selectedAccuracyDuration(accuracy));
+        assertEquals("Choose next attack or a duration.",
+            AbilityEffectType.APPLY_NEVER_MISS.validationError(accuracy));
+    }
+
+    @Test
+    void retiredEffectNamesMigrateToCanonicalConfiguration() {
+        AbilityEffectData amount = new AbilityEffectData();
+        amount.type = "HEAL_HP_PERCENT";
+        amount.doubleValue = 0.25;
+        assertTrue(amount.migrateLegacyType());
+        assertEquals(AbilityEffectType.HEAL_HP.name(), amount.type);
+        assertEquals(AbilityEffectType.ValueMode.PERCENT.name(), amount.valueMode);
+        assertEquals(0.25, amount.doubleValue);
+
+        AbilityEffectData stat = new AbilityEffectData();
+        stat.type = "BATTLE_STAT_MULTIPLY";
+        stat.stringValue = "DAMAGE_DEALT";
+        stat.doubleValue = 1.2;
+        assertTrue(stat.migrateLegacyType());
+        assertEquals(AbilityEffectType.TIMED_STAT_MODIFIER.name(), stat.type);
+        assertEquals(AbilityEffectType.StatType.BATTLE.name(), stat.statType);
+        assertEquals(AbilityEffectType.StatOperation.MULTIPLY.name(), stat.statOperation);
+        assertNull(stat.valueMode);
+
+        AbilityEffectData accuracy = new AbilityEffectData();
+        accuracy.type = "GUARANTEE_NEXT_DODGE";
+        accuracy.uses = 2;
+        accuracy.durationRounds = -1;
+        assertTrue(accuracy.migrateLegacyType());
+        assertEquals(AbilityEffectType.APPLY_NEVER_HIT.name(), accuracy.type);
+        assertEquals(5, accuracy.intValue);
+        assertEquals(AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name(),
+            accuracy.accuracyDuration);
+        assertEquals(2, accuracy.uses);
+        assertEquals(-1, accuracy.durationRounds);
+    }
+
+    @Test
     void activeCeCostAlterationOnlyMatchesExactWeaponReinforcementMoves() {
         AbilityEffectData alteration = AbilityEffectType.CE_COST_ALTER
             .createDefault();
@@ -862,7 +926,9 @@ class AbilitySystemTest {
         immunity.uses = 1;
         AbilityEffectData shield = AbilityEffectType.DAMAGE_SHIELD.createDefault();
         shield.intValue = 10;
-        AbilityEffectData ap = AbilityEffectType.BATTLE_STAT_ADD.createDefault();
+        AbilityEffectData ap = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        ap.statType = AbilityEffectType.StatType.BATTLE.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(ap);
         ap.stringValue = BattleStatKey.MAX_AP.name();
         ap.doubleValue = 20.0;
         ap.durationRounds = 1;
@@ -895,7 +961,7 @@ class AbilitySystemTest {
     @Test
     void runtimeAbilityEffectsCanExpireByTimelineTicks() {
         BattleCombatant owner = combatant("OWNER", List.of(), List.of());
-        AbilityEffectData strength = AbilityEffectType.TEMP_STAT_ADD.createDefault();
+        AbilityEffectData strength = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
         strength.stat = com.jjktbf.model.character.StatKey.STRENGTH.fieldName;
         strength.intValue = 10;
         strength.durationRounds = 0;
@@ -966,7 +1032,7 @@ class AbilitySystemTest {
 
     @Test
     void malformedAbilityDurationFailsAtDomainConstruction() {
-        AbilityEffectData effect = AbilityEffectType.TEMP_STAT_ADD.createDefault();
+        AbilityEffectData effect = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
         effect.durationRounds = 0;
         effect.durationTicks = 0;
         AbilityData data = ability("ACTIVE", "Invalid duration", "INVALID_DURATION");

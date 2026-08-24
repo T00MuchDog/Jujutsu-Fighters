@@ -172,6 +172,58 @@ class AccuracyPriorityTest {
             AbilityEffectType.NEVER_MISS.validationError(invalid));
     }
 
+    @Test
+    void appliedNeverMissTierCanLastForOneAttackOrADuration() {
+        Move unranked = attack("UNRANKED", 0);
+        BattleCombatant defender = combatant("DEFENDER", null);
+
+        BattleCombatant oneAttack = combatant("ONE_ATTACK", unranked);
+        oneAttack.addRuntimeAbilityEffect(appliedTier(
+            AbilityEffectType.APPLY_NEVER_MISS, 3,
+            AbilityEffectType.AccuracyDuration.NEXT_ATTACK));
+        assertTrue(resolve(oneAttack, defender, unranked).isHit());
+        assertTrue(resolve(oneAttack, defender, unranked).isMiss(),
+            "the next-attack tier must be consumed by one attack");
+
+        BattleCombatant duration = combatant("DURATION", unranked);
+        duration.addRuntimeAbilityEffect(appliedTier(
+            AbilityEffectType.APPLY_NEVER_MISS, 3,
+            AbilityEffectType.AccuracyDuration.DURATION));
+        assertTrue(resolve(duration, defender, unranked).isHit());
+        assertTrue(resolve(duration, defender, unranked).isHit(),
+            "a duration tier remains active until its timer expires");
+    }
+
+    @Test
+    void appliedNeverHitTierIsConsumedByTheNextIncomingAttack() {
+        Move tierTwo = attack("TIER_TWO", 2);
+        BattleCombatant attacker = combatant("ATTACKER", tierTwo);
+        BattleCombatant defender = combatant("DEFENDER", null);
+        defender.addRuntimeAbilityEffect(appliedTier(
+            AbilityEffectType.APPLY_NEVER_HIT, 3,
+            AbilityEffectType.AccuracyDuration.NEXT_ATTACK));
+
+        assertTrue(resolve(attacker, defender, tierTwo).isMiss());
+        assertTrue(resolve(attacker, defender, tierTwo).isHit());
+    }
+
+    @Test
+    void migratedMultiUseGuaranteePreservesEveryUse() {
+        Move unranked = attack("MIGRATED_USES", 0);
+        BattleCombatant attacker = combatant("ATTACKER", unranked);
+        BattleCombatant defender = combatant("DEFENDER", null);
+        AbilityEffectData legacy = new AbilityEffectData();
+        legacy.type = "GUARANTEE_NEXT_HIT";
+        legacy.uses = 2;
+        legacy.durationRounds = -1;
+        assertTrue(legacy.migrateLegacyType());
+        attacker.addRuntimeAbilityEffect(legacy);
+
+        assertTrue(resolve(attacker, defender, unranked).isHit());
+        assertTrue(resolve(attacker, defender, unranked).isHit());
+        assertTrue(resolve(attacker, defender, unranked).isMiss());
+    }
+
     private static DamageCalculator.DamageResult resolve(
         BattleCombatant attacker,
         BattleCombatant defender,
@@ -231,6 +283,21 @@ class AccuracyPriorityTest {
             data.effects.add(effect);
         }
         return new Ability(data);
+    }
+
+    private static AbilityEffectData appliedTier(
+        AbilityEffectType type,
+        int tier,
+        AbilityEffectType.AccuracyDuration duration
+    ) {
+        AbilityEffectData effect = type.createDefault();
+        effect.intValue = tier;
+        effect.accuracyDuration = duration.name();
+        if (duration == AbilityEffectType.AccuracyDuration.DURATION) {
+            effect.durationRounds = 1;
+            effect.durationTicks = 0;
+        }
+        return effect;
     }
 
     private static BattleCombatant combatant(String id, Move move, Ability... abilities) {

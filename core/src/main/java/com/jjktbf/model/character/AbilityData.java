@@ -128,6 +128,11 @@ public class AbilityData {
     @JsonIgnore
     public boolean migrateActivationData() {
         boolean changed = ensureEffectIds(effects);
+        if (effects != null) {
+            for (AbilityEffectData effect : effects) {
+                if (effect != null) changed |= effect.migrateLegacyType();
+            }
+        }
         if (isActive() && activationConditions == null) {
             List<AbilityConditionRuleData> migrated = legacyActivationConditions();
             if (migrated != null

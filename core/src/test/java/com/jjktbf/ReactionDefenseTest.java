@@ -130,6 +130,17 @@ public class ReactionDefenseTest {
             "Both attacks deal damage (one reduced, one clean).");
     }
 
+    @Test
+    void armedReactionCanBeCancelledBeforeItTriggers() {
+        Timeline timeline = new Timeline(20);
+        ActionSegment armed = timeline.placeAt(REACTION_BLOCK, 1, 0);
+        assertNotNull(armed);
+        armed.markFired();
+
+        assertTrue(timeline.cancelArmedReaction(REACTION_BLOCK.getId()));
+        assertNull(timeline.triggerArmedReaction(5, ATTACK));
+    }
+
     /** A triggered reaction's fire tick equals the impact tick, yet it must NOT perfect-read. */
     @Test
     void reactionNeverPerfectReads() {

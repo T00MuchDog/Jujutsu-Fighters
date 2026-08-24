@@ -1026,10 +1026,10 @@ Shipped coded abilities (keys / features / actions):
     KEY = "NEW_SHADOW_STYLE".
     Features:
       SIMPLE_DOMAIN_BINDING_VOW  Using any other move dispels an active Simple Domain.
-    Effect action: ACTIVATE_SIMPLE_DOMAIN — a coded self-effect (on the Simple
-                   Domain move) that activates Simple Domain as a reaction bound
-                   to a target move (codedTarget = move id, e.g. Batto Sword
-                   Drawing). Validates that move through its STUN_CURRENT_ACTION row.
+    Effect action: ACTIVATE_SIMPLE_DOMAIN — a coded self-effect on the Simple
+                   Domain move that activates its binding-vow state. The move's
+                   reactive POTENCY 1 PARRY and linked melee counter are composed
+                   through its Defensive+Attack hybrid fields.
 
   TEN_SHADOWS                            (TenShadowsAbility)
     KEY = "TEN_SHADOWS". Marker features only — exposes no move effect action.

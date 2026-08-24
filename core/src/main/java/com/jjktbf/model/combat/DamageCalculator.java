@@ -156,6 +156,27 @@ public final class DamageCalculator {
         ConnectedHitHook connectedHitHook
     ) {
         if (component == null) throw new IllegalArgumentException("hit component is required");
+        return resolve(attacker, defender, move, component, currentTick, rng,
+            currentRound, forceFullBlock, requireFiredDefense, connectedHitHook,
+            attacker.consumeNeverMissTier(), defender.consumeNeverHitTier());
+    }
+
+    /** Resolve one component using temporary tiers already claimed by its attack execution. */
+    static DamageResult resolve(
+        BattleCombatant attacker,
+        BattleCombatant defender,
+        Move            move,
+        HitComponent    component,
+        int             currentTick,
+        RandomSource    rng,
+        int             currentRound,
+        boolean         forceFullBlock,
+        boolean         requireFiredDefense,
+        ConnectedHitHook connectedHitHook,
+        int             temporaryNeverMissTier,
+        int             temporaryNeverHitTier
+    ) {
+        if (component == null) throw new IllegalArgumentException("hit component is required");
         // Use ability-modified stats for all calculations
         CharacterStats acs = attacker.getEffectiveStats();
 
@@ -168,8 +189,10 @@ public final class DamageCalculator {
         // continue unchanged.
         int neverMissTier = Math.max(
             move.getNeverMissTier(TechniqueMasteryResolver.masteryOf(attacker)),
-            attacker.getAbilityFlags().neverMissTierFor(move));
-        int neverHitTier = defender.getAbilityFlags().neverHitTierFor(move);
+            Math.max(attacker.getAbilityFlags().neverMissTierFor(move),
+                temporaryNeverMissTier));
+        int neverHitTier = Math.max(defender.getAbilityFlags().neverHitTierFor(move),
+            temporaryNeverHitTier);
 
         if (neverHitTier > neverMissTier) {
             return DamageResult.miss(move, component);
@@ -201,10 +224,6 @@ public final class DamageCalculator {
             // --- 1. Hit roll ---
             boolean hit;
             if (neverMissTier > 0 || move.hasLegacyNeverMiss()) {
-                hit = true;
-            } else if (defender.consumeGuaranteedDodge()) {
-                hit = false;
-            } else if (attacker.consumeGuaranteedHit()) {
                 hit = true;
             } else {
                 // Each component may define its own base accuracy; otherwise the

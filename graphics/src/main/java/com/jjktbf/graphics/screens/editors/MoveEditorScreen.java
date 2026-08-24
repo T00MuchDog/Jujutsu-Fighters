@@ -62,6 +62,7 @@ import com.jjktbf.model.move.StatusEffectType;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.TechniqueRepository;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.text.KeywordDescriptionCatalog;
 import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.model.weapon.CursedToolData;
@@ -108,6 +109,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     private final MoveRepository repo;
     /** Character repo for the shikigami-summon selector and summon-reference remap on delete. */
     private final CharacterRepository charRepo;
+    /** Ability repo for validating *ability:id* description references on save. */
+    private final AbilityRepository abilityRepo;
     private final TechniqueRepository techniqueRepo;
     private final CursedToolRepository cursedToolRepo;
 
@@ -125,6 +128,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         super(game, assets);
         repo = new MoveRepository("data/moves");
         charRepo = new CharacterRepository("data/characters");
+        abilityRepo = new AbilityRepository("data/abilities");
         techniqueRepo = new TechniqueRepository("data/techniques");
         cursedToolRepo = new CursedToolRepository("data/tools");
     }
@@ -514,6 +518,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .orElse(requestedName);
     }
 
+    /** Flags *move:id* / *ability:id* description references that match no content. */
+    private String descriptionNameTokenError(String description) {
+        return ContentNameTokens.validationError(description,
+            CharacterData.descriptionNameLookup(repo, abilityRepo));
+    }
+
     @Override protected boolean isNewDraft(MoveData draft) {
         return draft.id == null || draft.id.isEmpty()
             || repo.findById(draft.id).isEmpty();
@@ -523,6 +533,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     protected void reloadRecords() throws IOException {
         repo.load();
         charRepo.load();
+        abilityRepo.load();
         techniqueRepo.load();
         cursedToolRepo.load();
         records.clear();
@@ -580,6 +591,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             toSave.description, toSave.effects);
         if (descriptionVariableError != null) {
             return ValidationResult.error("Description: " + descriptionVariableError);
+        }
+        String descriptionNameError = descriptionNameTokenError(toSave.description);
+        if (descriptionNameError != null) {
+            return ValidationResult.error("Description: " + descriptionNameError);
         }
         boolean adding = isNewDraft(d);
         // New drafts need a non-blank id for the engine builder to validate.
@@ -706,13 +721,14 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 return ValidationResult.error(
                     "Cannot delete: ability \"" + dependent.name + "\" references this move.");
             }
-            MoveData codedDependent = repo.getAll().stream()
+            MoveData launchDependent = repo.getAll().stream()
                 .filter(move -> !id.equals(move.id))
-                .filter(move -> referencesCodedMoveTarget(move, id))
+                .filter(move -> id.equals(move.attackLaunchMoveId))
                 .findFirst().orElse(null);
-            if (codedDependent != null) {
+            if (launchDependent != null) {
                 return ValidationResult.error(
-                    "Cannot delete: move \"" + codedDependent.name + "\" references this move.");
+                    "Cannot delete: move \"" + launchDependent.name
+                        + "\" launches this move as an attack.");
             }
             MoveData conditionDependent = repo.getAll().stream()
                 .filter(move -> !id.equals(move.id))
@@ -762,7 +778,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     .forEach(effect -> effect.moveId = remappedIds.getOrDefault(
                         effect.moveId, effect.moveId));
             }
-            remapCodedMoveTargets(repo.getAll(), remappedIds);
+            remapAttackLaunchMoveTargets(repo.getAll(), remappedIds);
+            remapMoveEffectConditions(repo.getAll(), remappedIds);
 
             repo.delete(id);
             repo.save();
@@ -815,55 +832,22 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
-    static void remapCodedMoveTargets(List<MoveData> moves, Map<String, String> remappedIds) {
+    static void remapAttackLaunchMoveTargets(List<MoveData> moves, Map<String, String> remappedIds) {
         for (MoveData move : moves) {
-            for (MoveData.StatusEffectData effect : codedEffects(move)) {
-                if (effect.codedTarget != null) {
-                    effect.codedTarget = remappedIds.getOrDefault(
-                        effect.codedTarget, effect.codedTarget);
-                }
-            }
-            if (move.effects != null) {
-                move.effects.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .filter(effect -> AbilityEffectType.CODED_MOVE_ACTION.name()
-                        .equalsIgnoreCase(effect.type))
-                    .filter(effect -> effect.codedTarget != null)
-                    .forEach(effect -> effect.codedTarget = remappedIds.getOrDefault(
-                        effect.codedTarget, effect.codedTarget));
-                move.effects.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .forEach(effect -> remapConditionMoves(effect.condition, remappedIds));
+            if (move.attackLaunchMoveId != null) {
+                move.attackLaunchMoveId = remappedIds.getOrDefault(
+                    move.attackLaunchMoveId, move.attackLaunchMoveId);
             }
         }
     }
 
-    private static boolean referencesCodedMoveTarget(MoveData move, String id) {
-        boolean legacy = codedEffects(move).stream()
-            .anyMatch(effect -> id.equals(effect.codedTarget));
-        if (legacy || move.effects == null) return legacy;
-        return move.effects.stream()
-            .filter(java.util.Objects::nonNull)
-            .filter(effect -> AbilityEffectType.CODED_MOVE_ACTION.name()
-                .equalsIgnoreCase(effect.type))
-            .anyMatch(effect -> id.equals(effect.codedTarget));
-    }
-
-    private static List<MoveData.StatusEffectData> codedEffects(MoveData move) {
-        List<MoveData.StatusEffectData> effects = new ArrayList<>();
-        // On-hit coded effects live per hit component; scan each one.
-        if (move.hitComponents != null) {
-            for (MoveData.HitComponentData component : move.hitComponents) {
-                if (component == null || component.onHitEffects == null) continue;
-                component.onHitEffects.stream().filter(MoveData.StatusEffectData::isCoded)
-                    .forEach(effects::add);
-            }
+    static void remapMoveEffectConditions(List<MoveData> moves, Map<String, String> remappedIds) {
+        for (MoveData move : moves) {
+            if (move.effects == null) continue;
+            move.effects.stream()
+                .filter(java.util.Objects::nonNull)
+                .forEach(effect -> remapConditionMoves(effect.condition, remappedIds));
         }
-        if (move.selfEffects != null) {
-            move.selfEffects.stream().filter(MoveData.StatusEffectData::isCoded)
-                .forEach(effects::add);
-        }
-        return effects;
     }
 
     private static boolean conditionReferencesMove(AbilityConditionData condition, String moveId) {
@@ -2386,8 +2370,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             return List.of(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE);
         }
         List<AbilityEffectType> preferred = List.of(
-            AbilityEffectType.TEMP_STAT_PERCENT,
-            AbilityEffectType.BATTLE_STAT_PERCENT,
+            AbilityEffectType.TIMED_STAT_MODIFIER,
             AbilityEffectType.APPLY_STATUS,
             AbilityEffectType.INSTANT_KILL,
             AbilityEffectType.SUMMON_CHARACTER,
@@ -2925,29 +2908,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .colspan(2).row();
 
         if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)) {
-            List<MoveData> candidates = repo.getAll().stream()
-                .filter(MoveEditorScreen::isSimpleDomainReactionMove)
-                .toList();
-            if (candidates.isEmpty()) {
-                fields.add(formHint("Create an attacking move before linking this reaction."))
-                    .colspan(2).row();
-                return fields;
-            }
-            SelectBox<String> moveBox = new DynamicSelectBox<>(skin, uiProfile);
-            List<String> labels = candidates.stream().map(MoveEditorScreen::moveLabel).toList();
-            moveBox.setItems(labels.toArray(new String[0]));
-            String selected = candidates.stream()
-                .filter(move -> move.id.equals(effect.codedTarget))
-                .map(MoveEditorScreen::moveLabel)
-                .findFirst().orElse(labels.get(0));
-            moveBox.setSelected(selected);
-            moveBox.addListener(new ChangeListener() {
-                @Override public void changed(ChangeEvent event, Actor actor) {
-                    effect.codedTarget = moveIdFromLabel(moveBox.getSelected());
-                }
-            });
-            fields.add(new Label("Reaction move", skin)).padRight(8);
-            fields.add(moveBox).growX().row();
+            effect.codedTarget = null;
+            effect.codedStackCount = null;
+            fields.add(formHint(
+                "Configure Simple Domain's parry and counter in the Defense section."))
+                .colspan(2).row();
             return fields;
         }
 
@@ -3040,20 +3005,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 effect.codedStackCount = null;
             }
         } else if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)) {
+            effect.codedTarget = null;
             effect.codedStackCount = null;
-            boolean validTarget = effect.codedTarget != null && repo.findById(effect.codedTarget)
-                .filter(MoveEditorScreen::isSimpleDomainReactionMove)
-                .isPresent();
-            if (!validTarget) {
-                effect.codedTarget = repo.getAll().stream()
-                    .filter(move -> "Batto Sword Drawing".equals(move.name))
-                    .findFirst()
-                    .or(() -> repo.getAll().stream()
-                        .filter(MoveEditorScreen::isSimpleDomainReactionMove)
-                        .findFirst())
-                    .map(move -> move.id)
-                    .orElse(null);
-            }
         } else {
             effect.codedTarget = null;
             effect.codedStackCount = null;
@@ -3155,14 +3108,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         if (label == null || label.startsWith("[")) return null;
         int separator = label.indexOf(" - ");
         return separator < 0 ? label.trim() : label.substring(0, separator).trim();
-    }
-
-    private static boolean isSimpleDomainReactionMove(MoveData move) {
-        try {
-            return NewShadowStyleAbility.isValidReactionMove(move.toMove());
-        } catch (Exception ignored) {
-            return false;
-        }
     }
 
     // =========================================================================

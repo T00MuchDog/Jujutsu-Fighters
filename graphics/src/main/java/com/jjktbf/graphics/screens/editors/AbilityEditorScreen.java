@@ -26,6 +26,7 @@ import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.AbilityResolver;
 import com.jjktbf.model.character.CharacterData;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.character.CharacterRepository;
 import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.StatKey;
@@ -238,6 +239,15 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
 
     private String validationError(AbilityData ability) {
         if (ability.name == null || ability.name.trim().isEmpty()) return "Name is required.";
+        String nameTokenError = ContentNameTokens.validationError(ability.mechanicText,
+            CharacterData.descriptionNameLookup(moveRepo, repo));
+        if (nameTokenError == null) {
+            nameTokenError = ContentNameTokens.validationError(ability.flavourText,
+                CharacterData.descriptionNameLookup(moveRepo, repo));
+        }
+        if (nameTokenError != null) {
+            return "Mechanic/Flavour text: " + nameTokenError;
+        }
         boolean duplicateName = repo.getAll().stream().anyMatch(existing ->
             existing.name != null && existing.name.equalsIgnoreCase(ability.name.trim())
                 && !java.util.Objects.equals(existing.id, ability.id));

@@ -60,6 +60,21 @@ public class AbilityEffectData {
     /** Double parameter: multiply factor, BF chance addition, damage factor. */
     public Double doubleValue;
 
+    /** FLAT or PERCENT for effects that support both amount forms. */
+    public String valueMode;
+
+    /** CORE or BATTLE for the combined timed stat modifier. */
+    public String statType;
+
+    /** CHANGE or MULTIPLY for the combined timed stat modifier. */
+    public String statOperation;
+
+    /** NEXT_ATTACK or DURATION for temporary Never Miss/Never Hit tiers. */
+    public String accuracyDuration;
+
+    /** INSTANT or OVER_TIME for the configurable Cursed Energy drain effect. */
+    public String ceDrainMode;
+
     /** Multiplier at the game's minimum scaled stat for a stat-scaling curve. */
     public Double minimumStatMultiplier;
 
@@ -149,6 +164,9 @@ public class AbilityEffectData {
     /** Optional per-field CTM formulas or benchmark tables. */
     public Map<String, TechniqueMasteryProgressionData> masteryProgression;
 
+    /** Optional per-field Cursed Energy Efficiency formulas for over-time CE drain. */
+    public Map<String, TechniqueMasteryProgressionData> ceEfficiencyProgression;
+
     @JsonIgnore
     public boolean isCoded() {
         return AbilityEffectType.CODED.name().equalsIgnoreCase(type);
@@ -174,6 +192,11 @@ public class AbilityEffectData {
         this.stat = source.stat;
         this.intValue = source.intValue;
         this.doubleValue = source.doubleValue;
+        this.valueMode = source.valueMode;
+        this.statType = source.statType;
+        this.statOperation = source.statOperation;
+        this.accuracyDuration = source.accuracyDuration;
+        this.ceDrainMode = source.ceDrainMode;
         this.minimumStatMultiplier = source.minimumStatMultiplier;
         this.maximumStatMultiplier = source.maximumStatMultiplier;
         this.moveTag = source.moveTag;
@@ -201,6 +224,82 @@ public class AbilityEffectData {
         this.targetResourceKey = source.targetResourceKey;
         this.targetResourceAmount = source.targetResourceAmount;
         this.masteryProgression = TechniqueMasteryProgressions.copy(source.masteryProgression);
+        this.ceEfficiencyProgression = TechniqueMasteryProgressions.copy(
+            source.ceEfficiencyProgression);
+    }
+
+    /** Translate retired persisted primitive names to the canonical configurable effects. */
+    public boolean migrateLegacyType() {
+        if (type == null) return false;
+        switch (type.trim().toUpperCase()) {
+            case "HEAL_HP_PERCENT" -> migratePercentAmount(AbilityEffectType.HEAL_HP);
+            case "RESTORE_CE_PERCENT" -> migratePercentAmount(AbilityEffectType.RESTORE_CE);
+            case "DRAIN_CE_PERCENT" -> migratePercentAmount(AbilityEffectType.DRAIN_CE);
+            case "DEAL_MAX_HP_DAMAGE" ->
+                migratePercentAmount(AbilityEffectType.DEAL_DIRECT_DAMAGE);
+            case "TEMP_STAT_ADD" -> migrateTimedStat(
+                AbilityEffectType.StatType.CORE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.FLAT);
+            case "TEMP_STAT_MULTIPLY" -> migrateTimedStat(
+                AbilityEffectType.StatType.CORE,
+                AbilityEffectType.StatOperation.MULTIPLY,
+                AbilityEffectType.ValueMode.FLAT);
+            case "TEMP_STAT_PERCENT" -> migrateTimedStat(
+                AbilityEffectType.StatType.CORE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.PERCENT);
+            case "BATTLE_STAT_ADD" -> migrateTimedStat(
+                AbilityEffectType.StatType.BATTLE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.FLAT);
+            case "BATTLE_STAT_MULTIPLY" -> migrateTimedStat(
+                AbilityEffectType.StatType.BATTLE,
+                AbilityEffectType.StatOperation.MULTIPLY,
+                AbilityEffectType.ValueMode.FLAT);
+            case "BATTLE_STAT_PERCENT" -> migrateTimedStat(
+                AbilityEffectType.StatType.BATTLE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.PERCENT);
+            case "GUARANTEE_NEXT_HIT" -> migrateGuaranteedAccuracy(
+                AbilityEffectType.APPLY_NEVER_MISS);
+            case "GUARANTEE_NEXT_DODGE" -> migrateGuaranteedAccuracy(
+                AbilityEffectType.APPLY_NEVER_HIT);
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void migratePercentAmount(AbilityEffectType replacement) {
+        type = replacement.name();
+        valueMode = AbilityEffectType.ValueMode.PERCENT.name();
+    }
+
+    private void migrateTimedStat(
+        AbilityEffectType.StatType selectedStatType,
+        AbilityEffectType.StatOperation operation,
+        AbilityEffectType.ValueMode selectedValueMode
+    ) {
+        type = AbilityEffectType.TIMED_STAT_MODIFIER.name();
+        statType = selectedStatType.name();
+        statOperation = operation.name();
+        valueMode = operation == AbilityEffectType.StatOperation.CHANGE
+            ? selectedValueMode.name() : null;
+    }
+
+    private void migrateGuaranteedAccuracy(AbilityEffectType replacement) {
+        type = replacement.name();
+        intValue = 5;
+        if (uses == null || uses > 0) {
+            int legacyUses = uses == null ? 1 : uses;
+            accuracyDuration = AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name();
+            uses = legacyUses;
+        } else {
+            accuracyDuration = AbilityEffectType.AccuracyDuration.DURATION.name();
+            uses = null;
+        }
     }
 
     // ── Convenience constructors for editor use ───────────────────────────────
@@ -214,7 +313,7 @@ public class AbilityEffectData {
     }
 
     /**
-     * Timed percentage stat modifier ({@code TEMP_STAT_PERCENT}). The percent is
+     * Timed percentage stat modifier. The percent is
      * additive (0.20 = +20%); percentage effects stack additively with each other.
      * {@code rounds}/{@code ticks} follow the standard duration model — a tick-only
      * duration ({@code rounds == 0, ticks > 0}) persists across round boundaries.
@@ -223,7 +322,10 @@ public class AbilityEffectData {
         String stat, double percent, int rounds, int ticks
     ) {
         AbilityEffectData e = new AbilityEffectData();
-        e.type           = AbilityEffectType.TEMP_STAT_PERCENT.name();
+        e.type           = AbilityEffectType.TIMED_STAT_MODIFIER.name();
+        e.statType       = AbilityEffectType.StatType.CORE.name();
+        e.statOperation  = AbilityEffectType.StatOperation.CHANGE.name();
+        e.valueMode      = AbilityEffectType.ValueMode.PERCENT.name();
         e.stat           = stat;
         e.target         = "SELF";
         e.doubleValue    = percent;
@@ -307,6 +409,11 @@ public class AbilityEffectData {
             + (stat        != null ? " stat=" + stat : "")
             + (intValue    != null ? " int=" + intValue : "")
             + (doubleValue != null ? " dbl=" + doubleValue : "")
+            + (valueMode != null ? " valueMode=" + valueMode : "")
+            + (statType != null ? " statType=" + statType : "")
+            + (statOperation != null ? " statOperation=" + statOperation : "")
+            + (accuracyDuration != null ? " accuracyDuration=" + accuracyDuration : "")
+            + (ceDrainMode != null ? " ceDrainMode=" + ceDrainMode : "")
             + (minimumStatMultiplier != null ? " minStat=x" + minimumStatMultiplier : "")
             + (maximumStatMultiplier != null ? " maxStat=x" + maximumStatMultiplier : "")
             + (moveTag     != null ? " tag=" + moveTag : "")

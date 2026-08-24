@@ -29,10 +29,11 @@ import java.util.*;
  *         - Interrupt resolution
  *   4. After all ticks → ROUND_END processing
  *
- * Tie-breaking at the same fireTick:
- *   - Instant moves (unleashPoint == 1) fire before all others.
- *   - Among ties at the same fireTick: higher Speed wins.
- *   - Identical Speed: random resolution using stable precomputed tie keys.
+     * Tie-breaking at the same fireTick:
+     *   - Instant moves (unleashPoint == 1) fire before all others.
+     *   - Among ties at the same fireTick: higher Speed wins.
+     *   - Within one character's own moves: defense fires before offense.
+     *   - Identical Speed: random resolution using stable precomputed tie keys.
  *
  * All effects are reported as CombatEvents collected in a list.
  * The resolver never touches I/O — events are returned to the controller.
@@ -738,8 +739,9 @@ public class CombatResolver {
      * Sort firing entries:
      *  1. Instant moves (unleashPoint == 1) first
      *  2. Higher Speed first
-     *  3. Precomputed random tiebreak
-     *  4. Stable team/roster/instance order as the deterministic fallback
+     *  3. Same character: defensive moves before offensive ones
+     *  4. Precomputed random tiebreak
+     *  5. Stable team/roster/instance order as the deterministic fallback
      */
     private void sortFiringEntries(List<FiringEntry> firing) {
         firing.sort(this::comparePriority);
@@ -774,6 +776,13 @@ public class CombatResolver {
     }
 
     private int comparePriority(FiringEntry a, FiringEntry b) {
+        // Within one character's own same-tick moves, defense always commits
+        // before offense — regardless of unleash point. Cross-character order
+        // is decided below by instant status and Speed, never by move category.
+        if (a.attacker.getInstanceId().equals(b.attacker.getInstanceId())) {
+            return Boolean.compare(b.segment.getMove().isDefensive(),
+                                   a.segment.getMove().isDefensive());
+        }
         int instantComparison = Boolean.compare(b.segment.isInstant(), a.segment.isInstant());
         if (instantComparison != 0) return instantComparison;
         int aSpeed = a.attacker.getRuntimeStat(StatKey.SPEED);

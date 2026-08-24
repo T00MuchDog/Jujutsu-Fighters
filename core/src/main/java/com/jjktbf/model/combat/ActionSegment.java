@@ -22,6 +22,8 @@ import java.util.List;
  * Priority rule for simultaneous fireTicks:
  *   Moves with unleashPoint == 1 (fireTick == startTick) are highest priority.
  *   All ties resolved by the combatant's Speed stat (higher Speed wins).
+ *   Within a single character's own moves firing on the same tick, defense
+ *   fires before offense regardless of unleash point.
  *
  * This ordering applies to defenses too: a defensive move only contests an
  * attack landing on its tick if it has already markFired() — i.e. it won the

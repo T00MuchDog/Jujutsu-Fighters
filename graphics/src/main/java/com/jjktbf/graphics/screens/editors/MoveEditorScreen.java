@@ -45,6 +45,7 @@ import com.jjktbf.model.character.coded.RatioAbility;
 import com.jjktbf.model.move.AoeType;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.BlockStyle;
+import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.DefenseTiming;
 import com.jjktbf.model.move.DefenseType;
@@ -61,6 +62,8 @@ import com.jjktbf.model.move.StatusEffectType;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.TechniqueRepository;
+import com.jjktbf.model.text.KeywordDescriptionCatalog;
+import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.model.weapon.CursedToolData;
 import com.jjktbf.model.weapon.CursedToolRepository;
 import com.jjktbf.model.weapon.WeaponType;
@@ -248,6 +251,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.aoeTargetCount        = s.aoeTargetCount;
         d.defenseTargeting      = s.defenseTargeting;
         d.defenseTargetCount    = s.defenseTargetCount;
+        d.pairTargeting         = s.pairTargeting;
         d.attackLaunchMode      = s.attackLaunchMode;
         d.attackLaunchCondition = s.attackLaunchCondition != null
                                   ? s.attackLaunchCondition.copy() : null;
@@ -571,6 +575,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         // a copy so a failed save cannot erase details hidden by a temporary
         // tag toggle.
         MoveData toSave = normalizedCopyForSave(d);
+        AbilityData.ensureEffectIds(toSave.effects);
+        String descriptionVariableError = MoveDescriptionVariables.validationError(
+            toSave.description, toSave.effects);
+        if (descriptionVariableError != null) {
+            return ValidationResult.error("Description: " + descriptionVariableError);
+        }
         boolean adding = isNewDraft(d);
         // New drafts need a non-blank id for the engine builder to validate.
         if (adding && (toSave.id == null || toSave.id.isBlank())) {
@@ -893,6 +903,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         powerFieldsContainer = null;
         attackLaunchContainer = null;
 
+        AbilityData.ensureEffectIds(d.effects);
+
         if (d.hitComponents != null && hasTag(d, MoveTag.ATTACK)) {
             synchronizeParentDamageTags(d);
         }
@@ -905,7 +917,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         identity.add(labelledField("Name", d.name,
                 s -> { d.name = s; })).growX().row();
         identity.add(labelledKeywordField("Description", d.description,
-                s -> { d.description = s; })).growX().row();
+                s -> { d.description = s; },
+                () -> moveDescriptionVariableEntries(d))).growX().row();
 
         // ── Tags ───────────────────────────────────────────────────────────────
         Table tagsSection = formSection(form, "TAGS");
@@ -1148,6 +1161,15 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         return form;
     }
 
+    private static List<KeywordDescriptionCatalog.Entry> moveDescriptionVariableEntries(
+        MoveData move
+    ) {
+        return MoveDescriptionVariables.variables(move.effects).stream()
+            .map(variable -> new KeywordDescriptionCatalog.Entry(
+                variable.token(), variable.description()))
+            .toList();
+    }
+
     // =========================================================================
     // Conditional sub-sections
     // =========================================================================
@@ -1161,6 +1183,19 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         defenseEffectsContainer = null;
         aoeFieldsContainer = null;
         attackLaunchContainer = null;
+
+        Table pairTargeting = formSection(sections, "PAIR TARGETING");
+        CombatantPairTargeting currentPair =
+            CombatantPairTargeting.fromName(d.pairTargeting);
+        d.pairTargeting = currentPair.name();
+        pairTargeting.add(labelledRow(
+            "Combatants (" + currentPair.displayName() + ")",
+            new EnumSelectBox<>(CombatantPairTargeting.class, currentPair.name(), false,
+                value -> {
+                    d.pairTargeting = value;
+                    game.audio().play(SoundCue.UI_NAVIGATE);
+                    markDirty();
+                }, skin, uiProfile))).growX().row();
 
         // The DEFENSE card sits above the ATTACK card: defence wins over
         // attack, so a Defensive+Attack hybrid reads top-down as a defence

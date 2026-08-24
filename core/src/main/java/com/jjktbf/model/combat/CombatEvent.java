@@ -27,6 +27,7 @@ public class CombatEvent {
 
         // Targeting
         TARGET_RETARGETED,  // a single-target move's invalid target was retargeted at fire time
+        TARGETS_EXCHANGED,  // a target-exchange window transposed an attack recipient
         DEFENSE_GRANTED,    // a defensive move's active-defense window was conferred to an ally
 
         // Summoning
@@ -76,6 +77,7 @@ public class CombatEvent {
     private final Type            type;
     private final BattleCombatant source;     // who caused the event (may be null for system events)
     private final BattleCombatant target;     // who was affected (may be null)
+    private final BattleCombatant relatedTarget; // second combatant in pair-based events
     private final Move            move;       // relevant move (may be null)
     private final int             intValue;   // damage, CE amount, etc.
     private final int             tick;       // AP tick this event occurred on (0 = system/round events)
@@ -93,6 +95,7 @@ public class CombatEvent {
         this.type      = b.type;
         this.source    = b.source;
         this.target    = b.target;
+        this.relatedTarget = b.relatedTarget;
         this.move      = b.move;
         this.intValue  = b.intValue;
         this.tick      = b.tick;
@@ -107,6 +110,7 @@ public class CombatEvent {
     public Type            getType()     { return type; }
     public BattleCombatant getSource()   { return source; }
     public BattleCombatant getTarget()   { return target; }
+    public BattleCombatant getRelatedTarget() { return relatedTarget; }
     public Move            getMove()     { return move; }
     public int             getIntValue() { return intValue; }
     public int             getTick()     { return tick; }
@@ -144,6 +148,7 @@ public class CombatEvent {
         private final Type type;
         private BattleCombatant source;
         private BattleCombatant target;
+        private BattleCombatant relatedTarget;
         private Move            move;
         private int             intValue;
         private int             tick;
@@ -158,6 +163,10 @@ public class CombatEvent {
 
         public Builder source(BattleCombatant v)  { this.source   = v; return this; }
         public Builder target(BattleCombatant v)  { this.target   = v; return this; }
+        public Builder relatedTarget(BattleCombatant v) {
+            this.relatedTarget = v;
+            return this;
+        }
         public Builder move(Move v)               { this.move     = v; return this; }
         public Builder intValue(int v)            { this.intValue = v; return this; }
         public Builder tick(int v)                { this.tick     = v; return this; }

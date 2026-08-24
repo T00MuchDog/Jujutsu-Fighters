@@ -9,6 +9,7 @@ import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.move.AoeType;
+import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveData;
@@ -275,6 +276,30 @@ class PlanningPanelInputTest {
         assertFalse(panel.chooseTarget(segment, "fighter"));
         assertTrue(panel.chooseTarget(segment, "summon"));
         assertEquals(List.of("summon"), panel.getSelectedTargetIds(segment));
+    }
+
+    @Test
+    void mixedPairSelectionChoosesAllyThenEnemyAndPreservesOrder() {
+        Move move = new Move.Builder("PAIR")
+            .name("Pair")
+            .category(MoveCategory.UTILITY)
+            .pairTargeting(CombatantPairTargeting.ALLY_AND_ENEMY)
+            .apCost(5)
+            .unleashPoint(1)
+            .build();
+        PlanningPanel panel = targetedPanel(move, List.of(
+            new PlanningPanel.TargetOption("enemy", "Enemy")));
+        panel.setAllyOptions(List.of(new PlanningPanel.TargetOption("ally", "Ally")));
+        ActionSegment segment = panel.restorePlacement(move, 1, 0, List.of());
+
+        assertFalse(panel.chooseTarget(segment, "enemy"));
+        assertTrue(panel.chooseTarget(segment, "ally"));
+        assertEquals(List.of("ally"), panel.getSelectedTargetIds(segment));
+        assertFalse(panel.chooseTarget(segment, "ally"));
+        assertTrue(panel.chooseTarget(segment, "enemy"));
+        assertEquals(List.of("ally", "enemy"), panel.getSelectedTargetIds(segment));
+        assertEquals(List.of("ally", "enemy"),
+            TargetListSupport.targetIds(panel.getPlacements().get(0)));
     }
 
     @Test

@@ -15,6 +15,11 @@ final class ActiveMatch {
     final Map<String, ActiveParticipant> participants = new LinkedHashMap<>();
     boolean completionPersisted;
     boolean completionBroadcast;
+    int planningRound = -1;
+    Long planningDeadline;
+    long planningDueNanos;
+    long planningRemainingNanos;
+    ScheduledFuture<?> planningTask;
     ScheduledFuture<?> completionRetryTask;
     ScheduledFuture<?> cleanupTask;
 

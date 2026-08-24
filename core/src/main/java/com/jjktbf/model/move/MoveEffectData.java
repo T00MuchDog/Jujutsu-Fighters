@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.jjktbf.model.character.AbilityConditionData;
 import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectData;
+import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
@@ -148,6 +149,19 @@ public class MoveEffectData extends AbilityEffectData {
         if (effectType.isAccuracyPriority()
             && moveTrigger != MoveEffectTrigger.ACCURACY_CHECK) {
             return effectType.displayName() + " must use Accuracy check.";
+        }
+        if (effectType == AbilityEffectType.EXCHANGE_ATTACK_TARGETS
+            && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+            return "Exchange attack targets must use On fire.";
+        }
+        if (target != null) {
+            AbilityEffectTarget effectTarget = AbilityEffectTarget.valueOf(target);
+            if ((effectTarget == AbilityEffectTarget.PAIR_FIRST
+                    || effectTarget == AbilityEffectTarget.PAIR_SECOND
+                    || effectTarget == AbilityEffectTarget.PAIR_BOTH)
+                && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+                return "Pair targets may only be used by On fire effects.";
+            }
         }
         if (!effectType.isAccuracyPriority()
             && moveTrigger == MoveEffectTrigger.ACCURACY_CHECK) {

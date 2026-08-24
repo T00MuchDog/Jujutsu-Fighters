@@ -201,6 +201,9 @@ public class Move {
      */
     private final int defenseTargetCount;
 
+    /** Ordered explicit endpoint shape for moves that act on a combatant pair. */
+    private final CombatantPairTargeting pairTargeting;
+
     // On-hit status effects live per {@link HitComponent} (applied when that
     // specific component connects). There is no move-level onHitEffects field.
 
@@ -349,6 +352,8 @@ public class Move {
         this.defenseUses          = b.defenseUses;
         this.defenseTargeting     = resolveDefenseTargeting(b);
         this.defenseTargetCount   = b.defenseTargetCount;
+        this.pairTargeting        = b.pairTargeting != null
+            ? b.pairTargeting : CombatantPairTargeting.NONE;
         this.selfEffects         = Collections.unmodifiableList(b.selfEffects);
         this.onBlockEffects      = Collections.unmodifiableList(b.onBlockEffects);
         this.onParryEffects      = Collections.unmodifiableList(b.onParryEffects);
@@ -510,6 +515,8 @@ public class Move {
     public DefenseTargeting getDefenseTargeting() { return defenseTargeting; }
     /** Ally count for {@link DefenseTargeting#MULTIPLE_ALLIES}; ignored otherwise. */
     public int getDefenseTargetCount()            { return defenseTargetCount; }
+    /** Pair endpoint selection shape; {@link CombatantPairTargeting#NONE} by default. */
+    public CombatantPairTargeting getPairTargeting() { return pairTargeting; }
     /**
      * On-hit status effects aggregated across all hit components (in authored
      * order). On-hit effects live per {@link HitComponent}; this convenience
@@ -930,6 +937,7 @@ public class Move {
         private int defenseUses                = 0;
         private DefenseTargeting defenseTargeting = DefenseTargeting.SELF;
         private int defenseTargetCount          = 2;
+        private CombatantPairTargeting pairTargeting = CombatantPairTargeting.NONE;
         /**
          * On-hit effects for the legacy single-component authoring path. When a
          * move is built with {@link #basePower} (no explicit {@link #hitComponents}),
@@ -1002,6 +1010,11 @@ public class Move {
         public Builder defenseTargeting(DefenseTargeting v) { this.defenseTargeting = v; return this; }
         /** Set the ally count for {@link DefenseTargeting#MULTIPLE_ALLIES}. Must be ≥ 2 when used. */
         public Builder defenseTargetCount(int v)           { this.defenseTargetCount = v; return this; }
+        /** Set the ordered explicit endpoints selected for this move. */
+        public Builder pairTargeting(CombatantPairTargeting v) {
+            this.pairTargeting = v == null ? CombatantPairTargeting.NONE : v;
+            return this;
+        }
         /**
          * On-hit effects for the legacy single-component path only (seeds the
          * synthesized fallback component). For multi-hit moves, author effects
@@ -1099,6 +1112,7 @@ public class Move {
 
             validateAttackLaunch();
             validateHitComponents();
+            validatePairTargeting();
             validateMoveEffects();
 
             // Potency lives on attack and defensive moves (gates which defences
@@ -1164,6 +1178,11 @@ public class Move {
                 }
                 MoveEffectTrigger trigger = effect.resolvedTrigger();
                 AbilityEffectType effectType = AbilityEffectType.fromName(effect.type);
+                if (effectType == AbilityEffectType.EXCHANGE_ATTACK_TARGETS
+                    && pairTargeting == CombatantPairTargeting.NONE) {
+                    throw new IllegalStateException(
+                        "Exchange attack targets requires pair targeting (name='" + name + "')");
+                }
                 if (trigger == MoveEffectTrigger.ACCURACY_CHECK
                     && effectType == AbilityEffectType.NEVER_MISS && hitCount == 0) {
                     throw new IllegalStateException(
@@ -1191,6 +1210,22 @@ public class Move {
                     throw new IllegalStateException(
                         "On-dodge effects require a dodge move (name='" + name + "')");
                 }
+            }
+        }
+
+        private void validatePairTargeting() {
+            if (pairTargeting != CombatantPairTargeting.NONE
+                && category != MoveCategory.UTILITY
+                && category != MoveCategory.DEFENSIVE) {
+                throw new IllegalStateException(
+                    "Pair targeting is only supported on utility and defensive moves (name='"
+                        + name + "')");
+            }
+            if (pairTargeting != CombatantPairTargeting.NONE
+                && category == MoveCategory.DEFENSIVE
+                && effectiveTags().contains(MoveTag.ATTACK)) {
+                throw new IllegalStateException(
+                    "Pair-targeted defensive moves cannot launch attacks (name='" + name + "')");
             }
         }
 

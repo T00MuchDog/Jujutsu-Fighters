@@ -1353,11 +1353,22 @@ public abstract class EditorScreenBase<D> implements Screen {
 
     /** A labelled text field that offers documented keywords for uppercase input. */
     protected Table labelledKeywordField(String label, String initial,
-                                         java.util.function.Consumer<String> onChange) {
+                                          java.util.function.Consumer<String> onChange) {
+        return labelledKeywordField(label, initial, onChange, java.util.List::of);
+    }
+
+    /** Keyword field with context-specific colon-delimited description variables. */
+    protected Table labelledKeywordField(
+        String label,
+        String initial,
+        java.util.function.Consumer<String> onChange,
+        java.util.function.Supplier<java.util.List<
+            com.jjktbf.model.text.KeywordDescriptionCatalog.Entry>> extraEntries
+    ) {
         Table row = new Table(skin);
         addFormLabel(row, label);
         TextField tf = new KeywordAutocompleteField(
-            initial == null ? "" : initial, skin, uiProfile);
+            initial == null ? "" : initial, skin, uiProfile, extraEntries);
         tf.setTextFieldFilter((TextField textField, char c) -> true);
         tf.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {

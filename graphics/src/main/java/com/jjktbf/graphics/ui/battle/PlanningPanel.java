@@ -27,10 +27,12 @@ import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.MoveAvailability;
+import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
-import com.jjktbf.model.move.AoeType;
-import com.jjktbf.model.move.DefenseTargeting;
+import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
 
 import java.util.ArrayList;
@@ -487,18 +489,32 @@ public class PlanningPanel {
 
     public boolean chooseTarget(ActionSegment segment, String targetId) {
         if (segment == null || !requiresExplicitTargets(segment.getMove())) return false;
-        boolean valid = eligibleTargetOptions(segment.getMove()).stream()
+        Move move = segment.getMove();
+        List<CombatantId> selected = new ArrayList<>(targetsOf(segment));
+        boolean orderedPair = isOrderedPairMove(move);
+        int selectionIndex = orderedPair ? selected.size() : 0;
+        boolean valid = eligibleTargetOptions(move, selectionIndex).stream()
             .anyMatch(option -> option.instanceId().equals(targetId));
         if (!valid) return false;
 
         CombatantId target = new CombatantId(targetId);
-        if (isMultipleTargetMove(segment.getMove())) {
+        if (orderedPair) {
+            if (selected.size() >= targetCap(move) || selected.contains(target)) return false;
+            selected.add(target);
+            setTargets(segment, selected);
+            if (selected.size() == targetCap(move)) {
+                pendingTargetSelections.remove(segment);
+                closeTargetMenu();
+            } else {
+                pendingTargetSelections.add(segment);
+                if (targetMenuSegment == segment) layoutTargetMenu();
+            }
+        } else if (isMultipleTargetMove(move)) {
             pendingTargetSelections.add(segment);
-            List<CombatantId> selected = new ArrayList<>(targetsOf(segment));
             if (selected.remove(target)) {
                 setTargets(segment, selected);
             } else {
-                if (selected.size() >= targetCap(segment.getMove())) return false;
+                if (selected.size() >= targetCap(move)) return false;
                 selected.add(target);
                 setTargets(segment, selected);
             }
@@ -513,7 +529,9 @@ public class PlanningPanel {
     public boolean confirmTargetSelection(ActionSegment segment) {
         if (segment == null || !isMultipleTargetMove(segment.getMove())) return false;
         int count = targetsOf(segment).size();
-        if (count < 1 || count > targetCap(segment.getMove())) return false;
+        MoveTargetSelection.Requirements requirements =
+            MoveTargetSelection.requirements(segment.getMove());
+        if (count < requirements.minimumCount() || count > requirements.maximumCount()) return false;
         pendingTargetSelections.remove(segment);
         if (targetMenuSegment == segment) closeTargetMenu();
         lockError = null;
@@ -529,7 +547,8 @@ public class PlanningPanel {
     }
 
     private List<CombatantId> defaultTargets(Move move) {
-        List<TargetOption> eligible = eligibleTargetOptions(move);
+        if (isOrderedPairMove(move)) return List.of();
+        List<TargetOption> eligible = eligibleTargetOptions(move, 0);
         if (!requiresExplicitTargets(move) || eligible.isEmpty()) return List.of();
         if (isMultipleTargetMove(move) && eligible.size() != 1) return List.of();
         return List.of(new CombatantId(eligible.get(0).instanceId()));
@@ -579,9 +598,12 @@ public class PlanningPanel {
     }
 
     private static boolean isMultipleTargetMove(Move move) {
+        return move != null && MoveTargetSelection.requirements(move).maximumCount() > 1;
+    }
+
+    private static boolean isOrderedPairMove(Move move) {
         return move != null
-            && (move.getAoeType() == AoeType.MULTIPLE
-                || DefenseTargeting.forMove(move) == DefenseTargeting.MULTIPLE_ALLIES);
+            && move.getPairTargeting() == CombatantPairTargeting.ALLY_AND_ENEMY;
     }
 
     private static boolean requiresExplicitTargets(Move move) {
@@ -589,10 +611,7 @@ public class PlanningPanel {
     }
 
     private static int targetCap(Move move) {
-        if (DefenseTargeting.forMove(move) == DefenseTargeting.MULTIPLE_ALLIES) {
-            return Math.max(1, move.getDefenseTargetCount());
-        }
-        return isMultipleTargetMove(move) ? Math.max(1, move.getAoeTargetCount()) : 1;
+        return move == null ? 0 : MoveTargetSelection.requirements(move).maximumCount();
     }
 
     private static List<TargetOption> targetOptions(List<BattleCombatant> targets) {
@@ -944,6 +963,10 @@ public class PlanningPanel {
         for (int i = 0; i < cards.size(); i++) {
             MoveCardView card = cards.get(i);
             Move move = card.getMove();
+            if (localCombatant != null) {
+                card.setDisplayDescription(MoveDescriptionVariables.resolve(
+                    move, TechniqueMasteryResolver.masteryOf(localCombatant)));
+            }
             boolean restricted = isMoveRestricted(move);
             card.setDisabled(readOnly || restricted || !plan.canPlace(move, ceCost(move)));
             card.setHovered(i == hoveredCard);
@@ -1222,7 +1245,8 @@ public class PlanningPanel {
 
     private void drawTargetMenu(Batch batch, BitmapFont font) {
         if (targetMenuSegment == null) return;
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(targetMenuSegment.getMove());
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
         if (eligibleTargets.isEmpty()) return;
         layoutTargetMenu();
         boolean multiple = isMultipleTargetMove(targetMenuSegment.getMove());
@@ -1235,7 +1259,8 @@ public class PlanningPanel {
             (hovered || selected ? ui.cardOver : ui.card).draw(
                 batch, bounds.x, bounds.y, bounds.width, bounds.height);
             font.setColor(BattleUiAssets.TEXT);
-            String prefix = multiple ? (selected ? "[x] " : "[ ] ") : "";
+            String prefix = multiple && !isOrderedPairMove(targetMenuSegment.getMove())
+                ? (selected ? "[x] " : "[ ] ") : "";
             font.draw(batch, prefix + option.label(),
                 bounds.x + scaled(8f), bounds.y + scaled(20f));
         }
@@ -1243,11 +1268,15 @@ public class PlanningPanel {
             int count = selectedIds.size();
             int cap = targetCap(targetMenuSegment.getMove());
             font.setColor(BattleUiAssets.YELLOW);
-            font.draw(batch, "SELECT TARGETS  " + count + "/" + cap,
+            String selectionLabel = isOrderedPairMove(targetMenuSegment.getMove())
+                ? (count == 0 ? "SELECT ALLY" : "SELECT ENEMY") : "SELECT TARGETS";
+            font.draw(batch, selectionLabel + "  " + count + "/" + cap,
                 targetDoneBounds.x,
                 targetDoneBounds.y + targetDoneBounds.height * (eligibleTargets.size() + 1)
                     + scaled(20f));
-            boolean canFinish = count > 0 && count <= cap;
+            MoveTargetSelection.Requirements requirements =
+                MoveTargetSelection.requirements(targetMenuSegment.getMove());
+            boolean canFinish = count >= requirements.minimumCount() && count <= cap;
             (canFinish && targetDoneBounds.contains(dragMouseX, dragMouseY)
                 ? ui.cardOver : ui.card).draw(batch, targetDoneBounds.x, targetDoneBounds.y,
                     targetDoneBounds.width, targetDoneBounds.height);
@@ -1269,7 +1298,8 @@ public class PlanningPanel {
         x = clamp(x, scaled(10f),
             Math.max(scaled(10f), screenWidth - width - scaled(10f)));
         boolean multiple = isMultipleTargetMove(targetMenuSegment.getMove());
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(targetMenuSegment.getMove());
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
         float totalHeight = rowHeight * (eligibleTargets.size() + (multiple ? 2 : 0));
         float planningTop = unifiedWindowsLayout ? UNIFIED_SECTION_HEIGHT : screenHeight;
         if (y + totalHeight > planningTop - scaled(10f)) {
@@ -1298,9 +1328,16 @@ public class PlanningPanel {
 
     private void openTargetMenu(ActionSegment segment) {
         if (segment == null || !requiresExplicitTargets(segment.getMove())) return;
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(segment.getMove());
+        int selectedCount = targetsOf(segment).size();
+        if (isOrderedPairMove(segment.getMove())
+            && selectedCount == targetCap(segment.getMove())) {
+            setTargets(segment, List.of());
+            selectedCount = 0;
+        }
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            segment.getMove(), selectedCount);
         if (eligibleTargets.isEmpty()) return;
-        if (eligibleTargets.size() == 1) {
+        if (eligibleTargets.size() == 1 && !isOrderedPairMove(segment.getMove())) {
             setTargets(segment, List.of(new CombatantId(eligibleTargets.get(0).instanceId())));
             pendingTargetSelections.remove(segment);
             closeTargetMenu();
@@ -1320,7 +1357,8 @@ public class PlanningPanel {
     private boolean handleTargetMenuClick() {
         if (targetMenuSegment == null) return false;
         layoutTargetMenu();
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(targetMenuSegment.getMove());
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
         if (isMultipleTargetMove(targetMenuSegment.getMove())
             && targetDoneBounds.contains(dragMouseX, dragMouseY)) {
             boolean confirmedTargets = confirmTargetSelection(targetMenuSegment);
@@ -1341,28 +1379,32 @@ public class PlanningPanel {
 
     private String targetSelectionError() {
         for (ActionSegment segment : plan.allSegments()) {
-            int count = targetsOf(segment).size();
             if (isMultipleTargetMove(segment.getMove())) {
                 if (pendingTargetSelections.contains(segment)) {
                     return "Finish selecting targets for '" + segment.getMove().getName() + "'";
                 }
-                if (count < 1) {
-                    return "Move '" + segment.getMove().getName() + "' requires at least one target";
-                }
-                if (count > targetCap(segment.getMove())) {
-                    return "Move '" + segment.getMove().getName() + "' has too many targets";
-                }
-            } else if (BattlePlan.requiresTarget(segment.getMove()) && count == 0) {
-                return "Move '" + segment.getMove().getName() + "' requires a target";
+            }
+            String countError = MoveTargetSelection.targetCountError(
+                segment.getMove(), targetsOf(segment));
+            if (countError != null) return countError;
+            if (localBattleState != null && actorId != null) {
+                BattleCombatant actor = localBattleState.combatant(new CombatantId(actorId));
+                String relationshipError = MoveTargetSelection.validationError(
+                    localBattleState, actor, segment.getMove(), targetsOf(segment));
+                if (relationshipError != null) return relationshipError;
             }
         }
         return plan.missingTargetError();
     }
 
     private List<TargetOption> eligibleTargetOptions(Move move) {
-        // Defensive ally-targeting moves pick from allies instead of enemies.
-        if (move != null
-            && DefenseTargeting.forMove(move).requiresSelectedTargets()) {
+        return eligibleTargetOptions(move, 0);
+    }
+
+    private List<TargetOption> eligibleTargetOptions(Move move, int selectionIndex) {
+        MoveTargetSelection.Relationship relationship =
+            MoveTargetSelection.requirements(move).relationshipAt(selectionIndex);
+        if (relationship == MoveTargetSelection.Relationship.ALLY) {
             return allyOptions;
         }
         if (!CursedSpeechAbility.RETURN.equalsIgnoreCase(

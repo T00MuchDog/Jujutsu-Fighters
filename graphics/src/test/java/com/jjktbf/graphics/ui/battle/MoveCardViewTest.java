@@ -136,6 +136,22 @@ class MoveCardViewTest {
         assertNull(MoveCardView.accuracyLabel(utility));
     }
 
+    @Test
+    void displayDescriptionCanResolvePerCharacterWithoutMutatingTheMove() {
+        Move move = new Move.Builder("VARIABLE_CARD")
+            .name("Variable Card")
+            .description("Gain :effect-000000.intValue: HP")
+            .apCost(5)
+            .unleashPoint(1)
+            .build();
+        MoveCardView card = new MoveCardView(move, 0f, 0f);
+
+        card.setDisplayDescription("Gain 12 HP");
+
+        assertEquals("Gain 12 HP", card.getDisplayDescription());
+        assertEquals("Gain :effect-000000.intValue: HP", move.getDescription());
+    }
+
     private static Move moveWithTags(String... tags) {
         MoveData data = new MoveData();
         data.id = "CARD_TAG_TEST";

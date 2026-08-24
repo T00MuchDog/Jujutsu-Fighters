@@ -44,6 +44,7 @@ import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.TeamBattlePlan;
 import com.jjktbf.model.move.HitComponent;
+import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveTag;
@@ -112,6 +113,7 @@ public class BattleScreen implements Screen, BattleView {
     private static final float LOG_LINE_SPACING = 1.7f;
     /** Per-tick hold during resolution, in milliseconds. */
     private static final int   TICK_DURATION_MS        = 100;
+    private static final long  PLANNING_AUTO_SUBMIT_LEAD_MILLIS = 250L;
     private static final float FAST_FORWARD_MULTIPLIER = 2f;
     private static final float SKIP_ACTIVE_FLASH_SECONDS = 0.16f;
     private static final float SPEED_CONTROL_GAP = 8f;
@@ -403,6 +405,10 @@ public class BattleScreen implements Screen, BattleView {
     private final Set<String> loggedOnlineEventIds = new HashSet<>();
     private final Set<String> soundedOnlineEventIds = new HashSet<>();
     private boolean onlineCommandPending;
+    private long onlinePlanningDeadline = -1L;
+    private long onlinePlanningDeadlineNanos;
+    private long onlinePlanningServerTimestamp = -1L;
+    private boolean onlinePlanningTimedOut;
     private boolean preserveMultiplayerSession;
     private long multiplayerRun;
 
@@ -572,6 +578,7 @@ public class BattleScreen implements Screen, BattleView {
         loggedOnlineEventIds.clear();
         soundedOnlineEventIds.clear();
         onlineCommandPending = false;
+        resetMultiplayerPlanningCountdown();
         battleEntranceStarted = false;
         battleIntroLogged = false;
         preserveMultiplayerSession = false;
@@ -611,7 +618,10 @@ public class BattleScreen implements Screen, BattleView {
         } else {
             updateTyping(presentationDelta);
         }
-        if (mode == BattleMode.MULTIPLAYER) updateMultiplayerPlayback(presentationDelta);
+        if (mode == BattleMode.MULTIPLAYER) {
+            updateMultiplayerPlanningTimeout();
+            updateMultiplayerPlayback(presentationDelta);
+        }
         clearScreen();
         // Escape aborts from any phase, including planning (where the
         // PlanningInputProcessor owns Gdx.input, so handleInput() never runs).
@@ -622,6 +632,7 @@ public class BattleScreen implements Screen, BattleView {
         }
         handleInput();
         drawAll();
+        drawMultiplayerPlanningCountdown();
     }
 
     /**
@@ -1007,6 +1018,71 @@ public class BattleScreen implements Screen, BattleView {
         assets.fontSmall.draw(batch, label, x + 1f, y - 1f);
         assets.fontSmall.setColor(Color.YELLOW);
         assets.fontSmall.draw(batch, label, x, y);
+    }
+
+    private void drawMultiplayerPlanningCountdown() {
+        if (mode != BattleMode.MULTIPLAYER
+            || multiplayerState == null
+            || multiplayerState.phase() != BattlePhase.PLANNING
+            || multiplayerState.planningDeadline() == null
+            || isTerminal(multiplayerState.status())) {
+            return;
+        }
+
+        long remainingMillis = multiplayerPlanningRemainingMillis();
+        if (remainingMillis < 0L) {
+            return;
+        }
+
+        float screenWidth;
+        float screenHeight;
+        BitmapFont font;
+        if (windowsUnified()) {
+            applyUnifiedBatchTransform(WindowsBattleCanvas.Anchor.TOP);
+            screenWidth = WindowsBattleCanvas.WIDTH;
+            screenHeight = WindowsBattleCanvas.HEIGHT;
+            font = assets.fontSmall;
+        } else {
+            applyPhysicalBatchTransform();
+            screenWidth = Gdx.graphics.getWidth();
+            screenHeight = Gdx.graphics.getHeight();
+            font = assets.fontMedium;
+        }
+
+        String label = formatPlanningCountdown(remainingMillis);
+        GlyphLayout glyph = new GlyphLayout(font, label);
+        float x = (screenWidth - glyph.width) / 2f;
+        float baseline = screenHeight - (windowsUnified() ? 9f : 7f);
+        float paddingX = windowsUnified() ? 10f : 8f;
+        float paddingY = 5f;
+
+        batch.begin();
+        batch.setColor(0f, 0f, 0f, 0.62f);
+        batch.draw(
+            assets.battleUi.pixel,
+            x - paddingX,
+            baseline - glyph.height - paddingY,
+            glyph.width + paddingX * 2f,
+            glyph.height + paddingY * 2f
+        );
+        batch.setColor(Color.WHITE);
+        font.setColor(Color.BLACK);
+        font.draw(batch, label, x + 1f, baseline - 1f);
+        font.setColor(BattleUiAssets.YELLOW);
+        font.draw(batch, label, x, baseline);
+        font.setColor(Color.WHITE);
+        batch.end();
+
+        if (windowsUnified()) {
+            applyPhysicalBatchTransform();
+        }
+    }
+
+    static String formatPlanningCountdown(long remainingMillis) {
+        long totalSeconds = remainingMillis <= 0L
+            ? 0L : (remainingMillis + 999L) / 1000L;
+        long seconds = totalSeconds % 60L;
+        return totalSeconds / 60L + ":" + (seconds < 10L ? "0" : "") + seconds;
     }
 
     /**
@@ -2626,6 +2702,7 @@ public class BattleScreen implements Screen, BattleView {
         multiplayerState = state;
         onlinePlayer = local;
         onlineEnemy = opponent;
+        syncMultiplayerPlanningCountdown(state);
         initOnlineMoves(local, opponent);
 
         if (state.phase() == BattlePhase.PRE_BATTLE && !isTerminal(state.status())) {
@@ -2763,13 +2840,15 @@ public class BattleScreen implements Screen, BattleView {
             Map<String, String> moveRestrictions = new HashMap<>();
             List<Move> availableMoves = new ArrayList<>();
             for (MoveState moveState : character.knownMoves()) {
-                Move move = onlineMoves.get(moveState.moveId());
-                if (move != null) {
+                try {
+                    Move move = toDisplayMove(moveState);
                     availableMoves.add(move);
                     ceCosts.put(move.getId(), moveState.effectiveCeCost());
                     if (!moveState.available()) {
                         moveRestrictions.put(move.getId(), moveState.restrictionReason());
                     }
+                } catch (RuntimeException failure) {
+                    addLogLine("Could not display move " + moveState.name() + ".");
                 }
             }
             int apBudget = character.plan() == null
@@ -2817,6 +2896,14 @@ public class BattleScreen implements Screen, BattleView {
     private void configureOnlinePlannerAvailability(PlayerState local, boolean readOnly) {
         if (teamPlanningPanel == null) return;
         if (readOnly) {
+            teamPlanningPanel.lock();
+            teamPlanningPanel.setReadOnly(true);
+            Gdx.input.setInputProcessor(null);
+            logScrollInputAttached = false;
+            return;
+        }
+        if (onlinePlanningTimedOut
+            || shouldAutoLockPlanning(multiplayerPlanningRemainingMillis())) {
             teamPlanningPanel.lock();
             teamPlanningPanel.setReadOnly(true);
             Gdx.input.setInputProcessor(null);
@@ -2917,6 +3004,9 @@ public class BattleScreen implements Screen, BattleView {
                 .toList())
             .onHitEffects(commandEffects)
             .prerequisites(prerequisites)
+            .defenseTargeting(TargetListSupport.moveStateDefenseTargeting(state))
+            .defenseTargetCount(TargetListSupport.moveStateDefenseTargetCount(state))
+            .pairTargeting(TargetListSupport.moveStatePairTargeting(state))
             .freeMove(true);
         if (TargetListSupport.moveStateAoeType(state) != null) {
             builder.aoeType(TargetListSupport.moveStateAoeType(state))
@@ -2926,6 +3016,11 @@ public class BattleScreen implements Screen, BattleView {
             builder.hitComponents(state.hitComponents().stream()
                 .map(component -> toDisplayHitComponent(component, commandEffects))
                 .toList());
+        }
+        AttackLaunchMode launchMode = AttackLaunchMode.fromName(state.attackLaunchMode());
+        if (launchMode != null) {
+            builder.attackLaunchMode(launchMode)
+                .attackLaunchMoveId(state.attackLaunchMoveId());
         }
         if (innateTechnique) {
             String requiredTechniqueId = state.requiredTechniqueId();
@@ -2961,22 +3056,105 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void submitOnlinePlan() {
+        submitOnlinePlan(false);
+    }
+
+    private void submitOnlinePlan(boolean timedOut) {
         if (!canSubmitOnlinePlan() || teamPlanningPanel == null) {
-            if (teamPlanningPanel != null) teamPlanningPanel.unlock();
-            game.audio().play(SoundCue.UI_DENIED);
+            if (!timedOut && teamPlanningPanel != null) teamPlanningPanel.unlock();
+            if (!timedOut) game.audio().play(SoundCue.UI_DENIED);
             return;
         }
         MultiplayerMatchService.PlanSubmission submission =
             multiplayerMatchService.submitPlan(teamPlanningPanel.getPlacements());
         if (!submission.sent()) {
-            teamPlanningPanel.unlock();
-            game.audio().play(SoundCue.UI_DENIED);
+            if (!timedOut) teamPlanningPanel.unlock();
+            if (!timedOut) game.audio().play(SoundCue.UI_DENIED);
             addLogLine(submissionMessage(submission.status()));
             return;
         }
         onlineCommandPending = true;
         game.audio().play(SoundCue.UI_PLAN_LOCK);
-        addLogLine("Plan locked. Waiting for the opponent.");
+        addLogLine(timedOut
+            ? "Time expired. Plan locked."
+            : "Plan locked. Waiting for the opponent.");
+    }
+
+    private void syncMultiplayerPlanningCountdown(MatchState state) {
+        Long deadline = state.planningDeadline();
+        if (state.phase() != BattlePhase.PLANNING || deadline == null
+            || isTerminal(state.status())) {
+            resetMultiplayerPlanningCountdown();
+            return;
+        }
+
+        boolean changed = onlinePlanningDeadline != deadline;
+        if (!changed && state.serverTimestamp() <= onlinePlanningServerTimestamp) {
+            return;
+        }
+
+        long remainingMillis = Math.max(0L, deadline - state.serverTimestamp());
+        long remainingNanos = remainingMillis > Long.MAX_VALUE / 1_000_000L
+            ? Long.MAX_VALUE : remainingMillis * 1_000_000L;
+        long now = System.nanoTime();
+        long candidateDeadlineNanos = remainingNanos == Long.MAX_VALUE
+            || now > Long.MAX_VALUE - remainingNanos
+                ? Long.MAX_VALUE : now + remainingNanos;
+        onlinePlanningDeadlineNanos = changed
+            ? candidateDeadlineNanos
+            : Math.min(onlinePlanningDeadlineNanos, candidateDeadlineNanos);
+        onlinePlanningDeadline = deadline;
+        onlinePlanningServerTimestamp = state.serverTimestamp();
+        if (changed) {
+            onlinePlanningTimedOut = false;
+        }
+    }
+
+    private void resetMultiplayerPlanningCountdown() {
+        onlinePlanningDeadline = -1L;
+        onlinePlanningDeadlineNanos = 0L;
+        onlinePlanningServerTimestamp = -1L;
+        onlinePlanningTimedOut = false;
+    }
+
+    private long multiplayerPlanningRemainingMillis() {
+        if (onlinePlanningDeadline < 0L) {
+            return -1L;
+        }
+        long remainingNanos = onlinePlanningDeadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0L) {
+            return 0L;
+        }
+        return Math.max(1L, (remainingNanos + 999_999L) / 1_000_000L);
+    }
+
+    private void updateMultiplayerPlanningTimeout() {
+        if (multiplayerState == null
+            || multiplayerState.phase() != BattlePhase.PLANNING
+            || multiplayerState.planningDeadline() == null
+            || !shouldAutoLockPlanning(multiplayerPlanningRemainingMillis())
+            || onlinePlanningTimedOut) {
+            return;
+        }
+        if (onlinePlayer != null && onlinePlayer.planSubmitted()) {
+            onlinePlanningTimedOut = true;
+            return;
+        }
+        if (teamPlanningPanel == null) {
+            return;
+        }
+
+        onlinePlanningTimedOut = true;
+        teamPlanningPanel.lock();
+        teamPlanningPanel.setReadOnly(true);
+        Gdx.input.setInputProcessor(null);
+        logScrollInputAttached = false;
+        submitOnlinePlan(true);
+    }
+
+    static boolean shouldAutoLockPlanning(long remainingMillis) {
+        return remainingMillis >= 0L
+            && remainingMillis <= PLANNING_AUTO_SUBMIT_LEAD_MILLIS;
     }
 
     private boolean canSubmitOnlinePlan() {
@@ -5515,6 +5693,7 @@ public class BattleScreen implements Screen, BattleView {
 
     private void unlockPlannerIfPlanOpen() {
         if (teamPlanningPanel != null
+            && !onlinePlanningTimedOut
             && (onlinePlayer == null || !onlinePlayer.planSubmitted())) {
             teamPlanningPanel.unlock();
         }

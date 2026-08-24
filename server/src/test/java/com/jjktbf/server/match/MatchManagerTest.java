@@ -5,6 +5,7 @@ import com.jjktbf.model.combat.BattleFormat;
 import com.jjktbf.model.combat.BattleStatMode;
 import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
+import com.jjktbf.multiplayer.protocol.BattlePhase;
 import com.jjktbf.multiplayer.protocol.ChallengeAcceptRequest;
 import com.jjktbf.multiplayer.protocol.ChallengeCreateRequest;
 import com.jjktbf.multiplayer.protocol.ChallengeDecisionRequest;
@@ -33,6 +34,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
@@ -265,6 +267,134 @@ class MatchManagerTest {
         assertEquals(firstResult.state().stateVersion() + 1, secondResult.state().stateVersion());
         assertEquals(secondResult.state(), joined.first.only(MessageType.MATCH_STATE).state());
         assertEquals(secondResult.state(), joined.second.only(MessageType.MATCH_STATE).state());
+    }
+
+    @Test
+    void planningDeadlineExpiresUnsubmittedPlayersAndBroadcastsExecutionState() {
+        manager.close();
+        Duration planningTimeout = Duration.ofMillis(60);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        manager = new MatchManager(
+            fixture.database(),
+            GRACE_PERIOD,
+            RETENTION,
+            planningTimeout,
+            fixture.clock(),
+            scheduler
+        );
+        manager.createMatch(accepted);
+        JoinedConnections joined = joinBoth();
+        startBattle(joined);
+
+        MatchState planning = manager.getLatestState(playerOne, accepted.matchId());
+        assertEquals(BattlePhase.PLANNING, planning.phase());
+        assertEquals(
+            fixture.clock().millis() + planningTimeout.toMillis(),
+            planning.planningDeadline()
+        );
+
+        joined.clearMessages();
+        await(() -> manager.getLatestState(playerOne, accepted.matchId()).phase()
+            == BattlePhase.ROUND_END);
+
+        MatchState expired = manager.getLatestState(playerOne, accepted.matchId());
+        assertNull(expired.planningDeadline());
+        assertTrue(expired.players().stream().allMatch(player -> player.planSubmitted()));
+        assertTrue(expired.players().stream()
+            .flatMap(player -> player.combatants().stream())
+            .allMatch(character -> character.plan().queuedSegments().isEmpty()
+                && character.plan().resolvedSegments().isEmpty()));
+        assertNull(joined.first.only(MessageType.MATCH_STATE).commandId());
+        assertNull(joined.second.only(MessageType.MATCH_STATE).commandId());
+    }
+
+    @Test
+    void commandAfterDeadlineExpiresPlanningEvenWhenSchedulerIsDelayed() throws Exception {
+        manager.close();
+        Duration planningTimeout = Duration.ofMillis(50);
+        CountDownLatch schedulerBlocked = new CountDownLatch(1);
+        CountDownLatch releaseScheduler = new CountDownLatch(1);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.execute(() -> {
+            schedulerBlocked.countDown();
+            try {
+                releaseScheduler.await();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        assertTrue(schedulerBlocked.await(2, TimeUnit.SECONDS));
+
+        try {
+            manager = new MatchManager(
+                fixture.database(),
+                GRACE_PERIOD,
+                RETENTION,
+                planningTimeout,
+                fixture.clock(),
+                scheduler
+            );
+            manager.createMatch(accepted);
+            JoinedConnections joined = joinBoth();
+            startBattle(joined);
+            MatchState planning = manager.getLatestState(playerOne, accepted.matchId());
+
+            parkFor(planningTimeout.plusMillis(40));
+            joined.clearMessages();
+            CommandResult late = manager.submitAction(
+                playerOne,
+                accepted.matchId(),
+                emptyPlan("late-plan", planning.stateVersion())
+            );
+
+            assertFalse(late.accepted());
+            assertEquals("STALE_STATE_VERSION", late.error().code());
+            assertEquals(BattlePhase.ROUND_END, late.state().phase());
+            assertNull(late.state().planningDeadline());
+            assertNull(joined.first.only(MessageType.MATCH_STATE).commandId());
+            assertNull(joined.second.only(MessageType.MATCH_STATE).commandId());
+        } finally {
+            releaseScheduler.countDown();
+        }
+    }
+
+    @Test
+    void planningTimerPausesDuringDisconnectGraceAndResumesWithRemainingTime() {
+        manager.close();
+        Duration planningTimeout = Duration.ofMillis(250);
+        Duration disconnectGrace = Duration.ofMillis(900);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        manager = new MatchManager(
+            fixture.database(),
+            disconnectGrace,
+            RETENTION,
+            planningTimeout,
+            fixture.clock(),
+            scheduler
+        );
+        manager.createMatch(accepted);
+        JoinedConnections joined = joinBoth();
+        startBattle(joined);
+
+        parkFor(Duration.ofMillis(60));
+        assertTrue(manager.disconnect(
+            accepted.matchId(), playerOne.playerId(), joined.first.connectionId()));
+        MatchState paused = manager.getLatestState(playerTwo, accepted.matchId());
+        assertEquals(BattlePhase.PLANNING, paused.phase());
+        assertNull(paused.planningDeadline());
+
+        parkFor(planningTimeout.plusMillis(80));
+        MatchState stillPaused = manager.getLatestState(playerTwo, accepted.matchId());
+        assertEquals(BattlePhase.PLANNING, stillPaused.phase());
+        assertTrue(stillPaused.players().stream().noneMatch(player -> player.planSubmitted()));
+
+        FakeMatchConnection reconnected = new FakeMatchConnection("planning-reconnected");
+        MatchSetup resumed = joinMatch(playerOne, accepted.matchId(), reconnected);
+        assertEquals(BattlePhase.PLANNING, resumed.state().phase());
+        assertNotNull(resumed.state().planningDeadline());
+
+        await(() -> manager.getLatestState(playerOne, accepted.matchId()).phase()
+            == BattlePhase.ROUND_END);
     }
 
     @Test

@@ -8,6 +8,7 @@ import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.BlockStyle;
+import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveEffectData;
@@ -288,6 +289,17 @@ class MoveEditorScreenTest {
 
         assertEquals("SELF", savedAttack.defenseTargeting);
         assertEquals(2, savedAttack.defenseTargetCount);
+    }
+
+    @Test
+    void saveCopyPreservesGenericPairTargeting() {
+        MoveData draft = new MoveData();
+        draft.tags = new ArrayList<>(List.of(MoveTag.UTILITY.name()));
+        draft.pairTargeting = CombatantPairTargeting.ALLY_AND_ENEMY.name();
+
+        MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
+
+        assertEquals("ALLY_AND_ENEMY", saved.pairTargeting);
     }
 
     @Test

@@ -256,6 +256,9 @@ public class MoveData {
      */
     public int defenseTargetCount = 2;
 
+    /** Ordered combatant-pair targeting shape. Missing/invalid values resolve to NONE. */
+    public String pairTargeting = "NONE";
+
     /**
      * {@link AttackLaunchMode} enum name for a Defensive+Attack hybrid: when the
      * attack portion launches. ON_FIRE launches at the move's firing tick (right
@@ -674,7 +677,8 @@ public class MoveData {
             .aoeType(AoeType.fromName(aoeType))
             .aoeTargetCount(aoeTargetCount >= 2 ? aoeTargetCount : 2)
             .defenseTargeting(DefenseTargeting.fromName(defenseTargeting))
-            .defenseTargetCount(defenseTargetCount >= 2 ? defenseTargetCount : 2);
+            .defenseTargetCount(defenseTargetCount >= 2 ? defenseTargetCount : 2)
+            .pairTargeting(CombatantPairTargeting.fromName(pairTargeting));
 
         // Defensive+Attack hybrid launch settings. Cleared for non-hybrids so
         // stale fields can never take effect on an ordinary move.
@@ -1025,6 +1029,7 @@ public class MoveData {
         }
         d.defenseTargeting    = move.getDefenseTargeting().name();
         d.defenseTargetCount  = move.getDefenseTargetCount();
+        d.pairTargeting       = move.getPairTargeting().name();
         d.attackLaunchMode    = move.getAttackLaunchMode() != null
                                     ? move.getAttackLaunchMode().name() : null;
         d.attackLaunchCondition = move.getAttackLaunchCondition() != null

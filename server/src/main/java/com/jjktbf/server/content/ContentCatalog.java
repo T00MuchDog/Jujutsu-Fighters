@@ -148,7 +148,7 @@ public final class ContentCatalog {
         return character.getType() != CharacterType.SHIKIGAMI;
     }
 
-    private static ContentCatalog build(
+    static ContentCatalog build(
         List<MoveData> moveDefinitions,
         List<CharacterData> characterDefinitions,
         List<AbilityData> abilityDefinitions,
@@ -184,16 +184,22 @@ public final class ContentCatalog {
         techniqueDefinitions.forEach(technique -> TechniqueSkillTree.synchronize(
             technique, moveDefinitions, abilityDefinitions));
 
-        Map<String, Move> movesById = new LinkedHashMap<>();
         Map<String, MoveData> moveDataById = new LinkedHashMap<>();
-        Map<String, List<MoveEffectData>> codedEffectsByMoveId =
-            new LinkedHashMap<>();
         for (MoveData definition : moveDefinitions) {
             if (definition == null) {
                 throw invalid(MOVES_RESOURCE, "contains a null move definition");
             }
             requireIdentifier(definition.id, "move ID");
             requireText(definition.name, "move name for " + definition.id);
+            if (moveDataById.putIfAbsent(definition.id, definition) != null) {
+                throw invalid(MOVES_RESOURCE, "duplicate move ID " + definition.id);
+            }
+        }
+
+        Map<String, Move> movesById = new LinkedHashMap<>();
+        Map<String, List<MoveEffectData>> codedEffectsByMoveId =
+            new LinkedHashMap<>();
+        for (MoveData definition : moveDefinitions) {
             if (definition.requiredCursedToolId != null
                 && !definition.requiredCursedToolId.isBlank()
                 && !toolsById.containsKey(definition.requiredCursedToolId)) {
@@ -216,11 +222,8 @@ public final class ContentCatalog {
                 }
             }
             try {
-                Move move = definition.toMove();
-                if (movesById.putIfAbsent(definition.id, move) != null) {
-                    throw invalid(MOVES_RESOURCE, "duplicate move ID " + definition.id);
-                }
-                moveDataById.put(definition.id, definition);
+                Move move = definition.toMoveResolved(moveDataById::get);
+                movesById.put(definition.id, move);
             } catch (IllegalArgumentException exception) {
                 throw invalid(MOVES_RESOURCE,
                     "invalid move " + definition.id + ": " + exception.getMessage(), exception);

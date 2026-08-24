@@ -8,6 +8,7 @@ public enum AbilityConditionParameter {
     MOVE_ID,
     MOVE_TAG,
     MOVE_TAGS,
+    CHARACTER_ID,
     STAT,
     STATUS_TYPE,
     CODED_ABILITY,

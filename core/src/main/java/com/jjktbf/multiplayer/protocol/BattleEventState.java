@@ -30,7 +30,11 @@ public record BattleEventState(
     CodedAbilityState codedAbilityState,
     String message,
     String sourceInstanceId,
-    String targetInstanceId
+    String targetInstanceId,
+    PlayerSide relatedTargetSide,
+    String relatedTargetCharacterId,
+    String relatedTargetCharacterName,
+    String relatedTargetInstanceId
 ) {
     /** Source-compatible constructor for events without a component index. */
     public BattleEventState(
@@ -76,6 +80,34 @@ public record BattleEventState(
     ) {
         this(eventId, type, roundNumber, tick, sourceSide, sourceCharacterId,
             sourceCharacterName, targetSide, targetCharacterId, targetCharacterName,
-            moveId, moveName, componentIndex, value, codedAbilityState, message, null, null);
+            moveId, moveName, componentIndex, value, codedAbilityState, message,
+            null, null, null, null, null, null);
+    }
+
+    /** Full constructor predating related pair-target metadata. */
+    public BattleEventState(
+        String eventId,
+        BattleEventType type,
+        int roundNumber,
+        int tick,
+        PlayerSide sourceSide,
+        String sourceCharacterId,
+        String sourceCharacterName,
+        PlayerSide targetSide,
+        String targetCharacterId,
+        String targetCharacterName,
+        String moveId,
+        String moveName,
+        Integer componentIndex,
+        Integer value,
+        CodedAbilityState codedAbilityState,
+        String message,
+        String sourceInstanceId,
+        String targetInstanceId
+    ) {
+        this(eventId, type, roundNumber, tick, sourceSide, sourceCharacterId,
+            sourceCharacterName, targetSide, targetCharacterId, targetCharacterName,
+            moveId, moveName, componentIndex, value, codedAbilityState, message,
+            sourceInstanceId, targetInstanceId, null, null, null, null);
     }
 }

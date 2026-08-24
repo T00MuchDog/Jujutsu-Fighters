@@ -320,6 +320,10 @@ public enum AbilityEffectType {
         "Taunt",
         "Draws enemies' single-target MELEE attacks onto the target for the configured rounds and ticks. Area-of-effect attacks are unaffected.",
         TARGET, DURATION),
+    EXCHANGE_ATTACK_TARGETS(
+        "Exchange attack targets",
+        "Transposes the selected pair for matching future single-target attacks. Area-of-effect attacks are unaffected.",
+        MOVE_SCOPE, DURATION, USES),
     MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE(
         "Block while shikigami is active",
         "Prevents this move from being used while the selected owned shikigami is active on the field.",
@@ -355,7 +359,8 @@ public enum AbilityEffectType {
             BATTLE_STAT_ADD, BATTLE_STAT_MULTIPLY, BATTLE_STAT_PERCENT,
             IGNORE_DAMAGE, DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE,
             GUARANTEE_NEXT_HIT, GUARANTEE_NEXT_DODGE, GUARANTEE_NEXT_BLACK_FLASH,
-             CANCEL_NEXT_MOVE, STUN_CURRENT_ACTION, TEMP_LOCK_MOVE_TAG, TAUNT, SUMMON_CHARACTER,
+             CANCEL_NEXT_MOVE, STUN_CURRENT_ACTION, TEMP_LOCK_MOVE_TAG, TAUNT,
+             EXCHANGE_ATTACK_TARGETS, SUMMON_CHARACTER,
              TRANSFORM_CHARACTER,
             DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
             CODED_MOVE_ACTION);
@@ -564,6 +569,11 @@ public enum AbilityEffectType {
                 effect.durationRounds = 0;
                 effect.durationTicks = 20;
             }
+            case EXCHANGE_ATTACK_TARGETS -> {
+                effect.durationRounds = 0;
+                effect.durationTicks = 10;
+                effect.uses = 1;
+            }
             case SUMMON_CHARACTER -> {
                 // No target needed — the summon joins the owner's team.
                 effect.characterId = null;
@@ -739,7 +749,7 @@ public enum AbilityEffectType {
             try {
                 AbilityEffectTarget.valueOf(effect.target);
             } catch (Exception ex) {
-                return "Choose SELF, ENEMY, ALLY, BOTH, or SELF_AND_ALLY as the effect target.";
+                return "Choose a valid effect target.";
             }
         }
         if (uses(TIMING)) {
@@ -946,7 +956,8 @@ public enum AbilityEffectType {
     }
 
     public boolean isMoveOnly() {
-        return this == CODED_MOVE_ACTION || isMoveAvailabilityConstraint();
+        return this == CODED_MOVE_ACTION || this == EXCHANGE_ATTACK_TARGETS
+            || isMoveAvailabilityConstraint();
     }
 
     private static void timedDefaults(AbilityEffectData effect) {

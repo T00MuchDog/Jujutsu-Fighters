@@ -74,6 +74,7 @@ public class BattleState {
     private final Map<CombatantId, Set<String>> destroyedSummonsByOwner = new LinkedHashMap<>();
     private final Map<CombatantId, Map<String, Integer>> summonCooldownsByOwner = new LinkedHashMap<>();
     private final List<BattleCombatant> pendingLifecycleChanges = new ArrayList<>();
+    private final TargetExchangeRegistry targetExchanges = new TargetExchangeRegistry();
 
     public record AutomaticStatusApplication(
         BattleCombatant source,
@@ -260,14 +261,20 @@ public class BattleState {
     }
 
     public void advanceTick() {
+        targetExchanges.advanceTick();
         currentTick++;
     }
 
     public void endRound() {
+        targetExchanges.endRound();
         roundNumber++;
         currentTick = 0;
         applyAutomaticStatuses(AbilityEffectTiming.ROUND_START);
         recomputeTimelineGridLength();
+    }
+
+    public TargetExchangeRegistry targetExchanges() {
+        return targetExchanges;
     }
 
     /** Fix this round's shared timeline size after all round-start effects run. */

@@ -140,6 +140,22 @@ public final class AbilityActivationEngine {
         int tick,
         List<BattleCombatant> moveAllies
     ) {
+        return processMoveEffects(state, owner, currentTargets, move, moveTrigger,
+            componentIndex, tick, moveAllies, List.of());
+    }
+
+    /** Execute a move trigger with its ordered pair-target endpoints, when any. */
+    public List<CombatEvent> processMoveEffects(
+        BattleState state,
+        BattleCombatant owner,
+        List<BattleCombatant> currentTargets,
+        Move move,
+        MoveEffectTrigger moveTrigger,
+        int componentIndex,
+        int tick,
+        List<BattleCombatant> moveAllies,
+        List<BattleCombatant> pairTargets
+    ) {
         if (state == null || owner == null || move == null || !move.usesUnifiedEffects()) {
             return List.of();
         }
@@ -170,7 +186,8 @@ public final class AbilityActivationEngine {
                         authored, mastery);
                     selfEffect.target = AbilityEffectTarget.SELF.name();
                     applyEffect(state, owner, currentTarget, selfEffect,
-                        tick, events, followUps, true, move, component, List.of(), List.of());
+                        tick, events, followUps, true, move, component,
+                        List.of(), List.of(), pairTargets);
                 }
                 for (BattleCombatant target : moveTargets) {
                     AbilityTrigger targetTrigger = moveEffectTrigger(
@@ -182,7 +199,8 @@ public final class AbilityActivationEngine {
                         authored, mastery);
                     targetEffect.target = AbilityEffectTarget.ENEMY.name();
                     applyEffect(state, owner, target, targetEffect,
-                        tick, events, followUps, true, move, component, List.of(target), List.of());
+                        tick, events, followUps, true, move, component,
+                        List.of(target), List.of(), pairTargets);
                 }
                 continue;
             }
@@ -192,7 +210,7 @@ public final class AbilityActivationEngine {
 
             AbilityEffectData effect = TechniqueMasteryResolver.resolve(authored, mastery);
             applyEffect(state, owner, currentTarget, effect, tick, events, followUps,
-                true, move, component, moveTargets, moveAllies);
+                true, move, component, moveTargets, moveAllies, pairTargets);
         }
         while (!followUps.isEmpty()) {
             events.addAll(process(state, followUps.removeFirst()));
@@ -587,6 +605,10 @@ public final class AbilityActivationEngine {
 
         return switch (type) {
             case ALWAYS -> true;
+            case CHARACTER_PRESENT -> anyActor(
+                condition, owner, enemy, state, targetLocal,
+                combatant -> combatant.getCharacter() != null
+                    && combatant.getCharacter().getId().equals(condition.characterId));
             case MANUAL_ACTIVATION, BATTLE_STARTED -> history.stream().anyMatch(candidate ->
                 eventLeafMatches(type, condition, owner, enemy, state, candidate, targetLocal));
             case HP_PERCENT_AT_OR_BELOW -> anyActor(condition, owner, enemy, state, targetLocal,
@@ -667,7 +689,7 @@ public final class AbilityActivationEngine {
         ArrayDeque<AbilityTrigger> followUps
     ) {
         applyEffect(state, owner, enemy, effect, tick, events, followUps,
-            false, null, null, List.of(), List.of());
+            false, null, null, List.of(), List.of(), List.of());
     }
 
     private void applyEffect(
@@ -682,13 +704,14 @@ public final class AbilityActivationEngine {
         Move move,
         HitComponent component,
         List<BattleCombatant> moveTargets,
-        List<BattleCombatant> moveAllies
+        List<BattleCombatant> moveAllies,
+        List<BattleCombatant> pairTargets
     ) {
         AbilityEffectType type = safeType(effect);
         Integer effectComponentIndex = move == null || component == null
             ? null : move.getHitComponents().indexOf(component);
         List<BattleCombatant> targets = targets(
-            effect, owner, enemy, state, moveContext, moveTargets, moveAllies);
+            effect, owner, enemy, state, moveContext, moveTargets, moveAllies, pairTargets);
         switch (type) {
             case HEAL_HP, HEAL_HP_PERCENT -> {
                 for (BattleCombatant target : targets) {
@@ -856,6 +879,26 @@ public final class AbilityActivationEngine {
                 // stacking parallel Taunt effects on the same combatant.
                 for (BattleCombatant target : targets) {
                     addRuntimeEffect(state, owner, target, effect, tick, events, "TAUNT");
+                }
+            }
+            case EXCHANGE_ATTACK_TARGETS -> {
+                if (!moveContext || pairTargets == null || pairTargets.size() != 2) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).tick(tick)
+                        .message("The target exchange failed because both endpoints were not active.")
+                        .build());
+                    break;
+                }
+                boolean registered = state.targetExchanges().register(
+                    owner, pairTargets.get(0), pairTargets.get(1), effect.moveTag,
+                    effect.durationRounds == null ? 0 : effect.durationRounds,
+                    effect.durationTicks == null ? 0 : effect.durationTicks,
+                    effect.uses == null ? 1 : effect.uses);
+                if (!registered) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).tick(tick)
+                        .message("The target exchange failed because its endpoints were invalid.")
+                        .build());
                 }
             }
             case STUN_CURRENT_ACTION -> {
@@ -1206,7 +1249,8 @@ public final class AbilityActivationEngine {
         BattleState state,
         boolean moveContext,
         List<BattleCombatant> moveTargets,
-        List<BattleCombatant> moveAllies
+        List<BattleCombatant> moveAllies,
+        List<BattleCombatant> pairTargets
     ) {
         if (owner == null || state == null) return List.of();
         AbilityEffectTarget target;
@@ -1239,6 +1283,13 @@ public final class AbilityActivationEngine {
                     .forEach(out::add);
                 yield out;
             }
+            case PAIR_FIRST -> moveContext && pairTargets != null && !pairTargets.isEmpty()
+                ? List.of(pairTargets.get(0)) : List.of();
+            case PAIR_SECOND -> moveContext && pairTargets != null && pairTargets.size() > 1
+                ? List.of(pairTargets.get(1)) : List.of();
+            case PAIR_BOTH -> moveContext && pairTargets != null
+                ? pairTargets.stream().filter(java.util.Objects::nonNull).distinct().toList()
+                : List.of();
         };
     }
 
@@ -1377,13 +1428,11 @@ public final class AbilityActivationEngine {
         AbilityConditionActor actor = actor(condition);
         return switch (actor) {
             case SELF -> predicate.test(owner);
+            case ALLY -> state.activeAlliesOf(owner).stream().anyMatch(predicate);
             case ENEMY -> targetLocal
                 ? enemy != null && predicate.test(enemy)
                 : state.activeEnemiesOf(owner).stream().anyMatch(predicate);
-            case ANY -> predicate.test(owner)
-                || (targetLocal
-                    ? enemy != null && predicate.test(enemy)
-                    : state.activeEnemiesOf(owner).stream().anyMatch(predicate));
+            case ANY -> state.activeCombatants().stream().anyMatch(predicate);
         };
     }
 
@@ -1396,8 +1445,11 @@ public final class AbilityActivationEngine {
         if (eventActor == null) return false;
         return switch (actor(condition)) {
             case SELF -> eventActor == owner;
+            case ALLY -> eventActor != owner && eventActor.isAlliedWith(owner);
             case ENEMY -> isOpponent(state, owner, eventActor);
-            case ANY -> eventActor == owner || isOpponent(state, owner, eventActor);
+            case ANY -> eventActor == owner
+                || eventActor.isAlliedWith(owner)
+                || isOpponent(state, owner, eventActor);
         };
     }
 

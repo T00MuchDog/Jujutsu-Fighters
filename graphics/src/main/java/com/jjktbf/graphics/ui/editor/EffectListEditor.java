@@ -624,13 +624,24 @@ public class EffectListEditor extends Table {
             String ally = moveEffectEditor ? "Move ally" : AbilityEffectTarget.ALLY.name();
             String both = moveEffectEditor ? "User and target" : AbilityEffectTarget.BOTH.name();
             String selfAndAlly = moveEffectEditor ? "User and ally" : AbilityEffectTarget.SELF_AND_ALLY.name();
-            targetBox.setItems(self, enemy, ally, both, selfAndAlly);
+            String pairFirst = "Pair first";
+            String pairSecond = "Pair second";
+            String pairBoth = "Pair both";
+            if (moveEffectEditor) {
+                targetBox.setItems(self, enemy, ally, both, selfAndAlly,
+                    pairFirst, pairSecond, pairBoth);
+            } else {
+                targetBox.setItems(self, enemy, ally, both, selfAndAlly);
+            }
             targetBox.setSelected(switch (safeTarget(effect.target)) {
                 case SELF -> self;
                 case ENEMY -> enemy;
                 case ALLY -> ally;
                 case BOTH -> both;
                 case SELF_AND_ALLY -> selfAndAlly;
+                case PAIR_FIRST -> moveEffectEditor ? pairFirst : self;
+                case PAIR_SECOND -> moveEffectEditor ? pairSecond : self;
+                case PAIR_BOTH -> moveEffectEditor ? pairBoth : self;
             });
             effect.target = targetFromLabel(targetBox.getSelected()).name();
             targetBox.addListener(new ChangeListener() {
@@ -1111,6 +1122,15 @@ public class EffectListEditor extends Table {
         }
         if ("User and ally".equals(label) || AbilityEffectTarget.SELF_AND_ALLY.name().equals(label)) {
             return AbilityEffectTarget.SELF_AND_ALLY;
+        }
+        if ("Pair first".equals(label) || AbilityEffectTarget.PAIR_FIRST.name().equals(label)) {
+            return AbilityEffectTarget.PAIR_FIRST;
+        }
+        if ("Pair second".equals(label) || AbilityEffectTarget.PAIR_SECOND.name().equals(label)) {
+            return AbilityEffectTarget.PAIR_SECOND;
+        }
+        if ("Pair both".equals(label) || AbilityEffectTarget.PAIR_BOTH.name().equals(label)) {
+            return AbilityEffectTarget.PAIR_BOTH;
         }
         return AbilityEffectTarget.SELF;
     }

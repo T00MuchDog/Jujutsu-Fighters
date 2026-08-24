@@ -13,6 +13,7 @@ import com.jjktbf.model.character.ShikigamiCharacter;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.move.AoeType;
+import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
@@ -188,6 +189,47 @@ class HeadlessBattleSessionTest {
     }
 
     @Test
+    void planningExpiryLocksMissingPlansAndResolvesImmediately() {
+        Move attack = physicalAttack("EXPIRY_ATTACK", 1, true);
+        HeadlessBattleSession session = session(101L, attack, attack);
+        long deadline = FIXED_CLOCK.millis() + 90_000L;
+
+        MatchState armed = session.setPlanningDeadline(deadline);
+        MatchState expired = session.expirePlanning();
+
+        assertEquals(deadline, armed.planningDeadline());
+        assertEquals(armed.stateVersion() + 1, expired.stateVersion());
+        assertEquals(BattlePhase.ROUND_END, expired.phase());
+        assertNull(expired.planningDeadline());
+        assertTrue(expired.players().stream().allMatch(PlayerState::planSubmitted));
+        assertTrue(expired.players().stream()
+            .flatMap(player -> player.combatants().stream())
+            .allMatch(character -> character.plan() != null
+                && character.plan().queuedSegments().isEmpty()
+                && character.plan().resolvedSegments().isEmpty()));
+        assertEquals(expired, session.expirePlanning());
+    }
+
+    @Test
+    void planningExpiryPreservesAPlanAlreadySubmittedByOnePlayer() {
+        Move attack = physicalAttack("PARTIAL_EXPIRY_ATTACK", 1, true);
+        HeadlessBattleSession session = session(102L, attack, attack);
+        session.setPlanningDeadline(FIXED_CLOCK.millis() + 90_000L);
+        assertTrue(session.applyCommand(
+            "player-1",
+            command(session, "before-expiry", targeted(attack, 1, PlayerSide.PLAYER_ONE))
+        ).accepted());
+
+        MatchState expired = session.expirePlanning();
+
+        PlayerState submitted = expired.player(PlayerSide.PLAYER_ONE).orElseThrow();
+        PlayerState timedOut = expired.player(PlayerSide.PLAYER_TWO).orElseThrow();
+        assertEquals(1, submitted.character().plan().resolvedSegments().size());
+        assertTrue(timedOut.character().plan().resolvedSegments().isEmpty());
+        assertTrue(timedOut.planSubmitted());
+    }
+
+    @Test
     void invalidCommandLeavesCompleteStateUnchanged() {
         Move attack = physicalAttack("KNOWN", 10, true);
         HeadlessBattleSession session = session(11L, attack, attack);
@@ -330,6 +372,38 @@ class HeadlessBattleSessionTest {
             new PlanPlacement(knockout.getId(), 1, PLAYER_ONE_ID,
                 List.of(backupEnemy))));
         assertTrue(active.accepted());
+    }
+
+    @Test
+    void mixedPairTargetsRequireOrderedAllyThenEnemy() {
+        Move pair = new Move.Builder("PAIR")
+            .name("Pair")
+            .category(MoveCategory.UTILITY)
+            .pairTargeting(CombatantPairTargeting.ALLY_AND_ENEMY)
+            .apCost(5)
+            .unleashPoint(1)
+            .freeMove(true)
+            .build();
+        HeadlessBattleSession session = session(1202L, pair, pair);
+        String allyId = session.addFighterForTesting(
+            "player-1", character("character-1b", "Ally", pair));
+
+        CommandResult reversed = session.applyCommand("player-1", command(
+            session, "pair-reversed", new PlanPlacement(
+                pair.getId(), 1, PLAYER_ONE_ID, List.of(PLAYER_TWO_ID, allyId))));
+        assertFalse(reversed.accepted());
+        assertEquals("INVALID_TARGET", reversed.error().code());
+
+        CommandResult accepted = session.applyCommand("player-1", command(
+            session, "pair-valid", new PlanPlacement(
+                pair.getId(), 1, PLAYER_ONE_ID, List.of(allyId, PLAYER_TWO_ID))));
+        assertTrue(accepted.accepted());
+        var moveState = accepted.state().player(PlayerSide.PLAYER_ONE).orElseThrow()
+            .character().knownMoves().get(0);
+        assertEquals("ALLY_AND_ENEMY", moveState.pairTargeting());
+        assertEquals(List.of(allyId, PLAYER_TWO_ID), accepted.state()
+            .player(PlayerSide.PLAYER_ONE).orElseThrow().character().plan()
+            .queuedSegments().get(0).targetIds());
     }
 
     @Test

@@ -4,6 +4,9 @@ import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.AoeType;
+import com.jjktbf.model.move.AttackLaunchMode;
+import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
@@ -156,6 +159,44 @@ class BattleScreenMoveStateTest {
 
         assertEquals(CursedSpeechAbility.RETURN, CursedSpeechAbility.commandMode(move));
         assertEquals("Cursed Speech", move.getRequiredTechniqueId());
+    }
+
+    @Test
+    void pairAndDefenseTargetingSurviveOnlineDisplayReconstruction() {
+        MoveState pairState = new MoveState(
+            "PAIR", "Pair", "Choose endpoints", MoveCategory.UTILITY.name(),
+            List.of("UTILITY"), PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true,
+            5, 1, false, 0, 0, 0, 0, 0, true, null, null, List.of(),
+            null, 0, null, null, "SELF", 2, "ALLY_AND_ENEMY");
+        MoveState defenseState = new MoveState(
+            "DEFENSE", "Defense", "Protect allies", MoveCategory.DEFENSIVE.name(),
+            List.of("DEFENSIVE"), PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true,
+            5, 1, false, 0, 0, 0, 0, 0, true, null, null, List.of(),
+            null, 0, null, null, "MULTIPLE_ALLIES", 3, "NONE");
+
+        Move pair = BattleScreen.toDisplayMove(pairState);
+        Move defense = BattleScreen.toDisplayMove(defenseState);
+
+        assertEquals(CombatantPairTargeting.ALLY_AND_ENEMY, pair.getPairTargeting());
+        assertEquals(DefenseTargeting.MULTIPLE_ALLIES, defense.getDefenseTargeting());
+        assertEquals(3, defense.getDefenseTargetCount());
+    }
+
+    @Test
+    void defenceCounterLaunchMetadataSurvivesOnlineDisplayReconstruction() {
+        MoveState state = new MoveState(
+            "000096", "Boogie Woogie Counter", "Dodge and counter.",
+            MoveCategory.DEFENSIVE.name(),
+            List.of("PHYSICAL", "DEFENSIVE", "ATTACK", "INNATE_TECHNIQUE", "MELEE"),
+            PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true,
+            11, 1, true, 15, 15, 3, 75, 0, true, null, null, List.of(),
+            null, 0, null, "Boogie Woogie", "SELF", 2, "NONE",
+            "ON_DEFENCE", "000004");
+
+        Move move = BattleScreen.toDisplayMove(state);
+
+        assertEquals(AttackLaunchMode.ON_DEFENCE, move.getAttackLaunchMode());
+        assertEquals("000004", move.getAttackLaunchMoveId());
     }
 
     @Test

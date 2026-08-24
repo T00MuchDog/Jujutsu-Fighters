@@ -9,6 +9,7 @@ import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.TeamBattlePlan;
 import com.jjktbf.model.move.Move;
+import com.jjktbf.model.move.CombatantPairTargeting;
 
 import java.util.List;
 import java.util.Random;
@@ -118,7 +119,7 @@ public interface AIStrategy {
     ) {
         if (plan == null) return;
         List<BattleCombatant> enemies = state.activeEnemiesOf(ai);
-        if (enemies.isEmpty()) return;
+        List<BattleCombatant> allies = state.activeAlliesOf(ai);
         for (com.jjktbf.model.combat.ActionSegment segment
             : new java.util.ArrayList<>(plan.allSegments())) {
             Move move = segment.getMove();
@@ -126,6 +127,27 @@ public interface AIStrategy {
             List<BattleCombatant> eligibleEnemies = enemies.stream()
                 .filter(enemy -> CursedSpeechAbility.canTarget(move, enemy))
                 .toList();
+            CombatantPairTargeting pair = move.getPairTargeting();
+            if (pair != CombatantPairTargeting.NONE) {
+                boolean needsAlly = pair == CombatantPairTargeting.SELF_AND_ALLY
+                    || pair == CombatantPairTargeting.ALLY_AND_ENEMY;
+                boolean needsEnemy = pair == CombatantPairTargeting.SELF_AND_ENEMY
+                    || pair == CombatantPairTargeting.ALLY_AND_ENEMY;
+                if ((needsAlly && allies.isEmpty())
+                    || (needsEnemy && eligibleEnemies.isEmpty())) {
+                    plan.remove(segment);
+                    continue;
+                }
+                java.util.List<com.jjktbf.model.combat.CombatantId> selected =
+                    new java.util.ArrayList<>();
+                if (needsAlly) selected.add(allies.get(0).getInstanceId());
+                if (needsEnemy) {
+                    selected.add(SmartAIScoring.weightedRandomTarget(
+                        move, ai, eligibleEnemies, rng).getInstanceId());
+                }
+                segment.setTargets(selected);
+                continue;
+            }
             if (eligibleEnemies.isEmpty()) {
                 if (targeting == MoveTargeting.SINGLE_ENEMY
                     || targeting == MoveTargeting.MULTIPLE_ENEMIES) {

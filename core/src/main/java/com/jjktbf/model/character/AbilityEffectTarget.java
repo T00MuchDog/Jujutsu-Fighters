@@ -13,6 +13,8 @@ package com.jjktbf.model.character;
  *       this is exactly the allies its active-defense window is granted to.</li>
  *   <li>{@link #BOTH} — the owner plus its enemies.</li>
  *   <li>{@link #SELF_AND_ALLY} — the owner plus its allies.</li>
+ *   <li>{@link #PAIR_FIRST}, {@link #PAIR_SECOND}, {@link #PAIR_BOTH} — ordered
+ *       endpoints selected by a pair-targeted move.</li>
  * </ul>
  */
 public enum AbilityEffectTarget {
@@ -20,5 +22,8 @@ public enum AbilityEffectTarget {
     ENEMY,
     ALLY,
     BOTH,
-    SELF_AND_ALLY
+    SELF_AND_ALLY,
+    PAIR_FIRST,
+    PAIR_SECOND,
+    PAIR_BOTH
 }

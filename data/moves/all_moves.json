@@ -1213,7 +1213,7 @@
 }, {
   "id" : "000023",
   "name" : "Ratio Mark",
-  "description" : "With Ratio Reinforcement active, place 1 RATIO STACK (or 2 at CURSED TECHNIQUE MASTERY 200+) on the target, up to your capacity.",
+  "description" : "With Ratio Reinforcement active, add :effect-000000.codedStackCount: to the target's RATIO STACK count, up to your capacity.",
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -5529,4 +5529,281 @@
   "parry" : false,
   "dodge" : false,
   "anyBlock" : false
+}, {
+  "id" : "000092",
+  "name" : "Ranged Reversal",
+  "description" : "Select Todo and an enemy. For 12 TICKS, the next single-target RANGED ATTACK aimed at either exchanges its target to the other.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 8,
+  "unleashPoint" : 1,
+  "baseCeCost" : 12,
+  "hasCeCost" : true,
+  "minCeCost" : 2,
+  "maxCeCost" : 60,
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "EXCHANGE_ATTACK_TARGETS",
+    "moveTag" : "RANGED",
+    "durationRounds" : 0,
+    "durationTicks" : 12,
+    "uses" : 1,
+    "trigger" : "ON_FIRE"
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 0
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "pairTargeting" : "SELF_AND_ENEMY"
+}, {
+  "id" : "000093",
+  "name" : "Blindside Exchange",
+  "description" : "Select an enemy and exchange around their blind side. Todo gains 30% ACCURACY for 8 TICKS.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 8,
+  "unleashPoint" : 2,
+  "baseCeCost" : 10,
+  "hasCeCost" : true,
+  "minCeCost" : 2,
+  "maxCeCost" : 50,
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_PERCENT",
+    "doubleValue" : 0.3,
+    "stringValue" : "ACCURACY",
+    "target" : "SELF",
+    "durationRounds" : 0,
+    "durationTicks" : 8,
+    "trigger" : "ON_FIRE"
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 10
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "pairTargeting" : "SELF_AND_ENEMY"
+}, {
+  "id" : "000094",
+  "name" : "Disorienting Swap",
+  "description" : "Select an enemy and wrench away their footing. Has a 70% chance to STAGGER them for 4 TICKS.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 9,
+  "unleashPoint" : 1,
+  "baseCeCost" : 14,
+  "hasCeCost" : true,
+  "minCeCost" : 3,
+  "maxCeCost" : 70,
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "APPLY_STATUS",
+    "stringValue" : "STAGGER",
+    "target" : "PAIR_SECOND",
+    "durationRounds" : 0,
+    "durationTicks" : 4,
+    "magnitude" : 0.0,
+    "activationChanceEnabled" : true,
+    "activationChance" : 0.7,
+    "trigger" : "ON_FIRE"
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 30
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "pairTargeting" : "SELF_AND_ENEMY"
+}, {
+  "id" : "000095",
+  "name" : "Cursed Rock Substitution",
+  "description" : "Arm a reactive substitution with a cursed-energy-filled rock, giving a 90% chance to DODGE the next MELEE ATTACK.",
+  "tags" : [ "DEFENSIVE", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 7,
+  "unleashPoint" : 1,
+  "baseCeCost" : 8,
+  "hasCeCost" : true,
+  "minCeCost" : 2,
+  "maxCeCost" : 40,
+  "defenseType" : "DODGE",
+  "blockDuration" : 7,
+  "dodgeChance" : 90,
+  "dodgeScope" : "MELEE",
+  "defenseTiming" : "REACTION",
+  "defenseUses" : 1,
+  "effects" : [ ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 20
+  },
+  "requiredTechniqueId" : "Boogie Woogie"
+}, {
+  "id" : "000096",
+  "name" : "Boogie Woogie Counter",
+  "description" : "Arm an 80% reactive DODGE. On a successful defense, immediately answer with Body Blow.",
+  "tags" : [ "PHYSICAL", "DEFENSIVE", "ATTACK", "INNATE_TECHNIQUE", "MELEE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 11,
+  "unleashPoint" : 1,
+  "baseCeCost" : 15,
+  "hasCeCost" : true,
+  "minCeCost" : 3,
+  "maxCeCost" : 75,
+  "defenseType" : "DODGE",
+  "blockDuration" : 11,
+  "dodgeChance" : 80,
+  "dodgeScope" : "BOTH",
+  "defenseTiming" : "REACTION",
+  "defenseUses" : 1,
+  "effects" : [ ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 40
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "attackLaunchMode" : "ON_DEFENCE",
+  "attackLaunchMoveId" : "000004"
+}, {
+  "id" : "000097",
+  "name" : "Best Friend Exchange",
+  "description" : "Select one ally and place them at the perfect angle. They gain 50% ACCURACY for 10 TICKS.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 8,
+  "unleashPoint" : 1,
+  "baseCeCost" : 12,
+  "hasCeCost" : true,
+  "minCeCost" : 2,
+  "maxCeCost" : 60,
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_PERCENT",
+    "doubleValue" : 0.5,
+    "stringValue" : "ACCURACY",
+    "target" : "PAIR_SECOND",
+    "durationRounds" : 0,
+    "durationTicks" : 10,
+    "trigger" : "ON_FIRE"
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 50
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "pairTargeting" : "SELF_AND_ALLY"
+}, {
+  "id" : "000098",
+  "name" : "Cross Swap: Melee",
+  "description" : "Select an ally and an enemy. For 12 TICKS, the next single-target MELEE ATTACK aimed at either exchanges its target to the other.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 8,
+  "unleashPoint" : 1,
+  "baseCeCost" : 14,
+  "hasCeCost" : true,
+  "minCeCost" : 3,
+  "maxCeCost" : 70,
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "EXCHANGE_ATTACK_TARGETS",
+    "moveTag" : "MELEE",
+    "durationRounds" : 0,
+    "durationTicks" : 12,
+    "uses" : 1,
+    "trigger" : "ON_FIRE"
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 60
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "pairTargeting" : "ALLY_AND_ENEMY"
+}, {
+  "id" : "000099",
+  "name" : "Cross Swap: Ranged",
+  "description" : "Select an ally and an enemy. For 12 TICKS, the next single-target RANGED ATTACK aimed at either exchanges its target to the other.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 8,
+  "unleashPoint" : 1,
+  "baseCeCost" : 14,
+  "hasCeCost" : true,
+  "minCeCost" : 3,
+  "maxCeCost" : 70,
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "EXCHANGE_ATTACK_TARGETS",
+    "moveTag" : "RANGED",
+    "durationRounds" : 0,
+    "durationTicks" : 12,
+    "uses" : 1,
+    "trigger" : "ON_FIRE"
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 65
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "pairTargeting" : "ALLY_AND_ENEMY"
+}, {
+  "id" : "000100",
+  "name" : "Rapid Exchange",
+  "description" : "Select one ally. Todo and that ally gain a 70% DODGE against MELEE and RANGED ATTACKS for 6 TICKS, with 1 use each.",
+  "tags" : [ "DEFENSIVE", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 10,
+  "unleashPoint" : 1,
+  "baseCeCost" : 18,
+  "hasCeCost" : true,
+  "minCeCost" : 4,
+  "maxCeCost" : 90,
+  "defenseType" : "DODGE",
+  "blockDuration" : 6,
+  "dodgeChance" : 70,
+  "dodgeScope" : "BOTH",
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 1,
+  "effects" : [ ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 80
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "pairTargeting" : "SELF_AND_ALLY"
+}, {
+  "id" : "000101",
+  "name" : "False Clap",
+  "description" : "Feign the clap without spending CURSED ENERGY. Todo's next ATTACK is guaranteed to hit. Once per ROUND.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "apCost" : 5,
+  "unleashPoint" : 1,
+  "baseCeCost" : 0,
+  "hasCeCost" : false,
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "GUARANTEE_NEXT_HIT",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0,
+    "uses" : 1,
+    "trigger" : "ON_FIRE"
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 40
+  },
+  "requiredTechniqueId" : "Boogie Woogie",
+  "moveCap" : 1
 } ]

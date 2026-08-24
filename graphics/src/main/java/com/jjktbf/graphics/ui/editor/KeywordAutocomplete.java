@@ -22,6 +22,11 @@ final class KeywordAutocomplete {
     ) {
         String value = text == null ? "" : text;
         int caret = Math.max(0, Math.min(cursor, value.length()));
+        List<KeywordDescriptionCatalog.Entry> entries = catalogEntries == null
+            ? List.of()
+            : catalogEntries;
+        Query variableQuery = variableQuery(value, caret, entries);
+        if (variableQuery != null) return variableQuery;
         if (caret == 0 || !isUppercaseWordCharacter(value.charAt(caret - 1))) return null;
 
         int runStart = caret - 1;
@@ -30,12 +35,10 @@ final class KeywordAutocomplete {
         }
         while (runStart < caret && value.charAt(runStart) == ' ') runStart++;
 
-        List<KeywordDescriptionCatalog.Entry> entries = catalogEntries == null
-            ? List.of()
-            : catalogEntries;
         for (int candidateStart = runStart; candidateStart < caret;) {
             String fragment = value.substring(candidateStart, caret);
             List<KeywordDescriptionCatalog.Entry> matches = entries.stream()
+                .filter(entry -> !isVariableEntry(entry))
                 .filter(entry -> entry != null && entry.term() != null && !entry.term().isBlank())
                 .filter(entry -> startsWithIgnoreCase(entry.term(), fragment))
                 .sorted(TERM_ORDER)
@@ -46,7 +49,7 @@ final class KeywordAutocomplete {
                     && isUppercaseWordCharacter(value.charAt(replacementEnd))) {
                     replacementEnd++;
                 }
-                return new Query(candidateStart, replacementEnd, fragment, matches);
+                return new Query(candidateStart, replacementEnd, fragment, matches, false);
             }
 
             int nextWord = value.indexOf(' ', candidateStart);
@@ -64,6 +67,9 @@ final class KeywordAutocomplete {
         String value = text == null ? "" : text;
         int start = Math.max(0, Math.min(query.start(), value.length()));
         int end = Math.max(start, Math.min(query.end(), value.length()));
+        if (query.variable()) {
+            return value.substring(0, start) + term + value.substring(end);
+        }
         int typedLength = end - start;
         if (typedLength <= term.length()
             && value.regionMatches(true, start, term, 0, typedLength)) {
@@ -94,7 +100,83 @@ final class KeywordAutocomplete {
     }
 
     static String insertionText(KeywordDescriptionCatalog.Entry entry) {
-        return entry.term().toUpperCase(Locale.ROOT);
+        return isVariableEntry(entry)
+            ? entry.term()
+            : entry.term().toUpperCase(Locale.ROOT);
+    }
+
+    private static Query variableQuery(
+        String value,
+        int caret,
+        List<KeywordDescriptionCatalog.Entry> entries
+    ) {
+        if (caret == 0) return null;
+        int opening = value.lastIndexOf(':', caret - 1);
+        if (opening < 0) return null;
+
+        // A colon that closes an effect token must not immediately reopen the menu.
+        int previousColon = value.lastIndexOf(':', opening - 1);
+        if (previousColon >= 0
+            && isVariableBody(value.substring(previousColon + 1, opening))) {
+            return null;
+        }
+
+        String fragment = value.substring(opening + 1, caret);
+        if (!fragment.chars().allMatch(character -> isVariableCharacter((char) character))) {
+            return null;
+        }
+        List<KeywordDescriptionCatalog.Entry> matches = entries.stream()
+            .filter(KeywordAutocomplete::isVariableEntry)
+            .filter(entry -> variableMatches(entry.term(), fragment))
+            .sorted(TERM_ORDER)
+            .toList();
+        if (matches.isEmpty()) return null;
+
+        int replacementEnd = caret;
+        while (replacementEnd < value.length()
+            && isVariableCharacter(value.charAt(replacementEnd))) {
+            replacementEnd++;
+        }
+        if (replacementEnd < value.length() && value.charAt(replacementEnd) == ':') {
+            replacementEnd++;
+        }
+        return new Query(opening, replacementEnd, fragment, matches, true);
+    }
+
+    private static boolean variableMatches(String token, String fragment) {
+        String body = token.substring(1, token.length() - 1);
+        if (startsWithIgnoreCase(body, fragment)) return true;
+        int separator = body.indexOf('.');
+        return separator >= 0
+            && startsWithIgnoreCase(body.substring(separator + 1), fragment);
+    }
+
+    private static boolean isVariableEntry(KeywordDescriptionCatalog.Entry entry) {
+        return entry != null && entry.term() != null && entry.term().length() > 2
+            && entry.term().charAt(0) == ':'
+            && entry.term().charAt(entry.term().length() - 1) == ':'
+            && isVariableBody(entry.term().substring(1, entry.term().length() - 1));
+    }
+
+    private static boolean isVariableBody(String value) {
+        if (value == null || value.isEmpty()) return false;
+        int separator = value.indexOf('.');
+        if (separator <= 0 || separator == value.length() - 1
+            || value.indexOf('.', separator + 1) >= 0) {
+            return false;
+        }
+        for (int index = 0; index < value.length(); index++) {
+            if (index == separator) continue;
+            if (!isVariableCharacter(value.charAt(index))) return false;
+        }
+        return true;
+    }
+
+    private static boolean isVariableCharacter(char character) {
+        return Character.isLetterOrDigit(character)
+            || character == '_'
+            || character == '-'
+            || character == '.';
     }
 
     private static boolean startsWithIgnoreCase(String value, String prefix) {
@@ -124,7 +206,8 @@ final class KeywordAutocomplete {
         int start,
         int end,
         String fragment,
-        List<KeywordDescriptionCatalog.Entry> matches
+        List<KeywordDescriptionCatalog.Entry> matches,
+        boolean variable
     ) {
         Query {
             matches = List.copyOf(matches);

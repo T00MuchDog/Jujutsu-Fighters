@@ -1,7 +1,5 @@
 package com.jjktbf.model.combat;
 
-import com.jjktbf.model.character.coded.CursedSpeechAbility;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -133,24 +131,11 @@ public final class TeamBattlePlan {
                         + restriction;
                 }
                 alreadyPlannedMoves.add(segment.getMove());
-                MoveTargeting targeting = MoveTargeting.forMove(segment.getMove());
                 List<CombatantId> targetIds = segment.getTargets();
-                int minimumTargets = targeting == MoveTargeting.SINGLE_ENEMY ? 1
-                    : targeting == MoveTargeting.MULTIPLE_ENEMIES ? 1 : 0;
-                int maximumTargets = targeting == MoveTargeting.SINGLE_ENEMY ? 1
-                    : targeting == MoveTargeting.MULTIPLE_ENEMIES
-                        ? segment.getMove().getAoeTargetCount() : 0;
-                if (targetIds.size() < minimumTargets || targetIds.size() > maximumTargets) {
-                    return "Move '" + segment.getMove().getName()
-                        + "' has an invalid target count (combatant " + entry.getKey() + ")";
-                }
-                for (CombatantId targetId : targetIds) {
-                    BattleCombatant target = state.combatant(targetId);
-                    if (target == null || !target.isActive() || state.teamOf(target) == team
-                        || !CursedSpeechAbility.canTarget(segment.getMove(), target)) {
-                        return "Move '" + segment.getMove().getName()
-                            + "' has an invalid target (combatant " + entry.getKey() + ")";
-                    }
+                String targetError = MoveTargetSelection.validationError(
+                    state, actor, segment.getMove(), targetIds);
+                if (targetError != null) {
+                    return targetError + " (combatant " + entry.getKey() + ")";
                 }
             }
         }

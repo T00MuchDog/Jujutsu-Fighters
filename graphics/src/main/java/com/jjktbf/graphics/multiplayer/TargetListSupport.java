@@ -2,7 +2,10 @@ package com.jjktbf.graphics.multiplayer;
 
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.CombatantId;
+import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.move.AoeType;
+import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.multiplayer.protocol.MoveState;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
 
@@ -15,6 +18,16 @@ import java.util.List;
 
 /** Bridges graphics code across the scalar-to-list targeting protocol rollout. */
 public final class TargetListSupport {
+    public record TargetRequirements(
+        int minimumCount,
+        int maximumCount,
+        List<MoveTargetSelection.Relationship> orderedRelationships
+    ) {
+        public TargetRequirements {
+            orderedRelationships = List.copyOf(orderedRelationships);
+        }
+    }
+
     private TargetListSupport() { }
 
     public static List<CombatantId> segmentTargets(ActionSegment segment) {
@@ -111,6 +124,40 @@ public final class TargetListSupport {
     public static int moveStateAoeTargetCount(MoveState move) {
         Object value = invokeOptional(move, "aoeTargetCount");
         return value instanceof Number number ? Math.max(1, number.intValue()) : 1;
+    }
+
+    public static DefenseTargeting moveStateDefenseTargeting(MoveState move) {
+        Object value = invokeOptional(move, "defenseTargeting");
+        return value == null ? DefenseTargeting.SELF : DefenseTargeting.fromName(value.toString());
+    }
+
+    public static int moveStateDefenseTargetCount(MoveState move) {
+        Object value = invokeOptional(move, "defenseTargetCount");
+        return value instanceof Number number ? Math.max(1, number.intValue()) : 1;
+    }
+
+    public static CombatantPairTargeting moveStatePairTargeting(MoveState move) {
+        Object value = invokeOptional(move, "pairTargeting");
+        return value == null
+            ? CombatantPairTargeting.NONE : CombatantPairTargeting.fromName(value.toString());
+    }
+
+    /** Client-side projection of the server's canonical explicit-target shape. */
+    public static TargetRequirements moveStateTargetRequirements(MoveState move) {
+        if (move == null) return new TargetRequirements(0, 0, List.of());
+        MoveTargetSelection.Requirements requirements = MoveTargetSelection.requirements(
+            moveStatePairTargeting(move),
+            moveStateDefenseTargeting(move),
+            moveStateDefenseTargetCount(move),
+            move.tags().contains("ATTACK")
+                && !"ON_DEFENCE".equals(move.attackLaunchMode()),
+            move.tags().contains("AOE"),
+            moveStateAoeType(move),
+            moveStateAoeTargetCount(move));
+        return new TargetRequirements(
+            requirements.minimumCount(),
+            requirements.maximumCount(),
+            requirements.orderedRelationships());
     }
 
     private static Method method(Object target, String name) {

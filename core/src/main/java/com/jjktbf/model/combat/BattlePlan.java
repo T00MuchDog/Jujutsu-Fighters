@@ -1,6 +1,5 @@
 package com.jjktbf.model.combat;
 
-import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.Move;
 
 import java.util.ArrayList;
@@ -143,6 +142,7 @@ public class BattlePlan {
         int ceCost,
         List<CombatantId> targets
     ) {
+        if (!hasDistinctTargetIds(targets)) return null;
         if (!canPlace(move, ceCost)) return null;
         Board board = boardFor(move);
         Timeline tl = boardTimeline(board);
@@ -170,6 +170,7 @@ public class BattlePlan {
         int ceCost,
         List<CombatantId> targets
     ) {
+        if (!hasDistinctTargetIds(targets)) return null;
         if (!canPlace(move, ceCost)) return null;
         Timeline tl = boardTimeline(boardFor(move));
         ActionSegment segment = tl.placeAtFirstFitWithTargets(move, ceCost, targets);
@@ -179,6 +180,15 @@ public class BattlePlan {
         return segment;
     }
 
+    private static boolean hasDistinctTargetIds(List<CombatantId> targets) {
+        if (targets == null || targets.isEmpty()) return true;
+        java.util.HashSet<CombatantId> distinct = new java.util.HashSet<>();
+        for (CombatantId target : targets) {
+            if (target == null || !distinct.add(target)) return false;
+        }
+        return true;
+    }
+
     /**
      * Does this move require an explicit selected target to be locked/submitted?
      * Hostile single-/multi-target moves need an enemy target; defensive moves
@@ -186,8 +196,7 @@ public class BattlePlan {
      * target. Self-only defenses, AOE/auto-targeted moves, and summon-only moves do not.
      */
     public static boolean requiresTarget(Move move) {
-        return MoveTargeting.forMove(move).requiresSelectedTargets()
-            || DefenseTargeting.forMove(move).requiresSelectedTargets();
+        return MoveTargetSelection.requirements(move).requiresTargets();
     }
 
     /**
@@ -197,25 +206,8 @@ public class BattlePlan {
      */
     public String missingTargetError() {
         for (ActionSegment s : allSegments()) {
-            MoveTargeting targeting = MoveTargeting.forMove(s.getMove());
-            int count = s.getTargets().size();
-            if (targeting == MoveTargeting.SINGLE_ENEMY && count != 1) {
-                return "Move '" + s.getMove().getName() + "' requires exactly one target";
-            }
-            if (targeting == MoveTargeting.MULTIPLE_ENEMIES
-                && (count < 1 || count > s.getMove().getAoeTargetCount())) {
-                return "Move '" + s.getMove().getName() + "' requires between 1 and "
-                    + s.getMove().getAoeTargetCount() + " targets";
-            }
-            DefenseTargeting defense = DefenseTargeting.forMove(s.getMove());
-            if (defense == DefenseTargeting.SINGLE_ALLY && count != 1) {
-                return "Move '" + s.getMove().getName() + "' requires exactly one ally target";
-            }
-            if (defense == DefenseTargeting.MULTIPLE_ALLIES
-                && (count < 1 || count > s.getMove().getDefenseTargetCount())) {
-                return "Move '" + s.getMove().getName() + "' requires between 1 and "
-                    + s.getMove().getDefenseTargetCount() + " ally targets";
-            }
+            String error = MoveTargetSelection.targetCountError(s.getMove(), s.getTargets());
+            if (error != null) return error;
         }
         return null;
     }

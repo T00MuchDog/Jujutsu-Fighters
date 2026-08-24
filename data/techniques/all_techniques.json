@@ -992,4 +992,159 @@
       "minimum" : 0
     } ]
   } ]
+}, {
+  "id" : "000004",
+  "name" : "Boogie Woogie",
+  "description" : "A cursed technique activated by clapping that exchanges the positions and attack paths of cursed-energy-bearing targets, turning simple transposition into relentless misdirection.",
+  "skillTree" : [ {
+    "id" : "node-000000",
+    "contentType" : "MOVE",
+    "contentId" : "000092",
+    "x" : 80.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 0
+    } ]
+  }, {
+    "id" : "node-000001",
+    "contentType" : "MOVE",
+    "contentId" : "000093",
+    "x" : 400.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000000",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 10
+    } ]
+  }, {
+    "id" : "node-000002",
+    "contentType" : "MOVE",
+    "contentId" : "000095",
+    "x" : 720.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000001",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 20
+    } ]
+  }, {
+    "id" : "node-000003",
+    "contentType" : "MOVE",
+    "contentId" : "000094",
+    "x" : 1040.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000002",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 30
+    } ]
+  }, {
+    "id" : "node-000004",
+    "contentType" : "MOVE",
+    "contentId" : "000096",
+    "x" : 1360.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000003",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 40
+    } ]
+  }, {
+    "id" : "node-000005",
+    "contentType" : "MOVE",
+    "contentId" : "000097",
+    "x" : 1680.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000004",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 50
+    } ]
+  }, {
+    "id" : "node-000006",
+    "contentType" : "MOVE",
+    "contentId" : "000098",
+    "x" : 2000.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000005",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 60
+    } ]
+  }, {
+    "id" : "node-000007",
+    "contentType" : "MOVE",
+    "contentId" : "000099",
+    "x" : 2320.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000006",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 65
+    } ]
+  }, {
+    "id" : "node-000008",
+    "contentType" : "ABILITY",
+    "contentId" : "000046",
+    "x" : 2640.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000007",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 70
+    } ]
+  }, {
+    "id" : "node-000009",
+    "contentType" : "MOVE",
+    "contentId" : "000100",
+    "x" : 2960.0,
+    "y" : 260.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000008",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 80
+    } ]
+  }, {
+    "id" : "node-000010",
+    "contentType" : "MOVE",
+    "contentId" : "000101",
+    "x" : 1040.0,
+    "y" : 520.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000001",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 40
+    } ]
+  } ]
 } ]

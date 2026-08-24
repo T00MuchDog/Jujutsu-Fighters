@@ -870,7 +870,7 @@ public class CombatResolver {
                                 + move.getName() + " is drawn to "
                                 + taunter.getCharacter().getName() + "!")
                             .build());
-                        return TargetSet.single(taunter);
+                        resolved = taunter;
                     }
                 }
 
@@ -944,7 +944,8 @@ public class CombatResolver {
         Move move, int tick, List<CombatEvent> events,
         List<BattleCombatant> beneficiaries
     ) {
-        if (move.getDefenseTargeting() == DefenseTargeting.SELF) return;
+        if (move.getDefenseTargeting() == DefenseTargeting.SELF
+            && move.getPairTargeting() == CombatantPairTargeting.NONE) return;
 
         boolean casterIsBeneficiary = false;
         boolean grantedToAlly = false;
@@ -982,6 +983,12 @@ public class CombatResolver {
     private List<BattleCombatant> resolveDefenseBeneficiaries(
         BattleState state, BattleCombatant caster, ActionSegment segment, Move move
     ) {
+        if (move.getPairTargeting() != CombatantPairTargeting.NONE) {
+            return resolvePairEndpoints(state, caster, segment, move).stream()
+                .filter(combatant -> combatant != null && combatant.isActive()
+                    && combatant.isAlliedWith(caster))
+                .toList();
+        }
         return switch (move.getDefenseTargeting()) {
             case SINGLE_ALLY, MULTIPLE_ALLIES -> {
                 List<BattleCombatant> out = new ArrayList<>();
@@ -1096,6 +1103,14 @@ public class CombatResolver {
             state, attacker, move, segment, tick, events)) return;
         if (stopPlannedMoveUnknownToCurrentForm(attacker, segment, tick, events)) return;
 
+        // Apply transpositions only when the final damaging move is known. This
+        // avoids exchanging both a hybrid wrapper and its referenced attack.
+        if (targets.all().size() == 1 && !move.getHitComponents().isEmpty()) {
+            BattleCombatant exchanged = exchangeAttackTarget(
+                state, attacker, targets.primary(), move, tick, events);
+            targets = exchanged == null ? TargetSet.empty() : TargetSet.single(exchanged);
+        }
+
         // This segment's move is now actually executing. Recording it as fired
         // makes it immune to retro-stunning for the rest of the round — a stun
         // or interrupt landing later this tick (or a later tick still inside a
@@ -1122,6 +1137,8 @@ public class CombatResolver {
             : List.of();
         List<BattleCombatant> defenseAllies = defenseBeneficiaries.stream()
             .filter(ally -> ally != attacker).toList();
+        List<BattleCombatant> pairTargets = resolvePairEndpoints(
+            state, attacker, segment, move);
 
         // --- Self-effects apply on unleash, for every move type (damaging,
         // defensive, and utility alike). A move that buffs its user when cast
@@ -1131,7 +1148,7 @@ public class CombatResolver {
         if (move.usesUnifiedEffects()) {
             events.addAll(abilityActivations.processMoveEffects(
                 state, attacker, targets.all(), move,
-                MoveEffectTrigger.ON_FIRE, -1, tick, defenseAllies));
+                MoveEffectTrigger.ON_FIRE, -1, tick, defenseAllies, pairTargets));
         } else {
             applySelfEffects(state, attacker, targets.primary(), move, tick, events);
         }
@@ -1186,6 +1203,59 @@ public class CombatResolver {
             targets.all());
         scheduleComponents(execution);
         resolvePendingComponentsAtTick(state, tick, events);
+    }
+
+    /** Resolve ordered explicit pair endpoints, deriving SELF from the move owner. */
+    private static List<BattleCombatant> resolvePairEndpoints(
+        BattleState state,
+        BattleCombatant owner,
+        ActionSegment segment,
+        Move move
+    ) {
+        if (move == null || move.getPairTargeting() == null) return List.of();
+        List<CombatantId> selected = segment == null ? List.of() : segment.getTargets();
+        return switch (move.getPairTargeting()) {
+            case SELF_AND_ENEMY, SELF_AND_ALLY -> {
+                BattleCombatant other = selected.isEmpty() ? null : state.combatant(selected.get(0));
+                yield owner.isActive() && other != null && other.isActive()
+                    ? List.of(owner, other) : List.of();
+            }
+            case ALLY_AND_ENEMY -> {
+                if (selected.size() != 2) yield List.of();
+                BattleCombatant ally = state.combatant(selected.get(0));
+                BattleCombatant enemy = state.combatant(selected.get(1));
+                yield ally != null && ally.isActive() && enemy != null && enemy.isActive()
+                    ? List.of(ally, enemy) : List.of();
+            }
+            case NONE -> List.of();
+        };
+    }
+
+    private static BattleCombatant exchangeAttackTarget(
+        BattleState state,
+        BattleCombatant attacker,
+        BattleCombatant intended,
+        Move move,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (intended == null) return null;
+        TargetExchangeRegistry.Result result = state.targetExchanges().resolve(
+            attacker, intended, move);
+        for (TargetExchangeRegistry.ExchangeStep step : result.steps()) {
+            events.add(CombatEvent.of(CombatEvent.Type.TARGETS_EXCHANGED)
+                .source(step.owner())
+                .target(step.previousTarget())
+                .relatedTarget(step.replacementTarget())
+                .move(move)
+                .tick(tick)
+                .message(step.owner().getCharacter().getName() + " exchanged "
+                    + step.previousTarget().getCharacter().getName() + " with "
+                    + step.replacementTarget().getCharacter().getName() + ", redirecting "
+                    + move.getName() + "!")
+                .build());
+        }
+        return result.target();
     }
 
     private boolean stopMoveUnavailableForActiveSummon(
@@ -2009,6 +2079,9 @@ public class CombatResolver {
         }
         if (move.getHitComponents().isEmpty()) return;
         if ((long) tick + move.getMaxHitDelayTicks() > cursor.get().gridLimit) return;
+        BattleCombatant counterTarget = exchangeAttackTarget(
+            state, defender, attacker, move, tick, events);
+        if (counterTarget == null) return;
         events.add(CombatEvent.of(CombatEvent.Type.MOVE_FIRED)
             .source(defender).move(move).tick(tick)
             .message(defender.getCharacter().getName() + " counterattacked with "
@@ -2019,7 +2092,7 @@ public class CombatResolver {
         ActionSegment counterSegment = new ActionSegment(move, tick, 0);
         MoveExecution execution = new MoveExecution(
             new FiringEntry(counterSegment, defender), Map.of(), tick,
-            cursor.get().nextLaunchSequence++, List.of(attacker));
+            cursor.get().nextLaunchSequence++, List.of(counterTarget));
         scheduleComponents(execution);
         resolvePendingComponentsAtTick(state, tick, events);
         finishBattleIfNeeded(state, events, tick);

@@ -28,8 +28,10 @@ import com.jjktbf.model.character.CombatStats;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveRepository;
+import com.jjktbf.model.progression.TechniqueMasteryResolver;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.TechniqueRepository;
+import com.jjktbf.model.text.MoveDescriptionVariables;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -944,7 +946,7 @@ public class CharacterSelectScreen implements Screen {
                 String value = String.valueOf(values[i]);
                 font.setColor(BattleUiAssets.TEXT);
                 drawBold(font, STAT_LABELS[i], x, baseline);
-                drawWindowsStatBar(
+                drawStatBar(
                     values[i], x + barOffset, baseline - barHeight + 2f, barWidth, barHeight);
                 drawBold(font, value, x + valueRight - textWidth(font, value), baseline);
             }
@@ -1009,7 +1011,7 @@ public class CharacterSelectScreen implements Screen {
             String value = String.valueOf(values[i]);
             font.setColor(BattleUiAssets.TEXT);
             drawBold(font, STAT_LABELS[i], itemX, baseline);
-            drawWindowsStatBar(values[i], itemX + barOffset, baseline - 8f, barWidth, 10f);
+            drawStatBar(values[i], itemX + barOffset, baseline - 8f, barWidth, 10f);
             drawBold(font, value,
                 itemX + valueRight - textWidth(font, value), baseline);
         }
@@ -1033,7 +1035,7 @@ public class CharacterSelectScreen implements Screen {
         font.getData().setScale(originalScaleX, originalScaleY);
     }
 
-    private void drawWindowsStatBar(
+    private void drawStatBar(
         int value,
         float x,
         float y,
@@ -1316,9 +1318,14 @@ public class CharacterSelectScreen implements Screen {
         int descriptionLines = compactLayout ? 3 : 5;
         List<MoveCardView> cards = new ArrayList<>(moves.size());
         for (Move move : moves) {
-            cards.add(new MoveCardView(
+            MoveCardView card = new MoveCardView(
                 move, 0f, 0f, cardScale, cardWidth, cardHeight,
-                descriptionLines, WINDOWS_MIN_SMALL_FONT_SCALE));
+                descriptionLines, WINDOWS_MIN_SMALL_FONT_SCALE);
+            if (profileCombatant != null) {
+                card.setDisplayDescription(MoveDescriptionVariables.resolve(
+                    move, TechniqueMasteryResolver.masteryOf(profileCombatant)));
+            }
+            cards.add(card);
         }
         windowsMoveCards = List.copyOf(cards);
         windowsMoveCardsCompact = compactLayout;
@@ -1354,8 +1361,12 @@ public class CharacterSelectScreen implements Screen {
             float y = topY - i * rowHeight;
             String value = String.valueOf(values[i]);
             float valueX = x + width - textWidth(font, value);
+            float barX = x + width * 0.43f;
+            float barWidth = Math.max(0f, valueX - barX - 8f);
             font.setColor(BattleUiAssets.TEXT);
             drawBold(font, STAT_LABELS[i], x, y);
+            drawStatBar(values[i], barX, y - rowHeight * 0.55f,
+                barWidth, Math.max(8f, rowHeight * 0.43f));
             drawBold(font, value, valueX, y);
         }
     }

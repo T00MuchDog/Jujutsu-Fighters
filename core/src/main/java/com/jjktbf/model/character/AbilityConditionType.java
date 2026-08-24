@@ -22,6 +22,10 @@ public enum AbilityConditionType {
     ALWAYS("Always active", "Generic effects activate once when battle processing begins; coded effects remain eligible at every natural runtime opportunity. It cannot be combined with another condition."),
     MANUAL_ACTIVATION("Manual activation", "Activates only when the battle controller requests this ability during planning."),
     BATTLE_STARTED("Battle started", "The battle has just started."),
+    CHARACTER_PRESENT(
+        "Character present",
+        "An active combatant with the selected canonical character definition is present.",
+        ACTOR, CHARACTER_ID),
 
     HP_PERCENT_AT_OR_BELOW("HP at or below %", "The selected combatant's HP reaches or falls below this percentage.", ACTOR, PERCENTAGE),
     HP_PERCENT_AT_OR_ABOVE("HP at or above %", "The selected combatant's HP reaches or rises above this percentage.", ACTOR, PERCENTAGE),
@@ -111,6 +115,7 @@ public enum AbilityConditionType {
             : null;
         condition.moveTags = uses(MOVE_TAGS)
             ? new java.util.ArrayList<>(java.util.List.of(MoveTag.PHYSICAL.name())) : null;
+        condition.characterId = null;
         condition.stat = uses(STAT) ? StatKey.VITALITY.fieldName : null;
         condition.statusType = uses(STATUS_TYPE)
             ? StatusEffectType.STRENGTH_INCREASE.name() : null;
@@ -130,6 +135,7 @@ public enum AbilityConditionType {
         if (!uses(MOVE_ID)) condition.moveId = null;
         if (!uses(MOVE_TAG)) condition.moveTag = null;
         if (!uses(MOVE_TAGS)) condition.moveTags = null;
+        if (!uses(CHARACTER_ID)) condition.characterId = null;
         if (!uses(STAT)) condition.stat = null;
         if (!uses(STATUS_TYPE)) condition.statusType = null;
         if (!uses(CODED_ABILITY)) condition.codedAbilityKey = null;
@@ -178,7 +184,7 @@ public enum AbilityConditionType {
         }
         if (type.uses(ACTOR)) {
             try { AbilityConditionActor.valueOf(condition.actor); }
-            catch (Exception ex) { return path + " needs SELF, ENEMY, or ANY."; }
+            catch (Exception ex) { return path + " needs SELF, ALLY, ENEMY, or ANY."; }
         }
         if (type.uses(PERCENTAGE)
             && (condition.percentage == null || !Double.isFinite(condition.percentage)
@@ -206,6 +212,9 @@ public enum AbilityConditionType {
                 }
                 if (!selected.add(tag)) return path + " cannot repeat a damage-type tag.";
             }
+        }
+        if (type.uses(CHARACTER_ID) && isBlank(condition.characterId)) {
+            return path + " needs a character ID.";
         }
         if (type.uses(STAT)) {
             try { StatKey.fromString(condition.stat); }

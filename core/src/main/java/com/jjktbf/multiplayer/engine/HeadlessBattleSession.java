@@ -14,13 +14,15 @@ import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.CombatantId;
-import com.jjktbf.model.combat.MoveTargeting;
+import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
+import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
 import com.jjktbf.multiplayer.protocol.ActionSegmentStatus;
@@ -115,6 +117,7 @@ public final class HeadlessBattleSession {
     private long eventSequence;
     private int wireRoundNumber;
     private int wireCurrentTick;
+    private Long planningDeadline;
     private List<BattleEventState> recentEvents;
     private List<RoundStartCharacterState> roundStartCharacterStates;
     private boolean battleStarted;
@@ -526,36 +529,17 @@ public final class HeadlessBattleSession {
             }
 
             List<CombatantId> targetIds = new ArrayList<>();
-            MoveTargeting targeting = MoveTargeting.forMove(move);
-            int minimumTargets;
-            int maximumTargets;
-            switch (targeting) {
-                case SINGLE_ENEMY -> {
-                    minimumTargets = 1;
-                    maximumTargets = 1;
-                }
-                case MULTIPLE_ENEMIES -> {
-                    minimumTargets = 1;
-                    maximumTargets = move.getAoeTargetCount();
-                }
-                default -> {
-                    minimumTargets = 0;
-                    maximumTargets = 0;
-                }
-            }
             List<String> requestedTargetIds = placement.targetIds();
-            if (requestedTargetIds.size() < minimumTargets
-                || requestedTargetIds.size() > maximumTargets) {
-                String message = switch (targeting) {
-                    case SINGLE_ENEMY -> "Hostile single-target move must identify exactly one target.";
-                    case MULTIPLE_ENEMIES -> "Multiple-target move must identify between 1 and "
-                        + move.getAoeTargetCount() + " targets.";
-                    default -> "This move must not select targets; the server derives its affected set.";
-                };
+            String countError = MoveTargetSelection.targetCountError(
+                move, requestedTargetIds.stream()
+                    .filter(id -> id != null && !id.isBlank())
+                    .map(CombatantId::new)
+                    .toList());
+            if (countError != null || requestedTargetIds.stream().anyMatch(HeadlessBattleSession::isBlank)) {
                 return rejectPlacement(
                     commandId,
                     INVALID_TARGET,
-                    message,
+                    countError != null ? countError : "Placement target IDs cannot be blank.",
                     index,
                     move.getId()
                 );
@@ -580,22 +564,13 @@ public final class HeadlessBattleSession {
                         move.getId()
                     );
                 }
-                BattleCombatant target = battleState.combatant(new CombatantId(requestedTargetId));
-                if (target == null
-                    || !target.isActive()
-                    || target.getTeamId() == null
-                    || participant.teamId.equals(target.getTeamId())
-                    || battleState.teamOf(target) == null
-                    || !CursedSpeechAbility.canTarget(move, target)) {
-                    return rejectPlacement(
-                        commandId,
-                        INVALID_TARGET,
-                        "Placement target is not an active opposing combatant.",
-                        index,
-                        move.getId()
-                    );
-                }
-                targetIds.add(target.getInstanceId());
+                targetIds.add(new CombatantId(requestedTargetId));
+            }
+            String targetError = MoveTargetSelection.validationError(
+                battleState, actor, move, targetIds);
+            if (targetError != null) {
+                return rejectPlacement(
+                    commandId, INVALID_TARGET, targetError, index, move.getId());
             }
 
             int ceCost = actor.computeMoveCeCost(move);
@@ -752,8 +727,64 @@ public final class HeadlessBattleSession {
             endReason,
             stateVersion,
             recentEvents,
+            planningDeadline,
             clock.millis()
         );
+    }
+
+    /** Publishes the server-owned deadline for the active planning phase. */
+    public synchronized MatchState setPlanningDeadline(long deadline) {
+        if (currentPhase() != BattlePhase.PLANNING || isTerminal()) {
+            throw new IllegalStateException("A planning deadline requires an active planning phase");
+        }
+        if (deadline <= clock.millis()) {
+            throw new IllegalArgumentException("planning deadline must be in the future");
+        }
+        if (Objects.equals(planningDeadline, deadline)) {
+            return snapshot();
+        }
+        planningDeadline = deadline;
+        stateVersion++;
+        return snapshot();
+    }
+
+    /** Removes a published deadline while planning is paused by connectivity. */
+    public synchronized MatchState clearPlanningDeadline() {
+        if (planningDeadline == null) {
+            return snapshot();
+        }
+        planningDeadline = null;
+        stateVersion++;
+        return snapshot();
+    }
+
+    /** Locks every missing participant to an empty plan and resolves the round. */
+    public synchronized MatchState expirePlanning() {
+        if (currentPhase() != BattlePhase.PLANNING || isTerminal()) {
+            return snapshot();
+        }
+
+        for (ParticipantRuntime participant : participantsBySide.values()) {
+            if (participant.planSubmitted) {
+                continue;
+            }
+            Map<CombatantId, BattlePlan> plans = new LinkedHashMap<>();
+            Map<CombatantId, List<SegmentRuntime>> segments = new LinkedHashMap<>();
+            for (BattleCombatant actor : activeCombatants(participant)) {
+                plans.put(
+                    actor.getInstanceId(),
+                    new BattlePlan(actor.getMaxApBar(), actor.getCurrentCe(), battleGridLength())
+                );
+                segments.put(actor.getInstanceId(), List.of());
+            }
+            attachPlans(participant, plans, segments);
+            participant.planSubmitted = true;
+        }
+
+        firstPlanBaseVersion = null;
+        stateVersion++;
+        recentEvents = List.copyOf(resolveSubmittedRound());
+        return snapshot();
     }
 
     /**
@@ -812,6 +843,7 @@ public final class HeadlessBattleSession {
         this.winnerPlayerId = winner == null ? null : winner.participant.playerId();
         this.winnerSide = winner == null ? null : winner.participant.side();
         this.endReason = reason;
+        planningDeadline = null;
         battleState.transitionTo(BattleState.Phase.BATTLE_OVER);
         stateVersion++;
 
@@ -903,6 +935,7 @@ public final class HeadlessBattleSession {
     private List<BattleEventState> resolveSubmittedRound() {
         int resolvedRound = battleState.getRoundNumber();
         wireRoundNumber = resolvedRound;
+        planningDeadline = null;
         resetRoundReadiness();
         battleState.transitionTo(BattleState.Phase.RESOLUTION);
         List<CombatEvent> resolutionEvents = new ArrayList<>(resolver.beginResolution(battleState));
@@ -1289,7 +1322,8 @@ public final class HeadlessBattleSession {
         return new MoveState(
             move.getId(),
             move.getName(),
-            move.getDescription(),
+            MoveDescriptionVariables.resolve(
+                move, TechniqueMasteryResolver.masteryOf(combatant)),
             move.getCategory().name(),
             moveTags(move),
             planBoard(BattlePlan.boardFor(move)),
@@ -1321,7 +1355,12 @@ public final class HeadlessBattleSession {
             move.getAoeType() == null ? null : move.getAoeType().name(),
             move.getAoeTargetCount(),
             CursedSpeechAbility.commandMode(move),
-            move.getRequiredTechniqueId()
+            move.getRequiredTechniqueId(),
+            move.getDefenseTargeting().name(),
+            move.getDefenseTargetCount(),
+            move.getPairTargeting().name(),
+            move.getAttackLaunchMode() == null ? null : move.getAttackLaunchMode().name(),
+            move.getAttackLaunchMoveId()
         );
     }
 
@@ -1394,8 +1433,10 @@ public final class HeadlessBattleSession {
         for (CombatEvent event : events) {
             BattleCombatant sourceCombatant = event.getSource();
             BattleCombatant targetCombatant = event.getTarget();
+            BattleCombatant relatedTargetCombatant = event.getRelatedTarget();
             ParticipantRuntime source = runtimeFor(sourceCombatant);
             ParticipantRuntime target = runtimeFor(targetCombatant);
+            ParticipantRuntime relatedTarget = runtimeFor(relatedTargetCombatant);
             Move move = event.getMove();
             wireEvents.add(new BattleEventState(
                 nextEventId(),
@@ -1421,7 +1462,14 @@ public final class HeadlessBattleSession {
                 sourceCombatant == null || sourceCombatant.getInstanceId() == null
                     ? null : sourceCombatant.getInstanceId().value(),
                 targetCombatant == null || targetCombatant.getInstanceId() == null
-                    ? null : targetCombatant.getInstanceId().value()
+                    ? null : targetCombatant.getInstanceId().value(),
+                relatedTarget == null ? null : relatedTarget.participant.side(),
+                relatedTargetCombatant == null
+                    ? null : relatedTargetCombatant.getCharacter().getId(),
+                relatedTargetCombatant == null
+                    ? null : relatedTargetCombatant.getCharacter().getName(),
+                relatedTargetCombatant == null || relatedTargetCombatant.getInstanceId() == null
+                    ? null : relatedTargetCombatant.getInstanceId().value()
             ));
         }
         return wireEvents;

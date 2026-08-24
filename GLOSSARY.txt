@@ -1322,7 +1322,7 @@ TECHNIQUE EDITOR  (TechniqueEditorScreen)
 This section summarises the content currently shipped in data/; counts and names
 reflect HEAD at the time of writing. See the JSON files for full detail.
 
-  MOVES — 83 moves (data/moves/all_moves.json), ids 000000–000082.
+  MOVES — 102 moves (data/moves/all_moves.json), ids 000000–000101.
     Free moves (11):       000000 Basic Strike, 000001 Basic Block, 000053
                            Desummon, and the eight base Ten Shadows summons
                            000033/000034/000039/000040/000041/000042/000043/000044.
@@ -1365,15 +1365,22 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
                            000075 Explode, 000076 Die (CURSED_SPEECH/COMMAND;
                            codedTargets DONT_MOVE/BLAST_AWAY/SLEEP/PLUMMET/
                            GET_TWISTED/RETURN/EXPLODE/DIE).
+    Boogie Woogie (10):    000092 Ranged Reversal, 000093 Blindside Exchange,
+                           000094 Disorienting Swap, 000095 Cursed Rock
+                           Substitution, 000096 Boogie Woogie Counter, 000097 Best
+                           Friend Exchange, 000098/000099 Cross Swap, 000100 Rapid
+                           Exchange, 000101 False Clap. Pair-targeted exchanges
+                           use ordered self/ally/enemy endpoints; 000096 launches
+                           existing Body Blow (000004) after a successful dodge.
     Notable: 000028 Simple Domain is a NON_INNATE_TECHNIQUE defensive move with a
              coded self-effect NEW_SHADOW_STYLE/ACTIVATE_SIMPLE_DOMAIN that fully
              blocks RANGED PHYSICAL attacks and counters MELEE with Batto Sword
              Drawing (000027). 000053 Desummon is a SHIKIGAMI/DESUMMON_SELF move
              carried by every shikigami (voluntary; cooldown to next round).
 
-  ABILITIES — 45 abilities (data/abilities/all_abilities.json), ids 000000–000044.
-    sourceType: TECHNIQUE (11), SHIKIGAMI (9), ABILITY (7 sub-abilities),
-                CHARACTER (8). 38 PASSIVE, 5 ACTIVE.
+  ABILITIES — 47 abilities (data/abilities/all_abilities.json), ids 000000–000046.
+    sourceType: TECHNIQUE (13), SHIKIGAMI (9), ABILITY (11 sub-abilities),
+                CHARACTER (13), CURSED_CORPSE (1). 38 PASSIVE, 9 ACTIVE.
     Abilities with editable CODED effect rows (key/feature):
       MIRACLES          000001 Miracle Reservoir, 000002 Fateful Reprieve,
                         000003 Fortune Reclaimed
@@ -1392,6 +1399,8 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
       000007 Earnest Swordswoman     MOVE_BASE_POWER_MULTIPLY on KATANA (CHARACTER)
       000044 Cursed Tools Expert     DAMAGE_MULTIPLY + MOVE_ACCURACY_MULTIPLY
                                      ×1.1 on all weapon-tagged moves (CHARACTER)
+      000045 My Best Friend          Todo/Yuji battle-start Combat Ability bond
+      000046 Instinctive Boogie Woogie  8% reactive dodge against targeted MELEE
       000008 Vessel of Sukuna        grants 000009–000011 (CHARACTER)
       000000 Iron Constitution       STAT_ADD durability +15 (CHARACTER)
       000033 Blessed by the Sparks of Black doubles BLACK_FLASH_CHANCE odds
@@ -1407,7 +1416,8 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
   no cursed energy; optional granted moves/abilities are active while equipped.
   Edited in the CURSED TOOL EDITOR.
 
-  CHARACTERS — 17 (data/characters/all_characters.json): 9 SORCERERS + 8 SHIKIGAMI.
+  CHARACTERS — 20 (data/characters/all_characters.json): 10 SORCERERS + 8
+  SHIKIGAMI + 2 CURSED_CORPSES.
     Sorcerers:
       000000 Haruta Shigemo                    innate: Miracles
       000001 Shigechi Urata                    innate: Ratio
@@ -1420,7 +1430,8 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
                                               Unknown Abyss)
       000015 Toge Inumaki                      innate: Cursed Speech
       000016 Yuji Itadori (Kyoto Goodwill Event)
-                                               (none; reinforcement + Black Flash)
+                                                (none; reinforcement + Black Flash)
+      000019 Aoi Todo                         innate: Boogie Woogie
     Shikigami (type SHIKIGAMI, summoned; not directly selectable):
       000007 Divine Dog White, 000008 Divine Dog Black, 000009 Nue,
       000010 Toad Gamma, 000011 Great Serpent Orochi, 000012 Divine Dog Totality,
@@ -1428,8 +1439,10 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
       Each is referenced by exactly one Summon move (see above) and carries the
       Desummon move plus its own attack moves. Characters without an innate
       technique have cursedTechniqueMastery = 0.
+    Cursed corpses:
+      000017 Panda (Kyoto Goodwill Event), 000018 Panda (Gorilla Core; hidden).
 
-  TECHNIQUES — 4 (data/techniques/all_techniques.json), ids 000000–000003.
+  TECHNIQUES — 5 (data/techniques/all_techniques.json), ids 000000–000004.
     000000 Miracles       tree: move Miracle Creation; abilities Miracle
                           Reservoir, Fateful Reprieve, Fortune Reclaimed.
     000001 Ratio          tree: ability Ratio Reinforcement; moves Ratio Mark,
@@ -1438,7 +1451,9 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
                           Manifestation, Totality, Shadows Unravel, Well's Unknown
                           Abyss; moves 000033–000052 (summons + command attacks).
     000003 Cursed Speech  tree: abilities Cursed Speech, Refined Commands;
-                          command moves 000069–000076.
+                           command moves 000069–000076.
+    000004 Boogie Woogie  tree: moves 000092–000101 and ability Instinctive
+                           Boogie Woogie, completing at CTM 80.
     NOTE: "Simple Domain" is a MOVE (000028), not a technique. "New Shadow Style"
     is a CHARACTER-sourced ability (000005), not a technique.
 

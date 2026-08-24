@@ -23,6 +23,7 @@ public record MatchState(
     String endReason,
     long stateVersion,
     List<BattleEventState> recentEvents,
+    Long planningDeadline,
     long serverTimestamp
 ) {
     public MatchState {
@@ -31,6 +32,45 @@ public record MatchState(
             ? List.of()
             : List.copyOf(roundStartCharacterStates);
         recentEvents = recentEvents == null ? List.of() : List.copyOf(recentEvents);
+    }
+
+    public MatchState(
+        String matchId,
+        MatchStatus status,
+        String gameVersion,
+        int protocolVersion,
+        String ruleset,
+        BattlePhase phase,
+        int roundNumber,
+        int currentTick,
+        List<PlayerState> players,
+        List<RoundStartCharacterState> roundStartCharacterStates,
+        PlayerSide winnerSide,
+        String winnerPlayerId,
+        String endReason,
+        long stateVersion,
+        List<BattleEventState> recentEvents,
+        long serverTimestamp
+    ) {
+        this(
+            matchId,
+            status,
+            gameVersion,
+            protocolVersion,
+            ruleset,
+            phase,
+            roundNumber,
+            currentTick,
+            players,
+            roundStartCharacterStates,
+            winnerSide,
+            winnerPlayerId,
+            endReason,
+            stateVersion,
+            recentEvents,
+            null,
+            serverTimestamp
+        );
     }
 
     public MatchState(
@@ -66,6 +106,7 @@ public record MatchState(
             endReason,
             stateVersion,
             recentEvents,
+            null,
             serverTimestamp
         );
     }

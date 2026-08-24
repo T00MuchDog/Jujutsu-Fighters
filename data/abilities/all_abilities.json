@@ -1016,4 +1016,84 @@
     "moveTag" : "STAFF"
   } ],
   "masteryThreshold" : 0
+}, {
+  "id" : "000045",
+  "name" : "My Best Friend",
+  "flavourText" : "Todo's certainty in his brother turns their shared momentum into overwhelming combat instinct.",
+  "mechanicText" : "At BATTLE START, when fighting alongside Aoi Todo or either Yuji Itadori, gain 10% COMBAT ABILITY for the battle.",
+  "category" : "ACTIVE",
+  "sourceType" : "CHARACTER",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "ALL",
+      "children" : [ {
+        "type" : "BATTLE_STARTED"
+      }, {
+        "type" : "ANY",
+        "children" : [ {
+          "type" : "CHARACTER_PRESENT",
+          "actor" : "ALLY",
+          "characterId" : "000003"
+        }, {
+          "type" : "CHARACTER_PRESENT",
+          "actor" : "ALLY",
+          "characterId" : "000016"
+        }, {
+          "type" : "CHARACTER_PRESENT",
+          "actor" : "ALLY",
+          "characterId" : "000019"
+        } ]
+      } ]
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "TEMP_STAT_PERCENT",
+    "stat" : "combatAbility",
+    "doubleValue" : 0.1,
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000046",
+  "name" : "Instinctive Boogie Woogie",
+  "flavourText" : "The instant a close-range strike commits to Todo, his clap can place him beyond its path.",
+  "mechanicText" : "When an enemy targets you with a MELEE ATTACK, you have an 8% chance to dodge that incoming attack.",
+  "category" : "ACTIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Boogie Woogie",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "ALL",
+      "children" : [ {
+        "type" : "MOVE_TAG_USED",
+        "actor" : "ENEMY",
+        "moveTag" : "ATTACK"
+      }, {
+        "type" : "MOVE_TAG_USED",
+        "actor" : "ENEMY",
+        "moveTag" : "MELEE"
+      }, {
+        "type" : "EVENT_TARGET",
+        "actor" : "SELF"
+      } ]
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "activationChanceEnabled" : true,
+    "activationChance" : 0.08,
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "GUARANTEE_NEXT_DODGE",
+    "target" : "SELF",
+    "durationRounds" : 0,
+    "durationTicks" : 1,
+    "uses" : 1
+  } ],
+  "masteryThreshold" : 70
 } ]

@@ -202,6 +202,42 @@ class MultiCombatantAbilityTest {
         assertEquals(damagedHp + 20, owner.getCurrentHp());
     }
 
+    @Test
+    void characterPresenceCanMatchAnExactActiveAllyOrAnyCombatant() {
+        AbilityConditionData battleStarted =
+            AbilityConditionType.BATTLE_STARTED.createDefault();
+        AbilityConditionData allyPresent =
+            AbilityConditionType.CHARACTER_PRESENT.createDefault();
+        allyPresent.actor = AbilityConditionActor.ALLY.name();
+        allyPresent.characterId = "yuji";
+        AbilityConditionData anyPresent = allyPresent.copy();
+        anyPresent.actor = AbilityConditionActor.ANY.name();
+
+        AbilityEffectData heal = AbilityEffectType.HEAL_HP.createDefault();
+        heal.intValue = 20;
+        AbilityData allyOpening = ability("ALLY_PRESENT", heal);
+        allyOpening.category = "ACTIVE";
+        allyOpening.activationCondition = AbilityConditionData.all(
+            List.of(battleStarted, allyPresent));
+        AbilityData anyOpening = ability("ANY_PRESENT", heal);
+        anyOpening.category = "ACTIVE";
+        anyOpening.activationCondition = AbilityConditionData.all(
+            List.of(battleStarted, anyPresent));
+
+        BattleCombatant owner = fighter("Owner", List.of(allyOpening, anyOpening));
+        BattleCombatant yuji = fighter("Yuji", List.of());
+        BattleCombatant enemy = fighter("Enemy", List.of());
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(owner, yuji)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(enemy)));
+        owner.applyDamage(50);
+
+        new AbilityActivationEngine(new SeededRandomSource(1L)).process(
+            state, AbilityTrigger.battleStart(owner));
+
+        assertEquals(owner.getMaxHp() - 10, owner.getCurrentHp());
+    }
+
     private static BattleCombatant fighter(String name, List<AbilityData> abilityData) {
         List<Ability> abilities = abilityData.stream().map(Ability::new).toList();
         CharacterStats stats = new CharacterStats.Builder()

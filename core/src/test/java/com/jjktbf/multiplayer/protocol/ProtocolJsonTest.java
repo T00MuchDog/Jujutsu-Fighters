@@ -98,6 +98,45 @@ class ProtocolJsonTest {
     }
 
     @Test
+    void pairAndDefenseTargetingMetadataRoundTripsWithSafeDefaults() throws Exception {
+        MoveState pair = new MoveState(
+            "PAIR", "Pair", "Choose endpoints.", "UTILITY", List.of("UTILITY"),
+            PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true, 5, 1, false,
+            0, 0, 0, 0, 0, true, null, null, List.of(), null, 0, null, null,
+            "SINGLE_ALLY", 4, "ALLY_AND_ENEMY");
+
+        MoveState restored = mapper.readValue(mapper.writeValueAsString(pair), MoveState.class);
+        MoveState legacy = mapper.readValue("{\"moveId\":\"OLD\"}", MoveState.class);
+
+        assertEquals("SINGLE_ALLY", restored.defenseTargeting());
+        assertEquals(4, restored.defenseTargetCount());
+        assertEquals("ALLY_AND_ENEMY", restored.pairTargeting());
+        assertEquals("SELF", legacy.defenseTargeting());
+        assertEquals(2, legacy.defenseTargetCount());
+        assertEquals("NONE", legacy.pairTargeting());
+    }
+
+    @Test
+    void targetExchangeEventRoundTripsBothCombatantEndpoints() throws Exception {
+        BattleEventState event = new BattleEventState(
+            "event-swap", BattleEventType.TARGETS_EXCHANGED, 2, 14,
+            PlayerSide.PLAYER_ONE, "000019", "Aoi Todo",
+            PlayerSide.PLAYER_ONE, "000019", "Aoi Todo",
+            "000092", "Boogie Woogie", null, null, null,
+            "Todo exchanged the attack targets.",
+            "PLAYER-f1", "PLAYER-f1", PlayerSide.PLAYER_TWO,
+            "000005", "Hanami", "ENEMY-f1");
+
+        BattleEventState restored = mapper.readValue(
+            mapper.writeValueAsString(event), BattleEventState.class);
+
+        assertEquals(event, restored);
+        assertEquals("PLAYER-f1", restored.targetInstanceId());
+        assertEquals(PlayerSide.PLAYER_TWO, restored.relatedTargetSide());
+        assertEquals("ENEMY-f1", restored.relatedTargetInstanceId());
+    }
+
+    @Test
     void actionCommandRoundTripsAndCopiesIntent() throws Exception {
         List<PlanPlacement> placements = new ArrayList<>();
         placements.add(new PlanPlacement(
@@ -227,9 +266,10 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(17, joined.protocolVersion());
+        assertEquals(19, joined.protocolVersion());
         assertEquals(42L, joined.stateVersion());
         assertEquals(1_700_000_060_000L, messages.get(6).disconnectDeadline());
+        assertEquals(1_700_000_090_000L, joined.state().planningDeadline());
         assertTrue(ProtocolVersion.isCompatible(
             joined.gameVersion(), joined.protocolVersion(), joined.ruleset()));
         assertFalse(ProtocolVersion.isCompatible(
@@ -404,6 +444,7 @@ class ProtocolJsonTest {
             null,
             42,
             List.of(event),
+            1_700_000_090_000L,
             1_700_000_000_000L
         );
     }

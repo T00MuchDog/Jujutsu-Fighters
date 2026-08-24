@@ -3014,15 +3014,20 @@ public class BattleScreen implements Screen, BattleView {
             planningEffects.add(effect);
         }
 
+        Set<MoveTag> builderTags = EnumSet.copyOf(tags);
+        if (!state.hitComponents().isEmpty()) {
+            builderTags.removeAll(MoveTag.HIT_ONLY_TAGS);
+        }
         Move.Builder builder = new Move.Builder(state.moveId())
             .name(state.name())
             .description(state.description())
             .category(category)
-            .tags(tags)
+            .tags(builderTags)
             .basePower(state.basePower())
             .baseAccuracy(state.baseAccuracy())
             .neverMiss(state.neverMiss())
-            .guardBreak(tags.contains(MoveTag.GUARD_BREAK))
+            .guardBreak(state.hitComponents().isEmpty()
+                && tags.contains(MoveTag.GUARD_BREAK))
             .heavy(tags.contains(MoveTag.HEAVY))
             .apCost(state.apCost())
             .unleashPoint(state.unleashPoint())
@@ -3073,9 +3078,9 @@ public class BattleScreen implements Screen, BattleView {
         for (String tagName : state.tags()) {
             try {
                 MoveTag tag = MoveTag.valueOf(tagName);
-                if (MoveTag.TYPE_TAGS.contains(tag)) tags.add(tag);
+                if (MoveTag.HIT_TAGS.contains(tag)) tags.add(tag);
             } catch (IllegalArgumentException ignored) {
-                // Unknown future damage tags can fall back to the wire category.
+                // Unknown future hit tags can fall back to the wire category.
             }
         }
         if (!tags.isEmpty()) {

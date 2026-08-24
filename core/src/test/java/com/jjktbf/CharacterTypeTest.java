@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -165,6 +166,29 @@ class CharacterTypeTest {
 
         assertThrows(IllegalArgumentException.class, () -> new SorcererCharacter(
             "000022", "Sorcerer", stats, null, java.util.List.of(shikigamiMove)));
+
+        assertDoesNotThrow(() -> new ShikigamiCharacter(
+            "000023", "Shikigami", stats, null, java.util.List.of(shikigamiMove)));
+        assertThrows(IllegalArgumentException.class, () -> new ShikigamiCharacter(
+            "000023", "Shikigami", stats, null, java.util.List.of(sorcererMove)));
+    }
+
+    @Test
+    void moveCanBeLearnedByMultipleCharacterTypes() {
+        Move sharedMove = new Move.Builder("SHARED_MOVE")
+            .name("Shared Move")
+            .moveTypes(java.util.EnumSet.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT))
+            .category(MoveCategory.UTILITY)
+            .freeMove(true)
+            .build();
+        var stats = new CharacterData().toCharacterStats();
+
+        assertDoesNotThrow(() -> new SorcererCharacter(
+            "000024", "Sorcerer", stats, null, java.util.List.of(sharedMove)));
+        assertDoesNotThrow(() -> new CursedSpiritCharacter(
+            "000025", "Curse", stats, null, java.util.List.of(sharedMove)));
+        assertThrows(IllegalArgumentException.class, () -> new ShikigamiCharacter(
+            "000026", "Shikigami", stats, null, java.util.List.of(sharedMove)));
     }
 
     @Test
@@ -198,6 +222,21 @@ class CharacterTypeTest {
         String json = mapper.writeValueAsString(cursedSpirit);
         MoveData roundTrip = mapper.readValue(json, MoveData.class);
         assertEquals(MoveType.CURSED_SPIRIT, roundTrip.effectiveMoveType());
+
+        MoveData shared = new MoveData();
+        shared.id = "000027";
+        shared.apCost = 1;
+        shared.unleashPoint = 1;
+        shared.moveTypes = java.util.List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name());
+        Move sharedMove = shared.toMove();
+        assertEquals(java.util.Set.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT),
+            sharedMove.getMoveTypes());
+
+        MoveData canonical = MoveData.fromMove(sharedMove);
+        assertEquals(java.util.List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name()), canonical.moveTypes);
+        assertNull(canonical.moveType);
     }
 
     @Test

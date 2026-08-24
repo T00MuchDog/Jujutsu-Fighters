@@ -21,7 +21,8 @@ class TagPickerTest {
         assertEquals(Set.of(MoveTag.UTILITY), tags);
 
         tags = new LinkedHashSet<>(Set.of(
-            MoveTag.ATTACK, MoveTag.AOE, MoveTag.FRIENDLY_FIRE));
+            MoveTag.ATTACK, MoveTag.AOE, MoveTag.FRIENDLY_FIRE,
+            MoveTag.MELEE, MoveTag.GUARD_BREAK, MoveTag.INTANGIBLE));
         tags.remove(MoveTag.AOE);
         TagPicker.enforceTargetingRules(tags);
 

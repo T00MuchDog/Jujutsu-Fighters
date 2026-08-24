@@ -1584,7 +1584,8 @@ public class CombatResolver {
         // under the normal requireFiredDefense gate.
         Timeline defenderTimeline = defender.getTimeline();
         if (defenderTimeline != null) {
-            ActionSegment reaction = defenderTimeline.triggerArmedReaction(tick, move);
+            ActionSegment reaction = defenderTimeline.triggerArmedReaction(
+                tick, move, component);
             if (reaction != null) {
                 events.add(CombatEvent.of(CombatEvent.Type.MOVE_FIRED)
                     .source(defender).move(reaction.getMove()).tick(tick)

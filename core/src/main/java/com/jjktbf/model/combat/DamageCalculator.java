@@ -181,7 +181,8 @@ public final class DamageCalculator {
         CharacterStats acs = attacker.getEffectiveStats();
 
         Timeline defTimeline = defender.getTimeline();
-        boolean intangible = move.isIntangible();
+        boolean intangible = component.isIntangible();
+        boolean guardBreak = component.isGuardBreak();
 
         // --- 0. Accuracy priority and dodge ---
         // Never Miss wins ties. Never Hit therefore needs a strictly higher tier
@@ -274,7 +275,7 @@ public final class DamageCalculator {
             if (parrySeg != null && parrySeg.getMove().getPotency() >= move.getPotency()) {
                 parrySeg.consumeDefenseUse();
                 boolean perfect = isPerfectRead(parrySeg, currentTick);
-                boolean stagger = parrySeg.getMove().parryStaggersAttacker(move);
+                boolean stagger = parrySeg.getMove().parryStaggersAttacker(move, component);
                 int staggerTicks = stagger ? parrySeg.getMove().getParryStaggerTicks() : 0;
                 if (perfect && stagger) staggerTicks += PERFECT_PARRY_BONUS_STAGGER_TICKS;
                 return DamageResult.parried(
@@ -284,11 +285,11 @@ public final class DamageCalculator {
             }
         }
 
-        if (forceFullBlock && !move.isGuardBreak() && !intangible) {
+        if (forceFullBlock && !guardBreak && !intangible) {
             return DamageResult.blocked(move, component, null, codedModifiers.events())
                 .withRecoil(codedModifiers.recoilDamage());
         }
-        boolean bypassBlock = intangible || move.isGuardBreak() || codedModifiers.bypassBlock()
+        boolean bypassBlock = intangible || guardBreak || codedModifiers.bypassBlock()
             || codedModifiers.bypassConventionalDefenses();
 
         // --- 2. Check block ---

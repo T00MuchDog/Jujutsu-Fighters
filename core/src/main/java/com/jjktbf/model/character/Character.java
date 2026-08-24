@@ -348,10 +348,10 @@ public abstract class Character extends Entity {
             // Character-class eligibility is absolute: an ability may waive
             // ordinary learning requirements, but cannot change what kind of
             // move the character is capable of learning.
-            if (!characterType.canLearn(move.getMoveType())) {
+            if (move.getMoveTypes().stream().noneMatch(characterType::canLearn)) {
                 throw new IllegalArgumentException(
                     "Character type " + characterType + " cannot learn "
-                        + move.getMoveType() + " move '" + move.getName() + "'");
+                        + move.getMoveTypes() + " move '" + move.getName() + "'");
             }
 
             if (move.mustBeGranted() && !moveAvailable) {

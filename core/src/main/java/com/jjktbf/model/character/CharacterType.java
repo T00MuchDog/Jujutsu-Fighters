@@ -49,8 +49,9 @@ public enum CharacterType {
         return switch (this) {
             case SORCERER -> moveType == MoveType.SORCERER;
             case CURSED_SPIRIT -> moveType == MoveType.CURSED_SPIRIT;
-            case CURSED_CORPSE, SHIKIGAMI -> moveType == MoveType.SORCERER
+            case CURSED_CORPSE -> moveType == MoveType.SORCERER
                 || moveType == MoveType.SHIKIGAMI;
+            case SHIKIGAMI -> moveType == MoveType.SHIKIGAMI;
         };
     }
 

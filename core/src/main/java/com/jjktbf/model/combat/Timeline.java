@@ -273,7 +273,7 @@ public class Timeline {
                         && !incomingMove.coveredByBlockTags(
                             move.getBlockAffectedTags(), component)) continue;
                 if (type == com.jjktbf.model.move.DefenseType.DODGE
-                        && !move.dodgeAppliesTo(incomingMove)) continue;
+                        && !move.dodgeAppliesTo(incomingMove, component)) continue;
             }
             int start = s.getFireTick();
             int end = switch (move.getBlockDuration()) {
@@ -334,6 +334,17 @@ public class Timeline {
      *         reaction matches
      */
     public ActionSegment triggerArmedReaction(int tick, Move incomingMove) {
+        com.jjktbf.model.move.HitComponent component = incomingMove == null
+            || incomingMove.getHitComponents().isEmpty()
+                ? null : incomingMove.getHitComponents().get(0);
+        return triggerArmedReaction(tick, incomingMove, component);
+    }
+
+    public ActionSegment triggerArmedReaction(
+        int tick,
+        Move incomingMove,
+        com.jjktbf.model.move.HitComponent component
+    ) {
         for (ActionSegment s : segments) {
             Move move = s.getMove();
             if (s.isStunned() || s.isTransferred() || !s.hasFired()
@@ -342,9 +353,10 @@ public class Timeline {
             if (incomingMove != null) {
                 if ((move.getDefenseType() == com.jjktbf.model.move.DefenseType.BLOCK
                         || move.getDefenseType() == com.jjktbf.model.move.DefenseType.PARRY)
-                        && !incomingMove.coveredByBlockTags(move.getBlockAffectedTags())) continue;
+                        && !incomingMove.coveredByBlockTags(
+                            move.getBlockAffectedTags(), component)) continue;
                 if (move.getDefenseType() == com.jjktbf.model.move.DefenseType.DODGE
-                        && !move.dodgeAppliesTo(incomingMove)) continue;
+                        && !move.dodgeAppliesTo(incomingMove, component)) continue;
             }
             ActionSegment triggered = s.cloneTriggeredAt(tick);
             segments.remove(s);

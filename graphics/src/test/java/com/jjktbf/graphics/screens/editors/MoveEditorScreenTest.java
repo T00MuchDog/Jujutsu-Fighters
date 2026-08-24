@@ -122,7 +122,7 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void saveCopyKeepsLegacyAttacksUnmigrated() {
+    void saveCopyMigratesLegacySingleHitAttacks() {
         MoveData draft = new MoveData();
         draft.tags = new ArrayList<>(List.of(
             MoveTag.ATTACK.name(), MoveTag.PHYSICAL.name()));
@@ -132,7 +132,9 @@ class MoveEditorScreenTest {
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
 
         assertEquals(45, saved.basePower);
-        assertNull(saved.hitComponents);
+        assertEquals(1, saved.hitComponents.size());
+        assertEquals(45, saved.hitComponents.get(0).basePower);
+        assertEquals(List.of(MoveTag.PHYSICAL.name()), saved.hitComponents.get(0).tags);
     }
 
     @Test
@@ -186,7 +188,8 @@ class MoveEditorScreenTest {
         assertEquals(75, saved.basePower);
         assertEquals(0.8, saved.baseAccuracy);
         assertTrue(saved.neverMiss);
-        assertEquals(1, saved.onHitEffects.size());
+        assertNull(saved.onHitEffects);
+        assertEquals(1, saved.hitComponents.get(0).onHitEffects.size());
     }
 
     @Test
@@ -363,7 +366,8 @@ class MoveEditorScreenTest {
         assertEquals(1, saved.selfEffects.size());
 
         assertEquals(75, saved.basePower);
-        assertEquals(1, saved.onHitEffects.size());
+        assertNull(saved.onHitEffects);
+        assertEquals(1, saved.hitComponents.get(0).onHitEffects.size());
     }
 
     @Test
@@ -453,7 +457,7 @@ class MoveEditorScreenTest {
         MoveData utility = new MoveData();
         utility.tags = new ArrayList<>(List.of(
             MoveTag.UTILITY.name(), MoveTag.AOE.name()));
-        assertEquals("Melee, Ranged, AOE, and Friendly Fire tags require Attack.",
+        assertEquals("AOE and Friendly Fire tags require Attack.",
             MoveEditorScreen.categoryTagValidationError(utility));
 
         MoveData attack = new MoveData();
@@ -624,7 +628,8 @@ class MoveEditorScreenTest {
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(move);
 
         assertEquals("SHIKIGAMI", MoveEditorScreen.moveRecordGroup(move));
-        assertTrue(Boolean.TRUE.equals(saved.shikigamiMove));
+        assertEquals(List.of(MoveType.SHIKIGAMI.name()), saved.moveTypes);
+        assertNull(saved.shikigamiMove);
 
         move.shikigamiMove = null;
         assertEquals("SORCERER", MoveEditorScreen.moveRecordGroup(move));
@@ -634,15 +639,45 @@ class MoveEditorScreenTest {
     void canonicalMoveTypesControlEditorGroupingAndSurviveSaveCopy() {
         MoveData move = new MoveData();
         move.tags = new ArrayList<>(List.of(MoveTag.UTILITY.name()));
-        move.moveType = MoveType.CURSED_SPIRIT.name();
+        move.moveTypes = new ArrayList<>(List.of(
+            MoveType.CURSED_SPIRIT.name(), MoveType.SHIKIGAMI.name()));
 
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(move);
 
         assertEquals("CURSED SPIRIT", MoveEditorScreen.moveRecordGroup(move));
-        assertEquals(MoveType.CURSED_SPIRIT.name(), saved.moveType);
+        assertEquals(List.of("CURSED SPIRIT", "SHIKIGAMI"),
+            MoveEditorScreen.moveRecordGroups(move));
+        assertEquals(List.of(
+            MoveType.CURSED_SPIRIT.name(), MoveType.SHIKIGAMI.name()), saved.moveTypes);
+        assertNull(saved.moveType);
 
-        move.moveType = MoveType.SHIKIGAMI.name();
+        move.moveTypes = new ArrayList<>(List.of(MoveType.SHIKIGAMI.name()));
         assertEquals("SHIKIGAMI", MoveEditorScreen.moveRecordGroup(move));
+    }
+
+    @Test
+    void moveTypeSelectionSupportsMultipleTypesButNotZeroTypes() {
+        MoveData move = new MoveData();
+
+        assertTrue(MoveEditorScreen.setMoveTypeSelected(
+            move, MoveType.CURSED_SPIRIT, true));
+        assertEquals(java.util.Set.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT),
+            move.effectiveMoveTypes());
+        assertTrue(MoveEditorScreen.setMoveTypeSelected(move, MoveType.SORCERER, false));
+        assertFalse(MoveEditorScreen.setMoveTypeSelected(
+            move, MoveType.CURSED_SPIRIT, false));
+        assertEquals(java.util.Set.of(MoveType.CURSED_SPIRIT), move.effectiveMoveTypes());
+    }
+
+    @Test
+    void sorcererAndCursedSpiritMoveAppearsInBothRecordGroups() {
+        MoveData taunt = new MoveData();
+        taunt.name = "Taunt";
+        taunt.moveTypes = List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name());
+
+        assertEquals(List.of("SORCERER", "CURSED SPIRIT"),
+            MoveEditorScreen.moveRecordGroups(taunt));
     }
 
     @Test
@@ -654,6 +689,11 @@ class MoveEditorScreenTest {
 
         move.shikigamiMove = true;
         assertEquals("SHIKIGAMI", MoveEditorScreen.moveRecordGroup(move));
+
+        move.shikigamiMove = null;
+        move.moveTypes = List.of(MoveType.SORCERER.name(), MoveType.SHIKIGAMI.name());
+        assertEquals(List.of("CURSED TECHNIQUES/Ratio", "SHIKIGAMI"),
+            MoveEditorScreen.moveRecordGroups(move));
     }
 
     @Test

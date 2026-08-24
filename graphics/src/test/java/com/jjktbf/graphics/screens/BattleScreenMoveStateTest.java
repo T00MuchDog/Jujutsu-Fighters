@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assumptions;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -62,14 +63,17 @@ class BattleScreenMoveStateTest {
     void orderedHitComponentsSurviveDisplayReconstruction() {
         Move move = BattleScreen.toDisplayMove(moveState(
             MoveCategory.PHYSICAL_CURSED_ENERGY,
-            List.of("PHYSICAL", "CURSED_ENERGY", "ATTACK", "MELEE"),
+            List.of("PHYSICAL", "CURSED_ENERGY", "ATTACK", "MELEE", "RANGED",
+                "GUARD_BREAK", "INTANGIBLE"),
             PlanBoard.OFFENSIVE,
             999,
             List.of(
                 new HitComponentState(
-                    40, "PHYSICAL", List.of("PHYSICAL"), 0, false, true, 1.0),
+                    40, "PHYSICAL", List.of("PHYSICAL", "MELEE", "GUARD_BREAK"),
+                    0, false, true, 1.0),
                 new HitComponentState(
-                    25, "CURSED_ENERGY", List.of("CURSED_ENERGY"), 4, true, false, 1.0))
+                    25, "CURSED_ENERGY", List.of("CURSED_ENERGY", "RANGED", "INTANGIBLE"),
+                    4, true, false, 1.0))
         ));
 
         assertEquals(65, move.getBasePower());
@@ -80,7 +84,11 @@ class BattleScreenMoveStateTest {
         assertEquals(4, move.getHitComponents().get(1).getDelayTicks());
         assertTrue(move.getHitComponents().get(1).requiresPreviousConnection());
         assertFalse(move.getHitComponents().get(1).isAvoidable());
-        assertTrue(move.getTags().contains(MoveTag.MELEE));
+        assertFalse(move.getTags().contains(MoveTag.MELEE));
+        assertEquals(Set.of(MoveTag.PHYSICAL, MoveTag.MELEE, MoveTag.GUARD_BREAK),
+            move.getHitComponents().get(0).getTags());
+        assertEquals(Set.of(MoveTag.CURSED_ENERGY, MoveTag.RANGED, MoveTag.INTANGIBLE),
+            move.getHitComponents().get(1).getTags());
     }
 
     @Test

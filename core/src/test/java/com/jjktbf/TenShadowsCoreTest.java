@@ -33,6 +33,7 @@ import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
+import com.jjktbf.model.move.MoveType;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.progression.TechniqueMasteryProgressionData;
@@ -393,6 +394,7 @@ class TenShadowsCoreTest {
     @Test
     void codedDesummonSelfRemovesSummonExactlyOnce() {
         Move desummonMove = utility("DESUMMON", 1)
+            .moveType(MoveType.SHIKIGAMI)
             .selfEffects(List.of(StatusEffect.coded(
                 ShikigamiMoveRuntime.KEY, ShikigamiMoveRuntime.DESUMMON_SELF)))
             .build();

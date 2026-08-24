@@ -23,6 +23,7 @@ import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.MoveData;
+import com.jjktbf.model.move.MoveType;
 import com.jjktbf.model.move.StatusEffectType;
 
 import java.io.IOException;
@@ -256,6 +257,7 @@ class ShikigamiAIStrategyTest {
     private static Move meleeAttack(String id, int basePower, int apCost) {
         return new Move.Builder(id)
             .name(id).category(MoveCategory.PHYSICAL)
+            .moveType(MoveType.SHIKIGAMI)
             .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.MELEE))
             .hitComponents(List.of(new HitComponent(
                 basePower, Set.of(MoveTag.PHYSICAL), 0, false, true)))
@@ -266,6 +268,7 @@ class ShikigamiAIStrategyTest {
     private static Move rangedAttack(String id, int basePower) {
         return new Move.Builder(id)
             .name(id).category(MoveCategory.PHYSICAL)
+            .moveType(MoveType.SHIKIGAMI)
             .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.RANGED))
             .hitComponents(List.of(new HitComponent(
                 basePower, Set.of(MoveTag.PHYSICAL), 0, false, true)))
@@ -283,6 +286,7 @@ class ShikigamiAIStrategyTest {
         effect.magnitude = 10.0;
         return new Move.Builder(id)
             .name(id).category(MoveCategory.PHYSICAL)
+            .moveType(MoveType.SHIKIGAMI)
             .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.MELEE))
             .hitComponents(List.of(new HitComponent(
                 basePower, Set.of(MoveTag.PHYSICAL), 0, false, true)))
@@ -294,6 +298,7 @@ class ShikigamiAIStrategyTest {
     private static Move dodge(String id, String scope) {
         return new Move.Builder(id)
             .name(id).category(MoveCategory.DEFENSIVE)
+            .moveType(MoveType.SHIKIGAMI)
             .tags(Set.of(MoveTag.DEFENSIVE))
             .defenseType(DefenseType.DODGE).dodgeScope(scope).dodgeChance(50)
             .apCost(5).unleashPoint(1)
@@ -303,6 +308,7 @@ class ShikigamiAIStrategyTest {
     private static Move block(String id) {
         return new Move.Builder(id)
             .name(id).category(MoveCategory.DEFENSIVE)
+            .moveType(MoveType.SHIKIGAMI)
             .tags(Set.of(MoveTag.DEFENSIVE, MoveTag.PHYSICAL))
             .defenseType(DefenseType.BLOCK).blockStyle(BlockStyle.PERCENTAGE)
             .blockDamageReduction(50).blockAffectedTags(List.of("PHYSICAL"))
@@ -323,6 +329,7 @@ class ShikigamiAIStrategyTest {
         effect.target = AbilityEffectTarget.SELF.name();
         return new Move.Builder("DESUMMON")
             .name("Desummon").category(MoveCategory.UTILITY)
+            .moveType(MoveType.SHIKIGAMI)
             .tags(Set.of(MoveTag.UTILITY))
             .effects(List.of(effect))
             .apCost(1).unleashPoint(1)

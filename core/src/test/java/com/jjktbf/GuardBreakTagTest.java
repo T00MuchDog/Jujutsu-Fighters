@@ -131,7 +131,8 @@ public class GuardBreakTagTest {
             .build();
 
         MoveData dto = MoveData.fromMove(original);
-        assertTrue(dto.guardBreak, "DTO should carry the guardBreak flag after fromMove().");
+        assertFalse(dto.guardBreak, "The legacy move-wide flag must not be written.");
+        assertTrue(dto.hitComponents.get(0).tags.contains("GUARD_BREAK"));
 
         Move restored = dto.toMove();
         assertTrue(restored.isGuardBreak(), "Restored Move should have isGuardBreak() true.");

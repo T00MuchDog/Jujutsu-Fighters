@@ -229,6 +229,12 @@ public abstract class EditorScreenBase<D> implements Screen {
     /** Section name for a record when {@link #recordSections()} is non-empty. */
     protected String recordSection(D record) { return null; }
 
+    /** Sections containing a record. Override when one record should appear in several sections. */
+    protected List<String> recordSectionsFor(D record) {
+        String section = recordSection(record);
+        return section == null ? List.of() : List.of(section);
+    }
+
     /**
      * Optional parent for a record section. A collapsed parent hides all of its
      * child section headers and records while preserving each child's own state.
@@ -652,8 +658,12 @@ public abstract class EditorScreenBase<D> implements Screen {
                     collapsedRecordSections.putIfAbsent(section, false);
                 }
                 for (D record : visibleRecords) {
-                    List<D> sectionRecords = recordsBySection.get(recordSection(record));
-                    if (sectionRecords != null) sectionRecords.add(record);
+                    for (String recordSection : recordSectionsFor(record)) {
+                        List<D> sectionRecords = recordsBySection.get(recordSection);
+                        if (sectionRecords != null && !sectionRecords.contains(record)) {
+                            sectionRecords.add(record);
+                        }
+                    }
                 }
 
                 for (String section : sections) {
@@ -709,16 +719,17 @@ public abstract class EditorScreenBase<D> implements Screen {
     /** Keeps keyboard-selected records visible within the master-list scroll pane. */
     private void scrollMasterListTo(int index) {
         if (index < 0 || index >= visibleRecordIds.size()) return;
-        String id = visibleRecordIds.get(index);
         HoverList<String> target = null;
         int localIndex = -1;
+        int offset = 0;
         for (HoverList<String> list : masterRecordLists) {
-            int found = recordIdsByList.getOrDefault(list, List.of()).indexOf(id);
-            if (found >= 0) {
+            int size = recordIdsByList.getOrDefault(list, List.of()).size();
+            if (index < offset + size) {
                 target = list;
-                localIndex = found;
+                localIndex = index - offset;
                 break;
             }
+            offset += size;
         }
         if (target == null) return;
 
@@ -780,46 +791,66 @@ public abstract class EditorScreenBase<D> implements Screen {
     }
 
     private int selectedVisibleRecordIndex() {
+        int offset = 0;
         for (HoverList<String> list : masterRecordLists) {
             int localIndex = list.getSelectedIndex();
             List<String> ids = recordIdsByList.getOrDefault(list, List.of());
             if (localIndex >= 0 && localIndex < ids.size()) {
-                return visibleRecordIds.indexOf(ids.get(localIndex));
+                return offset + localIndex;
             }
+            offset += ids.size();
         }
         return -1;
     }
 
     private void selectVisibleRecordIndex(int index) {
+        selectVisibleRecordIndex(index, true);
+    }
+
+    private void selectVisibleRecordIndex(int index, boolean openRecord) {
         if (index < 0 || index >= visibleRecordIds.size()) return;
-        String id = visibleRecordIds.get(index);
+        boolean wasSuppressed = suppressMasterListEvents;
         suppressMasterListEvents = true;
         HoverList<String> target = null;
         int localIndex = -1;
+        int offset = 0;
         try {
             for (HoverList<String> list : masterRecordLists) {
                 List<String> ids = recordIdsByList.getOrDefault(list, List.of());
-                int found = ids.indexOf(id);
-                if (found >= 0) {
+                if (target == null && index < offset + ids.size()) {
                     target = list;
-                    localIndex = found;
+                    localIndex = index - offset;
                 }
                 list.getSelection().clear();
+                offset += ids.size();
             }
+            if (target != null) target.setSelectedIndex(localIndex);
         } finally {
-            suppressMasterListEvents = false;
+            suppressMasterListEvents = wasSuppressed;
         }
-        if (target != null) target.setSelectedIndex(localIndex);
+        if (!openRecord || target == null) return;
+
+        String selectedId = visibleRecordIds.get(index);
+        for (int i = 0; i < records.size(); i++) {
+            if (Objects.equals(idOf(records.get(i)), selectedId)) {
+                selectRecord(i);
+                break;
+            }
+        }
     }
 
     private void selectVisibleRecord(String id) {
         boolean wasSuppressed = suppressMasterListEvents;
         suppressMasterListEvents = true;
+        boolean selected = false;
         try {
             for (HoverList<String> list : masterRecordLists) {
                 List<String> ids = recordIdsByList.getOrDefault(list, List.of());
-                int localIndex = id == null ? -1 : ids.indexOf(id);
-                if (localIndex >= 0) list.setSelectedIndex(localIndex);
+                int localIndex = selected || id == null ? -1 : ids.indexOf(id);
+                if (localIndex >= 0) {
+                    list.setSelectedIndex(localIndex);
+                    selected = true;
+                }
                 else list.getSelection().clear();
             }
         } finally {
@@ -995,16 +1026,22 @@ public abstract class EditorScreenBase<D> implements Screen {
     }
 
     private void doSelect(int idx, boolean playSound) {
+        int preferredVisibleIndex = selectedVisibleRecordIndex();
         selectedIndex = idx;
         String selectedId = idOf(records.get(idx));
-        selectVisibleRecord(selectedId);
+        boolean preserveOccurrence = preferredVisibleIndex >= 0
+            && preferredVisibleIndex < visibleRecordIds.size()
+            && Objects.equals(visibleRecordIds.get(preferredVisibleIndex), selectedId);
+        if (preserveOccurrence) selectVisibleRecordIndex(preferredVisibleIndex, false);
+        else selectVisibleRecord(selectedId);
         draft = draftFromRecord(records.get(idx));
         suppressDirty = true;
         rebuildDetail();
         suppressDirty = false;
         clearDirty();
         setStatus("", false);
-        int visibleIndex = visibleRecordIds.indexOf(selectedId);
+        int visibleIndex = preserveOccurrence
+            ? preferredVisibleIndex : visibleRecordIds.indexOf(selectedId);
         if (visibleIndex >= 0) scrollMasterListTo(visibleIndex);
         if (playSound) game.audio().play(SoundCue.UI_CONFIRM);
     }
@@ -1144,7 +1181,7 @@ public abstract class EditorScreenBase<D> implements Screen {
                         suppressRecordSelectionSound = true;
                         try {
                             if (visibleIndex >= 0) {
-                                selectVisibleRecordIndex(visibleIndex);
+                                selectVisibleRecordIndex(visibleIndex, false);
                                 scrollMasterListTo(visibleIndex);
                             }
                             else selectVisibleRecord(null);

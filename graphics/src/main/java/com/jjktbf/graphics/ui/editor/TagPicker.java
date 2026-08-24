@@ -31,8 +31,8 @@ import java.util.function.Consumer;
  *   <li><b>CATEGORY</b> — Attack, Defensive, Utility</li>
  *   <li><b>TYPE</b> — Physical, Cursed Energy, Innate Technique,
  *       Non-Innate Technique</li>
- *   <li><b>RANGE</b> — Melee, Ranged, AOE, Friendly Fire</li>
- *   <li><b>TAGS</b> — Sword, Stun, Guard Break, Heavy, Intangible</li>
+ *   <li><b>TARGETING</b> — AOE, Friendly Fire</li>
+ *   <li><b>TAGS</b> — Heavy</li>
  * </ol>
  *
  * <p>Two coupling rules are enforced in the UI:
@@ -40,7 +40,7 @@ import java.util.function.Consumer;
  *   <li>Whenever INNATE_TECHNIQUE or NON_INNATE_TECHNIQUE is selected,
  *       CURSED_ENERGY is force-selected and LOCKED (grey fill, unclickable,
  *       no hover highlight).</li>
- *   <li>MELEE, RANGED, and AOE are LOCKED OFF unless ATTACK is selected.</li>
+ *   <li>AOE is LOCKED OFF unless ATTACK is selected.</li>
  *   <li>FRIENDLY_FIRE is LOCKED OFF unless AOE is selected.</li>
  * </ul>
  * The rules revert the instant their gating condition no longer holds.
@@ -78,6 +78,7 @@ public class TagPicker extends Table {
         this.onChange = onChange;
         this.soundPlayer = soundPlayer == null ? cue -> { } : soundPlayer;
         if (initial != null) this.selected.addAll(initial);
+        this.selected.removeAll(MoveTag.HIT_ONLY_TAGS);
 
         // No internal "Tags" heading — the form section strip already names it.
         defaults().pad(4);
@@ -117,8 +118,6 @@ public class TagPicker extends Table {
         // every other checkbox sharing the skin style. Clone the default style
         // and attach it to each lockable tag only.
         cloneStyleFor(MoveTag.CURSED_ENERGY);
-        cloneStyleFor(MoveTag.MELEE);
-        cloneStyleFor(MoveTag.RANGED);
         cloneStyleFor(MoveTag.AOE);
         cloneStyleFor(MoveTag.FRIENDLY_FIRE);
 
@@ -151,9 +150,8 @@ public class TagPicker extends Table {
     /** Normalize attack targeting tags and their friendly-fire dependency. */
     static void enforceTargetingRules(Set<MoveTag> tags) {
         if (tags == null) return;
+        tags.removeAll(MoveTag.HIT_ONLY_TAGS);
         if (!tags.contains(MoveTag.ATTACK)) {
-            tags.remove(MoveTag.MELEE);
-            tags.remove(MoveTag.RANGED);
             tags.remove(MoveTag.AOE);
         }
         if (!tags.contains(MoveTag.AOE)) tags.remove(MoveTag.FRIENDLY_FIRE);
@@ -180,8 +178,6 @@ public class TagPicker extends Table {
         boolean attackSelected = selected.contains(MoveTag.ATTACK);
         applyLockOn(MoveTag.CURSED_ENERGY,
             selected.stream().anyMatch(TECHNIQUE_TAGS::contains));
-        applyLockOff(MoveTag.MELEE, !attackSelected);
-        applyLockOff(MoveTag.RANGED, !attackSelected);
         applyLockOff(MoveTag.AOE, !attackSelected);
         applyLockOff(MoveTag.FRIENDLY_FIRE, !selected.contains(MoveTag.AOE));
     }
@@ -274,11 +270,8 @@ public class TagPicker extends Table {
         sections.put("TYPE", List.of(
             MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY,
             MoveTag.INNATE_TECHNIQUE, MoveTag.NON_INNATE_TECHNIQUE));
-        sections.put("RANGE", List.of(
-            MoveTag.MELEE, MoveTag.RANGED, MoveTag.AOE, MoveTag.FRIENDLY_FIRE));
-        sections.put("TAGS", List.of(
-            MoveTag.GUARD_BREAK, MoveTag.HEAVY,
-            MoveTag.INTANGIBLE));
+        sections.put("TARGETING", List.of(MoveTag.AOE, MoveTag.FRIENDLY_FIRE));
+        sections.put("TAGS", List.of(MoveTag.HEAVY));
         return sections;
     }
 

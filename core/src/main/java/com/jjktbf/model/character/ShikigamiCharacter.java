@@ -14,7 +14,7 @@ import java.util.List;
  * inside a battle: a shikigami definition becomes a {@code SUMMON} combatant
  * when summoned, but nothing about the definition forces that role.
  *
- * <p>A shikigami may learn sorcerer and shikigami moves. Its separate type also
+ * <p>A shikigami may learn only shikigami moves. Its separate type also
  * lets content tooling and roster filtering treat summonable definitions
  * differently from directly-selectable fighters.
  */

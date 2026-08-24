@@ -29,7 +29,10 @@ public class MoveRepository extends BaseRepository<MoveData> {
         super.load();
         boolean migrated = false;
         for (MoveData move : getAll()) {
-            if (move != null) migrated |= move.migrateLegacyEffects();
+            if (move != null) {
+                migrated |= move.migrateLegacyEffects();
+                migrated |= move.migrateLegacyHitTags();
+            }
         }
         if (migrated) save();
     }

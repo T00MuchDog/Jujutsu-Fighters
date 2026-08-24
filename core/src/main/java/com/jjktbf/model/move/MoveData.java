@@ -36,10 +36,10 @@ public class MoveData {
     public String name;
     public String description;
 
-    /**
-     * Authored move class ({@code SORCERER}, {@code CURSED_SPIRIT}, or
-     * {@code SHIKIGAMI}). Missing values are legacy sorcerer moves.
-     */
+    /** Authored move classes. A character may learn the move when any type matches. */
+    public List<String> moveTypes;
+
+    /** Legacy singular move class retained for existing stored content. */
     public String moveType;
 
     /**
@@ -113,10 +113,8 @@ public class MoveData {
     @Deprecated
     public Boolean stun;
 
-    /**
-     * Backs the GUARD_BREAK move tag. When true, a successful hit ignores the
-     * defender's blocking defensive moves (BLOCK).
-     */
+    /** Legacy move-wide guard-break field; migrated onto each hit component. */
+    @Deprecated
     public boolean guardBreak     = false;
 
     /**
@@ -293,13 +291,33 @@ public class MoveData {
     /** Legacy shikigami classification retained for existing stored content. */
     public Boolean shikigamiMove;
 
-    /** Resolve the canonical move class, including the legacy shikigami flag. */
+    /** Resolve every canonical move class, including both legacy representations. */
+    @JsonIgnore
+    public Set<MoveType> effectiveMoveTypes() {
+        if (moveTypes != null) {
+            if (moveTypes.isEmpty()) {
+                throw new IllegalArgumentException("Move must have at least one move type");
+            }
+            EnumSet<MoveType> resolved = EnumSet.noneOf(MoveType.class);
+            for (String stored : moveTypes) {
+                if (stored == null || stored.isBlank()) {
+                    throw new IllegalArgumentException("Move type cannot be blank");
+                }
+                resolved.add(MoveType.fromStoredValue(stored));
+            }
+            return java.util.Collections.unmodifiableSet(resolved);
+        }
+        if (moveType != null && !moveType.isBlank()) {
+            return Set.of(MoveType.fromStoredValue(moveType));
+        }
+        return Set.of(Boolean.TRUE.equals(shikigamiMove)
+            ? MoveType.SHIKIGAMI : MoveType.SORCERER);
+    }
+
+    /** Primary move class retained for grouping and singular compatibility APIs. */
     @JsonIgnore
     public MoveType effectiveMoveType() {
-        if (moveType != null && !moveType.isBlank()) {
-            return MoveType.fromStoredValue(moveType);
-        }
-        return Boolean.TRUE.equals(shikigamiMove) ? MoveType.SHIKIGAMI : MoveType.SORCERER;
+        return effectiveMoveTypes().iterator().next();
     }
 
     // -------------------------------------------------------------------------
@@ -310,7 +328,7 @@ public class MoveData {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class HitComponentData {
         public int basePower;
-        /** Damage-type MoveTag names only; range and modifiers stay on the move. */
+        /** Per-hit type, range, guard-break, and intangible MoveTag names. */
         public List<String> tags;
         /** Nonnegative offset from the parent move's unleash/fire tick. */
         public int delayTicks = 0;
@@ -656,7 +674,7 @@ public class MoveData {
 
         Move.Builder b = new Move.Builder(id)
             .name(name)
-            .moveType(effectiveMoveType())
+            .moveTypes(effectiveMoveTypes())
             .description(ContentNameTokens.resolve(
                 description != null ? description : "", descriptionNames))
             .category(cat)
@@ -799,6 +817,93 @@ public class MoveData {
             }
         }
         return parsed;
+    }
+
+    /**
+     * Migrate legacy move-wide hit tags into canonical hit components. Type tags
+     * remain on the move as their union because they also classify the full move.
+     */
+    @JsonIgnore
+    public boolean migrateLegacyHitTags() {
+        if (tags == null) return false;
+        EnumSet<MoveTag> inherited = EnumSet.noneOf(MoveTag.class);
+        for (MoveTag tag : parsedTags()) {
+            if (MoveTag.HIT_ONLY_TAGS.contains(tag)) inherited.add(tag);
+        }
+        if (guardBreak) inherited.add(MoveTag.GUARD_BREAK);
+
+        boolean attack = tags.stream().anyMatch(MoveTag.ATTACK.name()::equalsIgnoreCase);
+        boolean referencedHybrid = isDefenceAttackHybrid()
+            && attackLaunchMoveId != null && !attackLaunchMoveId.isBlank();
+        boolean changed = false;
+        if (attack && !referencedHybrid && (hitComponents == null || hitComponents.isEmpty())) {
+            HitComponentData component = new HitComponentData();
+            component.basePower = basePower;
+            component.tags = canonicalHitTagNames(parsedTags(), inherited);
+            component.baseAccuracy = baseAccuracy;
+            component.onHitEffects = onHitEffects;
+            hitComponents = new java.util.ArrayList<>(List.of(component));
+            onHitEffects = null;
+            changed = true;
+        } else if (attack && !referencedHybrid && !inherited.isEmpty()) {
+            for (HitComponentData component : hitComponents) {
+                if (component == null) continue;
+                component.tags = canonicalHitTagNames(parseTagNames(component.tags), inherited);
+            }
+            changed = true;
+        }
+
+        if (!inherited.isEmpty()) {
+            tags = tags.stream()
+                .filter(name -> !isHitOnlyTagName(name))
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+            changed = true;
+        }
+        if (guardBreak) {
+            guardBreak = false;
+            changed = true;
+        }
+        return changed;
+    }
+
+    private static EnumSet<MoveTag> parseTagNames(List<String> names) {
+        EnumSet<MoveTag> parsed = EnumSet.noneOf(MoveTag.class);
+        if (names == null) return parsed;
+        for (String name : names) {
+            if (name == null || name.isBlank()) continue;
+            try {
+                parsed.add(MoveTag.valueOf(name.trim().toUpperCase()));
+            } catch (IllegalArgumentException ignored) {
+                // Runtime conversion reports unknown component tags with context.
+            }
+        }
+        return parsed;
+    }
+
+    private static List<String> canonicalHitTagNames(
+        Set<MoveTag> source,
+        Set<MoveTag> inherited
+    ) {
+        EnumSet<MoveTag> hitTags = EnumSet.noneOf(MoveTag.class);
+        for (MoveTag tag : source) {
+            if (MoveTag.HIT_TAGS.contains(tag)) hitTags.add(tag);
+        }
+        hitTags.addAll(inherited);
+        if (hitTags.contains(MoveTag.INNATE_TECHNIQUE)
+            || hitTags.contains(MoveTag.NON_INNATE_TECHNIQUE)) {
+            hitTags.remove(MoveTag.CURSED_ENERGY);
+        }
+        return hitTags.stream().map(MoveTag::name).toList();
+    }
+
+    private static boolean isHitOnlyTagName(String name) {
+        if (name == null || name.isBlank()) return false;
+        try {
+            return MoveTag.HIT_ONLY_TAGS.contains(
+                MoveTag.valueOf(name.trim().toUpperCase()));
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 
     /** Every weapon-type tag authored on this move definition. */
@@ -979,7 +1084,9 @@ public class MoveData {
         d.id                  = move.getId();
         d.name                = move.getName();
         d.description         = move.getDescription();
-        d.moveType            = move.getMoveType().name();
+        d.moveTypes           = move.getMoveTypes().stream()
+            .map(MoveType::name)
+            .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
 
         List<String> tagList = move.getTags().stream()
             .map(MoveTag::name)
@@ -998,22 +1105,14 @@ public class MoveData {
         d.tags = tagList;
 
         d.basePower           = move.getBasePower();
-        // Zero-power legacy attacks expose a synthetic fallback component at
-        // runtime. Keep those in the legacy shape instead of serializing an
-        // explicit component that new authoring validation correctly rejects.
-        if (move.getBasePower() > 0) {
+        if (!move.getHitComponents().isEmpty()) {
             d.hitComponents = move.getHitComponents().stream()
                 .map(HitComponentData::fromHitComponent)
-                .toList();
-        } else if (!move.getHitComponents().isEmpty()
-            && !move.getHitComponents().get(0).getOnHitEffects().isEmpty()) {
-            d.onHitEffects = move.getHitComponents().get(0).getOnHitEffects().stream()
-                .map(MoveData::toEffectData)
                 .toList();
         }
         d.baseAccuracy        = move.getBaseAccuracy();
         d.neverMiss           = move.hasLegacyNeverMiss();
-        d.guardBreak          = move.isGuardBreak();
+        d.guardBreak          = false;
         d.heavy               = move.isHeavy();
         d.potency             = move.getPotency();
         d.apCost              = move.getApCost();

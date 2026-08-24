@@ -128,7 +128,8 @@ class IntangibleTagTest {
     void intangibleTagSurvivesMoveDataRoundTrip() {
         MoveData data = MoveData.fromMove(intangibleAttack("ROUND_TRIP"));
 
-        assertTrue(data.tags.contains(MoveTag.INTANGIBLE.name()));
+        assertFalse(data.tags.contains(MoveTag.INTANGIBLE.name()));
+        assertTrue(data.hitComponents.get(0).tags.contains(MoveTag.INTANGIBLE.name()));
         Move restored = data.toMove();
         assertTrue(restored.isIntangible());
         assertTrue(restored.hasTag("INTANGIBLE"));

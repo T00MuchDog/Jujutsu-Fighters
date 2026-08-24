@@ -20,6 +20,7 @@ import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
+import com.jjktbf.model.move.MoveType;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
 import com.jjktbf.multiplayer.protocol.BattleEventType;
 import com.jjktbf.multiplayer.protocol.BattlePhase;
@@ -1026,7 +1027,7 @@ class HeadlessBattleSessionTest {
     }
 
     @Test
-    void moveSnapshotsKeepLegacyZeroPowerAttacksInLegacyShape() {
+    void moveSnapshotsIncludeZeroPowerAttackComponents() {
         Move zeroPower = new Move.Builder("ZERO_POWER")
             .name("Zero Power")
             .category(MoveCategory.PHYSICAL)
@@ -1038,7 +1039,8 @@ class HeadlessBattleSessionTest {
             .character().knownMoves().get(0);
 
         assertEquals(0, move.basePower());
-        assertTrue(move.hitComponents().isEmpty());
+        assertEquals(1, move.hitComponents().size());
+        assertEquals(0, move.hitComponents().get(0).basePower());
     }
 
     @Test
@@ -1422,6 +1424,7 @@ class HeadlessBattleSessionTest {
         return new Move.Builder(id)
             .name(id)
             .description("A test physical attack.")
+            .moveTypes(Set.of(MoveType.SORCERER, MoveType.SHIKIGAMI))
             .category(MoveCategory.PHYSICAL)
             .basePower(power)
             .baseAccuracy(0.75)

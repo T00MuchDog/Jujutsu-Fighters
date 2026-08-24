@@ -1456,8 +1456,11 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             return "This move must be granted by an ability.";
         }
         CharacterType characterType = character.effectiveType();
-        if (!characterType.canLearn(built.getMoveType())) {
-            return labelForMoveType(built.getMoveType()) + " moves cannot be learned by "
+        if (built.getMoveTypes().stream().noneMatch(characterType::canLearn)) {
+            String moveTypes = built.getMoveTypes().stream()
+                .map(CharacterEditorScreen::labelForMoveType)
+                .collect(java.util.stream.Collectors.joining(" or "));
+            return moveTypes + " moves cannot be learned by "
                 + labelForCharacterType(characterType) + " characters.";
         }
         // A GRANT_MOVE-granted move bypasses all requirements, mirroring

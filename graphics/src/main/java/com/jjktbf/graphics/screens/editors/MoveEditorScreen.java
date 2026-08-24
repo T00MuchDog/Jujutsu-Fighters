@@ -100,11 +100,20 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     private static final List<String> MOVE_PURPOSE_SECTIONS = List.of(
         "DEFENSE", "ATTACK", "UTILITY");
 
-    private static final List<MoveTag> COMPONENT_DAMAGE_TAGS = List.of(
+    private static final List<MoveTag> COMPONENT_TYPE_TAGS = List.of(
         MoveTag.PHYSICAL,
         MoveTag.CURSED_ENERGY,
         MoveTag.INNATE_TECHNIQUE,
         MoveTag.NON_INNATE_TECHNIQUE);
+    private static final List<MoveTag> COMPONENT_ATTACK_TAGS = List.of(
+        MoveTag.PHYSICAL,
+        MoveTag.CURSED_ENERGY,
+        MoveTag.INNATE_TECHNIQUE,
+        MoveTag.NON_INNATE_TECHNIQUE,
+        MoveTag.MELEE,
+        MoveTag.RANGED,
+        MoveTag.GUARD_BREAK,
+        MoveTag.INTANGIBLE);
 
     private final MoveRepository repo;
     /** Character repo for the shikigami-summon selector and summon-reference remap on delete. */
@@ -143,7 +152,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         MoveData m = new MoveData();
         m.name = "New Move";
         m.description = "";
-        m.moveType = MoveType.SORCERER.name();
+        m.moveTypes = new ArrayList<>(List.of(MoveType.SORCERER.name()));
         m.tags = new ArrayList<>();
         m.basePower = 0;
         m.baseAccuracy = 1.0;
@@ -186,6 +195,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         // (e.g. an Attack + Innate Technique move would lose its tags).
         MoveData draft = deepCopy(stored);
         draft.migrateLegacyEffects();
+        draft.migrateLegacyHitTags();
         draft.migrateLegacyNeverMissTier();
         return draft;
     }
@@ -196,6 +206,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.id                    = s.id;
         d.name                  = s.name;
         d.description           = s.description;
+        d.moveTypes             = s.moveTypes != null ? new ArrayList<>(s.moveTypes) : null;
         d.moveType              = s.moveType;
         d.tags                  = s.tags != null ? new ArrayList<>(s.tags) : null;
         d.basePower             = s.basePower;
@@ -406,13 +417,24 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     @Override protected String recordSection(MoveData record) {
-        String group = moveRecordGroup(record);
+        return canonicalRecordGroup(moveRecordGroup(record)) + "/" + moveRecordSection(record);
+    }
+
+    @Override protected List<String> recordSectionsFor(MoveData record) {
+        String purpose = moveRecordSection(record);
+        return moveRecordGroups(record).stream()
+            .map(this::canonicalRecordGroup)
+            .map(group -> group + "/" + purpose)
+            .toList();
+    }
+
+    private String canonicalRecordGroup(String group) {
         String techniquePrefix = CURSED_TECHNIQUES_SECTION + "/";
         if (group.startsWith(techniquePrefix)) {
             String requestedName = group.substring(techniquePrefix.length());
             group = techniquePrefix + canonicalTechniqueName(requestedName);
         }
-        return group + "/" + moveRecordSection(record);
+        return group;
     }
 
     @Override protected String recordSectionParent(String section) {
@@ -437,13 +459,25 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     static String moveRecordGroup(MoveData record) {
-        MoveType moveType = record.effectiveMoveType();
-        if (moveType == MoveType.CURSED_SPIRIT) return CURSED_SPIRIT_SECTION;
-        if (moveType == MoveType.SHIKIGAMI) return SHIKIGAMI_SECTION;
-        if (record.requiredTechniqueId != null && !record.requiredTechniqueId.isBlank()) {
-            return CURSED_TECHNIQUES_SECTION + "/" + record.requiredTechniqueId.trim();
+        return moveRecordGroups(record).get(0);
+    }
+
+    static List<String> moveRecordGroups(MoveData record) {
+        List<String> groups = new ArrayList<>();
+        for (MoveType moveType : record.effectiveMoveTypes()) {
+            if (moveType == MoveType.CURSED_SPIRIT) {
+                groups.add(CURSED_SPIRIT_SECTION);
+            } else if (moveType == MoveType.SHIKIGAMI) {
+                groups.add(SHIKIGAMI_SECTION);
+            } else if (record.requiredTechniqueId != null
+                && !record.requiredTechniqueId.isBlank()) {
+                groups.add(CURSED_TECHNIQUES_SECTION + "/"
+                    + record.requiredTechniqueId.trim());
+            } else {
+                groups.add(SORCERER_SECTION);
+            }
         }
-        return SORCERER_SECTION;
+        return List.copyOf(groups);
     }
 
     private static String moveTypeLabel(MoveType type) {
@@ -452,15 +486,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             case CURSED_SPIRIT -> "Cursed Spirit";
             case SHIKIGAMI -> "Shikigami";
         };
-    }
-
-    private static MoveType moveTypeFromLabel(String label) {
-        if (label != null) {
-            for (MoveType type : MoveType.values()) {
-                if (moveTypeLabel(type).equalsIgnoreCase(label.trim())) return type;
-            }
-        }
-        return MoveType.SORCERER;
     }
 
     static List<String> moveRecordSections(List<String> techniqueNames) {
@@ -500,7 +525,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             }
         }
         for (MoveData move : records) {
-            if (move.effectiveMoveType() != MoveType.SORCERER
+            if (!move.effectiveMoveTypes().contains(MoveType.SORCERER)
                 || move.requiredTechniqueId == null
                 || move.requiredTechniqueId.isBlank()) {
                 continue;
@@ -662,11 +687,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         // section's launch mode. UTILITY combines with either as before: the
         // hybrid keeps its base category and authors its on-fire effect rows
         // in the UTILITY section.
-        boolean hasAttackTargetingTag = List.of(
-            MoveTag.MELEE, MoveTag.RANGED, MoveTag.AOE, MoveTag.FRIENDLY_FIRE).stream()
+        boolean hasAttackTargetingTag = List.of(MoveTag.AOE, MoveTag.FRIENDLY_FIRE).stream()
             .anyMatch(tag -> move.tags.contains(tag.name()));
         if (!attack && hasAttackTargetingTag) {
-            return "Melee, Ranged, AOE, and Friendly Fire tags require Attack.";
+            return "AOE and Friendly Fire tags require Attack.";
         }
         if (move.tags.contains(MoveTag.FRIENDLY_FIRE.name())
             && !move.tags.contains(MoveTag.AOE.name())) {
@@ -936,6 +960,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 }
                 enableHitComponentEditing(d);
             }
+            if (tags.contains(MoveTag.ATTACK) && d.hitComponents == null) {
+                enableHitComponentEditing(d);
+            }
             if (d.hitComponents != null && tags.contains(MoveTag.ATTACK)) {
                 if (typeTagsChanged && !selectedTypeTags.isEmpty()) {
                     applyMoveDamageTagsToComponents(d, selectedTypeTags);
@@ -943,9 +970,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     synchronizeParentDamageTags(d);
                 }
             }
-            // GUARD_BREAK/HEAVY are modifier tags backed by dedicated flags (not
-            // part of any MoveCategory), so keep them in sync with the tag selection.
-            d.guardBreak = tags.contains(MoveTag.GUARD_BREAK);
             d.heavy = tags.contains(MoveTag.HEAVY);
             ensureTechniqueStatPrerequisites(d, tags);
             previousTypeTags.clear();
@@ -964,7 +988,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         }
         previousTypeTags.clear();
         previousTypeTags.addAll(typeTagsFromNames(d.tags));
-        d.guardBreak = tagPicker.getSelected().contains(MoveTag.GUARD_BREAK);
+        d.guardBreak = false;
         d.heavy = tagPicker.getSelected().contains(MoveTag.HEAVY);
         tagsSection.add(tagPicker).growX().row();
         // Derived TIMELINE marker: which battle board this move plans on.
@@ -981,10 +1005,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             timelineRow.add(new Label("derived — " + derivedTimelineName(d) + " board",
                 skin, "small")).padLeft(6f);
             tagsSection.add(timelineRow).left().row();
-        }
-        if (d.hitComponents != null && hasTag(d, MoveTag.ATTACK)) {
-            tagsSection.add(formHint(
-                "Move damage types apply to every hit; refine individual hits below.")).row();
         }
         // Derived MULTI-HIT marker: shown (read-only) whenever the move authors
         // more than one hit component. It is not a MoveTag, not persisted, and
@@ -1084,22 +1104,25 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         });
         misc.add(freeCb).left().row();
 
-        SelectBox<String> moveTypeSelect = new DynamicSelectBox<>(skin, uiProfile);
-        moveTypeSelect.setItems(java.util.Arrays.stream(MoveType.values())
-            .map(MoveEditorScreen::moveTypeLabel)
-            .toList()
-            .toArray(new String[0]));
-        moveTypeSelect.setSelected(moveTypeLabel(d.effectiveMoveType()));
-        moveTypeSelect.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                game.audio().play(SoundCue.UI_TOGGLE);
-                d.moveType = moveTypeFromLabel(moveTypeSelect.getSelected()).name();
-                d.shikigamiMove = null;
-                markDirty();
-            }
-        });
-        misc.add(labelledRow("Move Type", moveTypeSelect)).growX().row();
-        misc.add(formHint("Controls which character classes may learn this move."))
+        Table moveTypes = new Table(skin);
+        moveTypes.defaults().left().pad(3f);
+        for (MoveType type : MoveType.values()) {
+            CheckBox typeToggle = new CheckBox(" " + moveTypeLabel(type), skin);
+            typeToggle.setChecked(d.effectiveMoveTypes().contains(type));
+            typeToggle.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    if (!setMoveTypeSelected(d, type, typeToggle.isChecked())) {
+                        typeToggle.setChecked(true);
+                        return;
+                    }
+                    game.audio().play(SoundCue.UI_TOGGLE);
+                    markDirty();
+                }
+            });
+            moveTypes.add(typeToggle);
+        }
+        misc.add(labelledRow("Move Types", moveTypes)).growX().row();
+        misc.add(formHint("Any matching character class may learn this move; select at least one."))
             .left().row();
 
         CheckBox grantedCb = new CheckBox(" Must be granted", skin);
@@ -1224,6 +1247,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     return finishCategorySections(sections, d);
                 }
             }
+            if (d.hitComponents == null) enableHitComponentEditing(d);
 
             attack.add(new Label("POWER / ACCURACY", skin, "small")).left().row();
             powerFieldsContainer = new Container<>();
@@ -1445,35 +1469,14 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     private Actor buildPowerFields(MoveData d) {
         Table t = new Table(skin);
         t.defaults().left().pad(4);
-        Label combinedPower = null;
-        if (d.hitComponents == null) {
-            t.add(labelledIntField("Combined Base Power", d.basePower, 0, 99999,
-                    v -> { d.basePower = v; })).growX().row();
-        } else {
-            combinedPower = new Label(String.valueOf(combinedBasePower(d)), skin);
-            t.add(labelledRow("Combined Base Power", combinedPower)).growX().row();
-            t.add(formHint(hitCountLabel(d.hitComponents.size())
-                + "; combined power is derived from the components below.")).row();
-        }
+        if (d.hitComponents == null) enableHitComponentEditing(d);
+        Label combinedPower = new Label(String.valueOf(combinedBasePower(d)), skin);
+        t.add(labelledRow("Combined Base Power", combinedPower)).growX().row();
+        t.add(formHint(hitCountLabel(d.hitComponents.size())
+            + "; combined power is derived from the components below.")).row();
 
         t.add(new Label("HIT COMPONENTS", skin, "small")).padTop(8f).left().row();
-        if (d.hitComponents == null) {
-            t.add(formHint(
-                "Legacy single hit: Base Power and the move's damage type remain authoritative."))
-                .row();
-            TextButton enableComponents = new TextButton("Use hit components", skin);
-            enableComponents.addListener(new ChangeListener() {
-                @Override public void changed(ChangeEvent event, Actor actor) {
-                    game.audio().play(SoundCue.UI_CONFIRM);
-                    enableHitComponentEditing(d);
-                    markDirty();
-                    rebuildDetail();
-                }
-            });
-            t.add(enableComponents).padTop(4f).left().row();
-        } else {
-            t.add(buildHitComponentsEditor(d, combinedPower)).growX().row();
-        }
+        t.add(buildHitComponentsEditor(d, combinedPower)).growX().row();
 
         // Potency gates which defensive moves can stop this attack (1–5).
         t.add(labelledIntField("Potency (1–5)", d.potency, 1, 5,
@@ -1565,7 +1568,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     synchronizeCombinedBasePower(d);
                     combinedPower.setText(String.valueOf(d.basePower));
                 })).growX().row();
-            card.add(new Label("Damage Types", skin)).padTop(3f).row();
+            card.add(new Label("Attack Tags", skin)).padTop(3f).row();
             card.add(buildHitComponentTagToggles(d, component)).growX().row();
 
             // Per-hit accuracy. A component with no authored accuracy (the legacy
@@ -1649,7 +1652,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     ) {
         Table toggles = new Table(skin);
         toggles.defaults().left().pad(3f);
-        Set<String> selected = COMPONENT_DAMAGE_TAGS.stream()
+        Set<String> selected = COMPONENT_ATTACK_TAGS.stream()
             .map(MoveTag::name)
             .filter(tag -> component.tags != null && component.tags.contains(tag))
             .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -1658,7 +1661,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         Map<MoveTag, CheckBox> checkBoxes = new LinkedHashMap<>();
 
         int column = 0;
-        for (MoveTag tag : COMPONENT_DAMAGE_TAGS) {
+        for (MoveTag tag : COMPONENT_ATTACK_TAGS) {
             CheckBox checkBox = new CheckBox(pretty(tag.name()), skin);
             checkBox.setProgrammaticChangeEvents(false);
             checkBox.setChecked(selected.contains(tag.name()));
@@ -1668,7 +1671,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     if (checkBox.isChecked()) {
                         selected.add(tag.name());
                         removeImpliedCursedEnergy(selected);
-                    } else if (selected.size() > 1) {
+                    } else if (!MoveTag.TYPE_TAGS.contains(tag)
+                        || selected.stream().map(MoveTag::valueOf)
+                            .filter(MoveTag.TYPE_TAGS::contains).count() > 1) {
                         selected.remove(tag.name());
                     } else {
                         checkBox.setChecked(true);
@@ -1720,6 +1725,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 .forEach(effect -> effect.hitComponentIndex = 0);
         }
         move.hitComponents = new ArrayList<>(List.of(component));
+        if (move.tags != null) {
+            move.tags = new ArrayList<>(move.tags);
+            move.tags.removeIf(MoveEditorScreen::isHitOnlyTagName);
+        }
+        move.guardBreak = false;
         synchronizeParentDamageTags(move);
         synchronizeCombinedBasePower(move);
     }
@@ -1816,7 +1826,13 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         for (MoveData.HitComponentData component : move.hitComponents) {
             if (component == null || component.tags == null) continue;
             component.tags = editableComponentTags(component.tags);
-            damageTags.addAll(component.tags);
+            for (String tag : component.tags) {
+                try {
+                    if (MoveTag.TYPE_TAGS.contains(MoveTag.valueOf(tag))) damageTags.add(tag);
+                } catch (IllegalArgumentException ignored) {
+                    // Invalid component tags are reported by engine validation.
+                }
+            }
         }
         move.tags.addAll(damageTags);
         if (damageTags.contains(MoveTag.INNATE_TECHNIQUE.name())
@@ -1831,14 +1847,17 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     static void applyMoveDamageTagsToComponents(MoveData move, Set<MoveTag> selectedTags) {
         if (move == null || move.hitComponents == null) return;
         Set<MoveTag> damageTypes = typeTags(selectedTags);
-        ArrayList<String> tags = COMPONENT_DAMAGE_TAGS.stream()
+        ArrayList<String> typeNames = COMPONENT_TYPE_TAGS.stream()
             .filter(damageTypes::contains)
             .map(MoveTag::name)
             .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-        tags = editableComponentTags(tags);
-        if (tags.isEmpty()) return;
+        if (typeNames.isEmpty()) return;
         for (MoveData.HitComponentData component : move.hitComponents) {
-            if (component != null) component.tags = new ArrayList<>(tags);
+            if (component == null) continue;
+            ArrayList<String> tags = editableComponentTags(component.tags);
+            tags.removeIf(name -> MoveTag.TYPE_TAGS.contains(MoveTag.valueOf(name)));
+            tags.addAll(0, typeNames);
+            component.tags = editableComponentTags(tags);
         }
         synchronizeParentDamageTags(move);
     }
@@ -1868,17 +1887,26 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     private static ArrayList<String> defaultComponentTags(MoveData move) {
-        MoveCategory category = move.derivedCategory();
         ArrayList<String> tags = new ArrayList<>();
-        for (MoveTag tag : COMPONENT_DAMAGE_TAGS) {
-            if (category.getTags().contains(tag)) tags.add(tag.name());
+        Set<MoveTag> moveTypes = typeTagsFromNames(move.tags);
+        if (moveTypes.isEmpty()) moveTypes = move.derivedCategory().getTags();
+        for (MoveTag tag : COMPONENT_TYPE_TAGS) {
+            if (moveTypes.contains(tag)) tags.add(tag.name());
+        }
+        if (move.tags != null) {
+            for (String name : move.tags) {
+                if (isHitOnlyTagName(name)) tags.add(name);
+            }
+        }
+        if (move.guardBreak && !tags.contains(MoveTag.GUARD_BREAK.name())) {
+            tags.add(MoveTag.GUARD_BREAK.name());
         }
         if (tags.isEmpty()) tags.add(MoveTag.PHYSICAL.name());
         return tags;
     }
 
     private static ArrayList<String> editableComponentTags(List<String> tags) {
-        LinkedHashSet<String> selected = COMPONENT_DAMAGE_TAGS.stream()
+        LinkedHashSet<String> selected = COMPONENT_ATTACK_TAGS.stream()
             .map(MoveTag::name)
             .filter(tag -> tags != null && tags.contains(tag))
             .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -1887,7 +1915,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     private static ArrayList<String> orderedComponentTags(Set<String> selected) {
-        return COMPONENT_DAMAGE_TAGS.stream()
+        return COMPONENT_ATTACK_TAGS.stream()
             .map(MoveTag::name)
             .filter(selected::contains)
             .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
@@ -1897,6 +1925,15 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         if (tags.contains(MoveTag.INNATE_TECHNIQUE.name())
             || tags.contains(MoveTag.NON_INNATE_TECHNIQUE.name())) {
             tags.remove(MoveTag.CURSED_ENERGY.name());
+        }
+    }
+
+    private static boolean isHitOnlyTagName(String name) {
+        if (name == null) return false;
+        try {
+            return MoveTag.HIT_ONLY_TAGS.contains(MoveTag.valueOf(name));
+        } catch (IllegalArgumentException ignored) {
+            return false;
         }
     }
 
@@ -3260,6 +3297,19 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         setWeaponTags(d, updated);
     }
 
+    /** Toggle one move type while requiring every move to retain at least one. */
+    static boolean setMoveTypeSelected(MoveData d, MoveType moveType, boolean selected) {
+        Set<MoveType> updated = EnumSet.copyOf(d.effectiveMoveTypes());
+        if (selected) updated.add(moveType);
+        else updated.remove(moveType);
+        if (updated.isEmpty()) return false;
+        d.moveTypes = updated.stream().map(MoveType::name)
+            .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        d.moveType = null;
+        d.shikigamiMove = null;
+        return true;
+    }
+
     private static boolean hasTag(MoveData d, MoveTag tag) {
         return d.tags != null && d.tags.contains(tag.name());
     }
@@ -3300,6 +3350,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
     static MoveData normalizedCopyForSave(MoveData draft) {
         MoveData copy = deepCopy(draft);
+        copy.moveTypes = copy.effectiveMoveTypes().stream().map(MoveType::name)
+            .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        copy.moveType = null;
+        copy.shikigamiMove = null;
+        copy.migrateLegacyHitTags();
         if (copy.hitComponents != null && hasTag(copy, MoveTag.ATTACK)) {
             synchronizeParentDamageTags(copy);
         }
@@ -3328,6 +3383,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             }
         }
         if (!hasTag(d, MoveTag.ATTACK)) {
+            if (d.tags != null) d.tags.removeIf(MoveEditorScreen::isHitOnlyTagName);
+            d.guardBreak = false;
             d.basePower = 0;
             d.hitComponents = new ArrayList<>();
             d.baseAccuracy = 1.0;

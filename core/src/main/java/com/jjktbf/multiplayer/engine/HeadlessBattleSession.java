@@ -1313,7 +1313,7 @@ public final class HeadlessBattleSession {
             moveTags(move),
             planBoard(BattlePlan.boardFor(move)),
             move.getBasePower(),
-            move.getBasePower() <= 0 ? List.of() : move.getHitComponents().stream()
+            move.getHitComponents().stream()
                 .map(component -> new HitComponentState(
                     component.getBasePower(),
                     component.getCategory().name(),
@@ -1535,6 +1535,10 @@ public final class HeadlessBattleSession {
         LinkedHashSet<String> tags = new LinkedHashSet<>();
         move.getTags().stream().map(MoveTag::name).forEach(tags::add);
         move.getCategory().getTags().stream().map(MoveTag::name).forEach(tags::add);
+        move.getHitComponents().stream()
+            .flatMap(component -> component.getTags().stream())
+            .map(MoveTag::name)
+            .forEach(tags::add);
         if (move.hasTag("ATTACK")) tags.add(MoveTag.ATTACK.name());
         if (move.isGuardBreak()) tags.add(MoveTag.GUARD_BREAK.name());
         if (move.isHeavy()) tags.add(MoveTag.HEAVY.name());

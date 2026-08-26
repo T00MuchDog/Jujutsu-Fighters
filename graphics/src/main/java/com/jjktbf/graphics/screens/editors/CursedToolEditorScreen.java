@@ -17,6 +17,7 @@ import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterRepository;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveRepository;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.weapon.CursedToolData;
 import com.jjktbf.model.weapon.CursedToolRepository;
 import com.jjktbf.model.weapon.WeaponType;
@@ -284,7 +285,9 @@ public class CursedToolEditorScreen extends EditorScreenBase<CursedToolData> {
         Label nameLabel = new Label(name == null ? "(unnamed)" : name, skin);
         nameLabel.setColor(skin.get("text-dark", com.badlogic.gdx.graphics.Color.class));
         node.add(nameLabel).row();
-        Label descriptionLabel = new Label(description == null ? "" : description, skin, "small");
+        String displayDescription = ContentNameTokens.resolve(description,
+            CharacterData.descriptionNameLookup(moveRepo, abilityRepo));
+        Label descriptionLabel = new Label(displayDescription, skin, "small");
         descriptionLabel.setColor(skin.get("text-dark", com.badlogic.gdx.graphics.Color.class));
         descriptionLabel.setWrap(true);
         node.add(descriptionLabel).growX().row();

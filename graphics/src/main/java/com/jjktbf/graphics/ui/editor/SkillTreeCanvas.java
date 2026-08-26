@@ -33,6 +33,7 @@ import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
 import com.jjktbf.model.technique.SkillTreePrerequisiteData;
 import com.jjktbf.model.technique.TechniqueSkillTree;
+import com.jjktbf.model.text.ContentNameTokens;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -691,12 +692,22 @@ public class SkillTreeCanvas extends WidgetGroup {
     }
 
     private String contentDescription(SkillTreeNodeData node) {
+        String description;
         if (SkillTreeNodeData.MOVE.equalsIgnoreCase(node.contentType)) {
             MoveData move = movesById.get(node.contentId);
-            return move == null || move.description == null ? "" : move.description;
+            description = move == null ? "" : move.description;
+        } else {
+            AbilityData ability = abilitiesById.get(node.contentId);
+            description = ability == null ? "" : ability.mechanicText;
         }
-        AbilityData ability = abilitiesById.get(node.contentId);
-        return ability == null || ability.mechanicText == null ? "" : ability.mechanicText;
+        return ContentNameTokens.resolve(description, (type, id) -> {
+            if (ContentNameTokens.MOVE_PREFIX.equalsIgnoreCase(type)) {
+                MoveData move = movesById.get(id);
+                return move == null ? null : move.name;
+            }
+            AbilityData ability = abilitiesById.get(id);
+            return ability == null ? null : ability.name;
+        });
     }
 
     private String nodeOptionLabel(SkillTreeNodeData node) {

@@ -57,7 +57,7 @@
   },
   {
     "term": "CURSED SPEECH",
-    "description": "An innate technique that compels listeners with spoken commands, with success scaling from Cursed Technique Mastery and recoil borne by the user."
+    "description": "An innate technique that compels listeners with spoken commands, resisted using current CE and with recoil borne by the user."
   },
   {
     "term": "CURSED_ENERGY",
@@ -113,7 +113,7 @@
   },
   {
     "term": "MIRACLES",
-    "description": "An innate technique whose stored Miracles capacity increases from five to eight with Cursed Technique Mastery."
+    "description": "An innate technique that stores Miracles up to its capacity."
   },
   {
     "term": "NON-INNATE TECHNIQUE",
@@ -149,7 +149,7 @@
   },
   {
     "term": "RATIO STACK",
-    "description": "A stored Ratio mark consumed by the next connected attack for a CTM-scaled 68%-80% chance to trigger Ratio."
+    "description": "A stored Ratio mark consumed by the next connected attack for a chance to trigger Ratio."
   },
   {
     "term": "REINFORCEMENT",
@@ -393,7 +393,7 @@
   },
   {
     "term": "Miracle Reservoir",
-    "description": "A Miracles ability that starts with up to six Miracles and scales maximum capacity from five to eight with CTM."
+    "description": "A Miracles ability that starts with Miracles and stores them up to its capacity."
   },
   {
     "term": "Fateful Reprieve",
@@ -405,7 +405,7 @@
   },
   {
     "term": "Ratio Reinforcement",
-    "description": "A Ratio ability that scales stack capacity and gives reinforcement hits a CTM-scaled chance to find the 7:3 point."
+    "description": "A Ratio ability that sets stack capacity and gives reinforcement hits a chance to find the 7:3 point."
   },
   {
     "term": "New Shadow Style",

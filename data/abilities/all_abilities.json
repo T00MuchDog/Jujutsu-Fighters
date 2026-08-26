@@ -16,7 +16,7 @@
   "id" : "000001",
   "name" : "Miracle Reservoir",
   "flavourText" : "The technique quietly removes the tiny coincidences that once made life feel impossible, keeping them beyond memory until they are needed.",
-  "mechanicText" : "Store 5 MIRACLES, increasing to 6 at CTM 15, 7 at CTM 120, and 8 at CTM 225. At BATTLE START, gain up to 6 MIRACLES, limited by capacity.",
+  "mechanicText" : "Store MIRACLES up to your capacity. At BATTLE START, gain up to 6 MIRACLES, limited by capacity.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Miracles",
@@ -92,7 +92,7 @@
       "cost" : 1
     }
   } ],
-  "masteryThreshold" : 0
+  "masteryThreshold" : 15
 }, {
   "id" : "000003",
   "name" : "Fortune Reclaimed",
@@ -130,12 +130,12 @@
       "gain" : 1
     }
   } ],
-  "masteryThreshold" : 0
+  "masteryThreshold" : 15
 }, {
   "id" : "000004",
   "name" : "Ratio Reinforcement",
   "flavourText" : "Even ordinary cursed-energy reinforcement can briefly reveal the seven-to-three weak point.",
-  "mechanicText" : "RATIO STACK capacity increases from 2 to 5 with CTM. Connected REINFORCEMENT ATTACKS have a CTM-scaled 3%-15% chance to apply RATIO, bypassing BLOCK and reducing DEFENSE to 30% for that hit.",
+  "mechanicText" : "Set RATIO STACK capacity. Connected REINFORCEMENT ATTACKS have a chance to apply RATIO, bypassing BLOCK and reducing DEFENSE to 30% for that hit.",
   "category" : "ACTIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ratio",
@@ -350,7 +350,7 @@
   "id" : "000014",
   "name" : "Parallel Manifestation",
   "flavourText" : "With greater command of the shadows, the user sustains several manifested shikigami at once.",
-  "mechanicText" : "Set MAX ACTIVE SUMMONS to 1, increasing to 2 at CTM 30 and 3 at CTM 60.",
+  "mechanicText" : "Limit how many SHIKIGAMI can be active at once.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ten Shadows",
@@ -684,7 +684,7 @@
   "id" : "000031",
   "name" : "Refined Commands",
   "flavourText" : "Careful diction and disciplined cursed-energy control make each command harder to resist without increasing its strain.",
-  "mechanicText" : "At CTM 60, add min(20, CTM / 12) percentage points to *ability:000030* command success chance.",
+  "mechanicText" : "Increase *ability:000030* command success chance.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Cursed Speech",
@@ -940,7 +940,7 @@
   "id" : "000043",
   "name" : "Seven-Three Insight",
   "flavourText" : "Long practice with the Ratio Technique teaches its user to see the seven-to-three line in everything.",
-  "mechanicText" : "Add ACCURACY to your INNATE TECHNIQUE moves: +5, rising to +15 as CURSED TECHNIQUE MASTERY grows.",
+  "mechanicText" : "Add ACCURACY to your INNATE TECHNIQUE moves.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ratio",
@@ -1051,11 +1051,11 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TIMED_STAT_MODIFIER",
-    "statType" : "CORE",
-    "statOperation" : "CHANGE",
-    "valueMode" : "PERCENT",
     "stat" : "combatAbility",
     "doubleValue" : 0.1,
+    "valueMode" : "PERCENT",
+    "statType" : "CORE",
+    "statOperation" : "CHANGE",
     "target" : "SELF",
     "durationRounds" : -1,
     "durationTicks" : 0
@@ -1118,8 +1118,8 @@
 }, {
   "id" : "000048",
   "name" : "Blood Manipulation Reserves",
-  "flavourText" : "A prepared supply of blood supports immediate techniques, while deliberate compression turns that limited reserve into denser ammunition.",
-  "mechanicText" : "Begin battle with 3 BLOOD SUPPLY. *move:000107* converts it into COMPRESSION. COMPRESSION capacity is 1 at CTM 0, 2 at CTM 50, 3 at CTM 90, 4 at CTM 160, and 5 at CTM 250.",
+  "flavourText" : "A prepared supply of blood to use for external blood manipulation techniques",
+  "mechanicText" : "Begin battle with 5 BLOOD SUPPLY.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Blood Manipulation",
@@ -1128,10 +1128,35 @@
     "type" : "DEFINE_BOUNDED_RESOURCE",
     "resourceKey" : "BLOOD_SUPPLY",
     "resourceLabel" : "Blood Supply",
-    "resourceCapacity" : 3,
-    "resourceStartValue" : 3
-  }, {
-    "effectId" : "effect-000001",
+    "resourceCapacity" : 5,
+    "resourceStartValue" : 5
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000049",
+  "name" : "Blood Coagulation",
+  "flavourText" : "Fine control over blood within the body accelerates clotting, staunching blood loss before it can sap the user's strength.",
+  "mechanicText" : "Increase VITALITY by 5%.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Blood Manipulation",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "STAT_MULTIPLY",
+    "stat" : "vitality",
+    "doubleValue" : 1.05
+  } ],
+  "masteryThreshold" : 35
+}, {
+  "id" : "000050",
+  "name" : "Compression",
+  "flavourText" : "Convergence compresses prepared blood into dense ammunition capable of sustaining high-pressure techniques.",
+  "mechanicText" : "Unlock COMPRESSION by learning *move:000107*. Store COMPRESSION up to your capacity.",
+  "category" : "PASSIVE",
+  "sourceType" : "MOVE",
+  "sourceValue" : "000107",
+  "effects" : [ {
+    "effectId" : "effect-000000",
     "type" : "DEFINE_BOUNDED_RESOURCE",
     "resourceKey" : "COMPRESSION",
     "resourceLabel" : "Compression",

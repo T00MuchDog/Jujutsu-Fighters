@@ -4,6 +4,7 @@ import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
 import com.jjktbf.model.technique.TechniqueRepository;
 import com.jjktbf.model.technique.TechniqueSkillTree;
+import com.jjktbf.model.text.ContentNameTokens;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -481,7 +482,15 @@ public final class AbilityResolver {
         }
 
         public List<Ability> toDomainAbilities() {
-            return abilities.stream().map(Ability::new).toList();
+            return toDomainAbilities(null);
+        }
+
+        public List<Ability> toDomainAbilities(
+            ContentNameTokens.NameLookup descriptionNames
+        ) {
+            return abilities.stream()
+                .map(ability -> new Ability(ability, descriptionNames))
+                .toList();
         }
     }
 }

@@ -2,6 +2,7 @@ package com.jjktbf.model.character;
 
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.text.ContentNameTokens;
 
 import java.util.List;
 
@@ -28,10 +29,15 @@ public class Ability {
     private final List<AbilityConditionRuleData> activationConditions;
 
     public Ability(AbilityData data) {
+        this(data, null);
+    }
+
+    /** Builds player-facing ability text, resolving stable content IDs when a lookup is available. */
+    public Ability(AbilityData data, ContentNameTokens.NameLookup descriptionNames) {
         this.id               = data.id;
         this.name             = data.name;
-        this.flavourText      = data.flavourText  != null ? data.flavourText  : "";
-        this.mechanicText     = data.mechanicText != null ? data.mechanicText : "";
+        this.flavourText      = ContentNameTokens.resolve(data.flavourText, descriptionNames);
+        this.mechanicText     = ContentNameTokens.resolve(data.mechanicText, descriptionNames);
         this.category         = data.category     != null ? data.category     : "PASSIVE";
         this.sourceType       = data.sourceType   != null ? data.sourceType   : "CHARACTER";
         this.sourceValue      = data.sourceValue;

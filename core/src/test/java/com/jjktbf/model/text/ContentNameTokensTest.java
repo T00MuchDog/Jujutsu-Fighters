@@ -1,5 +1,7 @@
 package com.jjktbf.model.text;
 
+import com.jjktbf.model.character.Ability;
+import com.jjktbf.model.character.AbilityData;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import org.junit.jupiter.api.Test;
@@ -91,5 +93,23 @@ class ContentNameTokensTest {
         Move raw = data.toMove();
         assertEquals("Answer with *move:000004* under *ability:000001*.",
             raw.getDescription());
+    }
+
+    @Test
+    void abilityConversionResolvesBothPlayerFacingTextLayers() {
+        AbilityData data = new AbilityData();
+        data.id = "000100";
+        data.name = "Counter Training";
+        data.flavourText = "Study *move:000004* under *ability:000001*.";
+        data.mechanicText = "Grant *move:000108*.";
+
+        Ability resolved = new Ability(data, lookup);
+
+        assertEquals("Study Body Blow under Miracle Reservoir.", resolved.getFlavourText());
+        assertEquals("Grant Convergence.", resolved.getMechanicText());
+
+        Ability raw = new Ability(data);
+        assertEquals("Study *move:000004* under *ability:000001*.", raw.getFlavourText());
+        assertEquals("Grant *move:000108*.", raw.getMechanicText());
     }
 }

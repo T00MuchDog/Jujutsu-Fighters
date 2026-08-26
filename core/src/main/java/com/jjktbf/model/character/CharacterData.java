@@ -269,7 +269,8 @@ public class CharacterData {
                         }
                     })
                     .orElse(false), techniqueRepo, learnedToolMoveIds,
-                equipment.grantedMoveIds()));
+                equipment.grantedMoveIds()),
+            descriptionNames);
         AbilityResolver.Result resolvedAbilities = resolved.abilities();
         validateAbilityAssignments(abilityRepo, resolvedAbilities);
         validateStatAllocationMinimums(resolvedAbilities);
@@ -392,6 +393,18 @@ public class CharacterData {
         Equipment equipment,
         Function<Set<String>, AbilityResolver.Result> abilityResolver
     ) {
+        return resolveEquipmentContent(
+            stats, selectedMoves, equipment, abilityResolver, null);
+    }
+
+    /** Resolves equipment content and substitutes stable IDs in player-facing ability text. */
+    public ResolvedCharacter resolveEquipmentContent(
+        CharacterStats stats,
+        List<Move> selectedMoves,
+        Equipment equipment,
+        Function<Set<String>, AbilityResolver.Result> abilityResolver,
+        ContentNameTokens.NameLookup descriptionNames
+    ) {
         Objects.requireNonNull(abilityResolver, "Ability resolver cannot be null");
         Equipment resolvedEquipment = equipment == null ? Equipment.NONE : equipment;
         Set<String> toolMoveIds = resolvedEquipment.grantedMoveIds();
@@ -400,7 +413,8 @@ public class CharacterData {
         while (seen.add(learnedToolMoveIds)) {
             AbilityResolver.Result abilities = abilityResolver.apply(learnedToolMoveIds);
             Character character = constructTypedCharacter(
-                stats, selectedMoves, abilities.toDomainAbilities(), resolvedEquipment);
+                stats, selectedMoves,
+                abilities.toDomainAbilities(descriptionNames), resolvedEquipment);
             Set<String> nextLearnedToolMoveIds = character.getKnownMoves().stream()
                 .map(Move::getId)
                 .filter(toolMoveIds::contains)

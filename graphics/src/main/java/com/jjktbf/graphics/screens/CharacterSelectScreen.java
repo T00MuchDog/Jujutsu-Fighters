@@ -1118,7 +1118,7 @@ public class CharacterSelectScreen implements Screen {
         String description = profileTechnique != null
             && profileTechnique.description != null
             && !profileTechnique.description.isBlank()
-                ? profileTechnique.description
+                ? displayDescription(profileTechnique.description)
                 : (hasCursedTechnique(character)
                     ? "No technique description available."
                     : "This character does not possess an innate cursed technique.");
@@ -1384,7 +1384,11 @@ public class CharacterSelectScreen implements Screen {
      * roster text never shows raw tokens or stale names.
      */
     private String displayDescription(CharacterData character) {
-        return ContentNameTokens.resolve(character.description,
+        return displayDescription(character.description);
+    }
+
+    private String displayDescription(String description) {
+        return ContentNameTokens.resolve(description,
             CharacterData.descriptionNameLookup(moveRepo, abilityRepo));
     }
 

@@ -413,7 +413,8 @@ public final class ContentCatalog {
                     learnedToolMoveIds -> AbilityResolver.resolve(
                         definition, abilityDefinitions, movesById::containsKey,
                         techniqueDefinitions, learnedToolMoveIds,
-                        equipment.grantedMoveIds()));
+                        equipment.grantedMoveIds()),
+                    descriptionNames);
             } catch (IllegalArgumentException exception) {
                 throw invalid(CHARACTERS_RESOURCE,
                     "invalid character " + definition.id + ": " + exception.getMessage(),

@@ -6,7 +6,6 @@ import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatEvent;
 
 import java.util.List;
-import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -27,12 +26,6 @@ public final class TenShadowsAbility implements CodedAbilityRuntime {
     public static final String TECHNIQUE = "TECHNIQUE";
     public static final String TOTALITY = "TOTALITY";
     public static final String WELLS_UNKNOWN_ABYSS = "WELLS_UNKNOWN_ABYSS";
-
-    private final Set<String> features;
-
-    public TenShadowsAbility(Set<String> features) {
-        this.features = features == null ? Set.of() : Set.copyOf(features);
-    }
 
     public static boolean supportsFeature(String feature) {
         return TECHNIQUE.equals(feature)
@@ -76,6 +69,6 @@ public final class TenShadowsAbility implements CodedAbilityRuntime {
 
     @Override
     public CodedAbilityState state() {
-        return new CodedAbilityState(KEY, "Ten Shadows", features.size(), features.size());
+        return new CodedAbilityState(KEY, "Ten Shadows", 0, 0);
     }
 }

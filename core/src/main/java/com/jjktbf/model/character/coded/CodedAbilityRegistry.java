@@ -114,7 +114,7 @@ public final class CodedAbilityRegistry {
             } else if (ShikigamiMoveRuntime.KEY.equals(entry.getKey())) {
                 runtime = new ShikigamiMoveRuntime();
             } else if (TenShadowsAbility.KEY.equals(entry.getKey())) {
-                runtime = new TenShadowsAbility(entry.getValue());
+                runtime = new TenShadowsAbility();
             } else if (CursedSpeechAbility.KEY.equals(entry.getKey())) {
                 runtime = new CursedSpeechAbility(
                     owner, entry.getValue(), bindingsByKey.getOrDefault(entry.getKey(), Map.of()));

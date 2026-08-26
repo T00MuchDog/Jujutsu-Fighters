@@ -55,11 +55,12 @@
   "speed" : 65,
   "cursedEnergyReserves" : 50,
   "cursedEnergyEfficiency" : 50,
-  "cursedEnergyOutput" : 45,
+  "cursedEnergyOutput" : 55,
   "jujutsuSkill" : 80,
   "combatAbility" : 80,
   "cursedTechniqueMastery" : 0,
   "moveIds" : [ "000000", "000001", "000019", "000011", "000020", "000026", "000010", "000025", "000022", "000027", "000033", "000015" ],
+  "moveSetIds" : [ "000000", "000001", "000019", "000011", "000020", "000026", "000010", "000025", "000022", "000027", "000033", "000015" ],
   "availableMoveIds" : [ "000000", "000001", "000012", "000013", "000019", "000022", "000025", "000026" ],
   "abilityIds" : [ "000005", "000006", "000007" ]
 }, {
@@ -80,6 +81,7 @@
   "combatAbility" : 95,
   "cursedTechniqueMastery" : 0,
   "moveIds" : [ "000000", "000001", "000002", "000004", "000007", "000027", "000029", "000016" ],
+  "moveSetIds" : [ "000000", "000001", "000002", "000004", "000007", "000027", "000029", "000016" ],
   "availableMoveIds" : [ "000000", "000001", "000002", "000003", "000004", "000007", "000027", "000029" ],
   "abilityIds" : [ "000008", "000010", "000011", "000012", "000009", "000045" ],
   "availableAbilityIds" : [ "000008", "000045" ]
@@ -130,6 +132,8 @@
   "description" : "A more experienced Megumi who combines close combat, *move:000048*, stronger shikigami, and both *ability:000019* and *ability:000032* to pressure opponents from every range.",
   "spriteAsset" : "assets/sprites/characters/megumi_frontsprite.png",
   "innateTechniqueName" : "Ten Shadows",
+  "equippedWeaponTypes" : [ ],
+  "equippedCursedToolIds" : [ ],
   "vitality" : 55,
   "strength" : 28,
   "durability" : 42,
@@ -206,7 +210,7 @@
   "jujutsuSkill" : 35,
   "combatAbility" : 60,
   "cursedTechniqueMastery" : 0,
-  "moveIds" : [ "000000", "000001", "000049", "000053", "000054", "000081", "000020" ],
+  "moveIds" : [ "000000", "000001", "000049", "000053", "000054", "000081" ],
   "availableMoveIds" : [ "000000", "000001", "000049", "000053", "000054", "000081" ],
   "abilityIds" : [ "000021", "000024" ],
   "availableAbilityIds" : [ "000021", "000024" ]

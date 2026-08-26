@@ -91,8 +91,12 @@ class ContentCatalogTest {
         assertNull(panda.getInnateTechniqueName());
         assertTrue(new BattleCombatant(panda).isPoisonImmune());
         assertTrue(new BattleCombatant(gorilla).isPoisonImmune());
-        assertTrue(panda.getKnownMoves().stream()
+        assertTrue(panda.getLearnedMoves().stream()
+            .filter(move -> !"000085".equals(move.getId()))
             .allMatch(move -> move.getMoveType() == MoveType.SORCERER));
+        assertEquals(MoveType.SHIKIGAMI, panda.getLearnedMoves().stream()
+            .filter(move -> "000085".equals(move.getId()))
+            .findFirst().orElseThrow().getMoveType());
         assertEquals(MoveType.SHIKIGAMI, gorilla.getKnownMoves().stream()
             .filter(move -> "000087".equals(move.getId()))
             .findFirst().orElseThrow().getMoveType());

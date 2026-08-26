@@ -28,7 +28,7 @@ import java.util.function.Supplier;
  * Two-column assignment widget: AVAILABLE (left) and ASSIGNED (right), with
  * drag-and-drop and click-to-toggle.
  *
- * Used by the Character editor for both moves (slot-gated, eligibility-filtered)
+ * Used by the Character editor for both moves (eligibility-filtered)
  * and abilities (source/conflict-gated). The screen supplies a {@link Controller} that owns
  * the data and the gating rules; this widget is purely presentational.
  *

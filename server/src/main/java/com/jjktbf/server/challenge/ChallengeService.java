@@ -487,13 +487,15 @@ public final class ChallengeService {
             }
             List<String> characterIds = validateRoster(
                 challenge.format(), request.characterIds());
+            List<List<String>> moveSetIds = validateMoveSets(
+                characterIds, request.moveSetIds());
             int challengeUpdated = host
                 ? challengeRepository.selectHostCharacters(
                     connection, challenge.challengeId(), player.playerId(), characterIds)
                 : challengeRepository.selectAcceptedCharacters(
                     connection, challenge.challengeId(), player.playerId(), characterIds);
             int participantUpdated = matchRepository.selectParticipantCharacters(
-                connection, matchId, player.playerId(), characterIds);
+                connection, matchId, player.playerId(), characterIds, moveSetIds);
             if (challengeUpdated != 1 || participantUpdated != 1) {
                 throw new ServiceException(
                     ServiceErrorCode.INVALID_CHARACTER,
@@ -624,19 +626,33 @@ public final class ChallengeService {
             .findPlayerDisplayName(connection, challenge.acceptedPlayerId())
             .orElseThrow(() -> new IllegalStateException(
                 "Accepted challenge requester no longer exists"));
+        MatchRepository.PersistedParticipantSelection hostSelection =
+            participantSelection(
+                connection, match.matchId(), challenge.creatorPlayerId(),
+                challenge.hostCharacterIds());
+        MatchRepository.PersistedParticipantSelection acceptedSelection =
+            participantSelection(
+                connection, match.matchId(), challenge.acceptedPlayerId(),
+                challenge.acceptedCharacterIds());
+        List<Character> hostCharacters = resolveCharacters(
+            challenge.hostCharacterIds(), hostSelection.moveSetIds());
+        List<Character> acceptedCharacters = resolveCharacters(
+            challenge.acceptedCharacterIds(), acceptedSelection.moveSetIds());
         AcceptedMatchParticipant playerOne = new AcceptedMatchParticipant(
             challenge.creatorPlayerId(),
             challenge.creatorDisplayName(),
             PlayerSide.PLAYER_ONE,
             challenge.hostCharacterIds(),
-            resolveCharacters(challenge.hostCharacterIds())
+            hostCharacters,
+            moveSetIdsOf(hostCharacters)
         );
         AcceptedMatchParticipant playerTwo = new AcceptedMatchParticipant(
             challenge.acceptedPlayerId(),
             requesterDisplayName,
             PlayerSide.PLAYER_TWO,
             challenge.acceptedCharacterIds(),
-            resolveCharacters(challenge.acceptedCharacterIds())
+            acceptedCharacters,
+            moveSetIdsOf(acceptedCharacters)
         );
         return new AcceptedMatchSetup(
             match.matchId(),
@@ -700,12 +716,79 @@ public final class ChallengeService {
         return List.copyOf(normalized);
     }
 
-    private List<Character> resolveCharacters(List<String> characterIds) {
+    private List<Character> resolveCharacters(
+        List<String> characterIds,
+        List<List<String>> moveSetIds
+    ) {
         List<Character> resolved = new ArrayList<>(characterIds.size());
-        for (String id : characterIds) {
-            resolved.add(requireCharacter(id));
+        for (int index = 0; index < characterIds.size(); index++) {
+            Character canonical = requireCharacter(characterIds.get(index));
+            if (moveSetIds == null || moveSetIds.isEmpty()) {
+                resolved.add(canonical);
+            } else {
+                resolved.add(canonical.withMoveSet(moveSetIds.get(index)));
+            }
         }
         return List.copyOf(resolved);
+    }
+
+    private MatchRepository.PersistedParticipantSelection participantSelection(
+        Connection connection,
+        String matchId,
+        String playerId,
+        List<String> expectedCharacterIds
+    ) throws SQLException {
+        MatchRepository.PersistedParticipantSelection selection = matchRepository
+            .findParticipantSelection(connection, matchId, playerId)
+            .orElseThrow(() -> new IllegalStateException(
+                "Accepted match participant selection is missing"));
+        if (!selection.characterIds().equals(expectedCharacterIds)) {
+            throw new IllegalStateException(
+                "Challenge and match participant rosters do not align");
+        }
+        return selection;
+    }
+
+    private List<List<String>> validateMoveSets(
+        List<String> characterIds,
+        List<List<String>> requestedMoveSets
+    ) {
+        if (requestedMoveSets == null || requestedMoveSets.isEmpty()) {
+            return characterIds.stream()
+                .map(this::requireCharacter)
+                .map(character -> character.getMoveSet().stream()
+                    .map(com.jjktbf.model.move.Move::getId)
+                    .toList())
+                .toList();
+        }
+        if (requestedMoveSets.size() != characterIds.size()) {
+            throw new ServiceException(
+                ServiceErrorCode.INVALID_CHARACTER,
+                "Each selected fighter requires one move set.");
+        }
+        List<List<String>> validated = new ArrayList<>(characterIds.size());
+        for (int index = 0; index < characterIds.size(); index++) {
+            try {
+                Character configured = requireCharacter(characterIds.get(index))
+                    .withMoveSet(requestedMoveSets.get(index));
+                validated.add(configured.getMoveSet().stream()
+                    .map(com.jjktbf.model.move.Move::getId)
+                    .toList());
+            } catch (IllegalArgumentException exception) {
+                throw new ServiceException(
+                    ServiceErrorCode.INVALID_CHARACTER,
+                    "A selected move set is invalid for its fighter.");
+            }
+        }
+        return List.copyOf(validated);
+    }
+
+    private static List<List<String>> moveSetIdsOf(List<Character> characters) {
+        return characters.stream()
+            .map(character -> character.getMoveSet().stream()
+                .map(com.jjktbf.model.move.Move::getId)
+                .toList())
+            .toList();
     }
 
     private List<String> resolveCharacterNames(List<String> characterIds) {

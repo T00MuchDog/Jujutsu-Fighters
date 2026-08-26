@@ -10,8 +10,8 @@ import java.util.Properties;
 public final class ProtocolVersion {
 
     public static final String GAME_VERSION = loadGameVersion();
-    /** Protocol v20 adds generic bounded-resource states, events, and move reservations. */
-    public static final int PROTOCOL_VERSION = 20;
+    /** Protocol v21 adds ordered per-fighter move sets to character selection. */
+    public static final int PROTOCOL_VERSION = 21;
     public static final String STANDARD_RULESET = BattleStatMode.STANDARD.rulesetId();
     public static final String EQUALIZED_STATS_RULESET = BattleStatMode.EQUALIZED.rulesetId();
 

@@ -24,14 +24,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class CharacterEditorScreenTest {
 
     @Test
-    void fullPoolRetainsOtherwiseAvailableMoveAsLocked() {
+    void grantErrorsDoNotCreateLearnableRows() {
         AssignmentPanel.Item item = CharacterEditorScreen.availableMoveItem(
             move(), "PHYSICAL", MovePool.COMBAT_ARTS,
-            "No available COMBAT_ARTS slots");
+            "This move must be granted by an ability.");
 
-        assertEquals("000001", item.id);
-        assertTrue(item.locked);
-        assertEquals("No available COMBAT_ARTS slots", item.lockReason);
+        assertNull(item);
     }
 
     @Test

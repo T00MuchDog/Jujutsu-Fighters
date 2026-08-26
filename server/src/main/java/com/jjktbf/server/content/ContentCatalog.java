@@ -449,6 +449,15 @@ public final class ContentCatalog {
                 }
             }
             Character character = resolvedContent.character();
+            if (definition.moveSetIds != null) {
+                try {
+                    character = character.withMoveSet(definition.moveSetIds);
+                } catch (IllegalArgumentException exception) {
+                    throw invalid(CHARACTERS_RESOURCE,
+                        "invalid saved move set for character " + definition.id + ": "
+                            + exception.getMessage(), exception);
+                }
+            }
             charactersById.put(definition.id, character);
             // Only directly-selectable definitions appear in fighter rosters
             // / multiplayer summaries / challenge create+accept. Hidden

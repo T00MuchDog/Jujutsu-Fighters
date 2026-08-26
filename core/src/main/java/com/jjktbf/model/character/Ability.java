@@ -49,16 +49,17 @@ public class Ability {
             : new java.util.ArrayList<>();
         AbilityData.ensureEffectIds(copiedEffects);
         this.effects = List.copyOf(copiedEffects);
-        boolean techniqueSource = "TECHNIQUE".equalsIgnoreCase(sourceType);
+        boolean masterySource = "TECHNIQUE".equalsIgnoreCase(sourceType)
+            || "MOVE".equalsIgnoreCase(sourceType);
         for (AbilityEffectData effect : effects) {
             AbilityEffectType type;
             try { type = AbilityEffectType.fromName(effect.type); }
             catch (IllegalArgumentException ignored) { continue; }
-            if (!techniqueSource && ((effect.masteryProgression != null
+            if (!masterySource && ((effect.masteryProgression != null
                 && !effect.masteryProgression.isEmpty())
                 || hasMasteryProgression(effect.returnCondition))) {
                 throw new IllegalArgumentException(
-                    "Only TECHNIQUE abilities may use mastery progression.");
+                    "Only TECHNIQUE or MOVE abilities may use mastery progression.");
             }
             if (isPassive()
                 && StatKey.CURSED_TECHNIQUE_MASTERY.fieldName.equalsIgnoreCase(effect.stat)
@@ -93,10 +94,10 @@ public class Ability {
         }
         this.activationConditions = isActive()
             ? List.copyOf(data.resolvedActivationConditions()) : List.of();
-        if (!techniqueSource && activationConditions.stream().anyMatch(
+        if (!masterySource && activationConditions.stream().anyMatch(
             Ability::hasMasteryProgression)) {
             throw new IllegalArgumentException(
-                "Only TECHNIQUE abilities may use condition mastery progression.");
+                "Only TECHNIQUE or MOVE abilities may use condition mastery progression.");
         }
     }
 

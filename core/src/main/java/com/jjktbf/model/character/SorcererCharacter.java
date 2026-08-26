@@ -50,6 +50,21 @@ public class SorcererCharacter extends Character {
               knownMoves, abilities, accessibleTechniques, equipment);
     }
 
+    SorcererCharacter(
+        String id,
+        String name,
+        CharacterStats baseStats,
+        String innateTechniqueName,
+        List<Move> learnedMoves,
+        List<Move> moveSet,
+        List<Ability> abilities,
+        java.util.Set<String> accessibleTechniques,
+        Equipment equipment
+    ) {
+        super(id, name, CharacterType.SORCERER, baseStats, innateTechniqueName,
+            learnedMoves, moveSet, abilities, accessibleTechniques, equipment);
+    }
+
     /**
      * Construction with equipment, computing the accessible-technique set from
      * the innate name + abilities (mirrors the default behaviour of the

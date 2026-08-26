@@ -192,6 +192,37 @@ class WeaponEquipmentTest {
         }
     }
 
+    @Test
+    void canonicalMiwaCanLearnSwordQuickDrawThroughNewShadowStyle() throws Exception {
+        String previousAuthoring = System.getProperty(AppPaths.AUTHORING_SYSTEM_PROPERTY);
+        String previousRoot = System.getProperty(AppPaths.AUTHORING_ROOT_SYSTEM_PROPERTY);
+        try {
+            System.setProperty(AppPaths.AUTHORING_SYSTEM_PROPERTY, "true");
+            System.setProperty(AppPaths.AUTHORING_ROOT_SYSTEM_PROPERTY,
+                System.getProperty("user.dir"));
+
+            MoveRepository moves = new MoveRepository("data/moves");
+            AbilityRepository abilities = new AbilityRepository("data/abilities");
+            TechniqueRepository techniques = new TechniqueRepository("data/techniques");
+            CursedToolRepository tools = new CursedToolRepository("data/tools");
+            CharacterRepository characters = new CharacterRepository("data/characters");
+            moves.load();
+            abilities.load();
+            techniques.load();
+            tools.load();
+            characters.load();
+
+            Character miwa = assertDoesNotThrow(() -> characters.findById("000002").orElseThrow()
+                .toCharacter(moves, abilities, techniques, tools));
+            assertTrue(miwa.getLearnedMoves().stream()
+                .anyMatch(move -> "000025".equals(move.getId())));
+            assertDoesNotThrow(() -> new BattleCombatant(miwa.withMoveSet(List.of())));
+        } finally {
+            restoreProperty(AppPaths.AUTHORING_SYSTEM_PROPERTY, previousAuthoring);
+            restoreProperty(AppPaths.AUTHORING_ROOT_SYSTEM_PROPERTY, previousRoot);
+        }
+    }
+
     private static void restoreProperty(String name, String value) {
         if (value == null) {
             System.clearProperty(name);

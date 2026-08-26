@@ -124,6 +124,9 @@ class ChallengeServiceTest {
         SessionIdentity requester = fixture.createGuest("Selection Requester");
         List<String> hostRoster = List.of(firstCharacter, secondCharacter);
         List<String> requesterRoster = List.of(secondCharacter, firstCharacter);
+        List<List<String>> hostMoveSets = List.of(List.of(), List.of("test-move"));
+        List<List<String>> requesterMoveSets = List.of(
+            List.of("test-move"), List.of());
 
         ChallengeSummary challenge = fixture.challengeService().createChallenge(
             host,
@@ -147,18 +150,24 @@ class ChallengeServiceTest {
         AcceptedMatchSetup hostSelected = fixture.challengeService().selectMatchCharacters(
             host,
             accepted.matchId(),
-            new MatchCharacterSelectionRequest(hostRoster));
+            new MatchCharacterSelectionRequest(hostRoster, hostMoveSets));
         assertFalse(hostSelected.charactersSelected());
         assertEquals(hostRoster, hostSelected.playerOne().characterIds());
+        assertEquals(hostMoveSets, hostSelected.playerOne().moveSetIds());
         assertTrue(hostSelected.playerTwo().characterIds().isEmpty());
 
         AcceptedMatchSetup ready = fixture.challengeService().selectMatchCharacters(
             requester,
             accepted.matchId(),
-            new MatchCharacterSelectionRequest(requesterRoster));
+            new MatchCharacterSelectionRequest(requesterRoster, requesterMoveSets));
         assertTrue(ready.charactersSelected());
         assertEquals(hostRoster, ready.playerOne().characterIds());
         assertEquals(requesterRoster, ready.playerTwo().characterIds());
+        assertEquals(hostMoveSets, ready.playerOne().moveSetIds());
+        assertEquals(requesterMoveSets, ready.playerTwo().moveSetIds());
+        assertEquals(List.of(), ready.playerOne().characters().get(0).getMoveSet());
+        assertEquals(List.of("test-move"), ready.playerOne().characters().get(1)
+            .getMoveSet().stream().map(com.jjktbf.model.move.Move::getId).toList());
     }
 
     @Test

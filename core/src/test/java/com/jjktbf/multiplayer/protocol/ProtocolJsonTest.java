@@ -21,6 +21,24 @@ class ProtocolJsonTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
+    void characterSelectionRoundTripsOrderedMoveSetsAndCopiesNestedLists() throws Exception {
+        List<String> firstMoveSet = new ArrayList<>(List.of("move-b", "move-a"));
+        MatchCharacterSelectionRequest request = new MatchCharacterSelectionRequest(
+            List.of("fighter-a", "fighter-b"),
+            List.of(firstMoveSet, List.of("move-c")));
+        firstMoveSet.clear();
+
+        String json = mapper.writeValueAsString(request);
+        MatchCharacterSelectionRequest restored = mapper.readValue(
+            json, MatchCharacterSelectionRequest.class);
+
+        assertEquals(request, restored);
+        assertEquals(List.of("move-b", "move-a"), request.moveSetIds().get(0));
+        assertThrows(UnsupportedOperationException.class,
+            () -> request.moveSetIds().get(0).add("move-d"));
+    }
+
+    @Test
     void completeMatchStateRoundTrips() throws Exception {
         MatchState state = completeMatchState();
 
@@ -266,7 +284,7 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(20, joined.protocolVersion());
+        assertEquals(21, joined.protocolVersion());
         assertEquals(42L, joined.stateVersion());
         assertEquals(1_700_000_060_000L, messages.get(6).disconnectDeadline());
         assertEquals(1_700_000_090_000L, joined.state().planningDeadline());

@@ -83,6 +83,27 @@ public class ShikigamiCharacter extends Character {
         this.baseCeDrainPerTick = baseCeDrainPerTick;
     }
 
+    ShikigamiCharacter(
+        String id,
+        String name,
+        CharacterStats baseStats,
+        String innateTechniqueName,
+        List<Move> learnedMoves,
+        List<Move> moveSet,
+        List<Ability> abilities,
+        java.util.Set<String> accessibleTechniques,
+        Equipment equipment,
+        double baseCeDrainPerTick
+    ) {
+        super(id, name, CharacterType.SHIKIGAMI, baseStats, innateTechniqueName,
+            learnedMoves, moveSet, abilities, accessibleTechniques, equipment);
+        if (!Double.isFinite(baseCeDrainPerTick) || baseCeDrainPerTick < 0.0) {
+            throw new IllegalArgumentException(
+                "Base CE drain per tick cannot be negative or non-finite");
+        }
+        this.baseCeDrainPerTick = baseCeDrainPerTick;
+    }
+
     /**
      * Construction with equipment, computing the accessible-technique set from
      * the innate name + abilities (mirrors the default behaviour of the

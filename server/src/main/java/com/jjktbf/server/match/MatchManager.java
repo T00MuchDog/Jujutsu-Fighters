@@ -1046,9 +1046,19 @@ public final class MatchManager implements AutoCloseable {
         if (participant.characterIds().size() != participant.characters().size()) {
             return false;
         }
+        if (participant.characterIds().size() != participant.moveSetIds().size()) {
+            return false;
+        }
         for (int index = 0; index < participant.characterIds().size(); index++) {
             if (!participant.characterIds().get(index)
                 .equals(participant.characters().get(index).getId())) {
+                return false;
+            }
+            List<String> configuredMoveIds = participant.characters().get(index)
+                .getMoveSet().stream()
+                .map(com.jjktbf.model.move.Move::getId)
+                .toList();
+            if (!participant.moveSetIds().get(index).equals(configuredMoveIds)) {
                 return false;
             }
         }
@@ -1077,7 +1087,8 @@ public final class MatchManager implements AutoCloseable {
         return first.playerId().equals(second.playerId())
             && first.displayName().equals(second.displayName())
             && first.side() == second.side()
-            && first.characterIds().equals(second.characterIds());
+            && first.characterIds().equals(second.characterIds())
+            && first.moveSetIds().equals(second.moveSetIds());
     }
 
     private MatchState existingState(ActiveMatch existing, AcceptedMatchSetup setup) {

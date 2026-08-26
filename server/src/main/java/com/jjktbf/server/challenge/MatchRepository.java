@@ -49,14 +49,15 @@ final class MatchRepository {
     ) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
             "INSERT INTO match_participant "
-                + "(match_id, player_id, side, character_ids, joined_at, disconnected_at) "
-                + "VALUES (?, ?, ?, ?, ?, ?)")) {
+                + "(match_id, player_id, side, character_ids, move_set_ids, "
+                + "joined_at, disconnected_at) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
             statement.setString(1, matchId);
             statement.setString(2, playerId);
             statement.setString(3, side.name());
             statement.setString(4, RosterCodec.encode(characterIds));
-            statement.setNull(5, Types.BIGINT);
+            statement.setString(5, MoveSetCodec.encode(List.of()));
             statement.setNull(6, Types.BIGINT);
+            statement.setNull(7, Types.BIGINT);
             statement.executeUpdate();
         }
     }
@@ -67,16 +68,54 @@ final class MatchRepository {
         String playerId,
         List<String> characterIds
     ) throws SQLException {
+        return selectParticipantCharacters(
+            connection, matchId, playerId, characterIds, List.of());
+    }
+
+    int selectParticipantCharacters(
+        Connection connection,
+        String matchId,
+        String playerId,
+        List<String> characterIds,
+        List<List<String>> moveSetIds
+    ) throws SQLException {
         String encoded = RosterCodec.encode(characterIds);
+        String encodedMoveSets = MoveSetCodec.encode(moveSetIds);
         try (PreparedStatement statement = connection.prepareStatement(
-            "UPDATE match_participant SET character_ids = ? "
+            "UPDATE match_participant SET character_ids = ?, move_set_ids = ? "
                 + "WHERE match_id = ? AND player_id = ? "
-                + "AND (character_ids = '' OR character_ids = ?)")) {
+                + "AND (character_ids = '' OR (character_ids = ? "
+                + "AND (move_set_ids = '[]' OR move_set_ids = ?)))")) {
             statement.setString(1, encoded);
-            statement.setString(2, matchId);
-            statement.setString(3, playerId);
-            statement.setString(4, encoded);
+            statement.setString(2, encodedMoveSets);
+            statement.setString(3, matchId);
+            statement.setString(4, playerId);
+            statement.setString(5, encoded);
+            statement.setString(6, encodedMoveSets);
             return statement.executeUpdate();
+        }
+    }
+
+    Optional<PersistedParticipantSelection> findParticipantSelection(
+        Connection connection,
+        String matchId,
+        String playerId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+            "SELECT character_ids, move_set_ids FROM match_participant "
+                + "WHERE match_id = ? AND player_id = ?")) {
+            statement.setString(1, matchId);
+            statement.setString(2, playerId);
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) return Optional.empty();
+                try {
+                    return Optional.of(new PersistedParticipantSelection(
+                        RosterCodec.decodeOrEmpty(result.getString("character_ids")),
+                        MoveSetCodec.decode(result.getString("move_set_ids"))));
+                } catch (IllegalArgumentException exception) {
+                    throw new SQLException("Stored participant selection is invalid", exception);
+                }
+            }
         }
     }
 
@@ -105,5 +144,17 @@ final class MatchRepository {
         long serverSeed,
         long createdAt
     ) {
+    }
+
+    record PersistedParticipantSelection(
+        List<String> characterIds,
+        List<List<String>> moveSetIds
+    ) {
+        PersistedParticipantSelection {
+            characterIds = characterIds == null ? List.of() : List.copyOf(characterIds);
+            moveSetIds = moveSetIds == null ? List.of() : moveSetIds.stream()
+                .map(ids -> ids == null ? List.<String>of() : List.copyOf(ids))
+                .toList();
+        }
     }
 }

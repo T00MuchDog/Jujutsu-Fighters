@@ -39,14 +39,17 @@ public abstract class Character extends Entity {
      */
     private final String innateTechniqueName;
 
+    /** The ordered pool of every move this character has learned. */
+    private final List<Move> learnedMoves;
+
     /**
-     * The full pool of moves this character knows.
-     * Guaranteed moves (Basic Punch, Basic Block) are always present.
-     * All other moves are validated against stat prerequisites, technique
-     * possession, and slot budget at construction time.
+     * The learned moves equipped for this battle. Kept under the historical
+     * {@code knownMoves} name because battle systems consume this list.
      */
     private final List<Move> knownMoves;
     private final List<Ability> abilities;
+    private final java.util.Set<String> accessibleTechniques;
+    private final java.util.Set<String> moveSetSlotExemptIds;
 
     /**
      * Everything this character has equipped: base weapons plus cursed tools.
@@ -116,6 +119,26 @@ public abstract class Character extends Entity {
         java.util.Set<String> accessibleTechniques,
         Equipment      equipment
     ) {
+        this(id, name, type, baseStats, innateTechniqueName,
+            knownMoves, knownMoves, abilities, accessibleTechniques, equipment);
+    }
+
+    /**
+     * Full construction with separate learned and battle move pools. A null
+     * {@code moveSet} selects the first learned moves that fit each slot budget.
+     */
+    protected Character(
+        String         id,
+        String         name,
+        CharacterType  type,
+        CharacterStats baseStats,
+        String         innateTechniqueName,
+        List<Move>     learnedMoves,
+        List<Move>     moveSet,
+        List<Ability>  abilities,
+        java.util.Set<String> accessibleTechniques,
+        Equipment      equipment
+    ) {
         super(id, name);
         Objects.requireNonNull(type,      "CharacterType cannot be null");
         Objects.requireNonNull(baseStats, "CharacterStats cannot be null");
@@ -130,34 +153,81 @@ public abstract class Character extends Entity {
         this.combatStats        = new CombatStats(baseStats, passiveFlags.jujutsuArtSlots);
         this.innateTechniqueName = innateTechniqueName;
         this.equipment          = resolvedEquipment;
+        this.accessibleTechniques = accessibleTechniques == null
+            ? Set.of() : Set.copyOf(accessibleTechniques);
         GrantedMoves granted = withEquipmentMoves(
             availableMoveIdsOf(effectiveAbilities), resolvedEquipment);
-        List<Move> validatedMoves = validateAndBuildMoveList(
-            knownMoves,
-            type, baseStats, combatStats, accessibleTechniques,
-            granted, lockedMoveTagsOf(effectiveAbilities), resolvedEquipment);
-        java.util.Set<String> selectedMoveIds = knownMoves == null ? java.util.Set.of()
-            : knownMoves.stream().filter(java.util.Objects::nonNull).map(Move::getId)
+        Set<String> lockedMoveTags = lockedMoveTagsOf(effectiveAbilities);
+        List<Move> validatedLearnedMoves = validateAndBuildMoveList(
+            learnedMoves,
+            type, baseStats, this.accessibleTechniques,
+            granted, lockedMoveTags, resolvedEquipment);
+        java.util.Set<String> learnedMoveIds = learnedMoves == null ? java.util.Set.of()
+            : learnedMoves.stream().filter(java.util.Objects::nonNull).map(Move::getId)
                 .collect(java.util.stream.Collectors.toSet());
         for (Move candidate : resolvedEquipment.grantedMoves()) {
-            if (candidate == null || selectedMoveIds.contains(candidate.getId())) continue;
-            List<Move> withCandidate = new ArrayList<>(validatedMoves);
+            if (candidate == null || learnedMoveIds.contains(candidate.getId())) continue;
+            List<Move> withCandidate = new ArrayList<>(validatedLearnedMoves);
             withCandidate.add(candidate);
             try {
-                validatedMoves = validateAndBuildMoveList(
-                    withCandidate, type, baseStats, combatStats, accessibleTechniques,
-                    granted, lockedMoveTagsOf(effectiveAbilities), resolvedEquipment);
+                validatedLearnedMoves = validateAndBuildMoveList(
+                    withCandidate, type, baseStats, this.accessibleTechniques,
+                    granted, lockedMoveTags, resolvedEquipment);
             } catch (IllegalArgumentException ignored) {
                 // Automatic tool grants only become known after ordinary move
                 // requirements pass; an unmet requirement does not invalidate
                 // the character or the equipped tool.
             }
         }
-        validatedMoves = filterMovesByAssignedCodedFeatures(validatedMoves, effectiveAbilities);
-        validateCodedMoveReferences(validatedMoves);
-        this.knownMoves = Collections.unmodifiableList(validatedMoves);
+        validatedLearnedMoves = filterMovesByAssignedCodedFeatures(
+            validatedLearnedMoves, effectiveAbilities);
+        validateCodedMoveReferences(validatedLearnedMoves);
+        this.learnedMoves = Collections.unmodifiableList(validatedLearnedMoves);
+        Set<String> slotExemptIds = new HashSet<>(granted.bypass());
+        slotExemptIds.addAll(granted.automatic());
+        this.moveSetSlotExemptIds = Collections.unmodifiableSet(slotExemptIds);
+
+        List<Move> requestedMoveSet = moveSet == null ? null
+            : filterMovesByAssignedCodedFeatures(moveSet, effectiveAbilities);
+        List<Move> selectedMoves = requestedMoveSet == null
+            ? SlotBudgetEnforcer.defaultMoveSet(
+                this.learnedMoves, combatStats, moveSetSlotExemptIds)
+            : resolveMoveSet(requestedMoveSet, this.learnedMoves, granted.automatic());
+        selectedMoves = validateAndBuildMoveList(
+            selectedMoves, type, baseStats, this.accessibleTechniques,
+            granted, lockedMoveTags, resolvedEquipment);
+        selectedMoves = filterMovesByAssignedCodedFeatures(selectedMoves, effectiveAbilities);
+        validateCodedMoveReferences(selectedMoves);
+        SlotBudgetEnforcer.validateMoveSet(
+            selectedMoves, combatStats, moveSetSlotExemptIds);
+        this.knownMoves = Collections.unmodifiableList(selectedMoves);
         this.abilities          = effectiveAbilities != null
             ? Collections.unmodifiableList(new ArrayList<>(effectiveAbilities)) : List.of();
+    }
+
+    private static List<Move> resolveMoveSet(
+        List<Move> requestedMoves,
+        List<Move> learnedMoves,
+        Set<String> automaticMoveIds
+    ) {
+        Map<String, Move> learnedById = new LinkedHashMap<>();
+        for (Move move : learnedMoves) learnedById.put(move.getId(), move);
+        Set<String> selectedIds = new HashSet<>();
+        for (Move requested : requestedMoves) {
+            if (requested == null || !selectedIds.add(requested.getId())) {
+                throw new IllegalArgumentException("Move set cannot contain null or duplicate moves");
+            }
+            Move learned = learnedById.get(requested.getId());
+            if (learned == null) {
+                throw new IllegalArgumentException(
+                    "Move set contains unlearned move " + requested.getId());
+            }
+        }
+        selectedIds.addAll(automaticMoveIds);
+        List<Move> selected = learnedMoves.stream()
+            .filter(move -> selectedIds.contains(move.getId()))
+            .toList();
+        return selected;
     }
 
     /**
@@ -325,7 +395,6 @@ public abstract class Character extends Entity {
         List<Move>     moves,
         CharacterType  characterType,
         CharacterStats cs,
-        CombatStats    combatStats,
         java.util.Set<String> accessibleTechniques,
         GrantedMoves   granted,
         java.util.Set<String> lockedMoveTags,
@@ -335,7 +404,6 @@ public abstract class Character extends Entity {
         if (granted == null) granted = GrantedMoves.EMPTY;
         Equipment resolvedEquipment = equipment == null ? Equipment.NONE : equipment;
 
-        Map<MovePool, Integer> slotUsed = new EnumMap<>(MovePool.class);
         List<Move> validated = new ArrayList<>();
 
         for (Move move : moves) {
@@ -412,23 +480,6 @@ public abstract class Character extends Entity {
                 }
             }
 
-            // --- 3. Slot budget — only free moves are exempt ---
-            // Every non-free move consumes a slot in its pool (Combat Arts or
-            // Jujutsu Arts), regardless of whether it is offensive, defensive,
-            // or utility.
-            if (!bypass && !granted.automatic().contains(move.getId()) && !move.isFreeMove()) {
-                MovePool pool = move.getPool();
-                int used      = slotUsed.getOrDefault(pool, 0);
-                int available = SlotBudgetEnforcer.slotBudgetFor(combatStats, pool);
-                if (used >= available) {
-                    throw new IllegalArgumentException(
-                        "Character has no available slots for pool " + pool
-                        + " (budget=" + available + ") when trying to add move '" + move.getName() + "'"
-                    );
-                }
-                slotUsed.put(pool, used + 1);
-            }
-
             validated.add(move);
         }
 
@@ -448,11 +499,59 @@ public abstract class Character extends Entity {
     public CombatStats     getCombatStats()          { return combatStats; }
     public CharacterType   getType()                 { return type; }
     public String          getInnateTechniqueName()  { return innateTechniqueName; }
+    /** Every move learned by the character, in authored order. */
+    public List<Move>      getLearnedMoves()         { return learnedMoves; }
+    /** Moves equipped for the current battle. */
+    public List<Move>      getMoveSet()              { return knownMoves; }
+    /** Historical battle-facing alias for {@link #getMoveSet()}. */
     public List<Move>      getKnownMoves()           { return knownMoves; }
     public List<Ability>   getAbilities()            { return abilities; }
     public boolean         hasInnateTechnique()      { return innateTechniqueName != null; }
     /** The character's weapons and cursed tools (never null). */
     public Equipment       getEquipment()            { return equipment; }
+
+    /** Whether this move consumes one of the current character's move-set slots. */
+    public boolean consumesMoveSetSlot(Move move) {
+        return SlotBudgetEnforcer.consumesSlot(move, moveSetSlotExemptIds);
+    }
+
+    /**
+     * Returns an immutable copy configured with the requested move-set IDs.
+     * Selected moves retain learned order; automatic equipment moves remain equipped.
+     */
+    public Character withMoveSet(List<String> moveIds) {
+        Objects.requireNonNull(moveIds, "Move set cannot be null");
+        Map<String, Move> learnedById = new LinkedHashMap<>();
+        for (Move move : learnedMoves) learnedById.put(move.getId(), move);
+        List<Move> requested = new ArrayList<>(moveIds.size());
+        Set<String> seen = new HashSet<>();
+        for (String moveId : moveIds) {
+            if (moveId == null || moveId.isBlank() || !seen.add(moveId)) {
+                throw new IllegalArgumentException(
+                    "Move set IDs cannot be blank or duplicated");
+            }
+            Move move = learnedById.get(moveId);
+            if (move == null) {
+                throw new IllegalArgumentException("Move " + moveId + " has not been learned");
+            }
+            requested.add(move);
+        }
+        return switch (type) {
+            case SHIKIGAMI -> new ShikigamiCharacter(
+                getId(), getName(), baseStats, innateTechniqueName,
+                learnedMoves, requested, abilities, accessibleTechniques,
+                equipment, getBaseCeDrainPerTick());
+            case CURSED_SPIRIT -> new CursedSpiritCharacter(
+                getId(), getName(), baseStats, innateTechniqueName,
+                learnedMoves, requested, abilities, accessibleTechniques, equipment);
+            case CURSED_CORPSE -> new CursedCorpseCharacter(
+                getId(), getName(), baseStats, innateTechniqueName,
+                learnedMoves, requested, abilities, accessibleTechniques, equipment);
+            case SORCERER -> new SorcererCharacter(
+                getId(), getName(), baseStats, innateTechniqueName,
+                learnedMoves, requested, abilities, accessibleTechniques, equipment);
+        };
+    }
 
     /** Base CE charged to a summoner per active tick; non-shikigami default to zero. */
     public double          getBaseCeDrainPerTick()     { return 0.0; }

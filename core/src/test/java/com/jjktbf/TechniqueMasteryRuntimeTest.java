@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -103,6 +104,22 @@ class TechniqueMasteryRuntimeTest {
             TechniqueMasteryProgressions.INT_VALUE, formula("ctm"));
         ability.effects = List.of(effect);
         assertThrows(IllegalArgumentException.class, () -> new Ability(ability));
+    }
+
+    @Test
+    void moveSourcedAbilitiesCanScaleWithTechniqueMastery() {
+        AbilityData ability = new AbilityData();
+        ability.id = "MOVE_ABILITY";
+        ability.name = "Move Ability";
+        ability.category = "PASSIVE";
+        ability.sourceType = "MOVE";
+        ability.sourceValue = "TECHNIQUE_MOVE";
+        AbilityEffectData effect = AbilityEffectType.DEFINE_BOUNDED_RESOURCE.createDefault();
+        effect.masteryProgression = Map.of(
+            TechniqueMasteryProgressions.RESOURCE_CAPACITY, formula("1 + ctm / 50"));
+        ability.effects = List.of(effect);
+
+        assertDoesNotThrow(() -> new Ability(ability));
     }
 
     @Test

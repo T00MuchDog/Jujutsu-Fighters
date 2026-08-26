@@ -11,7 +11,7 @@ import com.jjktbf.model.character.coded.RatioAbility;
 
 import java.util.List;
 
-/** Compact fallback meter for player-visible ability states without bespoke artwork. */
+/** Compact meter for data-defined bounded resources. */
 public final class AbilityStateMeter {
 
     private List<CodedAbilityState> states = List.of();

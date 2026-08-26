@@ -73,11 +73,13 @@ class DatabaseMigrationTest {
                 assertEquals("000004", accepted.getString("accepted_character_ids"));
             }
             try (var participants = statement.executeQuery(
-                "SELECT character_ids FROM match_participant ORDER BY side")) {
+                "SELECT character_ids, move_set_ids FROM match_participant ORDER BY side")) {
                 assertTrue(participants.next());
                 assertEquals("000003", participants.getString("character_ids"));
+                assertEquals("[]", participants.getString("move_set_ids"));
                 assertTrue(participants.next());
                 assertEquals("000004", participants.getString("character_ids"));
+                assertEquals("[]", participants.getString("move_set_ids"));
             }
 
             statement.executeUpdate("INSERT INTO challenge "

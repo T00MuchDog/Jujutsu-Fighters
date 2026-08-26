@@ -51,6 +51,7 @@ import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.move.MoveRepository;
 import com.jjktbf.model.technique.TechniqueRepository;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
+import com.jjktbf.multiplayer.protocol.MatchCharacterSelectionRequest;
 
 import java.io.IOException;
 import java.util.List;
@@ -396,13 +397,13 @@ public class JJKGame extends Game {
         setSelectedMultiplayerFormat(setup.format());
         setSelectedMultiplayerStatMode(BattleStatMode.fromRuleset(setup.ruleset()));
         if (!setup.playerCharacterIds().isEmpty()) {
-            showMultiplayerRosterWaiting(setup, null);
+            showMultiplayerRosterWaiting(setup, (MatchCharacterSelectionRequest) null);
             return;
         }
         characterSelectScreen.prepareMultiplayer(
             setup.format(),
             BattleStatMode.fromRuleset(setup.ruleset()),
-            characterIds -> showMultiplayerRosterWaiting(setup, characterIds),
+            selection -> showMultiplayerRosterWaiting(setup, selection),
             this::showMultiplayerMenu
         );
         showScreen(characterSelectScreen, MusicTrack.MENU);
@@ -410,9 +411,9 @@ public class JJKGame extends Game {
 
     private void showMultiplayerRosterWaiting(
         MatchSetup setup,
-        List<String> characterIds
+        MatchCharacterSelectionRequest selection
     ) {
-        multiplayerRosterWaitingScreen.prepare(setup, characterIds);
+        multiplayerRosterWaitingScreen.prepare(setup, selection);
         showScreen(multiplayerRosterWaitingScreen, MusicTrack.MENU);
     }
 
@@ -677,6 +678,21 @@ public class JJKGame extends Game {
                             TechniqueRepository techniqueRepo,
                             BattleController.ControlMode controlMode,
                             BattleStatMode statMode) {
+        startBattle(playerData, null, cpuData, null,
+            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode);
+    }
+
+    public void startBattle(
+        CharacterData playerData,
+        java.util.List<String> playerMoveSetIds,
+        CharacterData cpuData,
+        java.util.List<String> cpuMoveSetIds,
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        BattleController.ControlMode controlMode,
+        BattleStatMode statMode
+    ) {
         requireAuthorControlMode(controlMode);
         battleScreen.prepareLocal();
         battleScreen.setCombatantSprites(
@@ -689,9 +705,11 @@ public class JJKGame extends Game {
                 com.jjktbf.model.weapon.CursedToolRepository cursedToolRepo =
                     loadCursedToolRepo();
                 Character player = playerData.toCharacter(
-                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                    playerMoveSetIds);
                 Character cpu    = cpuData.toCharacter(
-                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                    cpuMoveSetIds);
                 BattleController controller = new BattleController(
                     battleScreen,
                     characterId -> multiplayerCharacterRepository.findById(characterId)
@@ -758,6 +776,21 @@ public class JJKGame extends Game {
         BattleController.ControlMode controlMode,
         BattleStatMode statMode
     ) {
+        startTeamBattle(playerTeam, null, cpuTeam, null,
+            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode);
+    }
+
+    public void startTeamBattle(
+        java.util.List<CharacterData> playerTeam,
+        java.util.List<java.util.List<String>> playerMoveSets,
+        java.util.List<CharacterData> cpuTeam,
+        java.util.List<java.util.List<String>> cpuMoveSets,
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        BattleController.ControlMode controlMode,
+        BattleStatMode statMode
+    ) {
         requireAuthorControlMode(controlMode);
         battleScreen.prepareLocal();
         // Set sprites per side (front fighter per side for now; full 4-fighter
@@ -775,12 +808,18 @@ public class JJKGame extends Game {
             try {
                 com.jjktbf.model.weapon.CursedToolRepository cursedToolRepo =
                     loadCursedToolRepo();
-                java.util.List<BattleCombatant> playerFighters = playerTeam.stream()
-                    .map(d -> d.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo))
+                java.util.List<BattleCombatant> playerFighters = java.util.stream.IntStream
+                    .range(0, playerTeam.size())
+                    .mapToObj(index -> playerTeam.get(index).toCharacter(
+                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                        moveSetAt(playerMoveSets, index)))
                     .map(c -> new BattleCombatant(c, c.getAbilities(), statMode))
                     .toList();
-                java.util.List<BattleCombatant> cpuFighters = cpuTeam.stream()
-                    .map(d -> d.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo))
+                java.util.List<BattleCombatant> cpuFighters = java.util.stream.IntStream
+                    .range(0, cpuTeam.size())
+                    .mapToObj(index -> cpuTeam.get(index).toCharacter(
+                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                        moveSetAt(cpuMoveSets, index)))
                     .map(c -> new BattleCombatant(c, c.getAbilities(), statMode))
                     .toList();
                 BattleState state = new BattleState(
@@ -809,6 +848,14 @@ public class JJKGame extends Game {
         battleScreen.setLocalBattleThread(battleThread);
         battleThread.setDaemon(true);
         battleThread.start();
+    }
+
+    private static java.util.List<String> moveSetAt(
+        java.util.List<java.util.List<String>> moveSets,
+        int index
+    ) {
+        return moveSets == null || index < 0 || index >= moveSets.size()
+            ? null : moveSets.get(index);
     }
 
     private static void requireAuthorControlMode(BattleController.ControlMode controlMode) {

@@ -28,11 +28,10 @@ public final class NewShadowStyleAbility implements CodedAbilityRuntime {
 
     NewShadowStyleAbility(BattleCombatant owner, Set<String> features) {
         this.owner = owner;
-        Move simpleDomain = owner.getCharacter().getKnownMoves().stream()
+        this.simpleDomainMoveId = owner.getCharacter().getKnownMoves().stream()
             .filter(NewShadowStyleAbility::activatesSimpleDomain)
-            .findFirst().orElseThrow(() -> new IllegalStateException(
-                "New Shadow Style runtime requires Simple Domain"));
-        this.simpleDomainMoveId = simpleDomain.getId();
+            .map(Move::getId)
+            .findFirst().orElse(null);
     }
 
     @Override
@@ -43,7 +42,8 @@ public final class NewShadowStyleAbility implements CodedAbilityRuntime {
     ) {
         if (!simpleDomainActive
             || trigger.type() != AbilityTrigger.Type.MOVE_USED || trigger.actor() != owner
-            || trigger.move() == null || trigger.move().getId().equals(simpleDomainMoveId)) {
+            || trigger.move() == null || simpleDomainMoveId == null
+            || trigger.move().getId().equals(simpleDomainMoveId)) {
             return List.of();
         }
         if (!featureActive.test(SIMPLE_DOMAIN_BINDING_VOW)) return List.of();

@@ -39,7 +39,6 @@ import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.CombatStats;
 import com.jjktbf.model.character.CharacterRepository;
-import com.jjktbf.model.character.SlotBudgetEnforcer;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.StatTier;
 import com.jjktbf.model.combat.PowerCalculator;
@@ -75,7 +74,7 @@ import java.util.function.BiPredicate;
  *   - Name / Innate Technique fields
  *   - 10× {@link StatField} sliders (with Manual / Point-Buy mode toggle)
  *   - Live derived-stat preview (HP, AP bar, Accuracy, Evasion, CE pool, per-category slots)
- *   - Move assignment panel (slot-gated, technique/prerequisite-filtered, DnD)
+ *   - Uncapped learned-move assignment panel (technique/prerequisite-filtered, DnD)
  *   - Ability assignment panel filtered by source and grant availability
  *
  * Save validates via {@link CharacterData#toCharacter(MoveRepository, AbilityRepository)}.
@@ -264,6 +263,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         for (StatKey sk : STAT_ORDER) sk.set(d, sk.get(stored));
         if (d.innateTechniqueName == null) d.cursedTechniqueMastery = 0;
         d.moveIds    = stored.moveIds    != null ? new ArrayList<>(stored.moveIds)    : new ArrayList<>();
+        d.moveSetIds = stored.moveSetIds != null
+            ? new ArrayList<>(stored.moveSetIds) : null;
         d.availableMoveIds = stored.availableMoveIds != null
             ? new ArrayList<>(stored.availableMoveIds) : new ArrayList<>(d.moveIds);
         d.abilityIds = stored.abilityIds != null ? new ArrayList<>(stored.abilityIds) : new ArrayList<>();
@@ -424,7 +425,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             d.id = charRepo.nextId();
         }
         try {
-            d.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+            normalizeSavedMoveSet(d);
         } catch (Exception e) {
             return ValidationResult.error("Invalid character: " + e.getMessage());
         }
@@ -1331,6 +1332,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             @Override public void onForget(String moveId) {
                 applyPendingStatModelChanges();
                 if (cd.moveIds != null) cd.moveIds.remove(moveId);
+                if (cd.moveSetIds != null) cd.moveSetIds.remove(moveId);
                 markDirty();
                 refreshDerivedPreview(cd);
                 refreshBudgetLabel(cd);
@@ -1343,14 +1345,34 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             }
 
             @Override public int learnedCount(MovePool pool) {
-                return SlotBudgetEnforcer.countUsage(getAssignedMovePoolList(cd))
-                    .getOrDefault(pool, 0);
-            }
-
-            @Override public int learnedLimit(MovePool pool) {
-                return SlotBudgetEnforcer.slotBudgetFor(combatStatsWithAbilitySlots(cd), pool);
+                return (int) learnedItems(pool).stream().count();
             }
         }, game.audio()::play, uiProfile, skin);
+    }
+
+    private void normalizeSavedMoveSet(CharacterData character) {
+        if (character.moveSetIds == null) {
+            character.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+            return;
+        }
+        List<String> requestedMoveSet = new ArrayList<>(character.moveSetIds);
+        character.moveSetIds = null;
+        com.jjktbf.model.character.Character base;
+        try {
+            base = character.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+        } catch (RuntimeException exception) {
+            character.moveSetIds = requestedMoveSet;
+            throw exception;
+        }
+        com.jjktbf.model.character.Character configured;
+        try {
+            configured = base.withMoveSet(requestedMoveSet);
+        } catch (IllegalArgumentException invalidSavedMoveSet) {
+            configured = base;
+        }
+        character.moveSetIds = new ArrayList<>(configured.getMoveSet().stream()
+            .map(Move::getId)
+            .toList());
     }
 
     private void reorderLearnedMoves(
@@ -1504,22 +1526,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             }
         }
 
-        if (move.isFreeMove || automaticToolGrant) return null;
-        try {
-            MovePool pool = move.derivedPool();
-            int budget = SlotBudgetEnforcer.slotBudgetFor(
-                combatStatsWithAbilitySlots(character), pool);
-            int used = SlotBudgetEnforcer.countUsage(
-                getAssignedMovePoolList(character)).getOrDefault(pool, 0);
-            boolean withinBudget = alreadyAssigned ? used <= budget : used < budget;
-            return withinBudget ? null : noAvailableSlotsError(pool);
-        } catch (Exception ex) {
-            return "Move configuration is invalid: " + ex.getMessage();
-        }
-    }
-
-    private static String noAvailableSlotsError(MovePool pool) {
-        return "No available " + pool + " slots";
+        return null;
     }
 
     private static String labelForCharacterType(CharacterType type) {
@@ -1537,8 +1544,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         String error
     ) {
         if (error == null) return new AssignmentPanel.Item(move.id, move.name, sublabel);
-        return noAvailableSlotsError(pool).equals(error)
-            ? new AssignmentPanel.Item(move.id, move.name, sublabel, true, error) : null;
+        return null;
     }
 
     // =========================================================================
@@ -1702,7 +1708,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         if (candidateMoveIds.isEmpty()) return Set.of();
         try {
             return character.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo)
-                .getKnownMoves().stream()
+                .getLearnedMoves().stream()
                 .map(Move::getId)
                 .filter(candidateMoveIds::contains)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));

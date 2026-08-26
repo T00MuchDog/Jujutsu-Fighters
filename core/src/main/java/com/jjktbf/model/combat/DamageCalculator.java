@@ -6,6 +6,8 @@ import com.jjktbf.model.character.coded.CodedHitModifiers;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
+import com.jjktbf.model.move.MoveTag;
+import com.jjktbf.model.move.StatusEffectType;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
 
 import java.util.List;
@@ -156,9 +158,11 @@ public final class DamageCalculator {
         ConnectedHitHook connectedHitHook
     ) {
         if (component == null) throw new IllegalArgumentException("hit component is required");
+        BattleCombatant.AccuracyClaim temporaryAccuracy = attacker.consumeNeverMiss(move);
         return resolve(attacker, defender, move, component, currentTick, rng,
             currentRound, forceFullBlock, requireFiredDefense, connectedHitHook,
-            attacker.consumeNeverMissTier(), defender.consumeNeverHitTier());
+            temporaryAccuracy.tier(), temporaryAccuracy.guaranteesNormalAccuracy(),
+            defender.consumeNeverHitTier());
     }
 
     /** Resolve one component using temporary tiers already claimed by its attack execution. */
@@ -174,6 +178,7 @@ public final class DamageCalculator {
         boolean         requireFiredDefense,
         ConnectedHitHook connectedHitHook,
         int             temporaryNeverMissTier,
+        boolean         temporaryGuaranteesNormalAccuracy,
         int             temporaryNeverHitTier
     ) {
         if (component == null) throw new IllegalArgumentException("hit component is required");
@@ -224,7 +229,8 @@ public final class DamageCalculator {
 
             // --- 1. Hit roll ---
             boolean hit;
-            if (neverMissTier > 0 || move.hasLegacyNeverMiss()) {
+            if (temporaryGuaranteesNormalAccuracy
+                || neverMissTier > 0 || move.hasLegacyNeverMiss()) {
                 hit = true;
             } else {
                 // Each component may define its own base accuracy; otherwise the
@@ -353,10 +359,20 @@ public final class DamageCalculator {
         // --- 6. Damage formula ---
         // damage = ((basePower × power) after block / defense) × DAMAGE_SCALE × roll
         double randomRoll = ROLL_MIN + (1.0 - ROLL_MIN) * rng.nextDouble();
+        double elementalStatusMultiplier = 1.0;
+        if (component.hasTag(MoveTag.ELECTRIC)
+            && defender.hasEffect(StatusEffectType.WET)) {
+            elementalStatusMultiplier *= 2.0;
+        }
+        if (component.hasTag(MoveTag.MELEE)
+            && attacker.hasEffect(StatusEffectType.BURNED)) {
+            elementalStatusMultiplier *= 0.5;
+        }
         int rawDamage = (int) Math.round(
             (attackValue / defense) * DAMAGE_SCALE * randomRoll
                 * attacker.getAbilityFlags().damageMultiplierFor(move)
                 * defender.getAbilityFlags().incomingDamageMultiplierFor(move)
+                * elementalStatusMultiplier
         );
         rawDamage = attackValue <= 0.0 ? 0 : Math.max(1, rawDamage);
         rawDamage = Math.max(0, (int) Math.round(

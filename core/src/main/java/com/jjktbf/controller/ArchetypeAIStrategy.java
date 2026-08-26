@@ -117,7 +117,8 @@ public class ArchetypeAIStrategy implements AIStrategy {
     }
 
     private static BattlePlan normalise(BattlePlan plan, int commonGridLength) {
-        BattlePlan normalized = new BattlePlan(plan.apBudget(), plan.ceBudget(), commonGridLength);
+        BattlePlan normalized = new BattlePlan(
+            plan.apBudget(), plan.ceBudget(), commonGridLength, plan.actionTickDelay());
         for (ActionSegment segment : plan.allSegments()) {
             ActionSegment ns = normalized.place(segment.getMove(), segment.getStartTick(), segment.getActualCeCost());
             if (ns == null) {

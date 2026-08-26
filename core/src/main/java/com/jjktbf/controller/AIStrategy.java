@@ -81,7 +81,8 @@ public interface AIStrategy {
             }
             if (plan.gridLength() != commonGridLength) {
                 BattlePlan normalized = new BattlePlan(
-                    plan.apBudget(), plan.ceBudget(), commonGridLength);
+                    plan.apBudget(), plan.ceBudget(), commonGridLength,
+                    plan.actionTickDelay());
                 for (com.jjktbf.model.combat.ActionSegment segment : plan.allSegments()) {
                     com.jjktbf.model.combat.ActionSegment normalizedSegment = normalized.place(
                         segment.getMove(), segment.getStartTick(), segment.getActualCeCost());

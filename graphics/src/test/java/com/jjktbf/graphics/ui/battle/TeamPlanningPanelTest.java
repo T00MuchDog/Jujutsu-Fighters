@@ -107,6 +107,31 @@ class TeamPlanningPanelTest {
     }
 
     @Test
+    void reconnectRestoresAuthoritativeEffectiveTiming() {
+        Move move = move("FATIGUED");
+        ActionSegmentState segment = new ActionSegmentState(
+            "segment-1", move.getId(), move.getName(), PlanBoard.OFFENSIVE,
+            7, 18, 9, 12, 0, ActionSegmentStatus.QUEUED, null,
+            "actor-1", List.of("enemy-1"));
+        PlanState restored = new PlanState(1, 150, 12, 0, 0, List.of(segment), List.of());
+        TeamPlanningPanel panel = new TeamPlanningPanel(
+            BattleTeamId.PLAYER,
+            300,
+            List.of(spec("actor-1", "First", move, restored)),
+            null,
+            WIDTH,
+            HEIGHT
+        );
+
+        ActionSegment restoredSegment = panel.activePlanningPanel()
+            .getPlan().allSegments().get(0);
+        assertEquals(12, restoredSegment.getApCost());
+        assertEquals(3, restoredSegment.getUnleashPoint());
+        assertEquals(18, restoredSegment.getEndTick());
+        assertEquals(9, restoredSegment.getFireTick());
+    }
+
+    @Test
     void navigationPreservesMultipleTargetListsOnEachPage() {
         Move firstMove = multipleMove("FIRST_MULTIPLE", 3);
         Move secondMove = multipleMove("SECOND_MULTIPLE", 2);

@@ -195,6 +195,31 @@ class AccuracyPriorityTest {
     }
 
     @Test
+    void tierZeroAppliedNeverMissCanScopeNormalAccuracyWithoutDefeatingDodges() {
+        Move bow = scopedAttack("BOW", MoveTag.BOW);
+        Move melee = scopedAttack("MELEE", MoveTag.MELEE);
+        BattleCombatant attacker = combatant("ATTACKER", null);
+        AbilityEffectData guidance = appliedTier(
+            AbilityEffectType.APPLY_NEVER_MISS, 0,
+            AbilityEffectType.AccuracyDuration.DURATION);
+        guidance.moveTag = MoveTag.BOW.name();
+        guidance.durationRounds = 2;
+        attacker.addRuntimeAbilityEffect(guidance);
+
+        assertTrue(resolve(attacker, combatant("PLAIN", null), bow).isHit(),
+            "matching attacks skip their normal accuracy roll");
+        assertTrue(resolve(attacker, combatant("PLAIN_2", null), melee).isMiss(),
+            "non-matching attacks keep their normal accuracy roll");
+        assertTrue(resolve(attacker, combatantWithDodge(dodge("DODGE", 0)), bow).isDodged(),
+            "tier zero must not gain priority over an ordinary dodge");
+
+        attacker.tickRuntimeAbilityEffects(1);
+        assertTrue(resolve(attacker, combatant("ROUND_2", null), bow).isHit());
+        attacker.tickRuntimeAbilityEffects(2);
+        assertTrue(resolve(attacker, combatant("EXPIRED", null), bow).isMiss());
+    }
+
+    @Test
     void appliedNeverHitTierIsConsumedByTheNextIncomingAttack() {
         Move tierTwo = attack("TIER_TWO", 2);
         BattleCombatant attacker = combatant("ATTACKER", tierTwo);
@@ -257,6 +282,18 @@ class AccuracyPriorityTest {
             .apCost(10)
             .unleashPoint(1)
             .effects(effects)
+            .build();
+    }
+
+    private static Move scopedAttack(String id, MoveTag scope) {
+        return new Move.Builder(id)
+            .name(id)
+            .category(MoveCategory.PHYSICAL)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, scope))
+            .basePower(10)
+            .baseAccuracy(0.01)
+            .apCost(1)
+            .unleashPoint(1)
             .build();
     }
 

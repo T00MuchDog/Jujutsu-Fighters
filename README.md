@@ -45,7 +45,7 @@ The Windows profile is independent and carries `2560 x 1440` target-resolution
 metadata ready for a later redesign; normal rendering still uses the live window.
 
 macOS (Author game, default `MAC` profile):
-
+ 
 ```bash
 mvn -Drevision=1.4.1 -pl core,graphics -am clean verify
 java -XstartOnFirstThread -Djjktbf.authoring=true -jar graphics/target/graphics-1.4.1.jar

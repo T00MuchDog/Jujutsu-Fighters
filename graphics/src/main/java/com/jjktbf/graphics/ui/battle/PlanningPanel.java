@@ -219,7 +219,7 @@ public class PlanningPanel {
         float screenHeight
     ) {
         this.gridLength = gridLength;
-        this.plan = new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+        this.plan = BattlePlan.forCombatant(combatant, gridLength);
         this.maxCe = combatant.getMaxCursedEnergy();
         this.actorId = combatant.getInstanceId() == null
             ? null : combatant.getInstanceId().value();
@@ -542,12 +542,27 @@ public class PlanningPanel {
         int ceCost,
         List<String> targetIds
     ) {
+        if (move == null) return null;
+        return restorePlacement(move, startTick, ceCost, targetIds,
+            plan.effectiveApCost(move), plan.effectiveUnleashPoint(move));
+    }
+
+    public ActionSegment restorePlacement(
+        Move move,
+        int startTick,
+        int ceCost,
+        List<String> targetIds,
+        int apCost,
+        int unleashPoint
+    ) {
+        if (move == null) return null;
         List<CombatantId> targets = targetIds == null ? List.of() : targetIds.stream()
             .filter(id -> id != null && !id.isBlank())
             .map(CombatantId::new)
             .distinct()
             .toList();
-        ActionSegment segment = plan.place(move, startTick, ceCost);
+        ActionSegment segment = plan.restorePlacement(
+            move, startTick, ceCost, targets, apCost, unleashPoint);
         if (segment != null) setTargets(segment, targets);
         return segment;
     }
@@ -958,6 +973,8 @@ public class PlanningPanel {
                 card.setDisplayDescription(MoveDescriptionVariables.resolve(
                     move, TechniqueMasteryResolver.masteryOf(localCombatant)));
             }
+            card.setDisplayedTiming(
+                plan.effectiveApCost(move), plan.effectiveUnleashPoint(move));
             card.setDisabled(readOnly || !plan.canPlace(move, ceCost(move)));
             card.setHovered(i == hoveredCard);
             card.setDragging(move == draggingMove);
@@ -1452,8 +1469,8 @@ public class PlanningPanel {
         Rectangle barBounds = bar.getBounds();
         boolean overTrack = barBounds.contains(dragMouseX, dragMouseY);
         float width = overTrack
-            ? bar.segmentWidth(move.getApCost())
-            : Math.max(scaled(132f), bar.segmentWidth(move.getApCost()));
+            ? bar.segmentWidth(plan.effectiveApCost(move))
+            : Math.max(scaled(132f), bar.segmentWidth(plan.effectiveApCost(move)));
         float height = overTrack ? barBounds.height - 12f : scaled(48f);
         float x = overTrack ? bar.segmentLeft(draggingTick) : dragMouseX - width / 2f;
         float y = overTrack ? barBounds.y + 6f : dragMouseY - height / 2f;
@@ -1497,20 +1514,20 @@ public class PlanningPanel {
     /** Returns the first AP tick at or to the right of {@code startTick} that fits the move. */
     private int firstAvailableTick(BattlePlan.Board board, int startTick, Move move) {
         TimelineBar bar = barFor(board);
-        int lastStart = lastStartTick(move, bar.getDotCount());
+        int lastStart = effectiveLastStartTick(move, bar.getDotCount());
         for (int tick = startTick; tick <= lastStart; tick++) {
             if (plan.boardTimeline(board).isRangeFree(
-                tick, tick + move.getApCost() - 1)) return tick;
+                tick, tick + plan.effectiveApCost(move) - 1)) return tick;
         }
         return -1;
     }
 
     /** Returns the nearest AP tick at or to the left of {@code startTick} that fits the move. */
     private int lastAvailableTick(BattlePlan.Board board, int startTick, Move move) {
-        int lastStart = lastStartTick(move, barFor(board).getDotCount());
+        int lastStart = effectiveLastStartTick(move, barFor(board).getDotCount());
         for (int tick = Math.min(startTick, lastStart); tick >= 1; tick--) {
             if (plan.boardTimeline(board).isRangeFree(
-                tick, tick + move.getApCost() - 1)) return tick;
+                tick, tick + plan.effectiveApCost(move) - 1)) return tick;
         }
         return -1;
     }
@@ -1518,6 +1535,14 @@ public class PlanningPanel {
     static int lastStartTick(Move move, int gridLength) {
         long occupancyLastStart = (long) gridLength - move.getApCost() + 1L;
         long impactLastStart = (long) gridLength - move.getUnleashPoint() + 1L
+            - move.getMaxHitDelayTicks();
+        long lastStart = Math.min(occupancyLastStart, impactLastStart);
+        return lastStart < 1L ? 0 : (int) Math.min(Integer.MAX_VALUE, lastStart);
+    }
+
+    private int effectiveLastStartTick(Move move, int gridLength) {
+        long occupancyLastStart = (long) gridLength - plan.effectiveApCost(move) + 1L;
+        long impactLastStart = (long) gridLength - plan.effectiveUnleashPoint(move) + 1L
             - move.getMaxHitDelayTicks();
         long lastStart = Math.min(occupancyLastStart, impactLastStart);
         return lastStart < 1L ? 0 : (int) Math.min(Integer.MAX_VALUE, lastStart);
@@ -1788,9 +1813,9 @@ public class PlanningPanel {
                 return;
             }
             int requestedTick = bar.tickAtX(dragMouseX);
-            int requestedEnd = requestedTick + move.getApCost() - 1;
+            int requestedEnd = requestedTick + plan.effectiveApCost(move) - 1;
             int availableTick;
-            if (requestedTick <= lastStartTick(move, bar.getDotCount())
+            if (requestedTick <= effectiveLastStartTick(move, bar.getDotCount())
                 && plan.boardTimeline(draggingBoard).isRangeFree(requestedTick, requestedEnd)) {
                 availableTick = requestedTick;
             } else {
@@ -1801,7 +1826,8 @@ public class PlanningPanel {
                 } else if (rightTick < 0) {
                     availableTick = leftTick;
                 } else {
-                    float snapMidpoint = (leftTick + rightTick + move.getApCost() - 1) / 2f;
+                    float snapMidpoint = (leftTick + rightTick
+                        + plan.effectiveApCost(move) - 1) / 2f;
                     availableTick = requestedTick <= snapMidpoint ? leftTick : rightTick;
                 }
             }

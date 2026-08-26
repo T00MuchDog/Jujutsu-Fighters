@@ -113,6 +113,7 @@ public class BattleCombatant {
     private int poolClampDeferrals;
     private double summonCeUpkeepDebt;
     private double cursedEnergyRegenerationProgress;
+    private double burnedDamageProgress;
 
     private final List<StatusEffect> activeEffects;
 
@@ -236,6 +237,7 @@ public class BattleCombatant {
         this.poolClampDeferrals      = 0;
         this.summonCeUpkeepDebt      = 0.0;
         this.cursedEnergyRegenerationProgress = 0.0;
+        this.burnedDamageProgress    = 0.0;
         this.activeEffects           = new ArrayList<>();
         this.inBlackFlashState       = false;
         this.consecutiveBfsHits   = 0;
@@ -728,7 +730,9 @@ public class BattleCombatant {
 
     public boolean addStatusEffect(StatusEffect effect) {
         if (effect == null || rejectsStatus(effect)) return false;
-        if (effect.getType().refreshesOnReapply()) removeStatusEffects(effect.getType());
+        if (effect.getType().refreshesOnReapply()) {
+            removeStatusForRefresh(effect.getType());
+        }
         activeEffects.add(effect);
         clampPoolsToMaximums();
         return true;
@@ -744,7 +748,9 @@ public class BattleCombatant {
                 && ticks == 0 && affectsNextPlanning(effect.getType());
             if (appliedAtRoundEnd || waitsForNextPlanning) rounds++;
         }
-        if (effect.getType().refreshesOnReapply()) removeStatusEffects(effect.getType());
+        if (effect.getType().refreshesOnReapply()) {
+            removeStatusForRefresh(effect.getType());
+        }
         activeEffects.add(new StatusEffect(
             effect.getType(), rounds, ticks, effect.getMagnitude(),
             effect.getPerTickRemovalChance()));
@@ -786,7 +792,8 @@ public class BattleCombatant {
         return type.baseStat() == com.jjktbf.model.character.StatKey.SPEED
             || type.baseStat() == com.jjktbf.model.character.StatKey.COMBAT_ABILITY
             || type.baseStat() == com.jjktbf.model.character.StatKey.CURSED_ENERGY_EFFICIENCY
-            || type.battleStat() == BattleStatKey.MAX_AP;
+            || type.battleStat() == BattleStatKey.MAX_AP
+            || type == StatusEffectType.FATIGUED;
     }
 
     public boolean hasEffect(StatusEffectType type) {
@@ -831,6 +838,7 @@ public class BattleCombatant {
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
+        resetBurnedDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -851,6 +859,7 @@ public class BattleCombatant {
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
+        resetBurnedDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -872,21 +881,46 @@ public class BattleCombatant {
 
     public void removeEffect(StatusEffectType type) {
         activeEffects.removeIf(e -> e.getType() == type);
+        resetBurnedDamageProgressIfCured();
         clampPoolsToMaximums();
     }
 
     public int removeStatusEffects(StatusEffectType type) {
         int before = activeEffects.size();
         activeEffects.removeIf(effect -> effect.getType() == type);
+        resetBurnedDamageProgressIfCured();
         clampPoolsToMaximums();
         return before - activeEffects.size();
+    }
+
+    private void removeStatusForRefresh(StatusEffectType type) {
+        activeEffects.removeIf(effect -> effect.getType() == type);
     }
 
     public int clearStatusEffects() {
         int removed = activeEffects.size();
         activeEffects.clear();
+        resetBurnedDamageProgressIfCured();
         clampPoolsToMaximums();
         return removed;
+    }
+
+    /** Accrue Burned's fractional max-HP damage and return newly payable whole damage. */
+    public int accrueBurnedDamageForTick(double maxHpFraction) {
+        if (!hasEffect(StatusEffectType.BURNED)
+            || !Double.isFinite(maxHpFraction) || maxHpFraction <= 0.0) {
+            resetBurnedDamageProgressIfCured();
+            return 0;
+        }
+        burnedDamageProgress += getMaxHp() * maxHpFraction;
+        int due = (int) Math.min(Integer.MAX_VALUE,
+            Math.floor(burnedDamageProgress + 1.0e-9));
+        burnedDamageProgress -= due;
+        return due;
+    }
+
+    private void resetBurnedDamageProgressIfCured() {
+        if (!hasEffect(StatusEffectType.BURNED)) burnedDamageProgress = 0.0;
     }
 
     // -------------------------------------------------------------------------
@@ -1031,8 +1065,31 @@ public class BattleCombatant {
             .toList();
     }
 
+    /** A temporary Never Miss claim reserved for one complete attack execution. */
+    public record AccuracyClaim(int tier, boolean guaranteesNormalAccuracy) {
+        private static final AccuracyClaim NONE = new AccuracyClaim(0, false);
+    }
+
+    public AccuracyClaim consumeNeverMiss(Move move) {
+        RuntimeAbilityEffect selected = runtimeAbilityEffects.stream()
+            .filter(effect -> AbilityEffectType.APPLY_NEVER_MISS.name()
+                .equalsIgnoreCase(effect.effect.type))
+            .filter(effect -> effect.remainingUses != 0)
+            .filter(effect -> matchesMoveScope(effect.effect, move))
+            .max(java.util.Comparator.comparingInt(effect ->
+                effect.effect.intValue == null ? 0 : effect.effect.intValue))
+            .orElse(null);
+        if (selected == null) return AccuracyClaim.NONE;
+        int tier = selected.effect.intValue == null ? 0 : selected.effect.intValue;
+        if (AbilityEffectType.accuracyDuration(selected.effect)
+            == AbilityEffectType.AccuracyDuration.NEXT_ATTACK) {
+            consume(selected);
+        }
+        return new AccuracyClaim(tier, true);
+    }
+
     public int consumeNeverMissTier() {
-        return consumeAccuracyTier(AbilityEffectType.APPLY_NEVER_MISS);
+        return consumeNeverMiss(null).tier();
     }
 
     public int consumeNeverHitTier() {
@@ -1090,7 +1147,11 @@ public class BattleCombatant {
             .filter(effect -> effect.getType().battleStat() == key)
             .mapToDouble(effect -> effect.getType().signedMagnitude(effect.getMagnitude()))
             .sum();
-        double multiplier = 1.0;
+        double multiplier = activeEffects.stream()
+            .filter(effect -> effect.getType().isStatMultiplier())
+            .filter(effect -> effect.getType().battleStat() == key)
+            .mapToDouble(effect -> effect.getType().statMultiplier())
+            .reduce(1.0, (left, right) -> left * right);
         double percent = 0.0;
         double oddsMultiplier = 1.0;
         for (AbilityEffectData effect : getAbilityFlags().passiveBattleStatEffects) {
@@ -1160,6 +1221,20 @@ public class BattleCombatant {
         return isCoveredByCursedTool(move) ? 0 : cost;
     }
 
+    /** AP ticks added to every move by current action-timing statuses. */
+    public int getActionTickDelay() {
+        return hasEffect(StatusEffectType.FATIGUED) ? 2 : 0;
+    }
+
+    public int getEffectiveMoveApCost(Move move) {
+        return Math.addExact(Objects.requireNonNull(move, "move").getApCost(), getActionTickDelay());
+    }
+
+    public int getEffectiveMoveUnleashPoint(Move move) {
+        return Math.addExact(
+            Objects.requireNonNull(move, "move").getUnleashPoint(), getActionTickDelay());
+    }
+
     private boolean isCoveredByCursedTool(com.jjktbf.model.move.Move move) {
         if (character == null) return false;
         return character.getEquipment().coversWeaponTags(move.weaponTags());
@@ -1222,6 +1297,11 @@ public class BattleCombatant {
             consume(selected);
         }
         return tier;
+    }
+
+    private static boolean matchesMoveScope(AbilityEffectData effect, Move move) {
+        return effect.moveTag == null || effect.moveTag.isBlank()
+            || move != null && move.hasTag(effect.moveTag);
     }
 
     private RuntimeAbilityEffect firstUsable(AbilityEffectType type) {
@@ -1492,7 +1572,7 @@ public class BattleCombatant {
         Map<com.jjktbf.model.character.StatKey, Double> statusAmounts =
             new java.util.EnumMap<>(com.jjktbf.model.character.StatKey.class);
         for (StatusEffect effect : activeEffects) {
-            if (effect.getType().isStatMultiplier()) {
+            if (effect.getType().isStatMultiplier() && effect.getType().baseStat() != null) {
                 AbilityEffectData multiplier = new AbilityEffectData();
                 multiplier.type = AbilityEffectType.STAT_MULTIPLY.name();
                 multiplier.stat = effect.getType().baseStat().fieldName;

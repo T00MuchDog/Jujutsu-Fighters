@@ -34,7 +34,9 @@ public class ActionSegment {
 
     private final Move   move;
     private final int    startTick;
-    private final int    fireTick;       // absolute tick: startTick + unleashPoint - 1
+    private final int    apCost;
+    private final int    unleashPoint;
+    private final int    fireTick;       // absolute tick: startTick + effective unleashPoint - 1
     private boolean      stunned;        // set true when interrupted or hit by a stun effect
     private boolean      fired;          // set true once the resolver actually executes this move
     private boolean      transferred;    // set true when a defensive segment's protection has been conferred onto another combatant's timeline (ally targeting)
@@ -108,9 +110,27 @@ public class ActionSegment {
         List<CombatantId> targets,
         boolean planned
     ) {
+        this(move, startTick, actualCeCost, targets, planned,
+            move.getApCost(), move.getUnleashPoint());
+    }
+
+    ActionSegment(
+        Move move,
+        int startTick,
+        int actualCeCost,
+        List<CombatantId> targets,
+        boolean planned,
+        int apCost,
+        int unleashPoint
+    ) {
+        if (apCost < 1 || unleashPoint < 1 || unleashPoint > apCost) {
+            throw new IllegalArgumentException("Invalid effective action timing");
+        }
         this.move          = move;
         this.startTick     = startTick;
-        this.fireTick      = startTick + move.getUnleashPoint() - 1;
+        this.apCost        = apCost;
+        this.unleashPoint = unleashPoint;
+        this.fireTick      = Math.addExact(startTick, unleashPoint - 1);
         this.actualCeCost  = actualCeCost;
         setTargets(targets);
         this.stunned       = false;
@@ -121,7 +141,9 @@ public class ActionSegment {
 
     public Move    getMove()          { return move; }
     public int     getStartTick()     { return startTick; }
-    public int     getEndTick()       { return startTick + move.getApCost() - 1; }
+    public int     getApCost()        { return apCost; }
+    public int     getUnleashPoint()  { return unleashPoint; }
+    public int     getEndTick()       { return startTick + apCost - 1; }
     public int     getFireTick()      { return fireTick; }
     public int     getComponentImpactTick(int componentIndex) {
         return fireTick + move.getHitComponents().get(componentIndex).getDelayTicks();
@@ -130,7 +152,7 @@ public class ActionSegment {
     public int     getResolutionEndTick() { return Math.max(getEndTick(), getFinalImpactTick()); }
     public int     getActualCeCost()  { return actualCeCost; }
     public boolean isStunned()        { return stunned; }
-    public boolean isInstant()        { return move.getUnleashPoint() == 1; }
+    public boolean isInstant()        { return unleashPoint == 1; }
 
     /** Ordered, distinct combatant instance ids explicitly selected for this move. */
     public List<CombatantId> getTargets() { return targets; }
@@ -195,7 +217,8 @@ public class ActionSegment {
      * window and defense parameters.
      */
     public ActionSegment cloneFired() {
-        ActionSegment copy = new ActionSegment(move, startTick, actualCeCost);
+        ActionSegment copy = new ActionSegment(
+            move, startTick, actualCeCost, List.of(), false, apCost, unleashPoint);
         copy.fired = true;
         return copy;
     }
@@ -211,8 +234,9 @@ public class ActionSegment {
         // Anchor so fireTick == tick; clamping to tick 1 only shifts the
         // window start slightly earlier in the extreme early-tick edge case,
         // which is harmless for a defence that is already fired.
-        int start = Math.max(1, tick - move.getUnleashPoint() + 1);
-        ActionSegment copy = new ActionSegment(move, start, actualCeCost);
+        int start = Math.max(1, tick - unleashPoint + 1);
+        ActionSegment copy = new ActionSegment(
+            move, start, actualCeCost, List.of(), false, apCost, unleashPoint);
         copy.fired = true;
         copy.reactionTriggered = true;
         return copy;

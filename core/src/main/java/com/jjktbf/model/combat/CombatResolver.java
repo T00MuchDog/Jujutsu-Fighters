@@ -40,6 +40,8 @@ import java.util.*;
  */
 public class CombatResolver {
 
+    private static final double BURNED_MAX_HP_DAMAGE_PER_TICK = 0.0003;
+
     private final RandomSource rng;
     private final AbilityActivationEngine abilityActivations;
     /**
@@ -298,6 +300,8 @@ public class CombatResolver {
                 if (finishBattleIfNeeded(state, events, tick)) return events;
             }
 
+            processBurnedStatuses(state, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return events;
             processRestrainedStatuses(state, tick, events);
             processPerTickStatusRemoval(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
@@ -309,7 +313,9 @@ public class CombatResolver {
 
         // STAGGER is a character status, not a move tag. It acts before any
         // segment can begin or fire on this AP tick.
-            for (BattleCombatant combatant : combatants) applyActiveStaggers(combatant, tick, events);
+            for (BattleCombatant combatant : combatants) {
+                applyActiveControlStatuses(combatant, tick, events);
+            }
 
         // --- CE drain when a segment starts ---
             for (BattleCombatant combatant : combatants) {
@@ -322,7 +328,9 @@ public class CombatResolver {
         // was subsequently stunned.
             resolvePendingComponentsAtTick(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
-            for (BattleCombatant combatant : combatants) applyActiveStaggers(combatant, tick, events);
+            for (BattleCombatant combatant : combatants) {
+                applyActiveControlStatuses(combatant, tick, events);
+            }
 
         // --- Collect all moves firing this tick across every active combatant ---
             List<FiringEntry> firing = collectFiringMoves(state, tick);
@@ -335,7 +343,7 @@ public class CombatResolver {
             // A stagger applied by an earlier same-tick move takes effect before
             // the next queued move gets a chance to resolve.
                 for (BattleCombatant combatant : state.activeCombatants()) {
-                    applyActiveStaggers(combatant, tick, events);
+                    applyActiveControlStatuses(combatant, tick, events);
                 }
                 if (finishBattleIfNeeded(state, events, tick)) return events;
                 if (stopSleepingAction(entry, tick, events)) continue;
@@ -344,7 +352,7 @@ public class CombatResolver {
             // This also handles a stagger that lands while the target is charging
             // and has no separate move firing later on the same tick.
                 for (BattleCombatant combatant : state.activeCombatants()) {
-                    applyActiveStaggers(combatant, tick, events);
+                    applyActiveControlStatuses(combatant, tick, events);
                 }
                 if (finishBattleIfNeeded(state, events, tick)) return events;
             }
@@ -377,6 +385,36 @@ public class CombatResolver {
                 .build());
             events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
                 AbilityTrigger.Type.CE_RESTORED, fighter, null, restored, tick)));
+        }
+    }
+
+    /** Apply Burned's exact fractional max-HP damage before actions on this tick. */
+    private void processBurnedStatuses(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (BattleCombatant combatant : state.activeCombatants()) {
+            int requested = combatant.accrueBurnedDamageForTick(
+                BURNED_MAX_HP_DAMAGE_PER_TICK);
+            if (requested <= 0) continue;
+            int applied = combatant.receiveDamage(requested,
+                fatalAmount -> abilityActivations.preventFatalDamage(
+                    state, AbilityTrigger.fatalDamage(
+                        combatant, combatant, null, null, fatalAmount, tick)));
+            events.addAll(combatant.getCodedAbilities().drainPendingEvents(tick));
+            events.add(CombatEvent.of(applied == 0
+                    ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
+                .source(combatant).target(combatant).intValue(applied).tick(tick)
+                .message(applied == 0
+                    ? combatant.getCharacter().getName() + " resisted Burned damage!"
+                    : combatant.getCharacter().getName() + " took damage from Burned!")
+                .build());
+            if (applied > 0) {
+                events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                    AbilityTrigger.Type.DAMAGE, combatant, combatant, applied, tick)));
+                wakeFromSleep(state, combatant, combatant, null, -1, tick, events);
+            }
         }
     }
 
@@ -551,7 +589,9 @@ public class CombatResolver {
         for (BattleCombatant combatant : state.activeCombatants()) {
             Map<StatusEffectType, Double> removalChances = new LinkedHashMap<>();
             for (StatusEffect effect : combatant.getActiveEffects()) {
-                double chance = effect.getPerTickRemovalChance();
+                double chance = effect.getType() == StatusEffectType.FROZEN
+                    ? StatusEffectType.FROZEN.defaultPerTickRemovalChance()
+                    : effect.getPerTickRemovalChance();
                 if (chance > 0.0) {
                     removalChances.merge(effect.getType(), chance, Math::max);
                 }
@@ -716,7 +756,7 @@ public class CombatResolver {
          * Keyed by combatant instance id.
          */
         private final Map<CombatantId, boolean[]> connectedByTarget;
-        private final int temporaryNeverMissTier;
+        private final BattleCombatant.AccuracyClaim temporaryAccuracy;
         private final Map<CombatantId, Integer> temporaryNeverHitTierByTarget;
         private int pendingRecoilDamage;
         private HitComponent recoilComponent;
@@ -734,7 +774,11 @@ public class CombatResolver {
         }
 
         private int temporaryNeverMissTier() {
-            return temporaryNeverMissTier;
+            return temporaryAccuracy.tier();
+        }
+
+        private boolean temporaryGuaranteesNormalAccuracy() {
+            return temporaryAccuracy.guaranteesNormalAccuracy();
         }
 
         private int temporaryNeverHitTier(BattleCombatant defender) {
@@ -753,7 +797,7 @@ public class CombatResolver {
             this.launchTick = launchTick;
             this.launchSequence = launchSequence;
             this.targets = List.copyOf(targets);
-            this.temporaryNeverMissTier = entry.attacker.consumeNeverMissTier();
+            this.temporaryAccuracy = entry.attacker.consumeNeverMiss(entry.segment.getMove());
             this.temporaryNeverHitTierByTarget = new LinkedHashMap<>();
             this.connectedByTarget = new LinkedHashMap<>();
             for (BattleCombatant target : targets) {
@@ -901,7 +945,7 @@ public class CombatResolver {
                 resolveReactionMove(
                     reactionMove, target, entry.attacker, state, tick, events);
                 for (BattleCombatant c : state.activeCombatants()) {
-                    applyActiveStaggers(c, tick, events);
+                    applyActiveControlStatuses(c, tick, events);
                 }
                 if (finishBattleIfNeeded(state, events, tick)
                     || !entry.attacker.isActive() || entry.segment.isStunned()) {
@@ -1218,6 +1262,8 @@ public class CombatResolver {
             .message(attacker.getCharacter().getName() + (reaction ? " reacted with " : " used ")
                 + move.getName() + "!")
             .build());
+        thawFrozenUserWithFireMove(state, attacker, move, tick, events);
+        if (finishBattleIfNeeded(state, events, tick)) return;
         // MOVE_FIRED fires once, regardless of how many targets the move hits.
         events.addAll(abilityActivations.process(state, AbilityTrigger.move(
             AbilityTrigger.Type.MOVE_USED, attacker, targets.primary(), move, tick)));
@@ -1549,7 +1595,9 @@ public class CombatResolver {
             reconcileLifecycle(state, tick, events);
             // Do NOT finish-battle mid-batch: resolve every pending target in
             // this batch first so a simultaneous friendly-fire wipe can draw.
-            for (BattleCombatant c : state.activeCombatants()) applyActiveStaggers(c, tick, events);
+            for (BattleCombatant c : state.activeCombatants()) {
+                applyActiveControlStatuses(c, tick, events);
+            }
         }
         // Cursed Speech rolls independently per target, then applies one summed
         // recoil hit only after every selected target in this impact batch resolves.
@@ -1610,6 +1658,7 @@ public class CombatResolver {
             true,
             trigger -> abilityActivations.onAttackConnected(state, trigger),
             execution.temporaryNeverMissTier(),
+            execution.temporaryGuaranteesNormalAccuracy(),
             execution.temporaryNeverHitTier(defender));
         events.addAll(result.getCodedEvents());
         execution.addRecoil(result.getRecoilDamage(), component, defender);
@@ -1687,6 +1736,8 @@ public class CombatResolver {
                 componentIndex, tick, events, execution);
             events.addAll(abilityActivations.process(state, AbilityTrigger.move(
                 AbilityTrigger.Type.MOVE_BLOCKED, attacker, defender, move, tick)));
+            resolveElementalHit(
+                state, attacker, defender, move, component, componentIndex, tick, events);
             return true;
         }
 
@@ -1733,6 +1784,9 @@ public class CombatResolver {
                 AbilityTrigger.Type.DAMAGE, attacker, defender, appliedDamage, tick)));
             wakeFromSleep(state, attacker, defender, move, componentIndex, tick, events);
         }
+
+        resolveElementalHit(
+            state, attacker, defender, move, component, componentIndex, tick, events);
 
         if (result.isBlackFlash()) {
             int requestedCe = (int) Math.round(
@@ -1863,6 +1917,134 @@ public class CombatResolver {
         if (combatant.hasEffect(StatusEffectType.STAGGER)) {
             resolveStaggerStatus(combatant, tick, events);
         }
+    }
+
+    private void applyActiveControlStatuses(
+        BattleCombatant combatant,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        applyActiveStaggers(combatant, tick, events);
+        if (!combatant.hasEffect(StatusEffectType.FROZEN)) return;
+        Timeline timeline = combatant.getTimeline();
+        if (timeline == null) return;
+        boolean stopped = false;
+        for (ActionSegment segment : timeline.getSegments()) {
+            if (segment.isStunned() || segment.hasFired()
+                || segment.getMove().hasTag(MoveTag.FIRE.name())) {
+                continue;
+            }
+            boolean active = tick >= segment.getStartTick() && tick <= segment.getEndTick();
+            if (active || segment.getFireTick() == tick) {
+                segment.stun();
+                stopped = true;
+            }
+        }
+        if (stopped) {
+            events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                .source(combatant).target(combatant).tick(tick)
+                .message(combatant.getCharacter().getName()
+                    + " was Frozen and could not move.")
+                .build());
+        }
+    }
+
+    private void thawFrozenUserWithFireMove(
+        BattleState state,
+        BattleCombatant user,
+        Move move,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (user == null || move == null || !move.hasTag(MoveTag.FIRE.name())
+            || user.removeStatusEffects(StatusEffectType.FROZEN) == 0) {
+            return;
+        }
+        events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+            .source(user).target(user).move(move).tick(tick)
+            .message(user.getCharacter().getName() + " thawed by using " + move.getName() + "!")
+            .build());
+        events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+            AbilityTrigger.Type.STATUS_REMOVED, user, StatusEffectType.FROZEN, tick)));
+    }
+
+    private void resolveElementalHit(
+        BattleState state,
+        BattleCombatant attacker,
+        BattleCombatant defender,
+        Move move,
+        HitComponent component,
+        int componentIndex,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (component.hasTag(MoveTag.FIRE)) {
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.FROZEN,
+                defender.getCharacter().getName() + " thawed after being hit by fire!",
+                events);
+        }
+
+        if (component.hasTag(MoveTag.ICE)) {
+            if (defender.hasEffect(StatusEffectType.BURNED) && rng.nextDouble() < 0.50) {
+                removeElementalStatus(
+                    state, attacker, defender, move, componentIndex, tick,
+                    StatusEffectType.BURNED,
+                    defender.getCharacter().getName() + "'s Burned status was cured by ice!",
+                    events);
+            }
+            boolean freezes = defender.hasEffect(StatusEffectType.WET)
+                || rng.nextDouble() < 0.05;
+            if (freezes && !defender.hasEffect(StatusEffectType.FROZEN)) {
+                StatusEffect frozen = new StatusEffect(
+                    StatusEffectType.FROZEN, -1, 0, 0.0);
+                if (defender.addStatusEffect(frozen, state.getCurrentPhase())) {
+                    events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
+                        .source(attacker).target(defender).move(move)
+                        .componentIndex(componentIndex).tick(tick)
+                        .message(StatusEffectMessages.applicationMessage(
+                            attacker.getCharacter().getName(),
+                            defender.getCharacter().getName(),
+                            StatusEffectType.FROZEN,
+                            attacker == defender))
+                        .build());
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+                        AbilityTrigger.Type.STATUS_APPLIED,
+                        defender, StatusEffectType.FROZEN, tick)));
+                }
+            }
+        }
+
+        if (component.hasTag(MoveTag.ELECTRIC) && rng.nextDouble() < 0.10
+            && defender.stunCurrentAction(tick)) {
+            events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                .source(attacker).target(defender).move(move)
+                .componentIndex(componentIndex).tick(tick)
+                .message(attacker.getCharacter().getName() + "'s " + move.getName()
+                    + " electrically stunned " + defender.getCharacter().getName()
+                    + ", who could not move.")
+                .build());
+        }
+    }
+
+    private void removeElementalStatus(
+        BattleState state,
+        BattleCombatant source,
+        BattleCombatant target,
+        Move move,
+        int componentIndex,
+        int tick,
+        StatusEffectType type,
+        String message,
+        List<CombatEvent> events
+    ) {
+        if (target.removeStatusEffects(type) == 0) return;
+        events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+            .source(source).target(target).move(move).componentIndex(componentIndex)
+            .tick(tick).message(message).build());
+        events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+            AbilityTrigger.Type.STATUS_REMOVED, target, type, tick)));
     }
 
     /** Stun active, not-yet-fired segments and report whether any were changed. */

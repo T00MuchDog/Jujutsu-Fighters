@@ -6648,7 +6648,7 @@
 }, {
   "id" : "000103",
   "name" : "Blood-Guided Arrow",
-  "description" : "Spend 1 BLOOD SUPPLY to mark an arrow with Blood Manipulation, producing an 100% accurate shot.",
+  "description" : "Spend 1 BLOOD SUPPLY to guide your arrows with Blood Manipulation. For 2 ROUNDS, your BOW attacks skip normal ACCURACY checks but can still be DODGED.",
   "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "ATTACK", "CURSED_ENERGY", "UTILITY", "BOW" ],
   "basePower" : 70,
   "hitComponents" : [ {
@@ -6693,6 +6693,16 @@
     "sourceResourceAmount" : 1,
     "targetResourceAmount" : 0,
     "trigger" : "ON_START"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "APPLY_NEVER_MISS",
+    "intValue" : 0,
+    "accuracyDuration" : "DURATION",
+    "moveTag" : "BOW",
+    "target" : "SELF",
+    "durationRounds" : 2,
+    "durationTicks" : 0,
+    "trigger" : "ON_FIRE"
   } ],
   "prerequisites" : {
     "cursedTechniqueMastery" : 0,

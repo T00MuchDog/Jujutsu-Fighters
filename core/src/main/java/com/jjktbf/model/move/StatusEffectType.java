@@ -66,6 +66,18 @@ public enum StatusEffectType {
     /** Halves Speed and rolls Strength-based escape plus a separate action stun each tick. */
     RESTRAINED("Restrained", StatKey.SPEED, 0.5),
 
+    /** Reduces Speed by 20% and enables elemental reactions from electric and ice hits. */
+    WET("Wet", StatKey.SPEED, 0.8),
+
+    /** Halves Defense and prevents non-fire actions, with a 10% breakout roll each tick. */
+    FROZEN("Frozen", BattleStatKey.DEFENSE, 0.5, 0.10),
+
+    /** Halves outgoing melee damage and deals 0.03% max-HP damage each active tick. */
+    BURNED("Burned", 0),
+
+    /** Adds two AP ticks to both the cost and firing point of every planned move. */
+    FATIGUED("Fatigued", 0),
+
     /** Round-duration poison template. Magnitude is flat damage per round. */
     POISON("Poison", 1);
 
@@ -94,6 +106,16 @@ public enum StatusEffectType {
 
     StatusEffectType(String displayName, StatKey baseStat, double statMultiplier) {
         this(displayName, baseStat, null, 0, 0.0, statMultiplier);
+    }
+
+    StatusEffectType(
+        String displayName,
+        BattleStatKey battleStat,
+        double statMultiplier,
+        double defaultPerTickRemovalChance
+    ) {
+        this(displayName, null, battleStat, 0,
+            defaultPerTickRemovalChance, statMultiplier);
     }
 
     StatusEffectType(
@@ -129,9 +151,9 @@ public enum StatusEffectType {
         return statMultiplier == null && (baseStat != null || battleStat != null);
     }
 
-    /** True when the status multiplies a base stat instead of adding a magnitude. */
+    /** True when the status multiplies a base or derived battle stat. */
     public boolean isStatMultiplier() {
-        return statMultiplier != null && baseStat != null;
+        return statMultiplier != null && (baseStat != null || battleStat != null);
     }
 
     public double statMultiplier() {
@@ -164,7 +186,8 @@ public enum StatusEffectType {
 
     /** Whether applying this status again replaces its existing instance. */
     public boolean refreshesOnReapply() {
-        return this == RESTRAINED;
+        return this == RESTRAINED || this == WET || this == FROZEN
+            || this == BURNED || this == FATIGUED;
     }
 
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */

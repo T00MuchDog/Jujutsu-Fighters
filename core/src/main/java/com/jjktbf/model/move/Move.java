@@ -672,7 +672,9 @@ public class Move {
         }
         try {
             MoveTag tag = MoveTag.valueOf(normalized);
-            return tags.contains(tag) || category.getTags().contains(tag);
+            return tags.contains(tag) || category.getTags().contains(tag)
+                || MoveTag.HIT_ONLY_TAGS.contains(tag)
+                    && hitComponents.stream().anyMatch(component -> component.hasTag(tag));
         } catch (IllegalArgumentException e) {
             return false;
         }

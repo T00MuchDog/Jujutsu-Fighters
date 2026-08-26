@@ -1636,7 +1636,8 @@ public class EffectListEditor extends Table {
 
     private static String integerLabel(AbilityEffectType type, AbilityEffectData effect) {
         return switch (type) {
-            case NEVER_MISS, NEVER_HIT, APPLY_NEVER_MISS, APPLY_NEVER_HIT -> "Tier (1-5)";
+            case NEVER_MISS, NEVER_HIT, APPLY_NEVER_HIT -> "Tier (1-5)";
+            case APPLY_NEVER_MISS -> "Tier (0 keeps normal dodges; 1-5 priority)";
             case STAT_ADD -> "Amount (+/-)";
             case STAT_SET_VALUE -> "Exact value";
             case STAT_ALLOCATION_MINIMUM -> "Minimum allocation";

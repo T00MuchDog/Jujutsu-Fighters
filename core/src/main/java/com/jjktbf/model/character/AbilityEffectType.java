@@ -280,8 +280,8 @@ public enum AbilityEffectType {
         TARGET, USES, DURATION),
     APPLY_NEVER_MISS(
         "Apply Never Miss tier",
-        "Applies a Never Miss tier to the target's next attack or for a configured duration.",
-        TARGET, INTEGER, ACCURACY_DURATION, DURATION),
+        "Applies Never Miss to matching attacks for the next attack or a configured duration. Tier 0 skips only the normal accuracy roll; tiers 1-5 also contest Never Hit and dodges.",
+        TARGET, MOVE_SCOPE, INTEGER, ACCURACY_DURATION, DURATION),
     APPLY_NEVER_HIT(
         "Apply Never Hit tier",
         "Applies a Never Hit tier against the next incoming attack or for a configured duration.",
@@ -1075,9 +1075,11 @@ public enum AbilityEffectType {
                 || effect.intValue > CombatStats.MAX_ART_SLOTS
                 ? "Jujutsu Art slots must be between 0 and "
                     + CombatStats.MAX_ART_SLOTS + "." : null;
-            case NEVER_MISS, NEVER_HIT, APPLY_NEVER_MISS, APPLY_NEVER_HIT ->
+            case NEVER_MISS, NEVER_HIT, APPLY_NEVER_HIT ->
                 effect.intValue < 1 || effect.intValue > 5
                 ? "Accuracy priority tier must be between 1 and 5." : null;
+            case APPLY_NEVER_MISS -> effect.intValue < 0 || effect.intValue > 5
+                ? "Never Miss tier must be between 0 and 5." : null;
             case HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE ->
                 amountValidationError(effect);
             case DAMAGE_SHIELD -> effect.intValue <= 0

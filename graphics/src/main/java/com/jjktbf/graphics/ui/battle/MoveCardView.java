@@ -39,6 +39,8 @@ public class MoveCardView {
     private boolean disabled;
     private boolean hovered;
     private boolean dragging;
+    private int displayedApCost;
+    private int displayedUnleashPoint;
     private KeywordTextLayout descriptionLayout;
     private float descriptionX;
     private float descriptionTop;
@@ -102,6 +104,8 @@ public class MoveCardView {
         this.minimumTextScale = Math.max(0.1f, Math.min(1f, minimumTextScale));
         this.strictTextFloor = strictTextFloor;
         this.displayDescription = move == null ? "" : move.getDescription();
+        this.displayedApCost = move == null ? 0 : move.getApCost();
+        this.displayedUnleashPoint = move == null ? 0 : move.getUnleashPoint();
     }
 
     public Move getMove()                    { return move; }
@@ -110,6 +114,10 @@ public class MoveCardView {
     public void setDisabled(boolean value)   { disabled = value; }
     public void setHovered(boolean value)    { hovered = value; }
     public void setDragging(boolean value)   { dragging = value; }
+    public void setDisplayedTiming(int apCost, int unleashPoint) {
+        displayedApCost = apCost;
+        displayedUnleashPoint = unleashPoint;
+    }
     public String getDisplayDescription()    { return displayDescription; }
     public void setDisplayDescription(String value) {
         displayDescription = value == null ? "" : value;
@@ -323,7 +331,7 @@ public class MoveCardView {
             KeywordTextLayout.KEYWORD_ORANGE);
         float extraActionBarHeight = drawActionPointDots(batch, ui,
             x + scaled(20f), y + scaled(8f), w - scaled(40f),
-            move.getApCost(), move.getUnleashPoint(), scaled(6f), scaled(4f), geometryScale);
+            displayedApCost, displayedUnleashPoint, scaled(6f), scaled(4f), geometryScale);
 
         statFont.setColor(ink);
         drawStatColumn(batch, statFont, textX, y + scaled(55f) + extraActionBarHeight,

@@ -18,6 +18,8 @@ import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveTag;
+import com.jjktbf.model.move.StatusEffectType;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -321,7 +323,8 @@ final class SmartAIScoring {
             int damage = (int) Math.round(
                 (attackValue / defense) * DAMAGE_SCALE * DAMAGE_ROLL_MIN
                     * attacker.getAbilityFlags().damageMultiplierFor(move)
-                    * target.getAbilityFlags().incomingDamageMultiplierFor(move));
+                    * target.getAbilityFlags().incomingDamageMultiplierFor(move)
+                    * elementalStatusDamageMultiplier(component, attacker, target));
             damage = attackValue <= 0.0 ? 0 : Math.max(1, damage);
             damage = Math.max(0, (int) Math.round(
                 attacker.modifyBattleStat(BattleStatKey.DAMAGE_DEALT, damage)));
@@ -330,6 +333,23 @@ final class SmartAIScoring {
             total = Math.min(Integer.MAX_VALUE, total + damage);
         }
         return (int) total;
+    }
+
+    private static double elementalStatusDamageMultiplier(
+        HitComponent component,
+        BattleCombatant attacker,
+        BattleCombatant target
+    ) {
+        double multiplier = 1.0;
+        if (component.hasTag(MoveTag.ELECTRIC)
+            && target.hasEffect(StatusEffectType.WET)) {
+            multiplier *= 2.0;
+        }
+        if (component.hasTag(MoveTag.MELEE)
+            && attacker.hasEffect(StatusEffectType.BURNED)) {
+            multiplier *= 0.5;
+        }
+        return multiplier;
     }
 
     /**
@@ -372,9 +392,9 @@ final class SmartAIScoring {
     }
 
     private static boolean fitsAsOpening(BattlePlan plan, Move move, int ceCost) {
-        if (move.getApCost() > plan.apBudget() || ceCost > plan.ceBudget()) return false;
-        Timeline board = new Timeline(plan.gridLength());
-        return board.placeAt(move, 1, ceCost) != null;
+        if (plan.effectiveApCost(move) > plan.apBudget() || ceCost > plan.ceBudget()) return false;
+        return plan.gridLength() >= plan.effectiveUnleashPoint(move)
+            + move.getMaxHitDelayTicks();
     }
 
     private static BattlePlan rebuildWithOpening(
@@ -386,7 +406,8 @@ final class SmartAIScoring {
             .thenComparingInt(ActionSegment::getStartTick));
 
         BattlePlan rebuilt = new BattlePlan(
-            original.apBudget(), original.ceBudget(), original.gridLength());
+            original.apBudget(), original.ceBudget(), original.gridLength(),
+            original.actionTickDelay());
         ActionSegment first = rebuilt.placeWithTargets(
             opening.move(), 1, opening.ceCost(), openingTargets(opening.move(), target, enemies, rng));
         if (first == null) return original;
@@ -401,7 +422,7 @@ final class SmartAIScoring {
             }
             Move move = segment.getMove();
             int earliestStart = Math.max(1,
-                first.getFireTick() - move.getUnleashPoint() + 2);
+                first.getFireTick() - rebuilt.effectiveUnleashPoint(move) + 2);
             ActionSegment retained = placeAtOrAfter(
                 rebuilt, move, segment.getActualCeCost(),
                 Math.max(segment.getStartTick(), earliestStart));
@@ -462,7 +483,7 @@ final class SmartAIScoring {
     static ActionSegment placeAtOrAfter(BattlePlan plan, Move move, int ceCost, int nearTick) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
         int grid = board.getGridLength();
-        int need = move.getApCost();
+        int need = plan.effectiveApCost(move);
         for (int start = Math.max(1, nearTick); start + need - 1 <= grid; start++) {
             if (board.isRangeFree(start, start + need - 1)) {
                 return plan.place(move, start, ceCost);
@@ -479,7 +500,7 @@ final class SmartAIScoring {
         BattlePlan plan, Move move, int ceCost, int gridLength, RandomSource rng
     ) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
-        int need = move.getApCost();
+        int need = plan.effectiveApCost(move);
         if (need > gridLength) return null;
         for (int attempt = 0; attempt < RANDOM_PLACE_TRIES; attempt++) {
             int start = 1 + rng.nextInt(gridLength - need + 1);
@@ -496,7 +517,7 @@ final class SmartAIScoring {
      */
     static ActionSegment placeBunchedAtEnd(BattlePlan plan, Move move, int ceCost, int gridLength) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
-        int need = move.getApCost();
+        int need = plan.effectiveApCost(move);
         for (int start = gridLength - need + 1; start >= 1; start--) {
             if (board.isRangeFree(start, start + need - 1)) {
                 return plan.place(move, start, ceCost);
@@ -520,7 +541,8 @@ final class SmartAIScoring {
             && ai.getRuntimeStat(StatKey.SPEED) < opponent.getRuntimeStat(StatKey.SPEED)) {
             return null;
         }
-        int start = Math.max(1, threatFireTick - defense.getUnleashPoint() + 1);
+        int start = Math.max(
+            1, threatFireTick - plan.effectiveUnleashPoint(defense) + 1);
         return plan.place(defense, start, ceCost);
     }
 }

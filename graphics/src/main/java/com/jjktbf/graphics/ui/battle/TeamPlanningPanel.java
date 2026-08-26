@@ -171,7 +171,9 @@ public final class TeamPlanningPanel {
             Move move = moves.get(segment.moveId());
             if (move != null) {
                 panel.restorePlacement(
-                    move, segment.startTick(), segment.ceCost(), TargetListSupport.targetIds(segment));
+                    move, segment.startTick(), segment.ceCost(),
+                    TargetListSupport.targetIds(segment), segment.apCost(),
+                    segment.fireTick() - segment.startTick() + 1);
             }
         }
     }

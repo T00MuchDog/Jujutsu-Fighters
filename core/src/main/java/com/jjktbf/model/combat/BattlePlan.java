@@ -45,6 +45,7 @@ public class BattlePlan {
 
     private final int apBudget;
     private final int ceBudget;
+    private final int actionTickDelay;
 
     private int apUsed = 0;
     private int ceUsed = 0;
@@ -65,10 +66,26 @@ public class BattlePlan {
      * {@code Timeline.gridLengthForStrongestAp(max(player, enemy) AP)}.
      */
     public BattlePlan(int apBudget, int ceBudget, int gridLength) {
+        this(apBudget, ceBudget, gridLength, 0);
+    }
+
+    public BattlePlan(int apBudget, int ceBudget, int gridLength, int actionTickDelay) {
+        if (actionTickDelay < 0) {
+            throw new IllegalArgumentException("Action tick delay must not be negative");
+        }
         this.apBudget = apBudget;
         this.ceBudget = ceBudget;
+        this.actionTickDelay = actionTickDelay;
         this.offensive = new Timeline(gridLength);
         this.defensive = new Timeline(gridLength);
+    }
+
+    /** Build a plan using all battle-time timing modifiers on its owner. */
+    public static BattlePlan forCombatant(BattleCombatant combatant, int gridLength) {
+        if (combatant == null) throw new IllegalArgumentException("Combatant is required");
+        return new BattlePlan(
+            combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength,
+            combatant.getActionTickDelay());
     }
 
     // -------------------------------------------------------------------------
@@ -81,6 +98,15 @@ public class BattlePlan {
     public int totalCeUsed()       { return ceUsed; }
     public int apBudget()          { return apBudget; }
     public int ceBudget()          { return ceBudget; }
+    public int actionTickDelay()   { return actionTickDelay; }
+
+    public int effectiveApCost(Move move) {
+        return Math.addExact(move.getApCost(), actionTickDelay);
+    }
+
+    public int effectiveUnleashPoint(Move move) {
+        return Math.addExact(move.getUnleashPoint(), actionTickDelay);
+    }
 
     /** Number of times this move is currently placed across both boards. */
     public int selectedUses(Move move) {
@@ -99,7 +125,7 @@ public class BattlePlan {
     /** Does this move fit the AP and CE budgets? */
     public boolean fitsBudgets(Move move, int ceCost) {
         return move != null
-            && move.getApCost() <= remainingApBudget()
+            && effectiveApCost(move) <= remainingApBudget()
             && ceCost <= remainingCe();
     }
 
@@ -146,9 +172,34 @@ public class BattlePlan {
         if (!canPlace(move, ceCost)) return null;
         Board board = boardFor(move);
         Timeline tl = boardTimeline(board);
-        ActionSegment segment = tl.placeAtWithTargets(move, tick, ceCost, targets);
+        int apCost = effectiveApCost(move);
+        int unleashPoint = effectiveUnleashPoint(move);
+        ActionSegment segment = tl.placeAtWithTargets(
+            move, tick, ceCost, targets, apCost, unleashPoint);
         if (segment == null) return null;
-        apUsed += move.getApCost();
+        apUsed += apCost;
+        ceUsed += ceCost;
+        return segment;
+    }
+
+    /** Restore a server-authored placement using its historical effective timing. */
+    public ActionSegment restorePlacement(
+        Move move,
+        int tick,
+        int ceCost,
+        List<CombatantId> targets,
+        int apCost,
+        int unleashPoint
+    ) {
+        if (!hasDistinctTargetIds(targets) || !hasRemainingUses(move)
+            || apCost > remainingApBudget() || ceCost > remainingCe()) {
+            return null;
+        }
+        Timeline timeline = boardTimeline(boardFor(move));
+        ActionSegment segment = timeline.placeAtWithTargets(
+            move, tick, ceCost, targets, apCost, unleashPoint);
+        if (segment == null) return null;
+        apUsed += apCost;
         ceUsed += ceCost;
         return segment;
     }
@@ -173,11 +224,22 @@ public class BattlePlan {
         if (!hasDistinctTargetIds(targets)) return null;
         if (!canPlace(move, ceCost)) return null;
         Timeline tl = boardTimeline(boardFor(move));
-        ActionSegment segment = tl.placeAtFirstFitWithTargets(move, ceCost, targets);
-        if (segment == null) return null;
-        apUsed += move.getApCost();
-        ceUsed += ceCost;
-        return segment;
+        int apCost = effectiveApCost(move);
+        int unleashPoint = effectiveUnleashPoint(move);
+        int cursor = 1;
+        for (ActionSegment existing : tl.getSegments().stream()
+            .sorted(java.util.Comparator.comparingInt(ActionSegment::getStartTick)).toList()) {
+            if (existing.getStartTick() - cursor >= apCost) {
+                return placeWithTargets(move, cursor, ceCost, targets);
+            }
+            cursor = Math.max(cursor, existing.getEndTick() + 1);
+        }
+        if (tl.getGridLength() - cursor + 1 < apCost
+            || (long) cursor + unleashPoint - 1L + move.getMaxHitDelayTicks()
+                > tl.getGridLength()) {
+            return null;
+        }
+        return placeWithTargets(move, cursor, ceCost, targets);
     }
 
     private static boolean hasDistinctTargetIds(List<CombatantId> targets) {
@@ -215,7 +277,7 @@ public class BattlePlan {
     /** Remove a placed segment from whichever board holds it; refunds budgets. */
     public boolean remove(ActionSegment segment) {
         if (offensive.remove(segment) || defensive.remove(segment)) {
-            apUsed -= segment.getMove().getApCost();
+            apUsed -= segment.getApCost();
             ceUsed -= segment.getActualCeCost();
             return true;
         }
@@ -284,7 +346,8 @@ public class BattlePlan {
         // never make it into the merged timeline and never fire.
         for (ActionSegment s : allSegments()) {
             merged.addSegment(new ActionSegment(
-                s.getMove(), s.getStartTick(), s.getActualCeCost(), s.getTargets()));
+                s.getMove(), s.getStartTick(), s.getActualCeCost(), s.getTargets(), true,
+                s.getApCost(), s.getUnleashPoint()));
         }
         return merged;
     }

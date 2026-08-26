@@ -195,7 +195,16 @@ public enum MoveTag {
      * It does not affect the Power formula, move category, or Black Flash
      * eligibility.
      */
-    INTANGIBLE;
+    INTANGIBLE,
+
+    /** Ice-element hit modifier. Ice hits can freeze and interact with Wet and Burned. */
+    ICE,
+
+    /** Electric-element hit modifier. Electric hits can stun and deal more damage to Wet targets. */
+    ELECTRIC,
+
+    /** Fire-element hit modifier. Fire moves and hits break Frozen. */
+    FIRE;
 
     // -------------------------------------------------------------------------
     // Canonical groupings
@@ -208,9 +217,12 @@ public enum MoveTag {
     /** Range tags — only meaningful on ATTACK moves. */
     public static final Set<MoveTag> RANGE_TAGS = Set.of(MELEE, RANGED);
 
+    /** Elemental tags that belong to an individual hit component. */
+    public static final Set<MoveTag> ELEMENTAL_TAGS = Set.of(ICE, ELECTRIC, FIRE);
+
     /** Tags that belong only to an individual attack hit, never the parent move. */
     public static final Set<MoveTag> HIT_ONLY_TAGS = Set.of(
-        MELEE, RANGED, GUARD_BREAK, INTANGIBLE);
+        MELEE, RANGED, GUARD_BREAK, INTANGIBLE, ICE, ELECTRIC, FIRE);
 
     /** Every tag that may be authored on a hit component. */
     public static final Set<MoveTag> HIT_TAGS = hitTags();

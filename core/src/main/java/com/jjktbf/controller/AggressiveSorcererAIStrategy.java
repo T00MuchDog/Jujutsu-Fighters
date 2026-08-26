@@ -56,7 +56,7 @@ public class AggressiveSorcererAIStrategy implements AIStrategy {
     public BattlePlan selectPlan(BattleCombatant ai, BattleCombatant opponent, RandomSource rng) {
         int gridLength = Timeline.gridLengthForStrongestAp(
             Math.max(ai.getMaxApBar(), opponent == null ? 0 : opponent.getMaxApBar()));
-        BattlePlan plan = new BattlePlan(ai.getMaxApBar(), ai.getCurrentCe(), gridLength);
+        BattlePlan plan = BattlePlan.forCombatant(ai, gridLength);
         OpponentIntel intel = OpponentIntel.forOpponent(opponent);
 
         List<Move> attacks = new ArrayList<>();

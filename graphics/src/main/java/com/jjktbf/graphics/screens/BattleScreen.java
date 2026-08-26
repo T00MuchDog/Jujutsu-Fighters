@@ -2051,7 +2051,7 @@ public class BattleScreen implements Screen, BattleView {
         int gridLength = com.jjktbf.model.combat.Timeline.gridLengthForStrongestAp(
             Math.max(combatant.getMaxApBar(), opponent.getMaxApBar()));
         if (abortRequested || !isCurrentLocalBattleThread()) {
-            return new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+            return BattlePlan.forCombatant(combatant, gridLength);
         }
         // This must happen on the controller thread before its wait loop. If it
         // only happens in the posted render callback, a prior round's confirmed
@@ -2093,7 +2093,7 @@ public class BattleScreen implements Screen, BattleView {
         // On abort, return an empty plan immediately — the controller will see
         // isAborted() and unwind without ever running this plan.
         if (abortRequested || !isCurrentLocalBattleThread()) {
-            return new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+            return BattlePlan.forCombatant(combatant, gridLength);
         }
 
         // Read the plan on the render thread to avoid racing a drag-commit.
@@ -2124,7 +2124,7 @@ public class BattleScreen implements Screen, BattleView {
         BattlePlan result = holder.get();
         if (result == null) {
             // Fallback: empty plan (bank the round) — should not normally happen.
-            result = new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+            result = BattlePlan.forCombatant(combatant, gridLength);
         }
         return result;
     }
@@ -2212,8 +2212,8 @@ public class BattleScreen implements Screen, BattleView {
         TeamBattlePlan plan = new TeamBattlePlan(teamId, gridLength);
         if (controlled != null) {
             for (BattleCombatant combatant : controlled) {
-                plan.put(combatant.getInstanceId(), new BattlePlan(
-                    combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength));
+                plan.put(combatant.getInstanceId(),
+                    BattlePlan.forCombatant(combatant, gridLength));
             }
         }
         return plan;

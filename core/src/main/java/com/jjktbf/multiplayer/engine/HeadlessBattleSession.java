@@ -428,7 +428,7 @@ public final class HeadlessBattleSession {
         for (BattleCombatant actor : activeActors) {
             canonicalPlans.put(
                 actor.getInstanceId(),
-                new BattlePlan(actor.getMaxApBar(), actor.getCurrentCe(), canonicalGridLength)
+                BattlePlan.forCombatant(actor, canonicalGridLength)
             );
             canonicalSegments.put(actor.getInstanceId(), new ArrayList<>());
         }
@@ -559,8 +559,10 @@ public final class HeadlessBattleSession {
             }
 
             int ceCost = actor.computeMoveCeCost(move);
-            long endTick = (long) placement.startTick() + move.getApCost() - 1L;
-            long fireTick = (long) placement.startTick() + move.getUnleashPoint() - 1L;
+            int effectiveApCost = canonicalPlan.effectiveApCost(move);
+            int effectiveUnleashPoint = canonicalPlan.effectiveUnleashPoint(move);
+            long endTick = (long) placement.startTick() + effectiveApCost - 1L;
+            long fireTick = (long) placement.startTick() + effectiveUnleashPoint - 1L;
             long finalImpactTick = fireTick + move.getMaxHitDelayTicks();
             int planGridLength = canonicalPlan.gridLength();
             if (move.getApCost() < 1
@@ -592,7 +594,7 @@ public final class HeadlessBattleSession {
                     move.getId()
                 );
             }
-            if (move.getApCost() > canonicalPlan.remainingApBudget()) {
+            if (effectiveApCost > canonicalPlan.remainingApBudget()) {
                 return rejectPlacement(
                     commandId,
                     INSUFFICIENT_AP,
@@ -758,7 +760,7 @@ public final class HeadlessBattleSession {
             for (BattleCombatant actor : activeCombatants(participant)) {
                 plans.put(
                     actor.getInstanceId(),
-                    new BattlePlan(actor.getMaxApBar(), actor.getCurrentCe(), battleGridLength())
+                    BattlePlan.forCombatant(actor, battleGridLength())
                 );
                 segments.put(actor.getInstanceId(), List.of());
             }
@@ -1325,8 +1327,8 @@ public final class HeadlessBattleSession {
                 .toList(),
             move.getBaseAccuracy(),
             move.isNeverMiss(),
-            move.getApCost(),
-            move.getUnleashPoint(),
+            combatant.getEffectiveMoveApCost(move),
+            combatant.getEffectiveMoveUnleashPoint(move),
             move.hasCeCost(),
             move.getBaseCeCost(),
             effectiveCeCost,
@@ -1411,7 +1413,7 @@ public final class HeadlessBattleSession {
             planned.getStartTick(),
             planned.getEndTick(),
             planned.getFireTick(),
-            planned.getMove().getApCost(),
+            planned.getApCost(),
             planned.getActualCeCost(),
             segment.status,
             segment.resolvedTick,

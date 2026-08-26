@@ -91,13 +91,26 @@ public class Timeline {
         int actualCeCost,
         List<CombatantId> targets
     ) {
-        long endTickLong = (long) startTick + move.getApCost() - 1L;
-        long fireTick = (long) startTick + move.getUnleashPoint() - 1L;
+        return placeAtWithTargets(
+            move, startTick, actualCeCost, targets, move.getApCost(), move.getUnleashPoint());
+    }
+
+    ActionSegment placeAtWithTargets(
+        Move move,
+        int startTick,
+        int actualCeCost,
+        List<CombatantId> targets,
+        int apCost,
+        int unleashPoint
+    ) {
+        long endTickLong = (long) startTick + apCost - 1L;
+        long fireTick = (long) startTick + unleashPoint - 1L;
         long finalImpactTick = fireTick + move.getMaxHitDelayTicks();
         if (startTick < 1 || endTickLong > gridLength || finalImpactTick > gridLength) return null;
         int endTick = (int) endTickLong;
         if (!isRangeFree(startTick, endTick)) return null;
-        ActionSegment segment = new ActionSegment(move, startTick, actualCeCost, targets);
+        ActionSegment segment = new ActionSegment(
+            move, startTick, actualCeCost, targets, true, apCost, unleashPoint);
         segments.add(segment);
         return segment;
     }
@@ -278,7 +291,7 @@ public class Timeline {
             int start = s.getFireTick();
             int end = switch (move.getBlockDuration()) {
                 case -1 -> gridLength;
-                case 0  -> start + move.getApCost() - 1;
+                case 0  -> start + s.getApCost() - 1;
                 default -> start + move.getBlockDuration() - 1;
             };
             if (tick >= start && tick <= end) return s;
@@ -308,7 +321,7 @@ public class Timeline {
             int start = s.getFireTick();
             int end = switch (move.getBlockDuration()) {
                 case -1 -> gridLength;
-                case 0  -> start + move.getApCost() - 1;
+                case 0  -> start + s.getApCost() - 1;
                 default -> start + move.getBlockDuration() - 1;
             };
             if (tick >= start && tick <= end) return s;
@@ -394,7 +407,7 @@ public class Timeline {
     /** Sum of every placed segment's AP cost (regardless of stun). */
     public int totalApUsed() {
         int sum = 0;
-        for (ActionSegment s : segments) sum += s.getMove().getApCost();
+        for (ActionSegment s : segments) sum += s.getApCost();
         return sum;
     }
 

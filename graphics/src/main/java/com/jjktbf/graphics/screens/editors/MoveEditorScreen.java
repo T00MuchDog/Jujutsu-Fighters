@@ -113,7 +113,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         MoveTag.MELEE,
         MoveTag.RANGED,
         MoveTag.GUARD_BREAK,
-        MoveTag.INTANGIBLE);
+        MoveTag.INTANGIBLE,
+        MoveTag.ICE,
+        MoveTag.ELECTRIC,
+        MoveTag.FIRE);
 
     private final MoveRepository repo;
     /** Character repo for the shikigami-summon selector and summon-reference remap on delete. */

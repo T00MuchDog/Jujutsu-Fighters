@@ -2,6 +2,7 @@ package com.jjktbf;
 
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.AbilityEffectType;
+import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.BattleCombatant;
@@ -37,7 +38,8 @@ class ElementalStatusTest {
     @Test
     void elementalTagsRoundTripOnIndividualHitComponents() {
         Move move = attack("ELEMENTS", Set.of(
-            MoveTag.PHYSICAL, MoveTag.MELEE, MoveTag.ICE, MoveTag.ELECTRIC, MoveTag.FIRE));
+            MoveTag.PHYSICAL, MoveTag.MELEE, MoveTag.ICE, MoveTag.ELECTRIC,
+            MoveTag.FIRE, MoveTag.WATER));
 
         MoveData data = MoveData.fromMove(move);
         Move restored = data.toMove();
@@ -47,6 +49,7 @@ class ElementalStatusTest {
         assertTrue(restored.hasTag(MoveTag.ICE.name()));
         assertTrue(restored.hasTag(MoveTag.ELECTRIC.name()));
         assertTrue(restored.hasTag(MoveTag.FIRE.name()));
+        assertTrue(restored.hasTag(MoveTag.WATER.name()));
     }
 
     @Test
@@ -101,20 +104,48 @@ class ElementalStatusTest {
     }
 
     @Test
-    void wetGuaranteesIceFreezeAndIceCanCureBurned() {
+    void wetRaisesIceFreezeChanceToFiftyPercent() {
         Move ice = attack("ICE", Set.of(MoveTag.PHYSICAL, MoveTag.ICE));
         BattleCombatant attacker = combatant("ATTACKER", 120, 100, List.of(ice));
         BattleCombatant defender = combatant("DEFENDER", 80, 100, List.of());
         defender.addStatusEffect(new StatusEffect(StatusEffectType.WET, 1, 0.0));
-        defender.addStatusEffect(new StatusEffect(StatusEffectType.BURNED, 1, 0.0));
         Timeline attackerTimeline = new Timeline(10);
         attackerTimeline.placeAt(ice, 1, 0);
         BattleState state = resolvingState(attacker, defender, attackerTimeline, new Timeline(10));
 
-        new CombatResolver(new SequenceRandom(0.5, 0.0)).resolveRound(state);
+        new CombatResolver(new SequenceRandom(0.5, 0.49)).resolveRound(state);
 
         assertTrue(defender.hasEffect(StatusEffectType.FROZEN));
+    }
+
+    @Test
+    void iceHitAlwaysCuresBurned() {
+        Move ice = attack("ICE", Set.of(MoveTag.PHYSICAL, MoveTag.ICE));
+        BattleCombatant attacker = combatant("ATTACKER", 120, 100, List.of(ice));
+        BattleCombatant defender = combatant("DEFENDER", 80, 100, List.of());
+        defender.addStatusEffect(new StatusEffect(StatusEffectType.BURNED, 1, 0.0));
+        Timeline attackerTimeline = new Timeline(10);
+        attackerTimeline.placeAt(ice, 1, 0);
+
+        new CombatResolver(new SequenceRandom(0.5, 0.9)).resolveRound(
+            resolvingState(attacker, defender, attackerTimeline, new Timeline(10)));
+
         assertFalse(defender.hasEffect(StatusEffectType.BURNED));
+    }
+
+    @Test
+    void wetDoesNotGuaranteeIceFreeze() {
+        Move ice = attack("ICE", Set.of(MoveTag.PHYSICAL, MoveTag.ICE));
+        BattleCombatant attacker = combatant("ATTACKER", 120, 100, List.of(ice));
+        BattleCombatant defender = combatant("DEFENDER", 80, 100, List.of());
+        defender.addStatusEffect(new StatusEffect(StatusEffectType.WET, 1, 0.0));
+        Timeline attackerTimeline = new Timeline(10);
+        attackerTimeline.placeAt(ice, 1, 0);
+
+        new CombatResolver(new SequenceRandom(0.5, 0.50)).resolveRound(
+            resolvingState(attacker, defender, attackerTimeline, new Timeline(10)));
+
+        assertFalse(defender.hasEffect(StatusEffectType.FROZEN));
     }
 
     @Test
@@ -129,13 +160,63 @@ class ElementalStatusTest {
         attackerTimeline.placeAt(ice, 1, 0);
         defenderTimeline.placeAt(block, 1, 0);
 
-        List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.9))
+        List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.49))
             .resolveRound(resolvingState(
                 attacker, defender, attackerTimeline, defenderTimeline));
 
         assertTrue(events.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.MOVE_BLOCKED));
         assertTrue(defender.hasEffect(StatusEffectType.FROZEN));
+    }
+
+    @Test
+    void fireHitHasTenPercentChanceToBurn() {
+        Move fire = attack("FIRE", Set.of(MoveTag.PHYSICAL, MoveTag.FIRE));
+        BattleCombatant attacker = combatant("ATTACKER", 120, 100, List.of(fire));
+        BattleCombatant defender = combatant("DEFENDER", 80, 100, List.of());
+        Timeline attackerTimeline = new Timeline(10);
+        attackerTimeline.placeAt(fire, 1, 0);
+
+        List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.5, 0.09))
+            .resolveRound(resolvingState(
+                attacker, defender, attackerTimeline, new Timeline(10)));
+
+        assertTrue(defender.hasEffect(StatusEffectType.BURNED));
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.STATUS_APPLIED
+                && event.getTarget() == defender
+                && event.getMessage().contains("Burned")));
+    }
+
+    @Test
+    void fireHitCuresWet() {
+        Move fire = attack("FIRE", Set.of(MoveTag.PHYSICAL, MoveTag.FIRE));
+        BattleCombatant attacker = combatant("ATTACKER", 120, 100, List.of(fire));
+        BattleCombatant defender = combatant("DEFENDER", 80, 100, List.of());
+        defender.addStatusEffect(new StatusEffect(StatusEffectType.WET, 1, 0.0));
+        Timeline attackerTimeline = new Timeline(10);
+        attackerTimeline.placeAt(fire, 1, 0);
+
+        new CombatResolver(new SequenceRandom(0.5, 0.9)).resolveRound(
+            resolvingState(attacker, defender, attackerTimeline, new Timeline(10)));
+
+        assertFalse(defender.hasEffect(StatusEffectType.WET));
+    }
+
+    @Test
+    void waterHitCuresBurnedAndAppliesWet() {
+        Move water = attack("WATER", Set.of(MoveTag.PHYSICAL, MoveTag.WATER));
+        BattleCombatant attacker = combatant("ATTACKER", 120, 100, List.of(water));
+        BattleCombatant defender = combatant("DEFENDER", 80, 100, List.of());
+        defender.addStatusEffect(new StatusEffect(StatusEffectType.BURNED, 1, 0.0));
+        Timeline attackerTimeline = new Timeline(10);
+        attackerTimeline.placeAt(water, 1, 0);
+
+        new CombatResolver(new SequenceRandom(0.5)).resolveRound(
+            resolvingState(attacker, defender, attackerTimeline, new Timeline(10)));
+
+        assertFalse(defender.hasEffect(StatusEffectType.BURNED));
+        assertTrue(defender.hasEffect(StatusEffectType.WET));
     }
 
     @Test
@@ -248,6 +329,30 @@ class ElementalStatusTest {
 
         assertEquals(expected, hpBefore - burned.getCurrentHp());
         assertTrue(expected > 0);
+    }
+
+    @Test
+    void poisonScalesAllStatsAndDealsPointZeroSixPercentMaxHpPerTick() {
+        Move wait = utility("WAIT", 10, 10);
+        BattleCombatant poisoned = combatant("POISONED", 100, 100, List.of(wait));
+        BattleCombatant enemy = combatant("ENEMY", 100, 100, List.of());
+        poisoned.addStatusEffect(StatusEffect.poison(1));
+        for (StatKey stat : StatKey.values()) {
+            assertEquals(80, stat.get(poisoned.getEffectiveStats()), stat.name());
+        }
+        Timeline timeline = new Timeline(10);
+        timeline.placeAt(wait, 1, 0);
+        int hpBefore = poisoned.getCurrentHp();
+        int expected = (int) Math.floor(poisoned.getMaxHp() * 0.0006 * 10);
+
+        List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.9)).resolveRound(
+            resolvingState(poisoned, enemy, timeline, new Timeline(10)));
+
+        assertEquals(expected, hpBefore - poisoned.getCurrentHp());
+        assertTrue(expected > 0);
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.DAMAGE_DEALT
+                && event.getMessage().contains("Poison")));
     }
 
     @Test

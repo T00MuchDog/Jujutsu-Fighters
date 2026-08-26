@@ -41,6 +41,11 @@ import java.util.*;
 public class CombatResolver {
 
     private static final double BURNED_MAX_HP_DAMAGE_PER_TICK = 0.0003;
+    private static final double POISON_MAX_HP_DAMAGE_PER_TICK = 0.0006;
+    private static final double FIRE_BURN_CHANCE = 0.10;
+    private static final double ICE_FREEZE_CHANCE = 0.05;
+    private static final double WET_ICE_FREEZE_CHANCE = 0.50;
+    private static final double ELECTRIC_STUN_CHANCE = 0.10;
 
     private final RandomSource rng;
     private final AbilityActivationEngine abilityActivations;
@@ -302,6 +307,8 @@ public class CombatResolver {
 
             processBurnedStatuses(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
+            processPoisonStatuses(state, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return events;
             processRestrainedStatuses(state, tick, events);
             processPerTickStatusRemoval(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
@@ -394,9 +401,31 @@ public class CombatResolver {
         int tick,
         List<CombatEvent> events
     ) {
+        processDamagingStatus(
+            state, tick, events, StatusEffectType.BURNED,
+            BURNED_MAX_HP_DAMAGE_PER_TICK);
+    }
+
+    /** Apply Poison's exact fractional max-HP damage before actions on this tick. */
+    private void processPoisonStatuses(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        processDamagingStatus(
+            state, tick, events, StatusEffectType.POISON,
+            POISON_MAX_HP_DAMAGE_PER_TICK);
+    }
+
+    private void processDamagingStatus(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events,
+        StatusEffectType type,
+        double maxHpFraction
+    ) {
         for (BattleCombatant combatant : state.activeCombatants()) {
-            int requested = combatant.accrueBurnedDamageForTick(
-                BURNED_MAX_HP_DAMAGE_PER_TICK);
+            int requested = combatant.accrueStatusDamageForTick(type, maxHpFraction);
             if (requested <= 0) continue;
             int applied = combatant.receiveDamage(requested,
                 fatalAmount -> abilityActivations.preventFatalDamage(
@@ -407,8 +436,10 @@ public class CombatResolver {
                     ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
                 .source(combatant).target(combatant).intValue(applied).tick(tick)
                 .message(applied == 0
-                    ? combatant.getCharacter().getName() + " resisted Burned damage!"
-                    : combatant.getCharacter().getName() + " took damage from Burned!")
+                    ? combatant.getCharacter().getName() + " resisted "
+                        + type.displayName() + " damage!"
+                    : combatant.getCharacter().getName() + " took damage from "
+                        + type.displayName() + "!")
                 .build());
             if (applied > 0) {
                 events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
@@ -1984,39 +2015,45 @@ public class CombatResolver {
                 StatusEffectType.FROZEN,
                 defender.getCharacter().getName() + " thawed after being hit by fire!",
                 events);
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.WET,
+                defender.getCharacter().getName() + " dried after being hit by fire!",
+                events);
+            if (rng.nextDouble() < FIRE_BURN_CHANCE) {
+                applyElementalStatus(
+                    state, attacker, defender, move, componentIndex, tick,
+                    new StatusEffect(StatusEffectType.BURNED, 1, 0.0), events);
+            }
         }
 
         if (component.hasTag(MoveTag.ICE)) {
-            if (defender.hasEffect(StatusEffectType.BURNED) && rng.nextDouble() < 0.50) {
-                removeElementalStatus(
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.BURNED,
+                defender.getCharacter().getName() + "'s Burned status was cured by ice!",
+                events);
+            double freezeChance = defender.hasEffect(StatusEffectType.WET)
+                ? WET_ICE_FREEZE_CHANCE : ICE_FREEZE_CHANCE;
+            if (rng.nextDouble() < freezeChance) {
+                applyElementalStatus(
                     state, attacker, defender, move, componentIndex, tick,
-                    StatusEffectType.BURNED,
-                    defender.getCharacter().getName() + "'s Burned status was cured by ice!",
-                    events);
-            }
-            boolean freezes = defender.hasEffect(StatusEffectType.WET)
-                || rng.nextDouble() < 0.05;
-            if (freezes && !defender.hasEffect(StatusEffectType.FROZEN)) {
-                StatusEffect frozen = new StatusEffect(
-                    StatusEffectType.FROZEN, -1, 0, 0.0);
-                if (defender.addStatusEffect(frozen, state.getCurrentPhase())) {
-                    events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
-                        .source(attacker).target(defender).move(move)
-                        .componentIndex(componentIndex).tick(tick)
-                        .message(StatusEffectMessages.applicationMessage(
-                            attacker.getCharacter().getName(),
-                            defender.getCharacter().getName(),
-                            StatusEffectType.FROZEN,
-                            attacker == defender))
-                        .build());
-                    events.addAll(abilityActivations.process(state, AbilityTrigger.status(
-                        AbilityTrigger.Type.STATUS_APPLIED,
-                        defender, StatusEffectType.FROZEN, tick)));
-                }
+                    new StatusEffect(StatusEffectType.FROZEN, -1, 0, 0.0), events);
             }
         }
 
-        if (component.hasTag(MoveTag.ELECTRIC) && rng.nextDouble() < 0.10
+        if (component.hasTag(MoveTag.WATER)) {
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.BURNED,
+                defender.getCharacter().getName() + "'s Burned status was cured by water!",
+                events);
+            applyElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                new StatusEffect(StatusEffectType.WET, 1, 0.0), events);
+        }
+
+        if (component.hasTag(MoveTag.ELECTRIC) && rng.nextDouble() < ELECTRIC_STUN_CHANCE
             && defender.stunCurrentAction(tick)) {
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
                 .source(attacker).target(defender).move(move)
@@ -2026,6 +2063,31 @@ public class CombatResolver {
                     + ", who could not move.")
                 .build());
         }
+    }
+
+    private void applyElementalStatus(
+        BattleState state,
+        BattleCombatant source,
+        BattleCombatant target,
+        Move move,
+        int componentIndex,
+        int tick,
+        StatusEffect status,
+        List<CombatEvent> events
+    ) {
+        if (target.hasEffect(status.getType())
+            || !target.addStatusEffect(status, state.getCurrentPhase())) {
+            return;
+        }
+        events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
+            .source(source).target(target).move(move).componentIndex(componentIndex)
+            .tick(tick).message(StatusEffectMessages.applicationMessage(
+                source.getCharacter().getName(),
+                target.getCharacter().getName(),
+                status.getType(),
+                source == target)).build());
+        events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+            AbilityTrigger.Type.STATUS_APPLIED, target, status.getType(), tick)));
     }
 
     private void removeElementalStatus(

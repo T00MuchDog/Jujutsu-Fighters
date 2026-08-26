@@ -18,6 +18,7 @@ import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectType;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -113,7 +114,8 @@ public class BattleCombatant {
     private int poolClampDeferrals;
     private double summonCeUpkeepDebt;
     private double cursedEnergyRegenerationProgress;
-    private double burnedDamageProgress;
+    private final EnumMap<StatusEffectType, Double> statusDamageProgress =
+        new EnumMap<>(StatusEffectType.class);
 
     private final List<StatusEffect> activeEffects;
 
@@ -237,7 +239,6 @@ public class BattleCombatant {
         this.poolClampDeferrals      = 0;
         this.summonCeUpkeepDebt      = 0.0;
         this.cursedEnergyRegenerationProgress = 0.0;
-        this.burnedDamageProgress    = 0.0;
         this.activeEffects           = new ArrayList<>();
         this.inBlackFlashState       = false;
         this.consecutiveBfsHits   = 0;
@@ -793,6 +794,7 @@ public class BattleCombatant {
             || type.baseStat() == com.jjktbf.model.character.StatKey.COMBAT_ABILITY
             || type.baseStat() == com.jjktbf.model.character.StatKey.CURSED_ENERGY_EFFICIENCY
             || type.battleStat() == BattleStatKey.MAX_AP
+            || type.affectsAllBaseStats()
             || type == StatusEffectType.FATIGUED;
     }
 
@@ -838,7 +840,7 @@ public class BattleCombatant {
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
-        resetBurnedDamageProgressIfCured();
+        resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -859,7 +861,7 @@ public class BattleCombatant {
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
-        resetBurnedDamageProgressIfCured();
+        resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -881,14 +883,14 @@ public class BattleCombatant {
 
     public void removeEffect(StatusEffectType type) {
         activeEffects.removeIf(e -> e.getType() == type);
-        resetBurnedDamageProgressIfCured();
+        resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
     }
 
     public int removeStatusEffects(StatusEffectType type) {
         int before = activeEffects.size();
         activeEffects.removeIf(effect -> effect.getType() == type);
-        resetBurnedDamageProgressIfCured();
+        resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return before - activeEffects.size();
     }
@@ -900,27 +902,39 @@ public class BattleCombatant {
     public int clearStatusEffects() {
         int removed = activeEffects.size();
         activeEffects.clear();
-        resetBurnedDamageProgressIfCured();
+        resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return removed;
     }
 
     /** Accrue Burned's fractional max-HP damage and return newly payable whole damage. */
     public int accrueBurnedDamageForTick(double maxHpFraction) {
-        if (!hasEffect(StatusEffectType.BURNED)
+        return accrueStatusDamageForTick(StatusEffectType.BURNED, maxHpFraction);
+    }
+
+    /** Accrue Poison's fractional max-HP damage and return newly payable whole damage. */
+    public int accruePoisonDamageForTick(double maxHpFraction) {
+        return accrueStatusDamageForTick(StatusEffectType.POISON, maxHpFraction);
+    }
+
+    public int accrueStatusDamageForTick(StatusEffectType type, double maxHpFraction) {
+        if (type == null || !hasEffect(type)
             || !Double.isFinite(maxHpFraction) || maxHpFraction <= 0.0) {
-            resetBurnedDamageProgressIfCured();
+            if (type != null) statusDamageProgress.remove(type);
             return 0;
         }
-        burnedDamageProgress += getMaxHp() * maxHpFraction;
+        double progress = statusDamageProgress.getOrDefault(type, 0.0)
+            + getMaxHp() * maxHpFraction;
         int due = (int) Math.min(Integer.MAX_VALUE,
-            Math.floor(burnedDamageProgress + 1.0e-9));
-        burnedDamageProgress -= due;
+            Math.floor(progress + 1.0e-9));
+        progress -= due;
+        if (progress > 0.0) statusDamageProgress.put(type, progress);
+        else statusDamageProgress.remove(type);
         return due;
     }
 
-    private void resetBurnedDamageProgressIfCured() {
-        if (!hasEffect(StatusEffectType.BURNED)) burnedDamageProgress = 0.0;
+    private void resetStatusDamageProgressIfCured() {
+        statusDamageProgress.keySet().removeIf(type -> !hasEffect(type));
     }
 
     // -------------------------------------------------------------------------
@@ -1572,6 +1586,17 @@ public class BattleCombatant {
         Map<com.jjktbf.model.character.StatKey, Double> statusAmounts =
             new java.util.EnumMap<>(com.jjktbf.model.character.StatKey.class);
         for (StatusEffect effect : activeEffects) {
+            if (effect.getType().affectsAllBaseStats()) {
+                for (com.jjktbf.model.character.StatKey stat
+                    : com.jjktbf.model.character.StatKey.values()) {
+                    AbilityEffectData multiplier = new AbilityEffectData();
+                    multiplier.type = AbilityEffectType.STAT_MULTIPLY.name();
+                    multiplier.stat = stat.fieldName;
+                    multiplier.doubleValue = effect.getType().statMultiplier();
+                    modifiers.add(multiplier);
+                }
+                continue;
+            }
             if (effect.getType().isStatMultiplier() && effect.getType().baseStat() != null) {
                 AbilityEffectData multiplier = new AbilityEffectData();
                 multiplier.type = AbilityEffectType.STAT_MULTIPLY.name();

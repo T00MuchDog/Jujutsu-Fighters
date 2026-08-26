@@ -78,8 +78,8 @@ public enum StatusEffectType {
     /** Adds two AP ticks to both the cost and firing point of every planned move. */
     FATIGUED("Fatigued", 0),
 
-    /** Round-duration poison template. Magnitude is flat damage per round. */
-    POISON("Poison", 1);
+    /** Multiplies every base stat by 0.8 and deals max-HP damage each active tick. */
+    POISON("Poison", 0.8);
 
     private final String displayName;
     private final StatKey baseStat;
@@ -102,6 +102,10 @@ public enum StatusEffectType {
 
     StatusEffectType(String displayName, int direction, double defaultPerTickRemovalChance) {
         this(displayName, null, null, direction, defaultPerTickRemovalChance, null);
+    }
+
+    StatusEffectType(String displayName, double statMultiplier) {
+        this(displayName, null, null, 0, 0.0, statMultiplier);
     }
 
     StatusEffectType(String displayName, StatKey baseStat, double statMultiplier) {
@@ -153,7 +157,13 @@ public enum StatusEffectType {
 
     /** True when the status multiplies a base or derived battle stat. */
     public boolean isStatMultiplier() {
-        return statMultiplier != null && (baseStat != null || battleStat != null);
+        return statMultiplier != null
+            && (baseStat != null || battleStat != null || affectsAllBaseStats());
+    }
+
+    /** True when one multiplier applies to every base character stat. */
+    public boolean affectsAllBaseStats() {
+        return statMultiplier != null && baseStat == null && battleStat == null;
     }
 
     public double statMultiplier() {
@@ -162,7 +172,7 @@ public enum StatusEffectType {
 
     /** Whether this status uses the descriptor's magnitude field. */
     public boolean usesMagnitude() {
-        return isStatModifier() || this == POISON;
+        return isStatModifier();
     }
 
     /** Whether this status must be configured exclusively in AP ticks. */
@@ -187,7 +197,7 @@ public enum StatusEffectType {
     /** Whether applying this status again replaces its existing instance. */
     public boolean refreshesOnReapply() {
         return this == RESTRAINED || this == WET || this == FROZEN
-            || this == BURNED || this == FATIGUED;
+            || this == BURNED || this == FATIGUED || this == POISON;
     }
 
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */

@@ -265,9 +265,9 @@ public class StatusEffect {
             codedParameters, masteryProgression);
     }
 
-    /** Create a round-duration poison descriptor for future poison resolution. */
-    public static StatusEffect poison(int rounds, double damagePerRound) {
-        return new StatusEffect(StatusEffectType.POISON, rounds, 0, damagePerRound);
+    /** Create a round-duration Poison status with its canonical fixed potency. */
+    public static StatusEffect poison(int rounds) {
+        return new StatusEffect(StatusEffectType.POISON, rounds, 0, 0.0);
     }
 
     public static void validateDuration(int rounds, int ticks) {

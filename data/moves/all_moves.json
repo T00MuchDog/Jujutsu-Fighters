@@ -3923,7 +3923,7 @@
   "basePower" : 55,
   "hitComponents" : [ {
     "basePower" : 55,
-    "tags" : [ "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "CURSED_ENERGY", "RANGED", "WATER" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,

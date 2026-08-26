@@ -408,6 +408,22 @@ tag names below.
                           accuracy, ordinary Defense, coded resistance, and damage
                           immunity are unaffected. Lives only in the tag set.
 
+  ELEMENTAL TAGS (MoveTag.ELEMENTAL_TAGS; authored per hit component):
+    ICE                   A connected hit has a 5% chance to apply FROZEN, raised
+                          to 50% when the target is WET. An ICE hit always cures
+                          BURNED.
+    ELECTRIC              A connected hit has a 10% chance to stun the target's
+                          current action. Damage is doubled against WET targets.
+    FIRE                  A connected hit has a 10% chance to apply BURNED for one
+                          round and always cures FROZEN and WET. A FROZEN combatant
+                          may use a FIRE move; successfully firing it also cures the
+                          user.
+    WATER                 A connected hit always cures BURNED and applies WET for
+                          one round.
+    Elemental reactions occur on connected hits, including hits fully negated by
+    BLOCK, but not on misses, dodges, or parries. Elemental tags do not affect the
+    Power formula, move category, or Black Flash eligibility.
+
   IMMEDIATE EFFECTS:
     STUN_CURRENT_ACTION   Cancels the target's not-yet-fired action segment(s)
                           active on the current tick. Authored as a shared move
@@ -1121,11 +1137,36 @@ Non-stat control status:
     also has a 5% chance to end at the start of each resolution tick; otherwise
     SLEEP expires at the end of the current round.
 
-  POISON
-    Must use rounds > 0 with 0 ticks, or be permanent. Magnitude stores flat
-    damage per round for future poison resolution.
+  RESTRAINED
+    Multiplies Speed by 0.5. Each active tick rolls both Strength-based escape and
+    a separate chance to stun the current action.
 
-Total: 17 stat pairs plus STAGGER, SLEEP, and POISON = 37 constants.
+  WET
+    Multiplies Speed by 0.8. ELECTRIC damage against the target is doubled, and an
+    ICE hit's FROZEN chance is raised from 5% to 50%. Connected WATER hits apply
+    it for one round, while a connected FIRE hit cures it.
+
+  FROZEN
+    Multiplies Defense by 0.5 and prevents non-FIRE actions. It has a 10% chance
+    to end each active tick. A connected FIRE hit cures it; a FROZEN combatant can
+    also fire a FIRE move, curing itself when the move successfully fires.
+
+  BURNED
+    Halves outgoing MELEE damage and deals exactly 0.03% max-HP damage per active
+    tick, preserving fractional damage between ticks. A FIRE hit has a 10% chance
+    to apply it for one round, while any connected ICE or WATER hit cures it.
+
+  FATIGUED
+    Adds two AP ticks to both the AP cost and firing point of each planned move.
+
+  POISON
+    Multiplies all ten base character stats by 0.8 and deals exactly 0.06% max-HP
+    damage per active tick, preserving fractional damage between ticks. Must use
+    rounds > 0 with 0 ticks, or be permanent. Potency is fixed; magnitude is unused.
+    Reapplication refreshes its duration instead of stacking. POISON_IMMUNITY
+    prevents application.
+
+Total: 17 stat pairs plus 8 specialized statuses = 42 constants.
 
 Legacy aliases (StatusEffectType.fromName resolves these; "signed" names can mean
 either direction depending on the stored magnitude's sign):

@@ -421,7 +421,7 @@
   },
   {
     "term": "POISON",
-    "description": "A round-duration status template whose magnitude represents damage per round."
+    "description": "A status that multiplies all base stats by 0.8 and deals 0.06% max-HP damage each active tick."
   },
   {
     "term": "RCT",

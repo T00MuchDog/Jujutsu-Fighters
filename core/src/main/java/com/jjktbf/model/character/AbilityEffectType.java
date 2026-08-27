@@ -17,6 +17,7 @@ import static com.jjktbf.model.character.AbilityEffectParameter.DURATION;
 import static com.jjktbf.model.character.AbilityEffectParameter.INTEGER;
 import static com.jjktbf.model.character.AbilityEffectParameter.MAGNITUDE;
 import static com.jjktbf.model.character.AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE;
+import static com.jjktbf.model.character.AbilityEffectParameter.CE_UPKEEP_PER_TICK;
 import static com.jjktbf.model.character.AbilityEffectParameter.STAT_MULTIPLIER_CURVE;
 import static com.jjktbf.model.character.AbilityEffectParameter.ABILITY_ID;
 import static com.jjktbf.model.character.AbilityEffectParameter.CHARACTER_ID;
@@ -195,7 +196,8 @@ public enum AbilityEffectType {
     AUTO_STATUS_APPLY(
         "Apply status automatically",
         "Applies a supported status at fight start, round start, or after a hit.",
-        STATUS_TYPE, TARGET, TIMING, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE),
+        STATUS_TYPE, TARGET, TIMING, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE,
+        CE_UPKEEP_PER_TICK),
     LOCK_MOVE_TAG(
         "Lock own move tag",
         "Prevents this character from selecting moves with one tag.",
@@ -242,7 +244,8 @@ public enum AbilityEffectType {
     APPLY_STATUS(
         "Apply status",
         "Applies any status when the ability activates.",
-        STATUS_TYPE, TARGET, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE),
+        STATUS_TYPE, TARGET, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE,
+        CE_UPKEEP_PER_TICK),
     REMOVE_STATUS(
         "Remove status",
         "Removes every instance of one status from the target.",
@@ -822,6 +825,7 @@ public enum AbilityEffectType {
         }
         if (!uses(MAGNITUDE)) effect.magnitude = null;
         if (!uses(PER_TICK_REMOVAL_CHANCE)) effect.perTickRemovalChance = null;
+        if (!uses(CE_UPKEEP_PER_TICK)) effect.ceUpkeepPerTick = null;
         if (!uses(USES) && !migratedAccuracyUses) effect.uses = null;
         if (!uses(REFRESH_GROUP)) effect.refreshGroup = null;
         if (!uses(RESOURCE_KEY)) effect.resourceKey = null;
@@ -973,6 +977,10 @@ public enum AbilityEffectType {
             && (!isFinite(effect.perTickRemovalChance)
                 || effect.perTickRemovalChance < 0.0 || effect.perTickRemovalChance > 1.0)) {
             return "Per-tick removal chance must be between 0% and 100%.";
+        }
+        if (uses(CE_UPKEEP_PER_TICK) && effect.ceUpkeepPerTick != null
+            && (!isFinite(effect.ceUpkeepPerTick) || effect.ceUpkeepPerTick < 0.0)) {
+            return "Status CE upkeep per tick must be a non-negative number.";
         }
         if (uses(USES) && (effect.uses == null || (effect.uses != -1 && effect.uses < 1))) {
             return "Uses must be -1 (unlimited) or at least 1.";

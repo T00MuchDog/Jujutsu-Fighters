@@ -113,6 +113,7 @@ public class BattleCombatant {
     private int lastAbilityCostRound;
     private int poolClampDeferrals;
     private double summonCeUpkeepDebt;
+    private double statusCeUpkeepDebt;
     private double cursedEnergyRegenerationProgress;
     private final EnumMap<StatusEffectType, Double> statusDamageProgress =
         new EnumMap<>(StatusEffectType.class);
@@ -238,6 +239,7 @@ public class BattleCombatant {
         this.lastAbilityCostRound    = 0;
         this.poolClampDeferrals      = 0;
         this.summonCeUpkeepDebt      = 0.0;
+        this.statusCeUpkeepDebt      = 0.0;
         this.cursedEnergyRegenerationProgress = 0.0;
         this.activeEffects           = new ArrayList<>();
         this.inBlackFlashState       = false;
@@ -636,6 +638,23 @@ public class BattleCombatant {
         return summonCeUpkeepDebt;
     }
 
+    /**
+     * Add one resolution tick of status CE upkeep and return the newly payable
+     * whole CE amount. Fractional rates (e.g. 1.5 per tick) carry their
+     * remainder across ticks, exactly like summon upkeep.
+     */
+    public int accrueStatusCeUpkeep(double amount) {
+        if (!Double.isFinite(amount) || amount <= 0.0) return 0;
+        statusCeUpkeepDebt += amount;
+        int due = (int) Math.floor(statusCeUpkeepDebt + 1.0e-9);
+        statusCeUpkeepDebt -= due;
+        return due;
+    }
+
+    public double getStatusCeUpkeepDebt() {
+        return statusCeUpkeepDebt;
+    }
+
     /** Return this fighter's current fractional CE regeneration rate. */
     public double getCursedEnergyRegenerationPerTick() {
         if (!isFighter()) return 0.0;
@@ -752,9 +771,7 @@ public class BattleCombatant {
         if (effect.getType().refreshesOnReapply()) {
             removeStatusForRefresh(effect.getType());
         }
-        activeEffects.add(new StatusEffect(
-            effect.getType(), rounds, ticks, effect.getMagnitude(),
-            effect.getPerTickRemovalChance()));
+        activeEffects.add(effect.withDuration(rounds, ticks));
         clampPoolsToMaximums();
         return true;
     }
@@ -776,8 +793,9 @@ public class BattleCombatant {
                 effect.stringValue, storedMagnitude);
             double perTickRemovalChance = effect.perTickRemovalChance != null
                 ? effect.perTickRemovalChance : type.defaultPerTickRemovalChance();
+            double ceUpkeepPerTick = effect.ceUpkeepPerTick != null ? effect.ceUpkeepPerTick : 0.0;
             StatusEffect status = new StatusEffect(
-                type, rounds, ticks, magnitude, perTickRemovalChance);
+                type, rounds, ticks, magnitude, perTickRemovalChance, ceUpkeepPerTick);
             return phase == null ? addStatusEffect(status) : addStatusEffect(status, phase);
         } catch (IllegalArgumentException ex) {
             System.err.println("[WARN] Invalid automatic status: " + effect.stringValue);
@@ -827,9 +845,7 @@ public class BattleCombatant {
             } else if (e.getDurationRounds() > 0) {
                 int rounds = e.getDurationRounds() - 1;
                 if (rounds > 0 || e.getDurationTicks() > 0) {
-                    remaining.add(new StatusEffect(
-                        e.getType(), rounds, e.getDurationTicks(), e.getMagnitude(),
-                        e.getPerTickRemovalChance()));
+                    remaining.add(e.withDuration(rounds, e.getDurationTicks()));
                 } else {
                     expired.add(e);
                 }
@@ -852,9 +868,7 @@ public class BattleCombatant {
             if (effect.getDurationRounds() != 0) {
                 remaining.add(effect);
             } else if (effect.getDurationTicks() > 1) {
-                remaining.add(new StatusEffect(
-                    effect.getType(), 0, effect.getDurationTicks() - 1, effect.getMagnitude(),
-                    effect.getPerTickRemovalChance()));
+                remaining.add(effect.withDuration(0, effect.getDurationTicks() - 1));
             } else {
                 expired.add(effect);
             }
@@ -1077,6 +1091,18 @@ public class BattleCombatant {
             .map(runtime -> new OverTimeCeDrain(
                 runtime.source == null ? this : runtime.source, runtime.effect))
             .toList();
+    }
+
+    /**
+     * Whether this combatant holds an active runtime effect matching {@code match}.
+     * A non-consuming planning-time read (unlike the {@code consume*} queries), so
+     * callers can test for active buffs — a timed stat modifier window or a scoped
+     * Never Miss claim, for example — without spending them.
+     */
+    public boolean hasActiveRuntimeEffect(java.util.function.Predicate<AbilityEffectData> match) {
+        return match != null && runtimeAbilityEffects.stream()
+            .filter(effect -> effect.remainingUses != 0)
+            .anyMatch(effect -> match.test(effect.effect));
     }
 
     /** A temporary Never Miss claim reserved for one complete attack execution. */

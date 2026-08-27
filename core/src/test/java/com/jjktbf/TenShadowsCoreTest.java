@@ -26,7 +26,7 @@ import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.SeededRandomSource;
-import com.jjktbf.model.combat.SummonUpkeepScaler;
+import com.jjktbf.model.combat.CeUpkeepScaler;
 import com.jjktbf.model.combat.TeamBattlePlan;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
@@ -352,14 +352,14 @@ class TenShadowsCoreTest {
     @Test
     void summonUpkeepScalerMapsEfficiencyToMultiplierAtTheDesignAnchors() {
         // RAW efficiency is scaled internally; baseline 80 is the neutral 1.0× point.
-        assertEquals(2.0, SummonUpkeepScaler.upkeepMultiplier(10), 0.000001,
+        assertEquals(2.0, CeUpkeepScaler.upkeepMultiplier(10), 0.000001,
             "raw 10 → scaled 10 → 2.0× upkeep");
-        assertEquals(1.0, SummonUpkeepScaler.upkeepMultiplier(80), 0.000001,
+        assertEquals(1.0, CeUpkeepScaler.upkeepMultiplier(80), 0.000001,
             "raw 80 → scaled 80 → 1.0× upkeep (neutral baseline)");
-        assertEquals(0.2, SummonUpkeepScaler.upkeepMultiplier(300), 0.000001,
+        assertEquals(0.2, CeUpkeepScaler.upkeepMultiplier(300), 0.000001,
             "raw 300 → scaled 472 → 0.2× upkeep");
         // Low-branch midpoint: scaled 45 → 2.0 - (45 - 10) / 70 = 1.5×.
-        assertEquals(1.5, SummonUpkeepScaler.upkeepMultiplier(45), 0.000001,
+        assertEquals(1.5, CeUpkeepScaler.upkeepMultiplier(45), 0.000001,
             "raw 45 → scaled 45 → 1.5× upkeep (low-branch midpoint)");
     }
 

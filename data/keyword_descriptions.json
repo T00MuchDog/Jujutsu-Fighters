@@ -60,6 +60,10 @@
     "description": "An innate technique that compels listeners with spoken commands, resisted using current CE and with recoil borne by the user."
   },
   {
+    "term": "CURSED SPEECH WARD",
+    "description": "A self-status gained by covering the ears in cursed energy. While active, incoming CURSED SPEECH commands automatically fail against the holder."
+  },
+  {
     "term": "CURSED_ENERGY",
     "description": "A move tag for raw cursed-energy actions governed by CE Output, Reserves, and Efficiency."
   },

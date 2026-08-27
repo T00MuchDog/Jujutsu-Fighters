@@ -47,6 +47,13 @@ public class StatusEffect {
     /** Chance to remove this status at each resolution tick. */
     private final double perTickRemovalChance;
 
+    /**
+     * Cursed energy drained from the holder each resolution tick while this
+     * status is active, before CE-efficiency scaling. Zero for statuses without
+     * an upkeep cost.
+     */
+    private final double ceUpkeepPerTick;
+
     /** Coded-ability key for an effect that cannot be expressed as a status. Blank for status effects. */
     private final String codedAbilityKey;
 
@@ -83,7 +90,7 @@ public class StatusEffect {
         double magnitude
     ) {
         this(type, durationRounds, durationTicks, magnitude,
-            defaultPerTickRemovalChance(type),
+            defaultPerTickRemovalChance(type), 0.0,
             null, null, null, null, null, null, null);
     }
 
@@ -95,8 +102,21 @@ public class StatusEffect {
         double magnitude,
         double perTickRemovalChance
     ) {
-        this(type, durationRounds, durationTicks, magnitude, perTickRemovalChance,
+        this(type, durationRounds, durationTicks, magnitude, perTickRemovalChance, 0.0,
             null, null, null, null, null, null, null);
+    }
+
+    /** Construct a status that drains a CE upkeep from its holder each resolution tick. */
+    public StatusEffect(
+        StatusEffectType type,
+        int durationRounds,
+        int durationTicks,
+        double magnitude,
+        double perTickRemovalChance,
+        double ceUpkeepPerTick
+    ) {
+        this(type, durationRounds, durationTicks, magnitude, perTickRemovalChance,
+            ceUpkeepPerTick, null, null, null, null, null, null, null);
     }
 
     public StatusEffect(
@@ -107,7 +127,7 @@ public class StatusEffect {
         Map<String, TechniqueMasteryProgressionData> masteryProgression
     ) {
         this(type, durationRounds, durationTicks, magnitude,
-            defaultPerTickRemovalChance(type),
+            defaultPerTickRemovalChance(type), 0.0,
             null, null, null, null, null, masteryProgression, null);
     }
 
@@ -119,7 +139,7 @@ public class StatusEffect {
         double perTickRemovalChance,
         Map<String, TechniqueMasteryProgressionData> masteryProgression
     ) {
-        this(type, durationRounds, durationTicks, magnitude, perTickRemovalChance,
+        this(type, durationRounds, durationTicks, magnitude, perTickRemovalChance, 0.0,
             null, null, null, null, null, masteryProgression, null);
     }
 
@@ -137,7 +157,7 @@ public class StatusEffect {
         String codedAction
     ) {
         this(type, durationRounds, durationTicks, magnitude,
-            0.0, codedAbilityKey, codedAction, null, null, null, null, null);
+            0.0, 0.0, codedAbilityKey, codedAction, null, null, null, null, null);
     }
 
     public StatusEffect(
@@ -151,7 +171,7 @@ public class StatusEffect {
         Integer codedStackCount
     ) {
         this(type, durationRounds, durationTicks, magnitude,
-            0.0, codedAbilityKey, codedAction, codedTarget, codedStackCount, null, null, null);
+            0.0, 0.0, codedAbilityKey, codedAction, codedTarget, codedStackCount, null, null, null);
     }
 
     public StatusEffect(
@@ -166,7 +186,7 @@ public class StatusEffect {
         Map<String, Integer> codedParameters,
         Map<String, TechniqueMasteryProgressionData> masteryProgression
     ) {
-        this(type, durationRounds, durationTicks, magnitude, 0.0,
+        this(type, durationRounds, durationTicks, magnitude, 0.0, 0.0,
             codedAbilityKey, codedAction, codedTarget, codedStackCount,
             codedParameters, masteryProgression, null);
     }
@@ -178,7 +198,7 @@ public class StatusEffect {
      * {@code CharacterType.SHIKIGAMI} definitions may be referenced.
      */
     public StatusEffect(String summonCharacterId) {
-        this(null, 0, 0, 0, 0.0,
+        this(null, 0, 0, 0, 0.0, 0.0,
             null, null, null, null, null, null, summonCharacterId);
     }
 
@@ -188,6 +208,7 @@ public class StatusEffect {
         int durationTicks,
         double magnitude,
         double perTickRemovalChance,
+        double ceUpkeepPerTick,
         String codedAbilityKey,
         String codedAction,
         String codedTarget,
@@ -218,12 +239,17 @@ public class StatusEffect {
                 throw new IllegalArgumentException(
                     "Status effect per-tick removal chance must be between 0% and 100%");
             }
+            if (!Double.isFinite(ceUpkeepPerTick) || ceUpkeepPerTick < 0.0) {
+                throw new IllegalArgumentException(
+                    "Status effect CE upkeep per tick must be a non-negative number");
+            }
         }
         this.type            = type;
         this.durationRounds  = durationRounds;
         this.durationTicks   = durationTicks;
         this.magnitude       = (!coded && !summon && !type.usesMagnitude()) ? 0.0 : magnitude;
         this.perTickRemovalChance = !coded && !summon ? perTickRemovalChance : 0.0;
+        this.ceUpkeepPerTick = !coded && !summon ? ceUpkeepPerTick : 0.0;
         this.codedAbilityKey = codedAbilityKey;
         this.codedAction     = codedAction;
         this.codedTarget     = codedTarget;
@@ -299,6 +325,17 @@ public class StatusEffect {
     public int getDurationTicks()         { return durationTicks; }
     public double getMagnitude()          { return magnitude; }
     public double getPerTickRemovalChance() { return perTickRemovalChance; }
+    public double getCeUpkeepPerTick()    { return ceUpkeepPerTick; }
+
+    /**
+     * Copy this status with a new remaining duration, carrying every authored
+     * field (magnitude, removal chance, CE upkeep). Used by the engine's
+     * tick-down, which recreates status instances as their duration advances.
+     */
+    public StatusEffect withDuration(int newDurationRounds, int newDurationTicks) {
+        return new StatusEffect(type, newDurationRounds, newDurationTicks, magnitude,
+            perTickRemovalChance, ceUpkeepPerTick);
+    }
     public String getCodedAbilityKey()    { return codedAbilityKey; }
     public String getCodedAction()        { return codedAction; }
     public String getCodedTarget()        { return codedTarget; }
@@ -337,10 +374,12 @@ public class StatusEffect {
             return String.format("StatusEffect{CODED %s/%s target=%s stacks=%s}",
                 codedAbilityKey, codedAction, codedTarget, codedStackCount);
         }
+        String upkeep = ceUpkeepPerTick > 0.0
+            ? String.format(" upkeep=%.2f/tick", ceUpkeepPerTick) : "";
         return type.usesMagnitude()
-            ? String.format("StatusEffect{%s rounds=%d ticks=%d mag=%.2f}",
-                type, durationRounds, durationTicks, magnitude)
-            : String.format("StatusEffect{%s rounds=%d ticks=%d}",
-                type, durationRounds, durationTicks);
+            ? String.format("StatusEffect{%s rounds=%d ticks=%d mag=%.2f%s}",
+                type, durationRounds, durationTicks, magnitude, upkeep)
+            : String.format("StatusEffect{%s rounds=%d ticks=%d%s}",
+                type, durationRounds, durationTicks, upkeep);
     }
 }

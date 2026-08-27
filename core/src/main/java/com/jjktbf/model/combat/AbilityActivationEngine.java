@@ -853,7 +853,8 @@ public final class AbilityActivationEngine {
                             effect.stringValue, effect.magnitude == null ? 0.0 : effect.magnitude),
                         effect.perTickRemovalChance == null
                             ? status.defaultPerTickRemovalChance()
-                            : effect.perTickRemovalChance);
+                            : effect.perTickRemovalChance,
+                        effect.ceUpkeepPerTick == null ? 0.0 : effect.ceUpkeepPerTick);
                     boolean accepted = extendStatusForCurrentPhase(state)
                         ? target.addStatusEffect(applied, state.getCurrentPhase())
                         : target.addStatusEffect(applied);

@@ -130,6 +130,13 @@ public class AbilityEffectData {
     /** Chance in [0, 1] to remove an applied status on each resolution tick. */
     public Double perTickRemovalChance;
 
+    /**
+     * Base cursed energy drained from the holder each resolution tick while an
+     * applied status remains active. Scaled by the holder's CE Efficiency at
+     * runtime; null means the status has no upkeep.
+     */
+    public Double ceUpkeepPerTick;
+
     /** Number of times a consumable effect may be used. -1 means unlimited. */
     public Integer uses;
 
@@ -213,6 +220,7 @@ public class AbilityEffectData {
         this.durationTicks = source.durationTicks;
         this.magnitude = source.magnitude;
         this.perTickRemovalChance = source.perTickRemovalChance;
+        this.ceUpkeepPerTick = source.ceUpkeepPerTick;
         this.uses = source.uses;
         this.refreshGroup = source.refreshGroup;
         this.resourceKey = source.resourceKey;
@@ -426,9 +434,10 @@ public class AbilityEffectData {
             + (timing      != null ? " time=" + timing : "")
             + (durationRounds != null ? " rounds=" + durationRounds : "")
             + (durationTicks != null ? " ticks=" + durationTicks : "")
-            + (magnitude   != null ? " mag=" + magnitude : "")
-            + (perTickRemovalChance != null ? " remove/tick=" + perTickRemovalChance : "")
-            + (uses        != null ? " uses=" + uses : "")
+                + (magnitude   != null ? " mag=" + magnitude : "")
+                + (perTickRemovalChance != null ? " remove/tick=" + perTickRemovalChance : "")
+                + (ceUpkeepPerTick != null ? " ceUpkeep/tick=" + ceUpkeepPerTick : "")
+                + (uses        != null ? " uses=" + uses : "")
             + " }";
     }
 }

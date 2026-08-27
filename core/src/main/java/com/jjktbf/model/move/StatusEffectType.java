@@ -78,6 +78,13 @@ public enum StatusEffectType {
     /** Adds two AP ticks to both the cost and firing point of every planned move. */
     FATIGUED("Fatigued", 0),
 
+    /**
+     * Covers the holder's ears in cursed energy. Incoming Cursed Speech commands
+     * automatically fail against the holder, and the status may carry a CE upkeep
+     * drained each resolution tick while it remains active.
+     */
+    CURSED_SPEECH_WARD("Cursed Speech Ward", 0),
+
     /** Multiplies every base stat by 0.8 and deals max-HP damage each active tick. */
     POISON("Poison", 0.8);
 
@@ -197,7 +204,8 @@ public enum StatusEffectType {
     /** Whether applying this status again replaces its existing instance. */
     public boolean refreshesOnReapply() {
         return this == RESTRAINED || this == WET || this == FROZEN
-            || this == BURNED || this == FATIGUED || this == POISON;
+            || this == BURNED || this == FATIGUED || this == POISON
+            || this == CURSED_SPEECH_WARD;
     }
 
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */

@@ -364,6 +364,12 @@ public class CombatResolver {
                 if (finishBattleIfNeeded(state, events, tick)) return events;
             }
 
+            // Status CE upkeep is charged after this tick's actions and before
+            // duration tick-down, so a status pays exactly one installment for
+            // every tick it is active — including its application and expiry
+            // ticks.
+            processStatusCeUpkeeps(state, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return events;
             processTimelineEffectExpiry(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
             updateResolutionEndForTimelineEffects(state);
@@ -470,6 +476,57 @@ public class CombatResolver {
         return false;
     }
 
+    /**
+     * Drain the CE upkeep of every active status that carries one, once per
+     * resolution tick — the same cadence at which status durations tick down.
+     * The base upkeep rate is scaled by the holder's CE Efficiency (efficient
+     * characters sustain statuses more cheaply) and fractional rates carry
+     * their remainder across ticks. A status whose installment cannot be paid
+     * in full collapses (is removed) instead of lingering for free.
+     */
+    private void processStatusCeUpkeeps(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (BattleCombatant combatant : state.activeCombatants()) {
+            if (!combatant.isActive()) continue;
+            List<StatusEffect> upkeepStatuses = combatant.getActiveEffects().stream()
+                .filter(effect -> effect.getCeUpkeepPerTick() > 0.0)
+                .toList();
+            if (upkeepStatuses.isEmpty()) continue;
+            double multiplier = CeUpkeepScaler.upkeepMultiplier(
+                combatant.getEffectiveStats().getCursedEnergyEfficiency(),
+                combatant.getStatMode());
+            for (StatusEffect status : upkeepStatuses) {
+                int due = combatant.accrueStatusCeUpkeep(
+                    status.getCeUpkeepPerTick() * multiplier);
+                if (due <= 0) continue;
+                int drained = combatant.drainCe(due);
+                if (drained > 0) {
+                    events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
+                        .source(combatant).target(combatant).intValue(drained).tick(tick)
+                        .build());
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                        AbilityTrigger.Type.CE_LOST, combatant, null, drained, tick)));
+                }
+                if (drained < due) {
+                    // The CE pool ran out mid-installment: the sustained status
+                    // collapses instead of continuing for free.
+                    combatant.removeStatusEffects(status.getType());
+                    events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+                        .source(combatant).target(combatant).tick(tick)
+                        .message(combatant.getCharacter().getName() + "'s "
+                            + status.getType().displayName()
+                            + " collapses — no cursed energy left to sustain it!")
+                        .build());
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+                        AbilityTrigger.Type.STATUS_REMOVED, combatant, status.getType(), tick)));
+                }
+            }
+        }
+    }
+
     private void chargeSummonUpkeep(
         BattleState state,
         int tick,
@@ -490,7 +547,7 @@ public class CombatResolver {
                 // Efficient summoners maintain shikigami more cheaply: scale the
                 // summed upkeep rate by the summoner's (scaled) CE Efficiency
                 // before fractional accumulation.
-                rate *= SummonUpkeepScaler.upkeepMultiplier(
+                rate *= CeUpkeepScaler.upkeepMultiplier(
                     summoner.getEffectiveStats().getCursedEnergyEfficiency(),
                     summoner.getStatMode());
             }

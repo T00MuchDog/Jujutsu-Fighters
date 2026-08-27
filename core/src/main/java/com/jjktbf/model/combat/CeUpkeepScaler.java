@@ -3,10 +3,10 @@ package com.jjktbf.model.combat;
 import com.jjktbf.model.character.StatScale;
 
 /**
- * Scales a summoner's shikigami CE-upkeep rate by their (scaled) Cursed Energy
- * Efficiency — efficient summoners bleed less CE maintaining shikigami, while
- * inefficient ones bleed more.
- *
+ * Scales a CE-upkeep rate by the payer's (scaled) Cursed Energy Efficiency —
+ * efficient characters bleed less CE maintaining shikigami or channel-style
+ * statuses, while inefficient ones bleed more. Shared by summon upkeep and
+ * status upkeep.
  * <p>Stat input is the RAW 10–300 CE Efficiency straight from {@code
  * CharacterStats}; this scaler applies {@link StatScale#scale} exactly once to
  * obtain the scaled value the curve below expects. Callers must NOT pre-scale.
@@ -27,9 +27,9 @@ import com.jjktbf.model.character.StatScale;
  * (the designed anchors) so an out-of-range effective stat can never escape the
  * intended bounds.
  */
-public final class SummonUpkeepScaler {
+public final class CeUpkeepScaler {
 
-    /** Low anchor: scaled efficiency 10 → 2.0× upkeep (most wasteful summoner). */
+    /** Low anchor: scaled efficiency 10 → 2.0× upkeep (most wasteful payer). */
     private static final double LOW_STAT         = 10.0;
     private static final double LOW_MULTIPLIER   = 2.0;
 
@@ -37,14 +37,14 @@ public final class SummonUpkeepScaler {
     private static final double NEUTRAL_STAT       = 80.0;
     private static final double NEUTRAL_MULTIPLIER = 1.0;
 
-    /** High anchor: scaled efficiency 472 → 0.2× upkeep (most frugal summoner). */
+    /** High anchor: scaled efficiency 472 → 0.2× upkeep (most frugal payer). */
     private static final double HIGH_STAT       = 472.0;
     private static final double HIGH_MULTIPLIER = 0.2;
 
-    private SummonUpkeepScaler() {}
+    private CeUpkeepScaler() {}
 
     /**
-     * @param rawCeEfficiency the summoner's RAW CE Efficiency stat (10–300); scaled internally
+     * @param rawCeEfficiency the payer's RAW CE Efficiency stat (10–300); scaled internally
      * @return the upkeep-rate multiplier, clamped to [0.2, 2.0]
      */
     public static double upkeepMultiplier(int rawCeEfficiency) {

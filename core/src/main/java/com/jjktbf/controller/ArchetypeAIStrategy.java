@@ -27,6 +27,11 @@ import java.util.Set;
  *       {@link PassiveSorcererAIStrategy}, decided by {@link #archetypeFor}.</li>
  *   <li>Cursed Speech sorcerer → {@link CursedSpeechAIStrategy} (state-aware
  *       multitarget planning; routed through {@link #selectTeamPlan}).</li>
+ *   <li>Ratio sorcerer → {@link RatioAIStrategy} (state-aware effort assessment
+ *       and Ratio stack sequencing; routed through {@link #selectTeamPlan}).</li>
+ *   <li>Blood Manipulation sorcerer → {@link BloodManipulationAIStrategy}
+ *       (cautious blood-economy planning that turns aggressive inside a Flowing
+ *       Red Scale window; routed through {@link #selectTeamPlan}).</li>
  *   <li>Everyone else → {@link GreedyAIStrategy}.</li>
  * </ul>
  *
@@ -40,6 +45,8 @@ public class ArchetypeAIStrategy implements AIStrategy {
 
     private static final String CURSED_SPEECH = "Cursed Speech";
     private static final String TEN_SHADOWS = "Ten Shadows";
+    private static final String RATIO = "Ratio";
+    private static final String BLOOD_MANIPULATION = "Blood Manipulation";
 
     private final GreedyAIStrategy sorcererStrategy = new GreedyAIStrategy();
     private final ShikigamiAIStrategy shikigamiStrategy = new ShikigamiAIStrategy();
@@ -47,6 +54,8 @@ public class ArchetypeAIStrategy implements AIStrategy {
     private final PassiveSorcererAIStrategy passiveStrategy = new PassiveSorcererAIStrategy();
     private final CursedSpeechAIStrategy cursedSpeechStrategy = new CursedSpeechAIStrategy();
     private final TenShadowsAIStrategy tenShadowsStrategy = new TenShadowsAIStrategy();
+    private final RatioAIStrategy ratioStrategy = new RatioAIStrategy();
+    private final BloodManipulationAIStrategy bloodManipulationStrategy = new BloodManipulationAIStrategy();
 
     /** Hardcoded archetype assignment for the final technique-less sorcerer roster. */
     private static final Set<String> AGGRESSIVE_IDS = Set.of("000003", "000005"); // Yuji Itadori, Maki Zenin
@@ -113,6 +122,12 @@ public class ArchetypeAIStrategy implements AIStrategy {
         if (TEN_SHADOWS.equalsIgnoreCase(character.getInnateTechniqueName())) {
             return tenShadowsStrategy.buildPlan(state, ai, rng); // state-aware summoning
         }
+        if (RATIO.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            return ratioStrategy.buildPlan(state, ai, rng); // state-aware effort assessment
+        }
+        if (BLOOD_MANIPULATION.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            return bloodManipulationStrategy.buildPlan(state, ai, rng); // state-aware blood economy
+        }
         return sorcererStrategy.selectPlan(ai, opponent, rng);
     }
 
@@ -152,6 +167,14 @@ public class ArchetypeAIStrategy implements AIStrategy {
         if (TEN_SHADOWS.equalsIgnoreCase(character.getInnateTechniqueName())) {
             // No state here: degrade to single-opponent Ten Shadows planning.
             return tenShadowsStrategy.selectPlan(ai, opponent, rng);
+        }
+        if (RATIO.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            // No state here: degrade to single-opponent Ratio planning.
+            return ratioStrategy.selectPlan(ai, opponent, rng);
+        }
+        if (BLOOD_MANIPULATION.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            // No state here: degrade to single-opponent Blood Manipulation planning.
+            return bloodManipulationStrategy.selectPlan(ai, opponent, rng);
         }
         return sorcererStrategy.selectPlan(ai, opponent, rng);
     }

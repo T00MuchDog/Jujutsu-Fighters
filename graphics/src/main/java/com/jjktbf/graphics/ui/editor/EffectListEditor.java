@@ -894,6 +894,16 @@ public class EffectListEditor extends Table {
                 () -> percent(effect.perTickRemovalChance));
         }
 
+        if (type.uses(AbilityEffectParameter.CE_UPKEEP_PER_TICK)) {
+            TextField ceUpkeep = nonNegativeDecimalField(effect.ceUpkeepPerTick);
+            ceUpkeep.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.ceUpkeepPerTick = parseDouble(ceUpkeep.getText());
+                }
+            });
+            addRow(fields, "CE upkeep per tick (blank = none)", ceUpkeep);
+        }
+
         if (type.uses(AbilityEffectParameter.USES)) {
             TextField uses = integerField(effect.uses);
             uses.addListener(new ChangeListener() {

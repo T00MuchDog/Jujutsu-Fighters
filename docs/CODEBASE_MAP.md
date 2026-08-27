@@ -158,7 +158,8 @@ Key entry points:
 `AIStrategy`, `ArchetypeAIStrategy` (default dispatcher),
 `GreedyAIStrategy`, `AggressiveSorcererAIStrategy`,
 `PassiveSorcererAIStrategy`, `ShikigamiAIStrategy`,
-`TenShadowsAIStrategy`, `CursedSpeechAIStrategy`, `SmartAIScoring`.
+`TenShadowsAIStrategy`, `CursedSpeechAIStrategy`, `RatioAIStrategy`,
+`SmartAIScoring`.
 
 ---
 

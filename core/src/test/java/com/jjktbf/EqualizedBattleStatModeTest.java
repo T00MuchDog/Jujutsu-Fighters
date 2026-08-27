@@ -17,7 +17,7 @@ import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.BattleStatMode;
 import com.jjktbf.model.combat.PowerCalculator;
 import com.jjktbf.model.combat.SeededRandomSource;
-import com.jjktbf.model.combat.SummonUpkeepScaler;
+import com.jjktbf.model.combat.CeUpkeepScaler;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.progression.TechniqueMasteryProgressionData;
@@ -105,9 +105,9 @@ class EqualizedBattleStatModeTest {
             .build();
         assertEquals(6, standard.computeMoveCeCost(ceMove));
         assertEquals(102, equalized.computeMoveCeCost(ceMove));
-        assertEquals(0.2, SummonUpkeepScaler.upkeepMultiplier(
+        assertEquals(0.2, CeUpkeepScaler.upkeepMultiplier(
             300, BattleStatMode.STANDARD), 1e-9);
-        assertEquals(0.6, SummonUpkeepScaler.upkeepMultiplier(
+        assertEquals(0.6, CeUpkeepScaler.upkeepMultiplier(
             300, BattleStatMode.EQUALIZED), 1e-9);
     }
 

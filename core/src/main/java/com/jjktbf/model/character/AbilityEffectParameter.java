@@ -19,6 +19,7 @@ public enum AbilityEffectParameter {
     DURATION,
     MAGNITUDE,
     PER_TICK_REMOVAL_CHANCE,
+    CE_UPKEEP_PER_TICK,
     USES,
     BATTLE_STAT,
     CODED_FEATURE,

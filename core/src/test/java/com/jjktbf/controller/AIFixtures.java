@@ -1,7 +1,9 @@
 package com.jjktbf.controller;
 
+import com.jjktbf.model.character.Ability;
 import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
+import com.jjktbf.model.character.AbilityData;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.ShikigamiCharacter;
 import com.jjktbf.model.character.SorcererCharacter;
@@ -231,6 +233,21 @@ final class AIFixtures {
         return new BattleCombatant(c, List.of());
     }
 
+    /**
+     * A Ratio sorcerer (Nanami-shaped stats: strong CE efficiency and CTM) so
+     * his authored technique moves are usable. Abilities (e.g. Ratio
+     * Reinforcement 000004) compile the Ratio runtime with a stack capacity.
+     */
+    static BattleCombatant ratioSorcerer(String id, List<Ability> abilities, Move... moves) {
+        CharacterStats stats = new CharacterStats.Builder()
+            .vitality(120).speed(95).combatAbility(105).strength(110).durability(110)
+            .cursedEnergyReserves(220).cursedEnergyEfficiency(160).cursedEnergyOutput(120)
+            .jujutsuSkill(125).cursedTechniqueMastery(120).build();
+        SorcererCharacter c = new SorcererCharacter(
+            id, id, stats, "Ratio", List.of(moves), List.of(), Equipment.base(WeaponType.KATANA));
+        return new BattleCombatant(c, abilities);
+    }
+
     /** An enemy shikigami (low CE, so recoil against it stays small and predictable). */
     static BattleCombatant shikigamiEnemy(String id) {
         CharacterStats stats = new CharacterStats.Builder()
@@ -272,6 +289,18 @@ final class AIFixtures {
             .orElseThrow(() -> new IllegalStateException("Missing canonical move " + id));
     }
 
+    /** Load one canonical authored ability (e.g. Ratio Reinforcement 000004). */
+    static Ability loadCanonicalAbility(String id) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        List<AbilityData> datas = mapper.readValue(
+            abilitiesPath().toFile(), new TypeReference<>() { });
+        AbilityData data = datas.stream()
+            .filter(a -> id.equals(a.id))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Missing canonical ability " + id));
+        return new Ability(data);
+    }
+
     private static Path movesPath() throws IOException {
         return List.of(
                 Path.of("data", "moves", "all_moves.json"),
@@ -280,5 +309,15 @@ final class AIFixtures {
             .filter(Files::isRegularFile)
             .findFirst()
             .orElseThrow(() -> new IOException("Could not locate canonical moves"));
+    }
+
+    private static Path abilitiesPath() throws IOException {
+        return List.of(
+                Path.of("data", "abilities", "all_abilities.json"),
+                Path.of("..", "data", "abilities", "all_abilities.json"))
+            .stream()
+            .filter(Files::isRegularFile)
+            .findFirst()
+            .orElseThrow(() -> new IOException("Could not locate canonical abilities"));
     }
 }

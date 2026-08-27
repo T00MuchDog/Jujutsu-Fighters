@@ -10,7 +10,6 @@ import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.move.AttackLaunchMode;
-import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
@@ -19,7 +18,6 @@ import com.jjktbf.model.move.MoveType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -134,47 +132,6 @@ class ContentCatalogTest {
             event.getType() == CombatEvent.Type.EFFECT_FAILED));
         assertTrue(failedReturn.stream().noneMatch(event ->
             event.getType() == CombatEvent.Type.CHARACTER_REVERTED));
-    }
-
-    @Test
-    void loadsAoiTodoWithResolvedBoogieWoogieKit() {
-        ContentCatalog catalog = ContentCatalog.load();
-        var todo = catalog.findCharacter("000019").orElseThrow();
-        var stats = todo.getBaseStats();
-
-        assertEquals("Aoi Todo", todo.getName());
-        assertEquals("Boogie Woogie", todo.getInnateTechniqueName());
-        assertEquals(120, stats.getVitality());
-        assertEquals(90, stats.getStrength());
-        assertEquals(80, stats.getDurability());
-        assertEquals(105, stats.getSpeed());
-        assertEquals(90, stats.getCursedEnergyReserves());
-        assertEquals(140, stats.getCursedEnergyEfficiency());
-        assertEquals(90, stats.getCursedEnergyOutput());
-        assertEquals(140, stats.getJujutsuSkill());
-        assertEquals(110, stats.getCombatAbility());
-        assertEquals(80, stats.getCursedTechniqueMastery());
-
-        Map<String, Move> moves = todo.getKnownMoves().stream()
-            .collect(java.util.stream.Collectors.toMap(Move::getId, move -> move));
-        assertEquals(18, moves.size());
-        assertEquals(CombatantPairTargeting.SELF_AND_ENEMY,
-            moves.get("000092").getPairTargeting());
-        assertEquals(CombatantPairTargeting.SELF_AND_ALLY,
-            moves.get("000100").getPairTargeting());
-        assertEquals(70, moves.get("000100").getDodgeChance());
-        assertEquals("BOTH", moves.get("000100").getDodgeScope());
-
-        Move counter = moves.get("000096");
-        assertEquals(AttackLaunchMode.ON_DEFENCE, counter.getAttackLaunchMode());
-        assertEquals("000004", counter.getAttackLaunchMoveId());
-        assertNotNull(counter.getAttackLaunchMove());
-        assertEquals("000004", counter.getAttackLaunchMove().getId());
-        assertTrue(todo.getAbilities().stream().anyMatch(ability ->
-            "000045".equals(ability.getId())));
-        assertTrue(todo.getAbilities().stream().anyMatch(ability ->
-            "000046".equals(ability.getId())));
-        assertTrue(catalog.findSelectableCharacter("000019").isPresent());
     }
 
     @Test

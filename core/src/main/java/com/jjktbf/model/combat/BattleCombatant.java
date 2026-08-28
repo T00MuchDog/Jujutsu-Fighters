@@ -234,14 +234,14 @@ public class BattleCombatant {
         applyProfile(createProfile(character, abilities, baseStats));
 
         // HP and CE derived from effective (ability-modified) stats
-        this.currentHp               = effectiveCombatStats.getMaxHp();
-        this.currentCe               = effectiveCombatStats.getMaxCursedEnergy();
+        this.activeEffects           = new ArrayList<>();
+        this.currentHp               = getMaxHp();
+        this.currentCe               = getMaxCursedEnergy();
         this.lastAbilityCostRound    = 0;
         this.poolClampDeferrals      = 0;
         this.summonCeUpkeepDebt      = 0.0;
         this.statusCeUpkeepDebt      = 0.0;
         this.cursedEnergyRegenerationProgress = 0.0;
-        this.activeEffects           = new ArrayList<>();
         this.inBlackFlashState       = false;
         this.consecutiveBfsHits   = 0;
         this.bfsExpiresAfterRound = -1;
@@ -1194,9 +1194,22 @@ public class BattleCombatant {
             .reduce(1.0, (left, right) -> left * right);
         double percent = 0.0;
         double oddsMultiplier = 1.0;
+        // A battle-stat set pins the stat to an exact value, overriding every
+        // other modifier on it while active; the most recently applied set wins.
+        Double setValue = null;
         for (AbilityEffectData effect : getAbilityFlags().passiveBattleStatEffects) {
             if (matchesBattleStat(effect, AbilityEffectType.BATTLE_STAT_ODDS_MULTIPLY, key)) {
                 oddsMultiplier *= effect.doubleValue != null ? effect.doubleValue : 1.0;
+            } else if (matchesBattleStat(effect, AbilityEffectType.BATTLE_STAT_MODIFIER, key)) {
+                if (AbilityEffectType.statOperation(effect)
+                    == AbilityEffectType.StatOperation.MULTIPLY) {
+                    multiplier *= effect.doubleValue != null ? effect.doubleValue : 1.0;
+                } else if (AbilityEffectType.statOperation(effect)
+                    == AbilityEffectType.StatOperation.SET) {
+                    setValue = effect.doubleValue != null ? effect.doubleValue : 0.0;
+                } else {
+                    additions += effect.doubleValue != null ? effect.doubleValue : 0.0;
+                }
             }
         }
         for (RuntimeAbilityEffect runtime : runtimeAbilityEffects) {
@@ -1213,6 +1226,9 @@ public class BattleCombatant {
             catch (IllegalArgumentException ex) { continue; }
             if (effectKey != key) continue;
             if (AbilityEffectType.statOperation(effect)
+                == AbilityEffectType.StatOperation.SET) {
+                setValue = effect.doubleValue != null ? effect.doubleValue : 0.0;
+            } else if (AbilityEffectType.statOperation(effect)
                 == AbilityEffectType.StatOperation.MULTIPLY) {
                 multiplier *= effect.doubleValue != null ? effect.doubleValue : 1.0;
             } else if (AbilityEffectType.valueMode(effect)
@@ -1226,6 +1242,7 @@ public class BattleCombatant {
         double percentFactor = 1.0 + percent;
         if (percentFactor < 0.0) percentFactor = 0.0;
         double value = (baseValue + additions) * multiplier * percentFactor;
+        if (setValue != null) return setValue;
         if (oddsMultiplier == 1.0) return value;
         double probability = Math.max(0.0, Math.min(1.0, value));
         if (probability == 0.0 || probability == 1.0) return probability;
@@ -1255,6 +1272,10 @@ public class BattleCombatant {
             flags,
             statMode);
         cost = Math.max(0, (int) Math.round(modifyBattleStat(BattleStatKey.CE_COST, cost)));
+        if (flags.waivesCeCostByStatTotal(
+            move, character.getBaseStats().baseStatTotal())) {
+            return 0;
+        }
         // An equipped cursed tool channels its own cursed energy: moves of its
         // weapon type cost the wielder nothing. Applied last so the free-CE
         // rule is absolute.

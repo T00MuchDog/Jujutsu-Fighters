@@ -8,6 +8,7 @@ import com.jjktbf.model.character.AbilityData;
 import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
+import com.jjktbf.model.character.BattleStatKey;
 import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.ShikigamiCharacter;
@@ -37,6 +38,7 @@ import com.jjktbf.model.move.StatusEffectType;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +67,53 @@ class CursedSpeechTechniqueTest {
         assertFalse(events.stream().anyMatch(event -> event.getMessage().contains("takes hold")));
         assertFalse(events.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.STATUS_APPLIED && event.getTarget() == target));
+    }
+
+    @Test
+    void successfulDontMoveCommandPinsTargetEvasionForTheStaggerDuration() {
+        Move command = unifiedCommand(1.0, evasionPin());
+        BattleCombatant inumaki = cursedSpeechUser("INUMAKI", command);
+        BattleCombatant target = fighter("TARGET");
+        BattleState state = new BattleState(inumaki, target);
+        int baselineEvasion = target.getEvasion();
+        assertTrue(baselineEvasion > 0, "the fixture target must start with evasion");
+        place(inumaki, command, List.of(target),
+            Timeline.gridLengthForStrongestAp(inumaki.getMaxApBar()));
+
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+        new CombatResolver(new SequenceRandom(0.0)).resolveRound(state);
+
+        assertTrue(target.hasEffect(StatusEffectType.STAGGER));
+        assertEquals(0, target.getEvasion(),
+            "a successful Don't Move pins evasion for the stagger's duration");
+
+        int boundaries = 0;
+        while (target.hasEffect(StatusEffectType.STAGGER)) {
+            assertEquals(0, target.getEvasion(), "evasion stays pinned while staggered");
+            target.tickTimelineEffects();
+            boundaries++;
+            assertTrue(boundaries <= 6, "the pin must last no longer than the 6-tick stagger");
+        }
+        assertEquals(baselineEvasion, target.getEvasion(),
+            "evasion recovers as soon as the stagger expires");
+    }
+
+    @Test
+    void resistedDontMoveCommandDoesNotPinEvasion() {
+        Move command = unifiedCommand(1.0, evasionPin());
+        BattleCombatant inumaki = cursedSpeechUser("INUMAKI", command);
+        BattleCombatant target = fighter("TARGET");
+        BattleState state = new BattleState(inumaki, target);
+        int baselineEvasion = target.getEvasion();
+        place(inumaki, command, List.of(target),
+            Timeline.gridLengthForStrongestAp(inumaki.getMaxApBar()));
+
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+        new CombatResolver(new SequenceRandom(1.0)).resolveRound(state);
+
+        assertFalse(target.hasEffect(StatusEffectType.STAGGER));
+        assertEquals(baselineEvasion, target.getEvasion(),
+            "a resisted command never pins evasion");
     }
 
     @Test
@@ -466,6 +515,10 @@ class CursedSpeechTechniqueTest {
     }
 
     private static Move unifiedCommand(double activationChance) {
+        return unifiedCommand(activationChance, new MoveEffectData[0]);
+    }
+
+    private static Move unifiedCommand(double activationChance, MoveEffectData... extraEffects) {
         MoveEffectData command = AbilityEffectType.CODED_MOVE_ACTION.createDefaultMoveEffect();
         command.effectId = "effect-000000";
         command.trigger = MoveEffectTrigger.ON_HIT.name();
@@ -487,6 +540,8 @@ class CursedSpeechTechniqueTest {
         outcome.durationRounds = 0;
         outcome.durationTicks = 6;
         outcome.magnitude = 0.0;
+        List<MoveEffectData> rows = new ArrayList<>(List.of(command, outcome));
+        for (MoveEffectData extra : extraEffects) rows.add(extra);
         return new Move.Builder("UNIFIED_COMMAND")
             .name("Unified Command")
             .category(MoveCategory.INNATE_TECHNIQUE)
@@ -500,8 +555,25 @@ class CursedSpeechTechniqueTest {
             .aoeTargetCount(3)
             .requiredTechniqueId("Cursed Speech")
             .prerequisites(Map.of("cursedTechniqueMastery", 0))
-            .effects(List.of(command, outcome))
+            .effects(rows)
             .build();
+    }
+
+    /** The Don't Move evasion pin: battle-stat evasion set to 0 for the stagger's ticks. */
+    private static MoveEffectData evasionPin() {
+        MoveEffectData pin = AbilityEffectType.TIMED_STAT_MODIFIER.createDefaultMoveEffect();
+        pin.effectId = "effect-000003";
+        pin.statType = AbilityEffectType.StatType.BATTLE.name();
+        pin.statOperation = AbilityEffectType.StatOperation.SET.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(pin);
+        pin.trigger = MoveEffectTrigger.ON_HIT.name();
+        pin.target = AbilityEffectTarget.ENEMY.name();
+        pin.stringValue = BattleStatKey.EVASION.name();
+        pin.doubleValue = 0.0;
+        pin.durationRounds = 0;
+        pin.durationTicks = 6;
+        pin.condition = AbilityConditionData.always();
+        return pin;
     }
 
     private static MoveData commandData(String mode, int chance, int recoil) {

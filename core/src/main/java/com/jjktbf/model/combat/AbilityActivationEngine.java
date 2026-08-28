@@ -411,9 +411,62 @@ public final class AbilityActivationEngine {
         BattleCombatant owner = trigger.target();
         BattleCombatant enemy = relevantEnemy(state, trigger, owner);
         Map<RuleActivationKey, Boolean> activationCache = new HashMap<>();
-        return owner.getCodedAbilities().preventFatalDamage(
+        boolean prevented = owner.getCodedAbilities().preventFatalDamage(
             binding -> allowsCodedBinding(
                 binding, owner, enemy, state, trigger, activationCache));
+        if (!prevented) {
+            activateFatalSurvivalEffects(state, owner, enemy, trigger, activationCache);
+        }
+        return prevented;
+    }
+
+    /** Install generic fatal-survival effects in time for BattleCombatant to consume them. */
+    private void activateFatalSurvivalEffects(
+        BattleState state,
+        BattleCombatant owner,
+        BattleCombatant enemy,
+        AbilityTrigger trigger,
+        Map<RuleActivationKey, Boolean> activationCache
+    ) {
+        List<Ability> abilities = owner.getAbilities();
+        for (int abilityIndex = 0; abilityIndex < abilities.size(); abilityIndex++) {
+            Ability ability = abilities.get(abilityIndex);
+            if (ability == null || !ability.isActive()) continue;
+            List<AbilityConditionRuleData> rules = ability.getActivationConditions();
+            for (int ruleIndex = 0; ruleIndex < rules.size(); ruleIndex++) {
+                AbilityConditionRuleData rule = rules.get(ruleIndex);
+                if (rule == null) continue;
+                List<AbilityEffectData> survivalEffects = ability.getEffects().stream()
+                    .filter(effect -> effect != null
+                        && AbilityEffectType.SURVIVE_FATAL_DAMAGE.name()
+                            .equalsIgnoreCase(effect.type)
+                        && rule.targetsEffect(effect.effectId))
+                    .toList();
+                if (survivalEffects.isEmpty()) continue;
+                int currentAbility = abilityIndex;
+                int currentRule = ruleIndex;
+                RuleActivationKey cacheKey = new RuleActivationKey(
+                    owner, ability, currentAbility, currentRule);
+                boolean activated = activationCache.computeIfAbsent(cacheKey, ignored ->
+                    activateRule(ability, currentAbility, rule, currentRule,
+                        owner, enemy, state, trigger, false));
+                if (!activated) continue;
+                for (AbilityEffectData authored : survivalEffects) {
+                    AbilityEffectData effect = "TECHNIQUE".equalsIgnoreCase(
+                        ability.getSourceType())
+                            ? TechniqueMasteryResolver.resolve(
+                                authored, TechniqueMasteryResolver.masteryOf(owner))
+                            : authored;
+                    for (BattleCombatant target : targets(
+                        effect, owner, enemy, state, false,
+                        List.of(), List.of(), List.of())) {
+                        target.addRuntimeAbilityEffect(
+                            effect, state.getRoundNumber(), state.getCurrentPhase(),
+                            effect.refreshGroup, owner, trigger.tick());
+                    }
+                }
+            }
+        }
     }
 
     private List<CombatEvent> dispatchCodedTrigger(
@@ -689,7 +742,8 @@ public final class AbilityActivationEngine {
                   ATTACK_HIT, ATTACK_MISSED, MOVE_BLOCKED, EVENT_TARGET,
                   TIMELINE_POINT_REACHED -> history.stream().anyMatch(candidate ->
                 eventLeafMatches(type, condition, owner, enemy, state, candidate, targetLocal));
-            case ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, FATAL_DAMAGE ->
+            case ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, FATAL_DAMAGE,
+                 INCOMING_HIT_LACKS_CURSED_ENERGY ->
                 eventLeafMatches(type, condition, owner, enemy, state, trigger, targetLocal);
             case ROUND_REACHED -> state.getRoundNumber() >= conditionRound(condition, owner);
             case TIMELINE_POINT_ON_ROUND, EVERY_N_ROUNDS, PHASE_REACHED, HEALED,
@@ -810,13 +864,16 @@ public final class AbilityActivationEngine {
                         case INSTANT_KILL -> 0;
                         default -> 0;
                     };
+                    // Direct-damage and kill effects are not hits: their fatal
+                    // triggers must not inherit the surrounding hit component,
+                    // or effect damage is classified as an ordinary hit.
                     int damage = type == AbilityEffectType.INSTANT_KILL
                         ? target.receiveInstantKill(ignored -> preventFatalDamage(
                             state, AbilityTrigger.fatalDamage(
-                                owner, target, move, component, target.getCurrentHp(), tick)))
+                                owner, target, move, null, target.getCurrentHp(), tick)))
                         : target.receiveDamage(requested, fatalAmount -> preventFatalDamage(
                             state, AbilityTrigger.fatalDamage(
-                                owner, target, move, component, fatalAmount, tick)));
+                                owner, target, move, null, fatalAmount, tick)));
                     events.addAll(target.getCodedAbilities().drainPendingEvents(tick));
                     events.add(CombatEvent.of(damage == 0
                             ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
@@ -1218,9 +1275,9 @@ public final class AbilityActivationEngine {
                   EVERY_N_ROUNDS, PHASE_REACHED, HEALED, DAMAGE_DEALT_AT_LEAST,
                   DAMAGE_TAKEN_AT_LEAST, CE_SPENT_AT_LEAST, CE_LOST_AT_LEAST,
                   CE_RESTORED_AT_LEAST,
-                  STATUS_APPLIED, STATUS_REMOVED, MANUAL_ACTIVATION, BATTLE_STARTED,
-                  ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG,
-                  FATAL_DAMAGE -> true;
+                   STATUS_APPLIED, STATUS_REMOVED, MANUAL_ACTIVATION, BATTLE_STARTED,
+                   ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG,
+                   FATAL_DAMAGE, INCOMING_HIT_LACKS_CURSED_ENERGY -> true;
             default -> false;
         };
         return eventCondition && eventLeafMatches(type, condition, owner, enemy, state, trigger);
@@ -1280,6 +1337,10 @@ public final class AbilityActivationEngine {
                 && connectedHitHasTag(trigger, condition.moveTag);
             case FATAL_DAMAGE -> trigger.type() == AbilityTrigger.Type.FATAL_DAMAGE
                 && eventActorMatches(condition, owner, state, trigger.target());
+            case INCOMING_HIT_LACKS_CURSED_ENERGY ->
+                trigger.type() == AbilityTrigger.Type.FATAL_DAMAGE
+                    && eventActorMatches(condition, owner, state, trigger.target())
+                    && incomingHitLacksCursedEnergy(trigger);
             case TIMELINE_POINT_REACHED -> trigger.type() == AbilityTrigger.Type.TIMELINE_TICK
                 && trigger.tick() == conditionTick(condition, owner);
             case TIMELINE_POINT_ON_ROUND -> trigger.type() == AbilityTrigger.Type.TIMELINE_TICK
@@ -1456,6 +1517,27 @@ public final class AbilityActivationEngine {
             return trigger.hitComponent().getTags().contains(tag);
         }
         return trigger.move() != null && trigger.move().hasTag(tag.name());
+    }
+
+    private static boolean incomingHitLacksCursedEnergy(AbilityTrigger trigger) {
+        HitComponent component = trigger.hitComponent();
+        if (component == null || !component.hasTag(MoveTag.PHYSICAL)) return false;
+        if (component.hasTag(MoveTag.CURSED_ENERGY)
+            || component.hasTag(MoveTag.INNATE_TECHNIQUE)
+            || component.hasTag(MoveTag.NON_INNATE_TECHNIQUE)) {
+            return false;
+        }
+        BattleCombatant attacker = trigger.actor();
+        if (attacker == null || attacker.getCharacter() == null) return true;
+        CharacterType attackerType = attacker.getCharacter().getType();
+        if (attackerType == CharacterType.CURSED_SPIRIT
+            || attackerType == CharacterType.CURSED_CORPSE
+            || attackerType == CharacterType.SHIKIGAMI) {
+            return false;
+        }
+        Move move = trigger.move();
+        return move == null || !attacker.getCharacter().getEquipment()
+            .coversWeaponTags(move.weaponTags());
     }
 
     private static boolean extendStatusForCurrentPhase(BattleState state) {

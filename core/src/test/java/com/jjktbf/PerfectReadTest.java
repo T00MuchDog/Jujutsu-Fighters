@@ -39,6 +39,19 @@ public class PerfectReadTest {
         .unleashPoint(1)
         .build();
 
+    private static final Move RANGED_ATTACK = new Move.Builder("PR_RANGED_ATTACK")
+        .name("Cursed Bolt")
+        .category(MoveCategory.PHYSICAL)
+        .basePower(30)
+        .neverMiss(true)
+        .apCost(2)
+        .unleashPoint(1)
+        .tags(java.util.Set.of(
+            com.jjktbf.model.move.MoveTag.PHYSICAL,
+            com.jjktbf.model.move.MoveTag.ATTACK,
+            com.jjktbf.model.move.MoveTag.RANGED))
+        .build();
+
     private static final Move PARTIAL_BLOCK = new Move.Builder("PR_BLOCK")
         .name("Guard")
         .category(MoveCategory.DEFENSIVE)
@@ -150,6 +163,32 @@ public class PerfectReadTest {
             "Off the exact tick, only the authored stagger applies.");
     }
 
+    /**
+     * Exact-tick parry of a RANGED attack sends it back: through the full
+     * resolver, the attacker takes the reflected damage and is not staggered,
+     * and the defender takes nothing.
+     */
+    @Test
+    void exactTickParryOfRangedAttackSendsItBack() {
+        Resolution r = resolveRoundWithCombatants(RANGED_ATTACK, PARRY, 1, 1);
+
+        assertTrue(r.events().stream().anyMatch(e -> e.getType() == CombatEvent.Type.MOVE_PARRIED),
+            "The parry still fires first.");
+        assertTrue(r.attacker().getCurrentHp() < r.attacker().getMaxHp(),
+            "The reflected ranged attack damages its own user.");
+        assertEquals(r.defender().getMaxHp(), r.defender().getCurrentHp(),
+            "The defender takes no damage from a parried attack.");
+        assertTrue(r.events().stream().anyMatch(e ->
+                e.getType() == CombatEvent.Type.DAMAGE_DEALT
+                    && e.getTarget() == r.attacker()
+                    && e.getMessage() != null && e.getMessage().contains("sent")),
+            "The reflection is announced as damage sent back at the attacker.");
+        assertFalse(r.events().stream().anyMatch(e ->
+                e.getType() == CombatEvent.Type.STATUS_APPLIED
+                    && e.getMessage() != null && e.getMessage().contains("staggered")),
+            "A parried ranged attack never staggers its user.");
+    }
+
     // -------------------------------------------------------------------------
 
     private static List<CombatEvent> resolveRound(Move defense, int defenseStart, int attackStart) {
@@ -159,12 +198,18 @@ public class PerfectReadTest {
     private static Resolution resolveRoundWithCombatants(
         Move defense, int defenseStart, int attackStart
     ) {
+        return resolveRoundWithCombatants(ATTACK, defense, defenseStart, attackStart);
+    }
+
+    private static Resolution resolveRoundWithCombatants(
+        Move attack, Move defense, int defenseStart, int attackStart
+    ) {
         // Faster defender so an exact-tick defence wins the same-tick ordering
         // and has fired before the attack resolves.
         BattleCombatant attacker = new BattleCombatant(new SorcererCharacter(
             "A", "Attacker",
             new CharacterStats.Builder().vitality(300).speed(80).build(),
-            null, List.of(ATTACK)));
+            null, List.of(attack)));
         // A parry requires its wielder to be armed.
         BattleCombatant defender = new BattleCombatant(new SorcererCharacter(
             "D", "Defender",
@@ -173,7 +218,7 @@ public class PerfectReadTest {
             defense.isParry() ? Equipment.base(WeaponType.KATANA) : Equipment.NONE));
 
         Timeline attackerTimeline = new Timeline(10);
-        assertNotNull(attackerTimeline.placeAt(ATTACK, attackStart, 0));
+        assertNotNull(attackerTimeline.placeAt(attack, attackStart, 0));
         Timeline defenderTimeline = new Timeline(10);
         assertNotNull(defenderTimeline.placeAt(defense, defenseStart, 0));
         attacker.setTimeline(attackerTimeline);

@@ -1128,6 +1128,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         misc.add(labelledRow("Move Types", moveTypes)).growX().row();
         misc.add(formHint("Any matching character class may learn this move; select at least one."))
             .left().row();
+        if (d.effectiveMoveTypes().contains(MoveType.CURSED_SPIRIT)) {
+            misc.add(formHint(
+                "Cursed Spirit moves must explicitly include the CURSED_ENERGY tag."))
+                .left().row();
+        }
 
         CheckBox grantedCb = new CheckBox(" Must be granted", skin);
         grantedCb.setChecked(d.mustBeGranted);

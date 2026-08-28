@@ -231,6 +231,25 @@ Key clarifications:
 | **AoeType** | Authoritative AOE targeting shape for an AOE-tagged move: `MULTIPLE` (N targets), `ALL_ENEMIES`, or `ALL_OTHERS` (allies included). |
 | **BattleFormat** | Roster-size format for a battle: `ONE_V_ONE` or `TWO_V_TWO`. The engine supports any team size; this captures the configured format. |
 
+### Cursed spirits
+
+`CharacterType.CURSED_SPIRIT` is a reusable character class rather than one
+hardcoded fighter. Every cursed spirit automatically receives the canonical
+physiology and exorcism abilities from `data/abilities/all_abilities.json`:
+
+- Max CE is multiplied by 5 and CE regeneration becomes 1 CE per resolution tick.
+- A cursed spirit waives a move's final CE cost when its authored base cost is at
+  most `max(1, floor(raw ten-stat BST / 100))`.
+- Fatal uncursed physical hits leave it at 1 HP. Cursed Energy, technique,
+  cursed-tool, cursed-being, and non-hit damage can exorcise it normally.
+- `Reconstitute` is granted automatically; the other cursed-spirit abilities and
+  moves remain optional data-driven content.
+
+The non-innate cursed-spirit move roster is stored at IDs `000110`–`000139`.
+Every `CURSED_SPIRIT` move must explicitly carry the `CURSED_ENERGY` tag and a
+real CE cost, including slot-free baseline moves. No starter cursed-spirit
+character is shipped; the Character Editor can compose one from this package.
+
 ---
 
 ## Architecture: Data Flow

@@ -99,6 +99,11 @@ lookup aliases.
   Lookup: StatKey.fromString normalises to lowercase and strips spaces and
   underscores before matching aliases or fieldName. Throws on no match.
 
+BASE STAT TOTAL (BST)
+  The sum of all ten raw authored CharacterStats values before StatScale or
+  ability modifiers. Cursed Spirit Physiology uses this raw total to determine
+  which low authored CE costs are waived.
+
 ================================================================================
   2. BATTLE STATS  (BattleStatKey.java)
 ================================================================================
@@ -119,6 +124,7 @@ Derived or battle-only values that can be modified at runtime by abilities
     BLACK_FLASH_CHANCE  Black Flash chance
     HEALING           HP healing multiplier
     CE_RESTORATION    CE restoration multiplier
+    CE_REGENERATION   Fractional Cursed Energy restored per resolution tick
 
   Lookup: BattleStatKey.fromString uppercases and replaces spaces with '_'.
 
@@ -199,6 +205,10 @@ are the Move/MoveData field names.
     id                    6-digit zero-padded string (e.g. "000003"). Auto-assigned
                           by MoveRepository; resequenced on delete.
     name, description     Display text.
+    moveTypes             Authored learning classes. CURSED_SPIRIT moves are
+                          available only to cursed spirits unless another type is
+                          also listed; cursed-spirit entries must explicitly carry
+                          CURSED_ENERGY.
     category              MoveCategory (derived from tags; see §6).
     tags                  Set<MoveTag> — the original data tags, retained for
                           UI, filtering, ability scoping, and round-tripping.
@@ -808,6 +818,24 @@ CE COST SCALING
   far larger than Output's. The two are MULTIPLICATIVE (not additive):
   eff 472 + out 472 = 0.020 × 3.000 = 0.060×.
 
+CURSED SPIRIT PHYSIOLOGY
+  Every CharacterType.CURSED_SPIRIT automatically receives abilities 000051 and
+  000052 when its ability source is resolved:
+    - Max CE is multiplied by 5. Baseline reserves 80 therefore produce 3,200 CE.
+    - CE regeneration is raised from 0.05 to 1.0 CE per resolution tick.
+    - A move's final effective CE cost is waived when its authored baseCeCost is
+      <= max(1, floor(raw ten-stat BST / 100)). The check uses the authored base
+      cost and raw stats, not the scaled cost or ability-modified stats.
+    - Reconstitute (move 000132) is granted as a slot-free, once-per-round move.
+
+EXORCISE
+  Defeat a cursed spirit by reducing it to 0 HP with cursed power. A fatal hit
+  containing CURSED_ENERGY, INNATE_TECHNIQUE, or NON_INNATE_TECHNIQUE can
+  exorcise. Attacks made by a cursed spirit, cursed corpse, shikigami, or a
+  matching equipped cursed tool can also exorcise, as can non-hit direct damage.
+  A fatal uncursed PHYSICAL hit from an ordinary attacker instead leaves the
+  cursed spirit at 1 HP; this protection can trigger again on later hits.
+
 ================================================================================
   14. ABILITIES  (AbilityEffectType.java, AbilityApplicator.java)
 ================================================================================
@@ -815,10 +843,17 @@ CE COST SCALING
 ABILITY
   A passive (or, in data, ACTIVE) power attached to a character. Each ability has
   a category (PASSIVE / ACTIVE), a sourceType (CHARACTER / TECHNIQUE / MOVE /
-  STAT_THRESHOLD / ABILITY), an optional innate-technique mastery threshold, and a
-  list of effects. Mechanics that require compiled code are represented by an
-  editable CODED effect row inside that list (see §15); the ability remains an
-  ordinary mutable data wrapper and may combine coded and generic effects.
+  STAT_THRESHOLD / ABILITY / SHIKIGAMI / CURSED_SPIRIT / CURSED_CORPSE /
+  CURSED_TOOL), an optional innate-technique mastery threshold, and a list of
+  effects. Mechanics that require compiled code are represented by an editable
+  CODED effect row inside that list (see §15); the ability remains an ordinary
+  mutable data wrapper and may combine coded and generic effects.
+
+AUTOMATICALLY ASSIGNED ABILITY
+  An ability with automaticallyAssigned=true is assigned whenever its source is
+  available. This is resolved to a fixed point alongside granted abilities, so
+  mandatory class physiology does not need to be stored in each character's
+  abilityIds list. Abilities without the flag remain optional.
 
 PASSIVE ABILITY
   Applied once at BattleCombatant construction via AbilityApplicator for
@@ -846,7 +881,7 @@ CHARACTER-SOURCE ABILITY
   An ability whose sourceType is CHARACTER. It is available to every character;
   CHARACTER does not mean character-exclusive. Only assigned abilities are active.
 
-ABILITY EFFECT TYPES  (69 enum constants; grouped as in source).
+ABILITY EFFECT TYPES  (grouped as in source).
   Each type owns its editor display name, description, required parameters, and
   defaults. TRIGGERED RUNTIME EFFECTS are the members of the explicit
   ACTIVATION_REQUIRED set (queried via requiresActivation()): applied by the
@@ -880,6 +915,8 @@ ABILITY EFFECT TYPES  (69 enum constants; grouped as in source).
     CE_COST_TO_MINIMUM  Force matching moves to min CE cost      (MOVE_SCOPE)
     CE_COST_MULTIPLY    Multiply CE cost of matching moves        (MOVE_SCOPE, DECIMAL)
     CE_COST_ALTER       Scale then add/subtract CE cost           (MOVE_SCOPE, DECIMAL, INTEGER)
+    CE_COST_WAIVE_BY_STAT_TOTAL  Waive low authored base costs by raw BST
+                                                              (MOVE_SCOPE, INTEGER divisor)
 
   Accuracy modifiers (move-scoped):
     MOVE_ACCURACY_ADD         ± accuracy on own moves           (MOVE_SCOPE, INTEGER)
@@ -913,6 +950,8 @@ ABILITY EFFECT TYPES  (69 enum constants; grouped as in source).
     COST_CE_PER_ROUND                Drain CE at round start                (INTEGER)
     MAX_ACTIVE_SUMMONS               Cap on active+pending shikigami        (INTEGER)
     SUMMON_CE_UPKEEP_PER_ACTIVE_TICK Extra CE drain per active summon tick  (DECIMAL)
+    BATTLE_STAT_MODIFIER              Permanent change/multiplier/set to a
+                                      derived battle stat (BATTLE_STAT, STAT_OPERATION, DECIMAL)
 
   Triggered runtime — resources (target SELF / ENEMY / BOTH):
     HEAL_HP            Restore flat HP                           (TARGET, INTEGER)
@@ -965,9 +1004,10 @@ ABILITY EFFECT TYPES  (69 enum constants; grouped as in source).
     DESUMMON_TARGET_SHIKIGAMI                     Voluntarily dismiss the targeted summon (TARGET)
     MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE    Hide this move unless the named shikigami is active (CHARACTER_ID)
 
-  Effect parameters (AbilityEffectParameter): STAT, INTEGER, DECIMAL, MOVE_SCOPE,
-    MOVE_ID, ABILITY_ID, TECHNIQUE, STATUS_TYPE, TARGET, TIMING, DURATION,
-    MAGNITUDE, USES, BATTLE_STAT, CODED_FEATURE, CHARACTER_ID.
+  Effect parameters (AbilityEffectParameter): STAT, INTEGER, DECIMAL, VALUE_MODE,
+    STAT_TYPE, STAT_OPERATION, MOVE_SCOPE, MOVE_ID, ABILITY_ID, TECHNIQUE,
+    STATUS_TYPE, TARGET, TIMING, DURATION, MAGNITUDE, USES, BATTLE_STAT,
+    CODED_FEATURE, CHARACTER_ID, plus resource/coded-action fields.
   Effect target (AbilityEffectTarget): SELF, ENEMY, BOTH.
   Effect timing (AbilityEffectTiming): FIGHT_START, ROUND_START, ON_HIT.
     A ROUND_START AUTO_STATUS_APPLY must last exactly 1 round / 0 ticks so it
@@ -1312,19 +1352,19 @@ MOVE EDITOR  (MoveEditorScreen)
 CHARACTER EDITOR  (CharacterEditorScreen)
   Creates/edits characters; saves data/characters/all_characters.json. Sections:
   identity (name/description/title/sprite/innate-technique select), a Type dropdown
-  (Sorcerer / Shikigami), a directly-selectable checkbox, a Manual / Point-Buy
+  (Sorcerer / Shikigami / Cursed Spirit / Cursed Corpse), a directly-selectable checkbox, a Manual / Point-Buy
   toggle, ten StatField sliders, a live derived-stat preview (HP, AP bar, Acc,
-  Evasion, CE pool, Combat Arts / Jujutsu Arts slot counts), a MoveAssignmentPanel
+  Evasion, effective CE pool, CE regeneration, raw-BST CE-waiver threshold,
+  Combat Arts / Jujutsu Arts slot counts), a MoveAssignmentPanel
   (slot-gated, technique/prerequisite-filtered, drag-and-drop), an ability
   assignment panel, and a SkillTreeCanvas per accessible technique.
 
   title        Optional free-text display epithet (e.g. "SHIKIGAMI",
                "The Honored One"). Display-only — carries no combat rules. Blank
                = no title shown.
-  type         CharacterType: SORCERER (default, directly selectable) or SHIKIGAMI
-               (a summoned spirit — Divine Dogs, Mahoraga — not directly selectable
-               unless overridden; only SHIKIGAMI definitions may be summoned by a
-               move/ability summon effect).
+  type         CharacterType: SORCERER (default), SHIKIGAMI, CURSED_SPIRIT, or
+               CURSED_CORPSE. Shikigami are not directly selectable unless
+               overridden and are the only definitions accepted by summon effects.
 
   Constants: STAT_MIN=10, STAT_MAX=300, BASELINE=80,
     POINT_BUDGET_WITH_TECHNIQUE     = 1000
@@ -1338,8 +1378,10 @@ CHARACTER EDITOR  (CharacterEditorScreen)
 ABILITY EDITOR  (AbilityEditorScreen)
   Creates/edits abilities; saves data/abilities/all_abilities.json. Category
   {PASSIVE, ACTIVE}; sourceType {CHARACTER, TECHNIQUE, MOVE, STAT_THRESHOLD,
-  ABILITY}. Every ability uses EffectListEditor; CODED rows select an allow-listed
-  compiled feature and remain addable, editable, and removable like generic rows.
+  ABILITY, SHIKIGAMI, CURSED_SPIRIT, CURSED_CORPSE, CURSED_TOOL}; an automatic
+  assignment checkbox controls mandatory source-provided abilities. Every ability
+  uses EffectListEditor; CODED rows select an allow-listed compiled feature and
+  remain addable, editable, and removable like generic rows.
   Active abilities with generic effects use ConditionTreeEditor (nested AND/OR)
   and an optional activation chance (0–100%). Validation enforces unique name,
   valid category/source, source-specific references, effect parameters, and the
@@ -1365,13 +1407,20 @@ TECHNIQUE EDITOR  (TechniqueEditorScreen)
 This section summarises the content currently shipped in data/; counts and names
 reflect HEAD at the time of writing. See the JSON files for full detail.
 
-  MOVES — 102 moves (data/moves/all_moves.json), ids 000000–000101.
-    Free moves (11):       000000 Basic Strike, 000001 Basic Block, 000053
-                           Desummon, and the eight base Ten Shadows summons
-                           000033/000034/000039/000040/000041/000042/000043/000044.
-    Must-be-granted (17):  000028 Simple Domain, 000053 Desummon, and the
-                           shikigami attack moves 000054–000068 (granted via the
-                           matching SHIKIGAMI-sourced ability).
+  MOVES — 140 moves (data/moves/all_moves.json), ids 000000–000139.
+    Free moves (17):       000000 Basic Strike, 000001 Basic Block, the eight
+                           Ten Shadows summons 000030/000031/000035–000040,
+                           000049 Desummon, 000085 Gorilla Mode, 000088 Return to
+                           Panda Core, and cursed-spirit moves 000110/000124/
+                           000125/000132.
+    Must-be-granted (26):  000026 Simple Domain, 000049–000064 shikigami
+                           commands, 000081–000088 shikigami/cursed-corpse moves,
+                           and 000132 Reconstitute.
+    CURSED_SPIRIT (30):    000110–000123 offensive, 000124–000131 defensive,
+                           and 000132–000139 utility. All have hasCeCost=true,
+                           positive CE bounds, and an explicit CURSED_ENERGY tag.
+                           Reconstitute is granted by Cursed Spirit Physiology;
+                           the remaining entries are optional class content.
     STUN effects (11):     000005 Sweeping Kick, 000027 Batto Sword Drawing,
                            000046 Nue Lightning Strike, 000048 Serpent Snare,
                            000050 Winged Toad Snare, 000058 Lightning Discharge,
@@ -1421,9 +1470,10 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
              Drawing (000027). 000053 Desummon is a SHIKIGAMI/DESUMMON_SELF move
              carried by every shikigami (voluntary; cooldown to next round).
 
-  ABILITIES — 47 abilities (data/abilities/all_abilities.json), ids 000000–000046.
-    sourceType: TECHNIQUE (13), SHIKIGAMI (9), ABILITY (11 sub-abilities),
-                CHARACTER (13), CURSED_CORPSE (1). 38 PASSIVE, 9 ACTIVE.
+  ABILITIES — 65 abilities (data/abilities/all_abilities.json), ids 000000–000064.
+    sourceType: TECHNIQUE (15), SHIKIGAMI (9), ABILITY (11 sub-abilities),
+                CHARACTER (13), CURSED_SPIRIT (14), CURSED_CORPSE (1),
+                CURSED_TOOL (1), MOVE (1). 53 PASSIVE, 12 ACTIVE.
     Abilities with editable CODED effect rows (key/feature):
       MIRACLES          000001 Miracle Reservoir, 000002 Fateful Reprieve,
                         000003 Fortune Reclaimed
@@ -1449,6 +1499,9 @@ reflect HEAD at the time of writing. See the JSON files for full detail.
       000033 Blessed by the Sparks of Black doubles BLACK_FLASH_CHANCE odds
       000021–000029                  per-shikigami SHIKIGAMI-sourced abilities that
                                      grant each shikigami its attack moves
+      000051 Cursed Spirit Physiology and 000052 Exorcism Requires Cursed Energy
+                                     are automatically assigned to every cursed
+                                     spirit. Optional class traits are 000053–000064.
     masteryThreshold > 0: 000019 Totality (50), 000031 Refined Commands (60),
                           000032 Well's Unknown Abyss (50).
 

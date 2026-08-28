@@ -272,7 +272,9 @@ public final class DamageCalculator {
 
         // --- 1b. Parry check (potency-gated; INTANGIBLE bypasses parry) ---
         // A parry negates the hit entirely. If the parry would stagger the attacker
-        // (non-GUARD_BREAK, parryStaggerTicks > 0), the resolver applies the stagger.
+        // (non-GUARD_BREAK, non-RANGED, parryStaggerTicks > 0), the resolver applies
+        // the stagger. A perfect read of a RANGED attack instead sends the attack
+        // back at its own user (reflection damage carried on the result).
         if (!intangible && !codedModifiers.bypassConventionalDefenses()
             && component.isAvoidable() && defTimeline != null) {
             ActionSegment parrySeg = defTimeline.activeDefenseAt(
@@ -284,10 +286,14 @@ public final class DamageCalculator {
                 boolean stagger = parrySeg.getMove().parryStaggersAttacker(move, component);
                 int staggerTicks = stagger ? parrySeg.getMove().getParryStaggerTicks() : 0;
                 if (perfect && stagger) staggerTicks += PERFECT_PARRY_BONUS_STAGGER_TICKS;
+                int reflected = perfect && component.isRanged()
+                    ? reflectedDamage(attacker, move, component, currentTick, rng)
+                    : 0;
                 return DamageResult.parried(
                     move, component, parrySeg, staggerTicks, codedModifiers.events())
                     .withRecoil(codedModifiers.recoilDamage())
-                    .withPerfectRead(perfect);
+                    .withPerfectRead(perfect)
+                    .withReflectedDamage(reflected);
             }
         }
 
@@ -352,31 +358,10 @@ public final class DamageCalculator {
             }
         }
 
-        // --- 5. Defense ---
-        double defense = Math.max(1.0,
-            defender.computeCurrentDefense(currentTick) * codedModifiers.defenseMultiplier());
-
-        // --- 6. Damage formula ---
+        // --- 5/6. Defense + damage formula ---
         // damage = ((basePower × power) after block / defense) × DAMAGE_SCALE × roll
-        double randomRoll = ROLL_MIN + (1.0 - ROLL_MIN) * rng.nextDouble();
-        double elementalStatusMultiplier = 1.0;
-        if (component.hasTag(MoveTag.ELECTRIC)
-            && defender.hasEffect(StatusEffectType.WET)) {
-            elementalStatusMultiplier *= 2.0;
-        }
-        if (component.hasTag(MoveTag.MELEE)
-            && attacker.hasEffect(StatusEffectType.BURNED)) {
-            elementalStatusMultiplier *= 0.5;
-        }
-        int rawDamage = (int) Math.round(
-            (attackValue / defense) * DAMAGE_SCALE * randomRoll
-                * attacker.getAbilityFlags().damageMultiplierFor(move)
-                * defender.getAbilityFlags().incomingDamageMultiplierFor(move)
-                * elementalStatusMultiplier
-        );
-        rawDamage = attackValue <= 0.0 ? 0 : Math.max(1, rawDamage);
-        rawDamage = Math.max(0, (int) Math.round(
-            attacker.modifyBattleStat(com.jjktbf.model.character.BattleStatKey.DAMAGE_DEALT, rawDamage)));
+        int rawDamage = applyDamageFormula(attacker, defender, move, component,
+            attackValue, currentTick, rng, codedModifiers.defenseMultiplier());
 
         // --- 7. Black Flash roll ---
         boolean blackFlash = false;
@@ -395,6 +380,73 @@ public final class DamageCalculator {
         return DamageResult.hit(move, component, finalDamage, rawDamage, blackFlash,
             bypassBlock, codedModifiers.events(), activeBlockSegment)
             .withRecoil(codedModifiers.recoilDamage());
+    }
+
+    /**
+     * Pipeline steps 5–6: the target's Defense and the damage formula.
+     * Shared by the ordinary hit path and by perfect-parry reflection, which
+     * runs the same formula against the attack's own user.
+     */
+    private static int applyDamageFormula(
+        BattleCombatant attacker,
+        BattleCombatant target,
+        Move            move,
+        HitComponent    component,
+        double          attackValue,
+        int             currentTick,
+        RandomSource    rng,
+        double          defenseMultiplier
+    ) {
+        double defense = Math.max(1.0,
+            target.computeCurrentDefense(currentTick) * defenseMultiplier);
+
+        double randomRoll = ROLL_MIN + (1.0 - ROLL_MIN) * rng.nextDouble();
+        double elementalStatusMultiplier = 1.0;
+        if (component.hasTag(MoveTag.ELECTRIC)
+            && target.hasEffect(StatusEffectType.WET)) {
+            elementalStatusMultiplier *= 2.0;
+        }
+        if (component.hasTag(MoveTag.MELEE)
+            && attacker.hasEffect(StatusEffectType.BURNED)) {
+            elementalStatusMultiplier *= 0.5;
+        }
+        int damage = (int) Math.round(
+            (attackValue / defense) * DAMAGE_SCALE * randomRoll
+                * attacker.getAbilityFlags().damageMultiplierFor(move)
+                * target.getAbilityFlags().incomingDamageMultiplierFor(move)
+                * elementalStatusMultiplier
+        );
+        damage = attackValue <= 0.0 ? 0 : Math.max(1, damage);
+        return Math.max(0, (int) Math.round(
+            attacker.modifyBattleStat(com.jjktbf.model.character.BattleStatKey.DAMAGE_DEALT, damage)));
+    }
+
+    /**
+     * Damage a perfect-read parry sends back at a RANGED attack's own user:
+     * the attack's full value (its wielder's Power and modifiers) rerolled
+     * against the wielder's current Defense. The returning strike contests
+     * no block/parry/dodge and rolls no Black Flash.
+     */
+    private static int reflectedDamage(
+        BattleCombatant attacker,
+        Move            move,
+        HitComponent    component,
+        int             currentTick,
+        RandomSource    rng
+    ) {
+        CharacterStats acs = attacker.getEffectiveStats();
+        double power = PowerCalculator.compute(
+            component.getCategory(), acs, attacker.getStatMode());
+        if (component.getCategory() == MoveCategory.PHYSICAL) {
+            power *= CombatStats.PHYSICAL_POWER_MULTIPLIER;
+        }
+        power = Math.max(0.0, attacker.modifyBattleStat(
+            com.jjktbf.model.character.BattleStatKey.POWER, power));
+        double attackValue = component.getBasePower()
+            * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
+            * power;
+        return applyDamageFormula(attacker, attacker, move, component,
+            attackValue, currentTick, rng, 1.0);
     }
 
     private static HitComponent firstComponent(Move move) {
@@ -467,6 +519,8 @@ public final class DamageCalculator {
          * staggers longer). Only meaningful on defence outcomes.
          */
         private final boolean perfectRead;
+        /** For a perfect-read PARRIED RANGED attack: damage sent back at the attacker. */
+        private final int reflectedDamage;
 
         private DamageResult(
             Outcome outcome,
@@ -500,6 +554,26 @@ public final class DamageCalculator {
             int recoilDamage,
             boolean perfectRead
         ) {
+            this(outcome, move, component, finalDamage, rawDamage, blackFlash,
+                bypassedBlock, codedEvents, defenseSegment, parryStaggerTicks,
+                recoilDamage, perfectRead, 0);
+        }
+
+        private DamageResult(
+            Outcome outcome,
+            Move move,
+            HitComponent component,
+            int finalDamage,
+            int rawDamage,
+            boolean blackFlash,
+            boolean bypassedBlock,
+            List<CombatEvent> codedEvents,
+            ActionSegment defenseSegment,
+            int parryStaggerTicks,
+            int recoilDamage,
+            boolean perfectRead,
+            int reflectedDamage
+        ) {
             this.outcome     = outcome;
             this.move        = move;
             this.component   = component;
@@ -512,6 +586,7 @@ public final class DamageCalculator {
             this.parryStaggerTicks = parryStaggerTicks;
             this.recoilDamage = Math.max(0, recoilDamage);
             this.perfectRead = perfectRead;
+            this.reflectedDamage = Math.max(0, reflectedDamage);
         }
 
         public static DamageResult miss(Move move) {
@@ -606,14 +681,21 @@ public final class DamageCalculator {
             if (recoilDamage <= 0) return this;
             return new DamageResult(outcome, move, component, finalDamage, rawDamage,
                 blackFlash, bypassedBlock, codedEvents, defenseSegment,
-                parryStaggerTicks, recoilDamage, perfectRead);
+                parryStaggerTicks, recoilDamage, perfectRead, reflectedDamage);
         }
 
         private DamageResult withPerfectRead(boolean perfectRead) {
             if (!perfectRead) return this;
             return new DamageResult(outcome, move, component, finalDamage, rawDamage,
                 blackFlash, bypassedBlock, codedEvents, defenseSegment,
-                parryStaggerTicks, recoilDamage, true);
+                parryStaggerTicks, recoilDamage, true, reflectedDamage);
+        }
+
+        private DamageResult withReflectedDamage(int reflectedDamage) {
+            if (reflectedDamage <= 0) return this;
+            return new DamageResult(outcome, move, component, finalDamage, rawDamage,
+                blackFlash, bypassedBlock, codedEvents, defenseSegment,
+                parryStaggerTicks, recoilDamage, perfectRead, reflectedDamage);
         }
 
         public Outcome getOutcome()     { return outcome; }
@@ -627,6 +709,7 @@ public final class DamageCalculator {
         public ActionSegment getDefenseSegment() { return defenseSegment; }
         public int getParryStaggerTicks() { return parryStaggerTicks; }
         public int getRecoilDamage() { return recoilDamage; }
+        public int getReflectedDamage() { return reflectedDamage; }
         /** True when the resolving defence escalated via an exact-tick perfect read. */
         public boolean isPerfectRead() { return perfectRead; }
         public boolean isHit()          { return outcome == Outcome.HIT; }
@@ -638,6 +721,10 @@ public final class DamageCalculator {
         /** True iff a parry should stagger the attacker (PARRIED + staggerTicks > 0). */
         public boolean staggersAttacker() {
             return outcome == Outcome.PARRIED && parryStaggerTicks > 0;
+        }
+        /** True iff a perfect-read parry sends the attack back at its user. */
+        public boolean reflectsAttack() {
+            return outcome == Outcome.PARRIED && reflectedDamage > 0;
         }
     }
 }

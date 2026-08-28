@@ -179,6 +179,9 @@ class CharacterTypeTest {
             .name("Shared Move")
             .moveTypes(java.util.EnumSet.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT))
             .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
             .freeMove(true)
             .build();
         var stats = new CharacterData().toCharacterStats();
@@ -212,6 +215,40 @@ class CharacterTypeTest {
     }
 
     @Test
+    void cursedSpiritSourcesExposeOptionalAbilitiesAndAssignMandatoryAbilities() {
+        AbilityData mandatory = new AbilityData();
+        mandatory.id = "MANDATORY";
+        mandatory.name = "Cursed Spirit Physiology";
+        mandatory.category = "PASSIVE";
+        mandatory.sourceType = "CURSED_SPIRIT";
+        mandatory.automaticallyAssigned = true;
+
+        AbilityData optional = new AbilityData();
+        optional.id = "OPTIONAL";
+        optional.name = "Amorphous Anatomy";
+        optional.category = "PASSIVE";
+        optional.sourceType = "CURSED_SPIRIT";
+
+        CharacterData cursedSpirit = new CharacterData();
+        cursedSpirit.type = CharacterType.CURSED_SPIRIT.name();
+        cursedSpirit.abilityIds = java.util.List.of();
+        CharacterData sorcerer = new CharacterData();
+        sorcerer.abilityIds = java.util.List.of();
+
+        AbilityResolver.Result spiritResult = AbilityResolver.resolve(
+            cursedSpirit, java.util.List.of(optional, mandatory));
+        assertTrue(spiritResult.availableAbilityIds().containsAll(
+            java.util.Set.of(mandatory.id, optional.id)));
+        assertTrue(spiritResult.containsAbility(mandatory.id));
+        assertFalse(spiritResult.containsAbility(optional.id));
+
+        AbilityResolver.Result sorcererResult = AbilityResolver.resolve(
+            sorcerer, java.util.List.of(optional, mandatory));
+        assertFalse(sorcererResult.availableAbilityIds().contains(mandatory.id));
+        assertFalse(sorcererResult.availableAbilityIds().contains(optional.id));
+    }
+
+    @Test
     void moveTypeSupportsCanonicalAndLegacyStoredValues() throws Exception {
         MoveData legacyShikigami = new MoveData();
         legacyShikigami.shikigamiMove = true;
@@ -229,6 +266,7 @@ class CharacterTypeTest {
         shared.unleashPoint = 1;
         shared.moveTypes = java.util.List.of(
             MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name());
+        shared.tags = java.util.List.of("UTILITY", "CURSED_ENERGY");
         Move sharedMove = shared.toMove();
         assertEquals(java.util.Set.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT),
             sharedMove.getMoveTypes());
@@ -279,12 +317,36 @@ class CharacterTypeTest {
             shikigami.toCharacterStats(), java.util.List.of(), java.util.List.of()));
     }
 
+    @Test
+    void cursedSpiritMovesRequireAnExplicitCursedEnergyTag() {
+        assertThrows(IllegalStateException.class, () -> new Move.Builder("UNCURSED")
+            .name("Uncursed")
+            .moveType(MoveType.CURSED_SPIRIT)
+            .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
+            .build());
+
+        assertDoesNotThrow(() -> new Move.Builder("CURSED")
+            .name("Cursed")
+            .moveType(MoveType.CURSED_SPIRIT)
+            .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
+            .freeMove(true)
+            .build());
+    }
+
     private static Move move(String id, MoveType type) {
-        return new Move.Builder(id)
+        Move.Builder builder = new Move.Builder(id)
             .name(id)
             .moveType(type)
             .category(MoveCategory.UTILITY)
-            .freeMove(true)
-            .build();
+            .freeMove(true);
+        if (type == MoveType.CURSED_SPIRIT) {
+            builder.tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY));
+        }
+        return builder.build();
     }
 }

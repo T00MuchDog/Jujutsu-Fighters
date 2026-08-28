@@ -2,6 +2,7 @@ package com.jjktbf.graphics.screens.editors;
 
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Container;
+import com.badlogic.gdx.scenes.scene2d.ui.CheckBox;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.SelectBox;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -108,6 +109,7 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
         draft.category = stored.category;
         draft.sourceType = stored.sourceType;
         draft.sourceValue = stored.sourceValue;
+        draft.automaticallyAssigned = stored.automaticallyAssigned;
         draft.effects = stored.effects == null
             ? new ArrayList<>()
             : stored.effects.stream()
@@ -336,7 +338,7 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
     private String validateSource(AbilityData ability) {
         SourceTypeEnum source = SourceTypeEnum.valueOf(ability.sourceType.toUpperCase());
         return switch (source) {
-            case CHARACTER, SHIKIGAMI, CURSED_CORPSE -> null;
+            case CHARACTER, SHIKIGAMI, CURSED_SPIRIT, CURSED_CORPSE -> null;
             case TECHNIQUE -> {
                 if (techniqueRepo.findByName(ability.sourceValue).isEmpty()) {
                     yield "Choose an existing technique source.";
@@ -444,6 +446,7 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
         ability.sourceType = ability.sourceType.toUpperCase();
         if (SourceTypeEnum.CHARACTER.name().equals(ability.sourceType)
             || SourceTypeEnum.SHIKIGAMI.name().equals(ability.sourceType)
+            || SourceTypeEnum.CURSED_SPIRIT.name().equals(ability.sourceType)
             || SourceTypeEnum.CURSED_CORPSE.name().equals(ability.sourceType)) {
             ability.sourceValue = null;
         }
@@ -632,6 +635,17 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
         sourceValueContainer = new Container<>();
         sourceValueContainer.setActor(buildSourceValue(ability));
         source.add(sourceValueContainer).growX().row();
+        CheckBox automaticallyAssigned = new CheckBox(
+            " Automatically assign when the source is available", skin);
+        automaticallyAssigned.setChecked(Boolean.TRUE.equals(ability.automaticallyAssigned));
+        automaticallyAssigned.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                ability.automaticallyAssigned = automaticallyAssigned.isChecked()
+                    ? Boolean.TRUE : null;
+                markDirty();
+            }
+        });
+        source.add(automaticallyAssigned).left().row();
 
         if (ability.isActive()) {
             Table activation = formSection(form, "CONDITIONS");
@@ -659,6 +673,9 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
             }
             case SHIKIGAMI -> {
                 table.add(formHint("Available only to Shikigami character definitions.")).row();
+            }
+            case CURSED_SPIRIT -> {
+                table.add(formHint("Available only to Cursed Spirit character definitions.")).row();
             }
             case CURSED_CORPSE -> {
                 table.add(formHint("Available only to Cursed Corpse character definitions.")).row();
@@ -1023,6 +1040,7 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
     private enum SourceTypeEnum {
         CHARACTER,
         SHIKIGAMI,
+        CURSED_SPIRIT,
         CURSED_CORPSE,
         TECHNIQUE,
         MOVE,

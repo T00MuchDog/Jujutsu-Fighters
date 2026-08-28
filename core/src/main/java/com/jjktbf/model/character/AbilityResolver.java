@@ -169,6 +169,9 @@ public final class AbilityResolver {
                 if (isSourceAvailable(definition, character, learnedMoveIds,
                     techniqueNames.keySet(), assignedAbilities.values(), techniques)) {
                     changed |= availableAbilityIds.add(definition.id);
+                    if (definition.isAutomaticallyAssigned()) {
+                        changed |= assignedAbilityIds.add(definition.id);
+                    }
                 }
             }
             for (AbilityData definition : availableDefinitions) {
@@ -224,6 +227,7 @@ public final class AbilityResolver {
                 && character.equippedCursedToolIds != null
                 && character.equippedCursedToolIds.contains(definition.sourceValue);
             case "SHIKIGAMI" -> character.effectiveType() == CharacterType.SHIKIGAMI;
+            case "CURSED_SPIRIT" -> character.effectiveType() == CharacterType.CURSED_SPIRIT;
             case "CURSED_CORPSE" -> character.effectiveType() == CharacterType.CURSED_CORPSE;
             default -> false;
         };

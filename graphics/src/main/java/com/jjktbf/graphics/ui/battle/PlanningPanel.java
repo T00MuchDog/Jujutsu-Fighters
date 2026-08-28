@@ -178,7 +178,6 @@ public class PlanningPanel {
     private String lockError;
     private ActionSegment targetMenuSegment;
     private final List<Rectangle> targetOptionBounds = new ArrayList<>();
-    private final Rectangle targetDoneBounds = new Rectangle();
     private final Map<ActionSegment, List<CombatantId>> targetLists = new IdentityHashMap<>();
     private final Set<ActionSegment> pendingTargetSelections =
         Collections.newSetFromMap(new IdentityHashMap<>());
@@ -1265,19 +1264,9 @@ public class PlanningPanel {
             font.setColor(BattleUiAssets.YELLOW);
             String selectionLabel = isOrderedPairMove(targetMenuSegment.getMove())
                 ? (count == 0 ? "SELECT ALLY" : "SELECT ENEMY") : "SELECT TARGETS";
+            Rectangle topOption = targetOptionBounds.get(0);
             font.draw(batch, selectionLabel + "  " + count + "/" + cap,
-                targetDoneBounds.x,
-                targetDoneBounds.y + targetDoneBounds.height * (eligibleTargets.size() + 1)
-                    + scaled(20f));
-            MoveTargetSelection.Requirements requirements =
-                MoveTargetSelection.requirements(targetMenuSegment.getMove());
-            boolean canFinish = count >= requirements.minimumCount() && count <= cap;
-            (canFinish && targetDoneBounds.contains(dragMouseX, dragMouseY)
-                ? ui.cardOver : ui.card).draw(batch, targetDoneBounds.x, targetDoneBounds.y,
-                    targetDoneBounds.width, targetDoneBounds.height);
-            font.setColor(canFinish ? BattleUiAssets.TEXT : BattleUiAssets.MUTED);
-            font.draw(batch, "DONE",
-                targetDoneBounds.x + scaled(8f), targetDoneBounds.y + scaled(20f));
+                topOption.x, topOption.y + topOption.height + scaled(20f));
         }
     }
 
@@ -1295,20 +1284,18 @@ public class PlanningPanel {
         boolean multiple = isMultipleTargetMove(targetMenuSegment.getMove());
         List<TargetOption> eligibleTargets = eligibleTargetOptions(
             targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
-        float totalHeight = rowHeight * (eligibleTargets.size() + (multiple ? 2 : 0));
+        float totalHeight = rowHeight * (eligibleTargets.size() + (multiple ? 1 : 0));
         float planningTop = unifiedWindowsLayout ? UNIFIED_SECTION_HEIGHT : screenHeight;
         if (y + totalHeight > planningTop - scaled(10f)) {
             y = Math.max(scaled(10f),
                 (selectedView == null ? y : selectedView.getBounds().y)
                     - totalHeight - scaled(4f));
         }
-        float optionsY = y + (multiple ? rowHeight : 0f);
+        float optionsY = y;
         for (int i = 0; i < eligibleTargets.size(); i++) {
             targetOptionBounds.add(new Rectangle(
                 x, optionsY + (eligibleTargets.size() - i - 1) * rowHeight, width, rowHeight));
         }
-        if (multiple) targetDoneBounds.set(x, y, width, rowHeight);
-        else targetDoneBounds.set(0f, 0f, 0f, 0f);
     }
 
     private ActionSegmentView viewFor(ActionSegment segment) {
@@ -1346,7 +1333,6 @@ public class PlanningPanel {
     private void closeTargetMenu() {
         targetMenuSegment = null;
         targetOptionBounds.clear();
-        targetDoneBounds.set(0f, 0f, 0f, 0f);
     }
 
     private boolean handleTargetMenuClick() {
@@ -1354,12 +1340,6 @@ public class PlanningPanel {
         layoutTargetMenu();
         List<TargetOption> eligibleTargets = eligibleTargetOptions(
             targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
-        if (isMultipleTargetMove(targetMenuSegment.getMove())
-            && targetDoneBounds.contains(dragMouseX, dragMouseY)) {
-            boolean confirmedTargets = confirmTargetSelection(targetMenuSegment);
-            soundPlayer.accept(confirmedTargets ? SoundCue.UI_CONFIRM : SoundCue.UI_DENIED);
-            return true;
-        }
         for (int i = 0; i < targetOptionBounds.size(); i++) {
             if (targetOptionBounds.get(i).contains(dragMouseX, dragMouseY)) {
                 boolean changed = chooseTarget(targetMenuSegment, eligibleTargets.get(i).instanceId());
@@ -1367,7 +1347,10 @@ public class PlanningPanel {
                 return true;
             }
         }
-        if (isMultipleTargetMove(targetMenuSegment.getMove())) return true;
+        if (isMultipleTargetMove(targetMenuSegment.getMove())
+            && confirmTargetSelection(targetMenuSegment)) {
+            soundPlayer.accept(SoundCue.UI_CONFIRM);
+        }
         closeTargetMenu();
         return false;
     }

@@ -1185,4 +1185,284 @@
     }
   } ],
   "masteryThreshold" : 0
+}, {
+  "id" : "000051",
+  "name" : "Cursed Spirit Physiology",
+  "flavourText" : "A curse is a body made from cursed energy itself, sustained by reserves far beyond those of ordinary flesh.",
+  "mechanicText" : "Multiply MAX CE by 5, regenerate 1 CE per TICK, waive low CE COSTS according to raw BST, and grant *move:000132*.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 5.0,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "MAX_CE"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 0.95,
+    "statOperation" : "CHANGE",
+    "stringValue" : "CE_REGENERATION"
+  }, {
+    "effectId" : "effect-000002",
+    "type" : "CE_COST_WAIVE_BY_STAT_TOTAL",
+    "intValue" : 100
+  }, {
+    "effectId" : "effect-000003",
+    "type" : "GRANT_MOVE",
+    "moveId" : "000132"
+  } ],
+  "masteryThreshold" : 0,
+  "automaticallyAssigned" : true
+}, {
+  "id" : "000052",
+  "name" : "Exorcism Requires Cursed Energy",
+  "flavourText" : "Ordinary force can tear apart a curse, but only cursed power can erase the energy holding its form together.",
+  "mechanicText" : "Fatal uncursed PHYSICAL hits leave the user at 1 HP. CURSED ENERGY, TECHNIQUES, CURSED TOOLS, cursed beings, and non-hit damage can EXORCISE normally.",
+  "category" : "ACTIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "ALL",
+      "children" : [ {
+        "type" : "FATAL_DAMAGE",
+        "actor" : "SELF"
+      }, {
+        "type" : "INCOMING_HIT_LACKS_CURSED_ENERGY",
+        "actor" : "SELF"
+      } ]
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "SURVIVE_FATAL_DAMAGE",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "uses" : 1
+  } ],
+  "masteryThreshold" : 0,
+  "automaticallyAssigned" : true
+}, {
+  "id" : "000053",
+  "name" : "Amorphous Anatomy",
+  "flavourText" : "A body without fixed organs disperses blunt force through shifting cursed flesh.",
+  "mechanicText" : "Reduce incoming PHYSICAL damage by 10%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "INCOMING_DAMAGE_MULTIPLY",
+    "doubleValue" : 0.9,
+    "moveTag" : "PHYSICAL"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000054",
+  "name" : "Toxic Composition",
+  "flavourText" : "The curse's substance is already poisonous enough that lesser toxins find nothing left to corrupt.",
+  "mechanicText" : "Become immune to POISON.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "POISON_IMMUNITY"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000055",
+  "name" : "Soul Instinct",
+  "flavourText" : "Born from humanity's fear, the curse senses the contour beneath flesh without needing to understand it.",
+  "mechanicText" : "Attacks can strike the SOUL.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "SOUL_AWARE_ATTACKS"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000056",
+  "name" : "Dense Cursed Core",
+  "flavourText" : "A compact knot of cursed energy makes the spirit slower, heavier, and exceptionally difficult to disperse.",
+  "mechanicText" : "Increase MAX HP by 15% and DEFENSE by 10%, but reduce SPEED by 10%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.15,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "MAX_HP"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.1,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "DEFENSE"
+  }, {
+    "effectId" : "effect-000002",
+    "type" : "STAT_MULTIPLY",
+    "stat" : "speed",
+    "doubleValue" : 0.9
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000057",
+  "name" : "Volatile Cursed Core",
+  "flavourText" : "Unstable energy leaks from every seam, magnifying both the curse's violence and the damage that can rupture it.",
+  "mechanicText" : "Increase CURSED ENERGY damage dealt by 12% and all DAMAGE TAKEN by 8%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DAMAGE_MULTIPLY",
+    "doubleValue" : 1.12,
+    "moveTag" : "CURSED_ENERGY"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.08,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "DAMAGE_TAKEN"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000058",
+  "name" : "Bottomless Malice",
+  "flavourText" : "The hatred that formed the curse gathers into a reservoir that seems to deepen whenever it is measured.",
+  "mechanicText" : "Increase MAX CE by 25% and CE REGENERATION by 0.25 per TICK.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.25,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "MAX_CE"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 0.25,
+    "statOperation" : "CHANGE",
+    "stringValue" : "CE_REGENERATION"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000059",
+  "name" : "Natural Calamity",
+  "flavourText" : "The curse embodies disaster on a scale that spreads suffering beyond any single victim.",
+  "mechanicText" : "Increase AOE damage dealt by 15%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DAMAGE_MULTIPLY",
+    "doubleValue" : 1.15,
+    "moveTag" : "AOE"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000060",
+  "name" : "Many-Limbed Hunter",
+  "flavourText" : "Too many claws attack from too many angles for a human guard to follow them all.",
+  "mechanicText" : "Add 10 ACCURACY and increase BASE POWER by 8% on PHYSICAL moves.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "MOVE_ACCURACY_ADD",
+    "intValue" : 10,
+    "moveTag" : "PHYSICAL"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "MOVE_BASE_POWER_MULTIPLY",
+    "doubleValue" : 1.08,
+    "moveTag" : "PHYSICAL"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000061",
+  "name" : "Grudge-Fed Flesh",
+  "flavourText" : "Every wound the curse inflicts feeds fresh resentment back into its damaged form.",
+  "mechanicText" : "After dealing at least 25 DAMAGE in one instance, restore 2% MAX HP.",
+  "category" : "ACTIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "DAMAGE_DEALT_AT_LEAST",
+      "actor" : "SELF",
+      "amount" : 25
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "HEAL_HP",
+    "doubleValue" : 0.02,
+    "valueMode" : "PERCENT",
+    "target" : "SELF"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000062",
+  "name" : "Hatred Feeds Hatred",
+  "flavourText" : "Pain does not exhaust the curse; it reminds the curse why it exists.",
+  "mechanicText" : "After taking at least 25 DAMAGE in one instance, restore 1% MAX CE.",
+  "category" : "ACTIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "DAMAGE_TAKEN_AT_LEAST",
+      "actor" : "SELF",
+      "amount" : 25
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "RESTORE_CE",
+    "doubleValue" : 0.01,
+    "valueMode" : "PERCENT",
+    "target" : "SELF"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000063",
+  "name" : "Malignant Miasma",
+  "flavourText" : "The curse's presence clings to every wound as a sickness that conventional bodies cannot endure.",
+  "mechanicText" : "Connected attacks apply POISON for 1 ROUND.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "AUTO_STATUS_APPLY",
+    "stringValue" : "POISON",
+    "target" : "ENEMY",
+    "timing" : "ON_HIT",
+    "durationRounds" : 1,
+    "magnitude" : 0.0
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000064",
+  "name" : "Oppressive Aura",
+  "flavourText" : "The curse floods the battlefield with enough killing intent to make every enemy hesitate.",
+  "mechanicText" : "At ROUND START, reduce every enemy's ACCURACY by 10 for 1 ROUND.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "AUTO_STATUS_APPLY",
+    "stringValue" : "ACCURACY_DECREASE",
+    "target" : "ENEMY",
+    "timing" : "ROUND_START",
+    "durationRounds" : 1,
+    "magnitude" : 10.0
+  } ],
+  "masteryThreshold" : 0
 } ]

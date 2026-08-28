@@ -214,7 +214,7 @@ class PlanningPanelInputTest {
     }
 
     @Test
-    void multipleTargetSelectionTogglesUpToCapAndRequiresDoneBeforeLocking() {
+    void multipleTargetSelectionTogglesUpToCapAndLocksOnClickOff() {
         Move move = multipleMove("CURSED_SPEECH", 3);
         PlanningPanel panel = targetedPanel(move, List.of(
             new PlanningPanel.TargetOption("target-1", "First target"),
@@ -247,7 +247,25 @@ class PlanningPanelInputTest {
         }
 
         input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
-        assertFalse(panel.isConfirmed(), "the open multiple-target menu must be finished first");
+        assertTrue(panel.isConfirmed(), "clicking off the target menu locks in the selected targets");
+    }
+
+    @Test
+    void clickingOffAnIncompleteMultipleTargetSelectionBlocksLocking() {
+        Move move = multipleMove("INCOMPLETE", 3);
+        PlanningPanel panel = targetedPanel(move, List.of(
+            new PlanningPanel.TargetOption("target-1", "First target"),
+            new PlanningPanel.TargetOption("target-2", "Second target")
+        ));
+        PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
+
+        clickCard(input);
+        ActionSegment segment = panel.getPlan().offensiveTimeline().getSegments().get(0);
+
+        input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        assertFalse(panel.isConfirmed(), "an incomplete target selection must not lock");
+
+        assertTrue(panel.chooseTarget(segment, "target-1"));
         assertTrue(panel.confirmTargetSelection(segment));
         input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
         assertTrue(panel.isConfirmed());

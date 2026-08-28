@@ -1673,6 +1673,11 @@ public class EffectListEditor extends Table {
                 == AbilityEffectType.StatOperation.CHANGE) {
             return "Amount (+/-)";
         }
+        if (type == AbilityEffectType.TIMED_STAT_MODIFIER
+            && AbilityEffectType.selectedStatOperation(effect)
+                == AbilityEffectType.StatOperation.SET) {
+            return "Exact value";
+        }
         return switch (type) {
             case STAT_DIVIDE -> "Divisor";
             case BF_CHANCE_ADD -> "Chance change % (+/-)";

@@ -3,6 +3,7 @@ package com.jjktbf.model.character;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import java.util.Set;
  *   ABILITY        — available while another specific ability is assigned (by ID or name)
  *                    e.g. "Precog" is available after assigning "Heavenly Restriction"
  *   SHIKIGAMI      — available to every SHIKIGAMI character definition
+ *   CURSED_SPIRIT  — available to every CURSED_SPIRIT character definition
  *   CURSED_TOOL    — active automatically while one specific cursed tool is equipped
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -60,6 +62,10 @@ public class AbilityData {
 
     /** Source type such as CHARACTER, TECHNIQUE, MOVE, ABILITY, or CURSED_TOOL. */
     public String sourceType;
+
+    /** Automatically assigned whenever this ability's source is available. */
+    @JsonProperty("automaticallyAssigned")
+    public Boolean automaticallyAssigned;
 
     /**
      * Source qualifier:
@@ -98,6 +104,9 @@ public class AbilityData {
 
     @JsonIgnore public boolean isPassive()  { return "PASSIVE".equalsIgnoreCase(category); }
     @JsonIgnore public boolean isActive()   { return "ACTIVE".equalsIgnoreCase(category); }
+    @JsonIgnore public boolean isAutomaticallyAssigned() {
+        return Boolean.TRUE.equals(automaticallyAssigned);
+    }
 
     @JsonIgnore public double effectiveActivationChance() {
         if (!isActive() || !Boolean.TRUE.equals(activationChanceEnabled)) return 1.0;

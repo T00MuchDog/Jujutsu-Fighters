@@ -1789,6 +1789,34 @@ public class CombatResolver {
                 .message((result.isPerfectRead() ? "PERFECT READ! " : "")
                     + defender.getCharacter().getName() + " parried " + move.getName() + "!")
                 .build());
+            // A perfect read of a ranged attack returns it to its own user.
+            if (result.reflectsAttack()) {
+                // The reflected strike is still the attacker's own power; keep
+                // the original attacker as the fatal trigger's actor so cursed
+                // provenance (being type, cursed tools) is judged from them.
+                int reflected = attacker.receiveDamage(result.getReflectedDamage(),
+                    fatalAmount -> abilityActivations.preventFatalDamage(
+                        state,
+                        AbilityTrigger.fatalDamage(
+                            attacker, attacker, move, component, fatalAmount, tick)));
+                events.addAll(attacker.getCodedAbilities().drainPendingEvents(tick));
+                events.add(CombatEvent.of(reflected == 0
+                        ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
+                    .source(defender).target(attacker).move(move).componentIndex(componentIndex)
+                    .intValue(reflected).tick(tick)
+                    .message(reflected == 0
+                        ? attacker.getCharacter().getName() + " ignored the reflected "
+                            + move.getName() + "!"
+                        : defender.getCharacter().getName() + " sent " + move.getName()
+                            + " back at " + attacker.getCharacter().getName() + "!")
+                    .build());
+                if (reflected > 0) {
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                        AbilityTrigger.Type.DAMAGE, defender, attacker, reflected, tick)));
+                    wakeFromSleep(state, defender, attacker, move, componentIndex, tick, events);
+                }
+                reconcileLifecycle(state, tick, events);
+            }
             if (result.staggersAttacker()) {
                 attacker.addStatusEffect(
                     new StatusEffect(StatusEffectType.STAGGER, 0,

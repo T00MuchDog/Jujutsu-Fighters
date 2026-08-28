@@ -28,6 +28,10 @@
     "description": "Offensive actions marked with the Attack move tag."
   },
   {
+    "term": "AOE",
+    "description": "An area-of-effect move that resolves against multiple combatants."
+  },
+  {
     "term": "AVAILABLE",
     "description": "Content that can be learned or assigned but is not active yet."
   },
@@ -48,8 +52,20 @@
     "description": "A defensive window that reduces matching attacks when its Potency is high enough."
   },
   {
+    "term": "BST",
+    "description": "Base Stat Total, the sum of all ten raw authored character stats before scaling or ability modifiers."
+  },
+  {
     "term": "CE",
     "description": "Cursed Energy, the resource spent by CE-bearing moves."
+  },
+  {
+    "term": "CE COSTS",
+    "description": "The Cursed Energy spent when moves begin, after scaling, bounds, and ability modifiers."
+  },
+  {
+    "term": "CE REGENERATION",
+    "description": "The fractional Cursed Energy restored automatically per resolution tick."
   },
   {
     "term": "CURSED ENERGY",
@@ -68,6 +84,18 @@
     "description": "A move tag for raw cursed-energy actions governed by CE Output, Reserves, and Efficiency."
   },
   {
+    "term": "CURSED SPIRIT",
+    "description": "A cursed-being character class with automatic physiology and exorcism rules."
+  },
+  {
+    "term": "CURSED TOOLS",
+    "description": "Named cursed weapons whose matching attacks can exorcise cursed spirits."
+  },
+  {
+    "term": "DAMAGE TAKEN",
+    "description": "A battle-stat multiplier applied to incoming damage."
+  },
+  {
     "term": "DEFENSE",
     "description": "The defender's current resilience, calculated from Durability and available CE reinforcement."
   },
@@ -78,6 +106,10 @@
   {
     "term": "DODGE",
     "description": "A chance-based defensive window that avoids matching attacks entirely."
+  },
+  {
+    "term": "EXORCISE",
+    "description": "Defeat a cursed spirit with cursed power rather than leaving it at 1 HP after fatal ordinary physical damage."
   },
   {
     "term": "GUARD BREAK",
@@ -110,6 +142,14 @@
   {
     "term": "MELEE",
     "description": "A move tag marking a close-range attack."
+  },
+  {
+    "term": "MAX CE",
+    "description": "The maximum Cursed Energy a combatant can hold."
+  },
+  {
+    "term": "MAX HP",
+    "description": "The maximum Health Points a combatant can hold."
   },
   {
     "term": "MIRACLE",
@@ -172,6 +212,10 @@
     "description": "One complete planning and resolution cycle."
   },
   {
+    "term": "ROUND START",
+    "description": "The trigger processed before a round's planning phase begins."
+  },
+  {
     "term": "ROUNDS",
     "description": "Complete planning and resolution cycles."
   },
@@ -182,6 +226,10 @@
   {
     "term": "STUN",
     "description": "An immediate effect that cancels the target's active non-Heavy action segment."
+  },
+  {
+    "term": "TICK",
+    "description": "One resolution step on the AP timeline."
   },
   {
     "term": "KATANA",

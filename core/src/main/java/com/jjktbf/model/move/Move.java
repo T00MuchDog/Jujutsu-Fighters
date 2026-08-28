@@ -877,8 +877,8 @@ public class Move {
 
     /**
      * Whether a successful parry of the given incoming attack should stagger the
-     * attacker: the move must be a PARRY, the incoming attack must NOT carry
-     * GUARD_BREAK, and {@code parryStaggerTicks} must be positive.
+     * attacker: the move must be a PARRY, the incoming attack must carry neither
+     * GUARD_BREAK nor RANGED, and {@code parryStaggerTicks} must be positive.
      */
     public boolean parryStaggersAttacker(Move incoming) {
         HitComponent component = incoming == null || incoming.getHitComponents().isEmpty()
@@ -886,11 +886,18 @@ public class Move {
         return parryStaggersAttacker(incoming, component);
     }
 
-    /** Component-aware guard-break check for parry stagger. */
+    /**
+     * Component-aware guard-break and range check for parry stagger. A RANGED
+     * attack never staggers its user when parried — its wielder is out of
+     * reach; a perfect read reflects it instead (see DamageCalculator).
+     */
     public boolean parryStaggersAttacker(Move incoming, HitComponent component) {
         if (defenseType != DefenseType.PARRY) return false;
         if (component != null ? component.isGuardBreak()
             : incoming != null && incoming.isGuardBreak()) return false;
+        boolean ranged = component != null ? component.isRanged()
+            : incoming != null && incoming.isRanged();
+        if (ranged) return false;
         return parryStaggerTicks > 0;
     }
 
@@ -1102,6 +1109,12 @@ public class Move {
                 throw new IllegalStateException("moveCap must be non-negative");
 
             Set<MoveTag> effectiveTags = tags != null ? tags : category.getTags();
+            if (moveTypes.contains(MoveType.CURSED_SPIRIT)
+                && (tags == null || !tags.contains(MoveTag.CURSED_ENERGY))) {
+                throw new IllegalStateException(
+                    "Cursed Spirit moves must explicitly include CURSED_ENERGY (name='"
+                        + name + "')");
+            }
             if (effectiveTags.contains(MoveTag.FRIENDLY_FIRE)
                 && !effectiveTags.contains(MoveTag.AOE)) {
                 throw new IllegalStateException("FRIENDLY_FIRE requires AOE");

@@ -119,6 +119,10 @@ public enum AbilityEffectType {
         "Alter CE costs",
         "Scales matching move costs, then adds or subtracts a flat CE amount. Applied after the move's configured CE bounds and never below zero.",
         MOVE_SCOPE, DECIMAL, INTEGER),
+    CE_COST_WAIVE_BY_STAT_TOTAL(
+        "Waive low CE costs by stat total",
+        "Makes matching moves free when their authored base CE cost is no greater than the character's ten-stat total divided by this value (minimum threshold 1).",
+        MOVE_SCOPE, INTEGER),
 
     MOVE_ACCURACY_ADD(
         "Change own accuracy",
@@ -257,7 +261,7 @@ public enum AbilityEffectType {
 
     TIMED_STAT_MODIFIER(
         "Timed stat modifier",
-        "Changes or multiplies a core or battle stat for the configured rounds and ticks.",
+        "Changes or multiplies a core or battle stat, or sets a battle stat to an exact value, for the configured rounds and ticks.",
         STAT_TYPE, STAT_OPERATION, VALUE_MODE, STAT, BATTLE_STAT,
         TARGET, INTEGER, DECIMAL, DURATION, REFRESH_GROUP),
     TEMP_STAT_SET_VALUE(
@@ -268,6 +272,10 @@ public enum AbilityEffectType {
         "Multiply battle-stat odds",
         "Permanently multiplies the odds of a probability battle stat. A factor of 2 doubles odds without directly doubling probability.",
         BATTLE_STAT, DECIMAL),
+    BATTLE_STAT_MODIFIER(
+        "Permanent battle-stat modifier",
+        "Permanently changes, multiplies, or sets one derived battle stat while this passive ability is assigned.",
+        BATTLE_STAT, STAT_OPERATION, DECIMAL),
 
     IGNORE_DAMAGE(
         "Ignore incoming damage",
@@ -387,7 +395,8 @@ public enum AbilityEffectType {
 
     public enum StatOperation {
         CHANGE("Change"),
-        MULTIPLY("Multiply");
+        MULTIPLY("Multiply"),
+        SET("Set");
 
         public final String label;
         StatOperation(String label) { this.label = label; }
@@ -565,6 +574,7 @@ public enum AbilityEffectType {
                 effect.doubleValue = 0.50;
                 effect.intValue = 0;
             }
+            case CE_COST_WAIVE_BY_STAT_TOTAL -> effect.intValue = 100;
             case CE_COST_MULTIPLY, MOVE_ACCURACY_MULTIPLY,
                  OPPONENT_ACCURACY_MULTIPLY, DAMAGE_MULTIPLY, MOVE_BASE_POWER_MULTIPLY,
                  INCOMING_DAMAGE_MULTIPLY, MODIFY_DEFENSE -> effect.doubleValue = 1.10;
@@ -620,6 +630,11 @@ public enum AbilityEffectType {
             case BATTLE_STAT_ODDS_MULTIPLY -> {
                 effect.stringValue = BattleStatKey.BLACK_FLASH_CHANCE.name();
                 effect.doubleValue = 2.0;
+            }
+            case BATTLE_STAT_MODIFIER -> {
+                effect.stringValue = BattleStatKey.MAX_HP.name();
+                effect.statOperation = StatOperation.MULTIPLY.name();
+                effect.doubleValue = 1.10;
             }
             case APPLY_NEVER_MISS, APPLY_NEVER_HIT -> {
                 effect.target = AbilityEffectTarget.SELF.name();
@@ -875,7 +890,7 @@ public enum AbilityEffectType {
         }
         if (uses(STAT_OPERATION)) {
             try { statOperation(effect); }
-            catch (Exception ex) { return "Choose change or multiply."; }
+            catch (Exception ex) { return "Choose change, multiply, or set."; }
         }
         if (uses(ACCURACY_DURATION)) {
             try { accuracyDuration(effect); }
@@ -1062,10 +1077,13 @@ public enum AbilityEffectType {
                   BATTLE_STAT_ODDS_MULTIPLY ->
                 effect.doubleValue <= 0 || effect.doubleValue == 1.0
                     ? "Enter a positive multiplier other than 1.0." : null;
+            case BATTLE_STAT_MODIFIER -> battleStatModifierValidationError(effect);
             case CE_COST_ALTER -> effect.doubleValue < 0
                 || (effect.doubleValue == 1.0 && effect.intValue == 0)
                     ? "Use a non-negative multiplier or a non-zero CE change."
                     : null;
+            case CE_COST_WAIVE_BY_STAT_TOTAL -> effect.intValue <= 0
+                ? "Stat-total divisor must be greater than 0." : null;
             case STAT_DIVIDE -> effect.doubleValue <= 0 || effect.doubleValue == 1.0
                 ? "Enter a positive divisor other than 1.0." : null;
             case BF_CHANCE_ADD -> effect.doubleValue == 0.0
@@ -1229,7 +1247,8 @@ public enum AbilityEffectType {
                    UNLOCK_TECHNIQUE, AUTO_STATUS_APPLY, DEFENSE_FROM_DURABILITY,
                    SET_JUJUTSU_ART_SLOTS, MAX_ACTIVE_SUMMONS,
                    SUMMON_CE_UPKEEP_PER_ACTIVE_TICK, NEVER_MISS, NEVER_HIT,
-                   BATTLE_STAT_ODDS_MULTIPLY, DEFINE_BOUNDED_RESOURCE -> true;
+                   BATTLE_STAT_ODDS_MULTIPLY, BATTLE_STAT_MODIFIER,
+                   CE_COST_WAIVE_BY_STAT_TOTAL, DEFINE_BOUNDED_RESOURCE -> true;
             default -> false;
         };
     }
@@ -1339,10 +1358,12 @@ public enum AbilityEffectType {
 
     /** Battle-stat flat changes retain decimal points in CTM progression. */
     public boolean storesDecimalAsPoints(AbilityEffectData effect) {
-        return this == TIMED_STAT_MODIFIER
-            && statType(effect) == StatType.BATTLE
-            && statOperation(effect) == StatOperation.CHANGE
-            && valueMode(effect) == ValueMode.FLAT;
+        return (this == TIMED_STAT_MODIFIER
+                && statType(effect) == StatType.BATTLE
+                && statOperation(effect) == StatOperation.CHANGE
+                && valueMode(effect) == ValueMode.FLAT)
+            || (this == BATTLE_STAT_MODIFIER
+                && statOperation(effect) == StatOperation.CHANGE);
     }
 
     private Integer defaultInteger(AbilityEffectData effect) {
@@ -1354,7 +1375,11 @@ public enum AbilityEffectType {
         if (isAmountModeEffect()) return 0.10;
         if (this == TIMED_STAT_MODIFIER) {
             if (statOperation(effect) == StatOperation.MULTIPLY) return 1.10;
+            if (statOperation(effect) == StatOperation.SET) return 0.0;
             return valueMode(effect) == ValueMode.PERCENT ? 0.20 : 10.0;
+        }
+        if (this == BATTLE_STAT_MODIFIER) {
+            return statOperation(effect) == StatOperation.MULTIPLY ? 1.10 : 10.0;
         }
         return createDefault().doubleValue;
     }
@@ -1368,6 +1393,13 @@ public enum AbilityEffectType {
     }
 
     private static String timedStatValidationError(AbilityEffectData effect) {
+        if (statOperation(effect) == StatOperation.SET) {
+            if (statType(effect) != StatType.BATTLE) {
+                return "Set requires a battle stat; core stats use the timed character stat set.";
+            }
+            return effect.doubleValue == null || effect.doubleValue < 0
+                ? "Enter a non-negative value." : null;
+        }
         if (statOperation(effect) == StatOperation.MULTIPLY) {
             return effect.doubleValue <= 0 || effect.doubleValue == 1.0
                 ? "Enter a positive multiplier other than 1.0." : null;
@@ -1379,6 +1411,18 @@ public enum AbilityEffectType {
         double change = statType(effect) == StatType.CORE
             ? effect.intValue : effect.doubleValue;
         return change == 0.0 ? "Enter a non-zero amount." : null;
+    }
+
+    private static String battleStatModifierValidationError(AbilityEffectData effect) {
+        if (statOperation(effect) == StatOperation.MULTIPLY) {
+            return effect.doubleValue <= 0 || effect.doubleValue == 1.0
+                ? "Enter a positive multiplier other than 1.0." : null;
+        }
+        if (statOperation(effect) == StatOperation.SET) {
+            return effect.doubleValue == null || effect.doubleValue < 0
+                ? "Enter a non-negative value." : null;
+        }
+        return effect.doubleValue == 0.0 ? "Enter a non-zero amount." : null;
     }
 
     private static boolean isFinite(Double value) {

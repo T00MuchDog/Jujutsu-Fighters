@@ -124,6 +124,8 @@ public final class AbilityApplicator {
                         flags.ceCostMultiplierEffects.add(eff);
                     }
                     case CE_COST_ALTER -> flags.addCeCostAlteration(eff, null);
+                    case CE_COST_WAIVE_BY_STAT_TOTAL ->
+                        flags.ceCostWaiveByStatTotalEffects.add(eff.copy());
 
                     case MOVE_ACCURACY_ADD       -> {
                         flags.accuracyBonus += nvl(eff.intValue, 0);
@@ -160,7 +162,7 @@ public final class AbilityApplicator {
                         flags.incomingDamageMultiplierEffects.add(eff);
                     }
                     case BF_CHANCE_ADD           -> flags.bfChanceBonus    += nvl(eff.doubleValue, 0.0);
-                    case BATTLE_STAT_ODDS_MULTIPLY ->
+                    case BATTLE_STAT_ODDS_MULTIPLY, BATTLE_STAT_MODIFIER ->
                         flags.passiveBattleStatEffects.add(eff.copy());
                     case MODIFY_DEFENSE          -> flags.defenseMultiplier *= nvl(eff.doubleValue, 1.0);
                     case DEFENSE_FROM_DURABILITY ->
@@ -458,6 +460,8 @@ public final class AbilityApplicator {
         public double  summonCeUpkeepPerActiveTick = 0.0;
         public final java.util.List<AbilityEffectData> ceCostToMinimumEffects = new java.util.ArrayList<>();
         public final java.util.List<AbilityEffectData> ceCostMultiplierEffects = new java.util.ArrayList<>();
+        public final java.util.List<AbilityEffectData> ceCostWaiveByStatTotalEffects =
+            new java.util.ArrayList<>();
         private final java.util.List<CeCostAlteration> ceCostAlterations = new java.util.ArrayList<>();
 
         // Own accuracy
@@ -534,6 +538,8 @@ public final class AbilityApplicator {
                     ceCostMultiplierEffects.add(effect);
                 }
                 case CE_COST_ALTER -> addCeCostAlteration(effect, null);
+                case CE_COST_WAIVE_BY_STAT_TOTAL ->
+                    ceCostWaiveByStatTotalEffects.add(effect.copy());
                 case MOVE_ACCURACY_ADD -> {
                     accuracyBonus += nvl(effect.intValue, 0);
                     accuracyAddEffects.add(effect);
@@ -567,7 +573,8 @@ public final class AbilityApplicator {
                     incomingDamageMultiplierEffects.add(effect);
                 }
                 case BF_CHANCE_ADD -> bfChanceBonus += nvl(effect.doubleValue, 0.0);
-                case BATTLE_STAT_ODDS_MULTIPLY -> passiveBattleStatEffects.add(effect.copy());
+                case BATTLE_STAT_ODDS_MULTIPLY, BATTLE_STAT_MODIFIER ->
+                    passiveBattleStatEffects.add(effect.copy());
                 case MODIFY_DEFENSE -> defenseMultiplier *= nvl(effect.doubleValue, 1.0);
                 case DEFENSE_FROM_DURABILITY ->
                     defenseFromDurabilityMultiplier = nvl(effect.doubleValue, 1.0);
@@ -620,6 +627,7 @@ public final class AbilityApplicator {
             copy.soulAwareAttacks = soulAwareAttacks;
             copy.ceCostToMinimumEffects.addAll(ceCostToMinimumEffects);
             copy.ceCostMultiplierEffects.addAll(ceCostMultiplierEffects);
+            copy.ceCostWaiveByStatTotalEffects.addAll(ceCostWaiveByStatTotalEffects);
             for (CeCostAlteration alteration : ceCostAlterations) {
                 copy.addCeCostAlteration(alteration.effect, alteration.condition);
             }
@@ -663,6 +671,21 @@ public final class AbilityApplicator {
                 if (appliesTo(effect, move)) multiplier *= nvl(effect.doubleValue, 1.0);
             }
             return multiplier;
+        }
+
+        /** Whether an authored base CE cost falls within a stat-total waiver threshold. */
+        public boolean waivesCeCostByStatTotal(
+            com.jjktbf.model.move.Move move,
+            int baseStatTotal
+        ) {
+            for (AbilityEffectData effect : ceCostWaiveByStatTotalEffects) {
+                if (!appliesTo(effect, move)) continue;
+                int divisor = nvl(effect.intValue, 0);
+                if (divisor <= 0) continue;
+                int threshold = Math.max(1, baseStatTotal / divisor);
+                if (move.getBaseCeCost() <= threshold) return true;
+            }
+            return false;
         }
 
         /** Apply ordered post-bound cost adjustments that match this current move. */
@@ -797,6 +820,7 @@ public final class AbilityApplicator {
 
         public boolean hasAnyEffect() {
             return ceCostToMinimum || ceCostMultiplier != 1.0 || !ceCostAlterations.isEmpty()
+                || !ceCostWaiveByStatTotalEffects.isEmpty()
                 || accuracyBonus != 0 || accuracyMultiplier != 1.0
                 || opponentAccuracyBonus != 0 || opponentAccuracyMultiplier != 1.0
                 || !neverMissEffects.isEmpty() || !neverHitEffects.isEmpty()

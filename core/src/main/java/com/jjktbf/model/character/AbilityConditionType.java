@@ -50,6 +50,10 @@ public enum AbilityConditionType {
     ATTACK_CONNECTED("Attack connected", "The selected combatant's current hit connected before block and defense.", ACTOR),
     CONNECTED_HIT_HAS_TAG("Connected hit has tag", "The selected combatant's current connected hit has this tag.", ACTOR, MOVE_TAG),
     FATAL_DAMAGE("Fatal damage incoming", "The selected combatant is about to take damage or an effect that would reduce HP to zero.", ACTOR),
+    INCOMING_HIT_LACKS_CURSED_ENERGY(
+        "Incoming hit lacks cursed energy",
+        "The selected combatant is about to take a fatal physical hit that is not cursed energy, a technique, a cursed tool, or an attack from a cursed being.",
+        ACTOR),
 
     TIMELINE_POINT_REACHED("Timeline point reached", "The action counter reaches this tick.", TICK),
     ROUND_REACHED("Round reached", "The battle reaches this round.", ROUND),

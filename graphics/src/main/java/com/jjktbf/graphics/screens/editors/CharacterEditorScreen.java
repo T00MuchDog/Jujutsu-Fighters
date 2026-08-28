@@ -34,6 +34,7 @@ import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.AbilityResolver;
+import com.jjktbf.model.character.BattleStatKey;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.CharacterStats;
@@ -1230,17 +1231,40 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             AbilityApplicator.ApplicationResult application = evaluation(cd).application();
             CombatStats cs = new CombatStats(
                 application.modifiedStats, application.flags.jujutsuArtSlots);
+            int maxHp = roundedPreviewStat(
+                application, BattleStatKey.MAX_HP, cs.getMaxHp(), 1);
+            int maxAp = roundedPreviewStat(application, BattleStatKey.MAX_AP,
+                Math.max(0, cs.getMaxApBar() + application.flags.apBarBonus), 0);
+            int accuracy = roundedPreviewStat(
+                application, BattleStatKey.ACCURACY, cs.getAccuracy(), 0);
+            int evasion = roundedPreviewStat(
+                application, BattleStatKey.EVASION, cs.getEvasion(), 0);
+            int maxCe = roundedPreviewStat(
+                application, BattleStatKey.MAX_CE, cs.getMaxCursedEnergy(), 0);
+            double ceRegeneration = Math.max(0.0, previewBattleStat(application,
+                BattleStatKey.CE_REGENERATION,
+                com.jjktbf.model.combat.BattleCombatant
+                    .DEFAULT_CURSED_ENERGY_REGENERATION_PER_TICK));
             // Compute slot usage per category.
             StringBuilder sb = new StringBuilder();
-            sb.append("HP: ").append(cs.getMaxHp());
-            sb.append("  |  AP bar: ").append(Math.max(0,
-                cs.getMaxApBar() + application.flags.apBarBonus));
-            sb.append("  |  Acc: ").append(cs.getAccuracy());
-            sb.append("  |  Eva: ").append(cs.getEvasion());
-            sb.append("  |  CE pool: ").append(cs.getMaxCursedEnergy());
+            sb.append("HP: ").append(maxHp);
+            sb.append("  |  AP bar: ").append(maxAp);
+            sb.append("  |  Acc: ").append(accuracy);
+            sb.append("  |  Eva: ").append(evasion);
+            sb.append("  |  CE pool: ").append(maxCe);
             sb.append('\n');
-            sb.append("Phys power: ").append(PowerCalculator.physical(application.modifiedStats));
-            sb.append("  |  CE power: ").append(PowerCalculator.cursedEnergyBase(application.modifiedStats));
+            sb.append("CE regen: ").append(formatPreviewNumber(ceRegeneration)).append(" / tick");
+            int waiverThreshold = ceWaiverThreshold(cd, application);
+            if (waiverThreshold > 0) {
+                sb.append("  |  Free CE base cost: <= ").append(waiverThreshold);
+                sb.append(" (raw BST ").append(cd.toCharacterStats().baseStatTotal()).append(')');
+            }
+            sb.append('\n');
+            sb.append("Phys power: ").append(roundedPreviewStat(application,
+                BattleStatKey.POWER, PowerCalculator.physical(application.modifiedStats), 0));
+            sb.append("  |  CE power: ").append(roundedPreviewStat(application,
+                BattleStatKey.POWER,
+                PowerCalculator.cursedEnergyBase(application.modifiedStats), 0));
             sb.append('\n');
             CombatStats baseCombatStats = new CombatStats(
                 cd.toCharacterStats(), application.flags.jujutsuArtSlots);
@@ -1251,6 +1275,63 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         } catch (Exception e) {
             derivedPreview.setText("(compute error: " + e.getMessage() + ")");
         }
+    }
+
+    static double previewBattleStat(
+        AbilityApplicator.ApplicationResult application,
+        BattleStatKey key,
+        double baseValue
+    ) {
+        double additions = 0.0;
+        double multiplier = 1.0;
+        for (AbilityEffectData effect : application.flags.passiveBattleStatEffects) {
+            if (!AbilityEffectType.BATTLE_STAT_MODIFIER.name().equalsIgnoreCase(effect.type)) {
+                continue;
+            }
+            BattleStatKey effectKey;
+            try {
+                effectKey = BattleStatKey.fromString(effect.stringValue);
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+            if (effectKey != key) continue;
+            if (AbilityEffectType.statOperation(effect)
+                == AbilityEffectType.StatOperation.MULTIPLY) {
+                multiplier *= effect.doubleValue == null ? 1.0 : effect.doubleValue;
+            } else {
+                additions += effect.doubleValue == null ? 0.0 : effect.doubleValue;
+            }
+        }
+        return (baseValue + additions) * multiplier;
+    }
+
+    private static int roundedPreviewStat(
+        AbilityApplicator.ApplicationResult application,
+        BattleStatKey key,
+        double baseValue,
+        int minimum
+    ) {
+        return Math.max(minimum, (int) Math.round(previewBattleStat(application, key, baseValue)));
+    }
+
+    static int ceWaiverThreshold(
+        CharacterData character,
+        AbilityApplicator.ApplicationResult application
+    ) {
+        int rawStatTotal = character.toCharacterStats().baseStatTotal();
+        int threshold = 0;
+        for (AbilityEffectData effect : application.flags.ceCostWaiveByStatTotalEffects) {
+            int divisor = effect.intValue == null ? 0 : effect.intValue;
+            if (divisor > 0) threshold = Math.max(threshold, Math.max(1, rawStatTotal / divisor));
+        }
+        return threshold;
+    }
+
+    private static String formatPreviewNumber(double value) {
+        if (value == Math.rint(value)) return String.valueOf((long) value);
+        return String.format(Locale.ROOT, "%.2f", value)
+            .replaceAll("0+$", "")
+            .replaceAll("\\.$", "");
     }
 
     // =========================================================================

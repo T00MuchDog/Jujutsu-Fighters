@@ -278,6 +278,88 @@ class CharacterTypeTest {
     }
 
     @Test
+    void techniqueMovesAreLearnableByAnyCharacterTypeWithTheTechnique() {
+        Move techniqueMove = new Move.Builder("TECHNIQUE_MOVE")
+            .name("Technique Move")
+            .requiredTechniqueId("Disaster Plants")
+            .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
+            .freeMove(true)
+            .build();
+        assertTrue(techniqueMove.isTechniqueMove());
+        assertTrue(techniqueMove.getMoveTypes().isEmpty());
+        var stats = new CharacterData().toCharacterStats();
+
+        // Technique moves carry no class: every character type that possesses
+        // the technique may learn them.
+        assertDoesNotThrow(() -> new SorcererCharacter(
+            "000030", "Sorcerer", stats, "Disaster Plants", java.util.List.of(techniqueMove)));
+        assertDoesNotThrow(() -> new CursedSpiritCharacter(
+            "000031", "Curse", stats, "Disaster Plants", java.util.List.of(techniqueMove)));
+        assertDoesNotThrow(() -> new ShikigamiCharacter(
+            "000032", "Shikigami", stats, "Disaster Plants", java.util.List.of(techniqueMove)));
+
+        // Possession of the technique is still required.
+        assertThrows(IllegalArgumentException.class, () -> new SorcererCharacter(
+            "000033", "Sorcerer", stats, null, java.util.List.of(techniqueMove)));
+    }
+
+    @Test
+    void techniqueMovesDropAuthoredClassTypes() {
+        Move move = new Move.Builder("TECHNIQUE_CLASSY")
+            .name("Classy Technique Move")
+            .moveType(MoveType.SHIKIGAMI)
+            .requiredTechniqueId("Ten Shadows")
+            .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
+            .freeMove(true)
+            .build();
+
+        assertTrue(move.isTechniqueMove());
+        assertTrue(move.getMoveTypes().isEmpty());
+    }
+
+    @Test
+    void techniqueMoveDataCarriesNoClassFields() throws Exception {
+        MoveData data = new MoveData();
+        data.id = "000028";
+        data.name = "Technique Move";
+        data.apCost = 1;
+        data.unleashPoint = 1;
+        data.requiredTechniqueId = "Ten Shadows";
+        data.moveTypes = java.util.List.of(MoveType.SORCERER.name());
+        data.tags = java.util.List.of("UTILITY", "CURSED_ENERGY");
+
+        assertTrue(data.isTechniqueMove());
+        assertTrue(data.effectiveMoveTypes().isEmpty());
+        Move built = data.toMove();
+        assertTrue(built.getMoveTypes().isEmpty());
+
+        MoveData saved = MoveData.fromMove(built);
+        assertNull(saved.moveTypes);
+        assertFalse(mapper.writeValueAsString(saved).contains("moveTypes"));
+
+        // Classed moves keep requiring a class.
+        MoveData classed = new MoveData();
+        classed.id = "000029";
+        classed.name = "Classed Move";
+        classed.apCost = 1;
+        classed.unleashPoint = 1;
+        classed.tags = java.util.List.of("UTILITY");
+        assertEquals(java.util.Set.of(MoveType.SORCERER), classed.effectiveMoveTypes());
+        assertThrows(IllegalStateException.class, () -> new Move.Builder("NO_CLASS")
+            .name("No Class")
+            .moveTypes(java.util.Set.of())
+            .category(MoveCategory.UTILITY)
+            .freeMove(true)
+            .build());
+    }
+
+    @Test
     void fromCharacterPreservesType() {
         CharacterData sorcererData = new CharacterData();
         sorcererData.id = "000003";

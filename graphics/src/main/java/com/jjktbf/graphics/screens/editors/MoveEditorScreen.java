@@ -467,19 +467,23 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     static List<String> moveRecordGroups(MoveData record) {
+        // Technique moves file under their technique alone: they carry no
+        // character class, so there is no class bucket they belong in.
+        if (record.isTechniqueMove()) {
+            return List.of(CURSED_TECHNIQUES_SECTION + "/"
+                + record.requiredTechniqueId.trim());
+        }
         List<String> groups = new ArrayList<>();
         for (MoveType moveType : record.effectiveMoveTypes()) {
+            String group;
             if (moveType == MoveType.CURSED_SPIRIT) {
-                groups.add(CURSED_SPIRIT_SECTION);
+                group = CURSED_SPIRIT_SECTION;
             } else if (moveType == MoveType.SHIKIGAMI) {
-                groups.add(SHIKIGAMI_SECTION);
-            } else if (record.requiredTechniqueId != null
-                && !record.requiredTechniqueId.isBlank()) {
-                groups.add(CURSED_TECHNIQUES_SECTION + "/"
-                    + record.requiredTechniqueId.trim());
+                group = SHIKIGAMI_SECTION;
             } else {
-                groups.add(SORCERER_SECTION);
+                group = SORCERER_SECTION;
             }
+            if (!groups.contains(group)) groups.add(group);
         }
         return List.copyOf(groups);
     }
@@ -529,13 +533,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             }
         }
         for (MoveData move : records) {
-            if (!move.effectiveMoveTypes().contains(MoveType.SORCERER)
-                || move.requiredTechniqueId == null
-                || move.requiredTechniqueId.isBlank()) {
-                continue;
+            if (move.isTechniqueMove()) {
+                String name = move.requiredTechniqueId.trim();
+                names.putIfAbsent(name, name);
             }
-            String name = move.requiredTechniqueId.trim();
-            names.putIfAbsent(name, name);
         }
         return List.copyOf(names.values());
     }
@@ -691,11 +692,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         // section's launch mode. UTILITY combines with either as before: the
         // hybrid keeps its base category and authors its on-fire effect rows
         // in the UTILITY section.
-        boolean hasAttackTargetingTag = List.of(MoveTag.AOE, MoveTag.FRIENDLY_FIRE).stream()
-            .anyMatch(tag -> move.tags.contains(tag.name()));
-        if (!attack && hasAttackTargetingTag) {
-            return "AOE and Friendly Fire tags require Attack.";
-        }
+        // AOE is category-agnostic — a utility move with on-fire enemy rows
+        // fans out just like an attack — so only the friendly-fire dependency
+        // on AOE is validated here.
         if (move.tags.contains(MoveTag.FRIENDLY_FIRE.name())
             && !move.tags.contains(MoveTag.AOE.name())) {
             return "Friendly Fire requires AOE.";
@@ -1059,10 +1058,28 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
         // ── Content assignment ─────────────────────────────────────────────────
         Table technique = formSection(form, "CONTENT ASSIGNMENT");
-        technique.add(labelledField("Required Technique (name or blank)",
-                d.requiredTechniqueId,
-                s -> { d.requiredTechniqueId = (s == null || s.isBlank()) ? null : s; }))
-            .growX().row();
+        TextField techniqueField = new HoverTextField(
+            d.requiredTechniqueId == null ? "" : d.requiredTechniqueId, skin);
+        techniqueField.setTextFieldFilter((field, character) -> true);
+        techniqueField.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                applyRequiredTechnique(d, techniqueField.getText());
+                markDirty();
+            }
+        });
+        // The Move Types row only exists on classed moves; refresh the form
+        // once technique typing is done so it appears/disappears.
+        techniqueField.addListener(new FocusListener() {
+            @Override public void keyboardFocusChanged(
+                FocusEvent event, Actor actor, boolean focused
+            ) {
+                if (!focused) rebuildDetail();
+            }
+        });
+        Table techniqueRow = new Table(skin);
+        addFormLabel(techniqueRow, "Required Technique (name or blank)");
+        techniqueRow.add(techniqueField).growX();
+        technique.add(techniqueRow).growX().row();
         // Read-only hint: does the named technique exist in the TechniqueRepository?
         // Warns (does not block) — a move may legitimately predate its technique.
         if (d.requiredTechniqueId != null && !d.requiredTechniqueId.isBlank()) {
@@ -1108,30 +1125,38 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         });
         misc.add(freeCb).left().row();
 
-        Table moveTypes = new Table(skin);
-        moveTypes.defaults().left().pad(3f);
-        for (MoveType type : MoveType.values()) {
-            CheckBox typeToggle = new CheckBox(" " + moveTypeLabel(type), skin);
-            typeToggle.setChecked(d.effectiveMoveTypes().contains(type));
-            typeToggle.addListener(new ChangeListener() {
-                @Override public void changed(ChangeEvent event, Actor actor) {
-                    if (!setMoveTypeSelected(d, type, typeToggle.isChecked())) {
-                        typeToggle.setChecked(true);
-                        return;
-                    }
-                    game.audio().play(SoundCue.UI_TOGGLE);
-                    markDirty();
-                }
-            });
-            moveTypes.add(typeToggle);
-        }
-        misc.add(labelledRow("Move Types", moveTypes)).growX().row();
-        misc.add(formHint("Any matching character class may learn this move; select at least one."))
-            .left().row();
-        if (d.effectiveMoveTypes().contains(MoveType.CURSED_SPIRIT)) {
+        // Technique moves carry no character class: there is nothing to assign,
+        // and any character with the technique may learn the move.
+        if (d.isTechniqueMove()) {
             misc.add(formHint(
-                "Cursed Spirit moves must explicitly include the CURSED_ENERGY tag."))
+                "Technique move: no character class — any character with the technique may learn it."))
                 .left().row();
+        } else {
+            Table moveTypes = new Table(skin);
+            moveTypes.defaults().left().pad(3f);
+            for (MoveType type : MoveType.values()) {
+                CheckBox typeToggle = new CheckBox(" " + moveTypeLabel(type), skin);
+                typeToggle.setChecked(d.effectiveMoveTypes().contains(type));
+                typeToggle.addListener(new ChangeListener() {
+                    @Override public void changed(ChangeEvent event, Actor actor) {
+                        if (!setMoveTypeSelected(d, type, typeToggle.isChecked())) {
+                            typeToggle.setChecked(true);
+                            return;
+                        }
+                        game.audio().play(SoundCue.UI_TOGGLE);
+                        markDirty();
+                    }
+                });
+                moveTypes.add(typeToggle);
+            }
+            misc.add(labelledRow("Move Types", moveTypes)).growX().row();
+            misc.add(formHint("Any matching character class may learn this move; select at least one."))
+                .left().row();
+            if (d.effectiveMoveTypes().contains(MoveType.CURSED_SPIRIT)) {
+                misc.add(formHint(
+                    "Cursed Spirit moves must explicitly include the CURSED_ENERGY tag."))
+                    .left().row();
+            }
         }
 
         CheckBox grantedCb = new CheckBox(" Must be granted", skin);
@@ -1213,6 +1238,16 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     markDirty();
                 }, skin, uiProfile))).growX().row();
 
+        // AOE type sub-section: shown whenever the move carries the AOE tag,
+        // regardless of category — attacks, utility moves, and hybrids alike
+        // fan their on-fire/enemy rows out over the authored shape. Sits
+        // before the category cards so every category path sees it.
+        if (hasTag(d, MoveTag.AOE)) {
+            aoeFieldsContainer = new Container<>();
+            aoeFieldsContainer.setActor(buildAoeFields(d));
+            formSection(sections, "AREA OF EFFECT").add(aoeFieldsContainer).growX().row();
+        }
+
         // The DEFENSE card sits above the ATTACK card: defence wins over
         // attack, so a Defensive+Attack hybrid reads top-down as a defence
         // whose attack section hangs underneath.
@@ -1269,12 +1304,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 "None uses normal accuracy. Never Miss wins against an equal or lower Never Hit tier."))
                 .left().row();
             // On-hit effects are authored per hit component below — no move-level section.
-
-            // AOE type sub-section: shown only when the move is both an ATTACK
-            // and AOE-tagged. Lets the author pick the targeting shape.
-            aoeFieldsContainer = new Container<>();
-            aoeFieldsContainer.setActor(hasTag(d, MoveTag.AOE) ? buildAoeFields(d) : new Table());
-            attack.add(aoeFieldsContainer).growX().row();
 
             // On-fire effects are authored only in the UTILITY section: tick
             // UTILITY alongside ATTACK to reveal it for a hybrid move.
@@ -2406,14 +2435,16 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         return list;
     }
 
-    private static List<AbilityEffectType> moveEffectTypes(MoveEffectTrigger trigger) {
+    static List<AbilityEffectType> moveEffectTypes(MoveEffectTrigger trigger) {
         if (trigger == MoveEffectTrigger.AVAILABILITY) {
             return java.util.Arrays.stream(AbilityEffectType.values())
                 .filter(AbilityEffectType::isMoveAvailabilityConstraint)
                 .toList();
         }
         if (trigger == MoveEffectTrigger.ON_START) {
-            return List.of(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE);
+            return List.of(
+                AbilityEffectType.TRANSACT_BOUNDED_RESOURCE,
+                AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER);
         }
         List<AbilityEffectType> preferred = List.of(
             AbilityEffectType.TIMED_STAT_MODIFIER,
@@ -2423,11 +2454,15 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             AbilityEffectType.DESUMMON_TARGET_SHIKIGAMI,
             AbilityEffectType.CODED_MOVE_ACTION);
         List<AbilityEffectType> types = new ArrayList<>(preferred);
+        if (trigger == MoveEffectTrigger.ON_FIRE) {
+            types.add(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE);
+        }
         java.util.Arrays.stream(AbilityEffectType.values())
             .filter(AbilityEffectType::isMoveEffect)
             .filter(type -> !type.isAccuracyPriority())
             .filter(type -> !type.isMoveAvailabilityConstraint())
             .filter(type -> type != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE)
+            .filter(type -> type != AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
             .filter(type -> !types.contains(type))
             .forEach(types::add);
         return List.copyOf(types);
@@ -3165,8 +3200,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         markDirty();
         if (categorySectionsContainer != null) {
             categorySectionsContainer.setActor(buildCategorySections(d));
-            // buildCategorySections creates (but does not populate) the AOE and
-            // other conditional containers — populate them now.
+            // buildCategorySections creates but does not populate the
+            // conditional containers inside the category cards — populate now.
             refreshConditionalFields(d);
         }
     }
@@ -3184,12 +3219,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         if (ceMinMaxContainer  != null) ceMinMaxContainer.setActor(buildCeMinMax(d));
         if (powerFieldsContainer != null) powerFieldsContainer.setActor(buildPowerFields(d));
         if (aoeFieldsContainer != null) {
-            // The AOE sub-section only exists for ATTACK + AOE-tagged moves.
-            if (hasTag(d, MoveTag.AOE) && hasTag(d, MoveTag.ATTACK)) {
-                aoeFieldsContainer.setActor(buildAoeFields(d));
-            } else {
-                aoeFieldsContainer.setActor(new Table());
-            }
+            // The AOE sub-section exists for any AOE-tagged move, whatever its
+            // category; a tag toggle rebuilds the section list entirely.
+            aoeFieldsContainer.setActor(buildAoeFields(d));
         }
     }
 
@@ -3197,8 +3229,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
      * Build the defensive targeting sub-section (inside the DEFENSE card): whose
      * timeline the active-defense window is conferred to (Self / Single Ally /
      * Multiple Allies / All Allies Except Self / All Allies Including Self), and
-     * for MULTIPLE_ALLIES a target-count field. Mirrors {@link #buildAoeFields}
-     * for attacks.
+     * for MULTIPLE_ALLIES a target-count field. Mirrors {@link #buildAoeFields}.
      */
     private Actor buildDefenseTargetingFields(MoveData d) {
         Table t = new Table(skin);
@@ -3226,9 +3257,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     /**
-     * Build the AOE targeting sub-section (inside the ATTACK card): the shape
-     * dropdown (Multiple Targets / All Enemies / All Others) and, for the
-     * MULTIPLE shape, a target-count field.
+     * Build the AOE targeting sub-section (its own AREA OF EFFECT card, shown
+     * for any AOE-tagged move): the shape dropdown (Multiple Targets /
+     * All Enemies / All Others) and, for the MULTIPLE shape, a target-count
+     * field.
      */
     private Actor buildAoeFields(MoveData d) {
         Table t = new Table(skin);
@@ -3306,18 +3338,42 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         setWeaponTags(d, updated);
     }
 
-    /** Toggle one move type while requiring every move to retain at least one. */
-    static boolean setMoveTypeSelected(MoveData d, MoveType moveType, boolean selected) {
-        Set<MoveType> updated = EnumSet.copyOf(d.effectiveMoveTypes());
-        if (selected) updated.add(moveType);
-        else updated.remove(moveType);
-        if (updated.isEmpty()) return false;
-        d.moveTypes = updated.stream().map(MoveType::name)
-            .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+/**
+ * Toggle one move type while requiring every classed move to retain at least
+ * one. Technique moves carry no class, so there is nothing to toggle.
+ */
+static boolean setMoveTypeSelected(MoveData d, MoveType moveType, boolean selected) {
+    if (d.isTechniqueMove()) return false;
+    Set<MoveType> updated = EnumSet.copyOf(d.effectiveMoveTypes());
+    if (selected) updated.add(moveType);
+    else updated.remove(moveType);
+    if (updated.isEmpty()) return false;
+    d.moveTypes = updated.stream().map(MoveType::name)
+        .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    d.moveType = null;
+    d.shikigamiMove = null;
+    return true;
+}
+
+/**
+ * Set the draft's required technique while keeping the class fields
+ * consistent: a technique move carries no character class, and a move that
+ * stops being a technique move needs a default class to stay learnable.
+ */
+static void applyRequiredTechnique(MoveData d, String text) {
+    String technique = text == null ? "" : text.trim();
+    boolean wasTechniqueMove = d.isTechniqueMove();
+    d.requiredTechniqueId = technique.isEmpty() ? null : technique;
+    if (d.isTechniqueMove()) {
+        d.moveTypes = null;
         d.moveType = null;
         d.shikigamiMove = null;
-        return true;
+    } else if (wasTechniqueMove) {
+        d.moveTypes = new ArrayList<>(List.of(MoveType.SORCERER.name()));
+        d.moveType = null;
+        d.shikigamiMove = null;
     }
+}
 
     private static boolean hasTag(MoveData d, MoveTag tag) {
         return d.tags != null && d.tags.contains(tag.name());
@@ -3359,8 +3415,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
     static MoveData normalizedCopyForSave(MoveData draft) {
         MoveData copy = deepCopy(draft);
-        copy.moveTypes = copy.effectiveMoveTypes().stream().map(MoveType::name)
-            .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        // Technique moves carry no class; strip any stale authored classes so
+        // they can never be saved back as a class restriction.
+        copy.moveTypes = copy.isTechniqueMove() ? null
+            : copy.effectiveMoveTypes().stream().map(MoveType::name)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         copy.moveType = null;
         copy.shikigamiMove = null;
         copy.migrateLegacyHitTags();

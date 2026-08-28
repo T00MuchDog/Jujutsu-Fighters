@@ -36,7 +36,11 @@ public class MoveData {
     public String name;
     public String description;
 
-    /** Authored move classes. A character may learn the move when any type matches. */
+    /**
+     * Authored move classes. A character may learn the move when any type matches.
+     * Technique moves ({@link #isTechniqueMove()}) carry no class — any stored
+     * class fields are ignored on them.
+     */
     public List<String> moveTypes;
 
     /** Legacy singular move class retained for existing stored content. */
@@ -291,9 +295,26 @@ public class MoveData {
     /** Legacy shikigami classification retained for existing stored content. */
     public Boolean shikigamiMove;
 
-    /** Resolve every canonical move class, including both legacy representations. */
+    /**
+     * True when this move belongs to a cursed technique. Technique moves are
+     * available to any character that possesses the technique, regardless of
+     * character class, so they carry no move types.
+     */
+    @JsonIgnore
+    public boolean isTechniqueMove() {
+        return requiredTechniqueId != null && !requiredTechniqueId.isBlank();
+    }
+
+    /**
+     * Resolve every canonical move class, including both legacy representations.
+     * Empty for technique moves: they are class-agnostic and any stored class
+     * fields on them are ignored.
+     */
     @JsonIgnore
     public Set<MoveType> effectiveMoveTypes() {
+        if (isTechniqueMove()) {
+            return Set.of();
+        }
         if (moveTypes != null) {
             if (moveTypes.isEmpty()) {
                 throw new IllegalArgumentException("Move must have at least one move type");
@@ -317,7 +338,12 @@ public class MoveData {
     /** Primary move class retained for grouping and singular compatibility APIs. */
     @JsonIgnore
     public MoveType effectiveMoveType() {
-        return effectiveMoveTypes().iterator().next();
+        Set<MoveType> types = effectiveMoveTypes();
+        if (types.isEmpty()) {
+            throw new IllegalStateException(
+                "Technique move '" + name + "' has no move type");
+        }
+        return types.iterator().next();
     }
 
     // -------------------------------------------------------------------------
@@ -1084,9 +1110,12 @@ public class MoveData {
         d.id                  = move.getId();
         d.name                = move.getName();
         d.description         = move.getDescription();
-        d.moveTypes           = move.getMoveTypes().stream()
-            .map(MoveType::name)
-            .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        // Technique moves carry no class; omit the field so it cannot be
+        // re-authored as a class restriction.
+        d.moveTypes           = move.isTechniqueMove() ? null
+            : move.getMoveTypes().stream()
+                .map(MoveType::name)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
 
         List<String> tagList = move.getTags().stream()
             .map(MoveTag::name)

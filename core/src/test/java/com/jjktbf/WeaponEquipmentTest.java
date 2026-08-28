@@ -178,7 +178,7 @@ class WeaponEquipmentTest {
             tools.load();
             characters.load();
 
-            CharacterData haruta = characters.findById("000000").orElseThrow();
+            CharacterData haruta = canonicalCharacter(characters, "Haruta Shigemo");
             haruta.moveIds = new ArrayList<>(haruta.moveIds);
             haruta.moveIds.add("000022");
 
@@ -212,8 +212,8 @@ class WeaponEquipmentTest {
             tools.load();
             characters.load();
 
-            Character miwa = assertDoesNotThrow(() -> characters.findById("000002").orElseThrow()
-                .toCharacter(moves, abilities, techniques, tools));
+            Character miwa = assertDoesNotThrow(() -> canonicalCharacter(
+                characters, "Miwa Kasumi").toCharacter(moves, abilities, techniques, tools));
             assertTrue(miwa.getLearnedMoves().stream()
                 .anyMatch(move -> "000025".equals(move.getId())));
             assertDoesNotThrow(() -> new BattleCombatant(miwa.withMoveSet(List.of())));
@@ -229,6 +229,22 @@ class WeaponEquipmentTest {
         } else {
             System.setProperty(name, value);
         }
+    }
+
+    /**
+     * Canonical-data tests must locate fighters by name: repository IDs are
+     * positional and resequence whenever entries are reordered or deleted in
+     * the character editor.
+     */
+    private static CharacterData canonicalCharacter(
+        CharacterRepository characters,
+        String name
+    ) {
+        return characters.getAll().stream()
+            .filter(data -> name.equals(data.name))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(
+                "No canonical character named '" + name + "'"));
     }
 
     @Test

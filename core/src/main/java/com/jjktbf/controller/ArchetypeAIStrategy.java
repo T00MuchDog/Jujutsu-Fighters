@@ -32,6 +32,8 @@ import java.util.Set;
  *   <li>Blood Manipulation sorcerer → {@link BloodManipulationAIStrategy}
  *       (cautious blood-economy planning that turns aggressive inside a Flowing
  *       Red Scale window; routed through {@link #selectTeamPlan}).</li>
+ *   <li>Disaster Plants cursed spirit → {@link HanamiAIStrategy} (Flower Offering
+ *       sequencing and durable battlefield control).</li>
  *   <li>Everyone else → {@link GreedyAIStrategy}.</li>
  * </ul>
  *
@@ -47,6 +49,7 @@ public class ArchetypeAIStrategy implements AIStrategy {
     private static final String TEN_SHADOWS = "Ten Shadows";
     private static final String RATIO = "Ratio";
     private static final String BLOOD_MANIPULATION = "Blood Manipulation";
+    private static final String DISASTER_PLANTS = "Disaster Plants";
 
     private final GreedyAIStrategy sorcererStrategy = new GreedyAIStrategy();
     private final ShikigamiAIStrategy shikigamiStrategy = new ShikigamiAIStrategy();
@@ -56,6 +59,7 @@ public class ArchetypeAIStrategy implements AIStrategy {
     private final TenShadowsAIStrategy tenShadowsStrategy = new TenShadowsAIStrategy();
     private final RatioAIStrategy ratioStrategy = new RatioAIStrategy();
     private final BloodManipulationAIStrategy bloodManipulationStrategy = new BloodManipulationAIStrategy();
+    private final HanamiAIStrategy hanamiStrategy = new HanamiAIStrategy();
 
     /** Hardcoded archetype assignment for the final technique-less sorcerer roster. */
     private static final Set<String> AGGRESSIVE_IDS = Set.of("000003", "000005"); // Yuji Itadori, Maki Zenin
@@ -128,6 +132,9 @@ public class ArchetypeAIStrategy implements AIStrategy {
         if (BLOOD_MANIPULATION.equalsIgnoreCase(character.getInnateTechniqueName())) {
             return bloodManipulationStrategy.buildPlan(state, ai, rng); // state-aware blood economy
         }
+        if (DISASTER_PLANTS.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            return hanamiStrategy.buildPlan(state, ai, rng); // state-aware Flower Offering
+        }
         return sorcererStrategy.selectPlan(ai, opponent, rng);
     }
 
@@ -175,6 +182,9 @@ public class ArchetypeAIStrategy implements AIStrategy {
         if (BLOOD_MANIPULATION.equalsIgnoreCase(character.getInnateTechniqueName())) {
             // No state here: degrade to single-opponent Blood Manipulation planning.
             return bloodManipulationStrategy.selectPlan(ai, opponent, rng);
+        }
+        if (DISASTER_PLANTS.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            return hanamiStrategy.selectPlan(ai, opponent, rng);
         }
         return sorcererStrategy.selectPlan(ai, opponent, rng);
     }

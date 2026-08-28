@@ -36,6 +36,9 @@ public final class StatusEffectMessages {
         if (type == StatusEffectType.CURSED_SPEECH_WARD) {
             return target + " covers their ears in cursed energy!";
         }
+        if (type == StatusEffectType.CURSED_ENERGY_PARASITE) {
+            return target + " was implanted with a cursed-energy parasite!";
+        }
         return "";
     }
 }

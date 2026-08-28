@@ -71,6 +71,8 @@ public class ActionSegment {
      * Stored here because CE is drained when the segment's startTick is reached.
      */
     private final int    actualCeCost;
+    /** Move-start snapshot applied to every hit component in this execution. */
+    private double       executionBasePowerMultiplier = 1.0;
 
     /**
      * Ordered target combatant instance ids for hostile selected-target moves.
@@ -151,6 +153,13 @@ public class ActionSegment {
     public int     getFinalImpactTick() { return fireTick + move.getMaxHitDelayTicks(); }
     public int     getResolutionEndTick() { return Math.max(getEndTick(), getFinalImpactTick()); }
     public int     getActualCeCost()  { return actualCeCost; }
+    public double  getExecutionBasePowerMultiplier() { return executionBasePowerMultiplier; }
+    public void multiplyExecutionBasePower(double multiplier) {
+        if (!Double.isFinite(multiplier) || multiplier <= 0.0) {
+            throw new IllegalArgumentException("Execution base-power multiplier must be positive");
+        }
+        executionBasePowerMultiplier *= multiplier;
+    }
     public boolean isStunned()        { return stunned; }
     public boolean isInstant()        { return unleashPoint == 1; }
 
@@ -220,6 +229,7 @@ public class ActionSegment {
         ActionSegment copy = new ActionSegment(
             move, startTick, actualCeCost, List.of(), false, apCost, unleashPoint);
         copy.fired = true;
+        copy.executionBasePowerMultiplier = executionBasePowerMultiplier;
         return copy;
     }
 
@@ -239,6 +249,7 @@ public class ActionSegment {
             move, start, actualCeCost, List.of(), false, apCost, unleashPoint);
         copy.fired = true;
         copy.reactionTriggered = true;
+        copy.executionBasePowerMultiplier = executionBasePowerMultiplier;
         return copy;
     }
 

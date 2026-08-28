@@ -1261,30 +1261,102 @@
   "masteryThreshold" : 0
 }, {
   "id" : "000054",
-  "name" : "Toxic Composition",
-  "flavourText" : "The curse's substance is already poisonous enough that lesser toxins find nothing left to corrupt.",
-  "mechanicText" : "Become immune to POISON.",
+  "name" : "Volatile Cursed Core",
+  "flavourText" : "Unstable energy leaks from every seam, magnifying both the curse's violence and the damage that can rupture it.",
+  "mechanicText" : "Increase CURSED ENERGY damage dealt by 12% and all DAMAGE TAKEN by 8%.",
   "category" : "PASSIVE",
   "sourceType" : "CURSED_SPIRIT",
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "POISON_IMMUNITY"
+    "type" : "DAMAGE_MULTIPLY",
+    "doubleValue" : 1.12,
+    "moveTag" : "CURSED_ENERGY"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.08,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "DAMAGE_TAKEN"
   } ],
   "masteryThreshold" : 0
 }, {
   "id" : "000055",
-  "name" : "Soul Instinct",
-  "flavourText" : "Born from humanity's fear, the curse senses the contour beneath flesh without needing to understand it.",
-  "mechanicText" : "Attacks can strike the SOUL.",
+  "name" : "Bottomless Malice",
+  "flavourText" : "The hatred that formed the curse gathers into a reservoir that seems to deepen whenever it is measured.",
+  "mechanicText" : "Increase MAX CE by 25% and CE REGENERATION by 0.25 per TICK.",
   "category" : "PASSIVE",
   "sourceType" : "CURSED_SPIRIT",
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "SOUL_AWARE_ATTACKS"
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.25,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "MAX_CE"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 0.25,
+    "statOperation" : "CHANGE",
+    "stringValue" : "CE_REGENERATION"
   } ],
   "masteryThreshold" : 0
 }, {
   "id" : "000056",
+  "name" : "Natural Calamity",
+  "flavourText" : "The curse embodies disaster on a scale that spreads suffering beyond any single victim.",
+  "mechanicText" : "Increase AOE damage dealt by 15%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DAMAGE_MULTIPLY",
+    "doubleValue" : 1.15,
+    "moveTag" : "AOE"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000057",
+  "name" : "Grudge-Fed Flesh",
+  "flavourText" : "Every wound the curse inflicts feeds fresh resentment back into its damaged form.",
+  "mechanicText" : "After dealing at least 25 DAMAGE in one instance, restore 2% MAX HP.",
+  "category" : "ACTIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "DAMAGE_DEALT_AT_LEAST",
+      "actor" : "SELF",
+      "amount" : 25
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "HEAL_HP",
+    "doubleValue" : 0.02,
+    "valueMode" : "PERCENT",
+    "target" : "SELF"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000058",
+  "name" : "Oppressive Aura",
+  "flavourText" : "The curse floods the battlefield with killing intent that weakens enemies will.",
+  "mechanicText" : "At ROUND START, reduce every enemy's ACCURACY by 10 for 1 ROUND.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "AUTO_STATUS_APPLY",
+    "stringValue" : "ACCURACY_DECREASE",
+    "target" : "ENEMY",
+    "timing" : "ROUND_START",
+    "durationRounds" : 1,
+    "magnitude" : 10.0
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000059",
   "name" : "Dense Cursed Core",
   "flavourText" : "A compact knot of cursed energy makes the spirit slower, heavier, and exceptionally difficult to disperse.",
   "mechanicText" : "Increase MAX HP by 15% and DEFENSE by 10%, but reduce SPEED by 10%.",
@@ -1310,159 +1382,35 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000057",
-  "name" : "Volatile Cursed Core",
-  "flavourText" : "Unstable energy leaks from every seam, magnifying both the curse's violence and the damage that can rupture it.",
-  "mechanicText" : "Increase CURSED ENERGY damage dealt by 12% and all DAMAGE TAKEN by 8%.",
-  "category" : "PASSIVE",
-  "sourceType" : "CURSED_SPIRIT",
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "DAMAGE_MULTIPLY",
-    "doubleValue" : 1.12,
-    "moveTag" : "CURSED_ENERGY"
-  }, {
-    "effectId" : "effect-000001",
-    "type" : "BATTLE_STAT_MODIFIER",
-    "doubleValue" : 1.08,
-    "statOperation" : "MULTIPLY",
-    "stringValue" : "DAMAGE_TAKEN"
-  } ],
-  "masteryThreshold" : 0
-}, {
-  "id" : "000058",
-  "name" : "Bottomless Malice",
-  "flavourText" : "The hatred that formed the curse gathers into a reservoir that seems to deepen whenever it is measured.",
-  "mechanicText" : "Increase MAX CE by 25% and CE REGENERATION by 0.25 per TICK.",
-  "category" : "PASSIVE",
-  "sourceType" : "CURSED_SPIRIT",
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "BATTLE_STAT_MODIFIER",
-    "doubleValue" : 1.25,
-    "statOperation" : "MULTIPLY",
-    "stringValue" : "MAX_CE"
-  }, {
-    "effectId" : "effect-000001",
-    "type" : "BATTLE_STAT_MODIFIER",
-    "doubleValue" : 0.25,
-    "statOperation" : "CHANGE",
-    "stringValue" : "CE_REGENERATION"
-  } ],
-  "masteryThreshold" : 0
-}, {
-  "id" : "000059",
-  "name" : "Natural Calamity",
-  "flavourText" : "The curse embodies disaster on a scale that spreads suffering beyond any single victim.",
-  "mechanicText" : "Increase AOE damage dealt by 15%.",
-  "category" : "PASSIVE",
-  "sourceType" : "CURSED_SPIRIT",
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "DAMAGE_MULTIPLY",
-    "doubleValue" : 1.15,
-    "moveTag" : "AOE"
-  } ],
-  "masteryThreshold" : 0
-}, {
   "id" : "000060",
-  "name" : "Many-Limbed Hunter",
-  "flavourText" : "Too many claws attack from too many angles for a human guard to follow them all.",
-  "mechanicText" : "Add 10 ACCURACY and increase BASE POWER by 8% on PHYSICAL moves.",
+  "name" : "Hidden Presence",
+  "flavourText" : "Hanami's presence slips away from ordinary senses even while the forest closes around its prey.",
+  "mechanicText" : "Enemy RANGED attacks lose 10 ACCURACY against the user.",
   "category" : "PASSIVE",
-  "sourceType" : "CURSED_SPIRIT",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Disaster Plants",
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "MOVE_ACCURACY_ADD",
-    "intValue" : 10,
-    "moveTag" : "PHYSICAL"
-  }, {
-    "effectId" : "effect-000001",
-    "type" : "MOVE_BASE_POWER_MULTIPLY",
-    "doubleValue" : 1.08,
-    "moveTag" : "PHYSICAL"
+    "type" : "OPPONENT_ACCURACY_ADD",
+    "intValue" : -10,
+    "moveTag" : "RANGED"
   } ],
   "masteryThreshold" : 0
 }, {
   "id" : "000061",
-  "name" : "Grudge-Fed Flesh",
-  "flavourText" : "Every wound the curse inflicts feeds fresh resentment back into its damaged form.",
-  "mechanicText" : "After dealing at least 25 DAMAGE in one instance, restore 2% MAX HP.",
-  "category" : "ACTIVE",
-  "sourceType" : "CURSED_SPIRIT",
-  "activationConditions" : [ {
-    "condition" : {
-      "type" : "DAMAGE_DEALT_AT_LEAST",
-      "actor" : "SELF",
-      "amount" : 25
-    },
-    "targetEffectIds" : [ "effect-000000" ],
-    "matchSameTrigger" : true
-  } ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "HEAL_HP",
-    "doubleValue" : 0.02,
-    "valueMode" : "PERCENT",
-    "target" : "SELF"
-  } ],
-  "masteryThreshold" : 0
-}, {
-  "id" : "000062",
-  "name" : "Hatred Feeds Hatred",
-  "flavourText" : "Pain does not exhaust the curse; it reminds the curse why it exists.",
-  "mechanicText" : "After taking at least 25 DAMAGE in one instance, restore 1% MAX CE.",
-  "category" : "ACTIVE",
-  "sourceType" : "CURSED_SPIRIT",
-  "activationConditions" : [ {
-    "condition" : {
-      "type" : "DAMAGE_TAKEN_AT_LEAST",
-      "actor" : "SELF",
-      "amount" : 25
-    },
-    "targetEffectIds" : [ "effect-000000" ],
-    "matchSameTrigger" : true
-  } ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "RESTORE_CE",
-    "doubleValue" : 0.01,
-    "valueMode" : "PERCENT",
-    "target" : "SELF"
-  } ],
-  "masteryThreshold" : 0
-}, {
-  "id" : "000063",
-  "name" : "Malignant Miasma",
-  "flavourText" : "The curse's presence clings to every wound as a sickness that conventional bodies cannot endure.",
-  "mechanicText" : "Connected attacks apply POISON for 1 ROUND.",
+  "name" : "Flower Offering",
+  "flavourText" : "The flower on Hanami's shoulder stores stolen life force until it can be released as a single devastating blast.",
+  "mechanicText" : "Create FLOWER OFFERING with 0/3 charges. LIFE FORCE ABSORPTION adds charges; the LIFE-FORCE BEAM consumes all charges for 60 BASE POWER each.",
   "category" : "PASSIVE",
-  "sourceType" : "CURSED_SPIRIT",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Disaster Plants",
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "AUTO_STATUS_APPLY",
-    "stringValue" : "POISON",
-    "target" : "ENEMY",
-    "timing" : "ON_HIT",
-    "durationRounds" : 1,
-    "magnitude" : 0.0
-  } ],
-  "masteryThreshold" : 0
-}, {
-  "id" : "000064",
-  "name" : "Oppressive Aura",
-  "flavourText" : "The curse floods the battlefield with enough killing intent to make every enemy hesitate.",
-  "mechanicText" : "At ROUND START, reduce every enemy's ACCURACY by 10 for 1 ROUND.",
-  "category" : "PASSIVE",
-  "sourceType" : "CURSED_SPIRIT",
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "AUTO_STATUS_APPLY",
-    "stringValue" : "ACCURACY_DECREASE",
-    "target" : "ENEMY",
-    "timing" : "ROUND_START",
-    "durationRounds" : 1,
-    "magnitude" : 10.0
+    "type" : "DEFINE_BOUNDED_RESOURCE",
+    "resourceKey" : "FLOWER_OFFERING",
+    "resourceLabel" : "Flower Offering",
+    "resourceCapacity" : 3,
+    "resourceStartValue" : 0
   } ],
   "masteryThreshold" : 0
 } ]

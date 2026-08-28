@@ -453,12 +453,13 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void aoeAndFriendlyFireAreAttackTargetingTags() {
+    void aoeAppliesToEveryCategoryAndFriendlyFireRequiresAoe() {
+        // AOE fans out any move category's enemy rows — a utility move like a
+        // multi-target debuff authors it without the ATTACK tag.
         MoveData utility = new MoveData();
         utility.tags = new ArrayList<>(List.of(
             MoveTag.UTILITY.name(), MoveTag.AOE.name()));
-        assertEquals("AOE and Friendly Fire tags require Attack.",
-            MoveEditorScreen.categoryTagValidationError(utility));
+        assertNull(MoveEditorScreen.categoryTagValidationError(utility));
 
         MoveData attack = new MoveData();
         attack.tags = new ArrayList<>(List.of(
@@ -681,18 +682,65 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void cursedTechniqueMovesAreGroupedByTechniqueUnlessTheyBelongToShikigami() {
+    void cursedTechniqueMovesAreAlwaysGroupedByTechnique() {
         MoveData move = new MoveData();
         move.requiredTechniqueId = "Ratio";
 
         assertEquals("CURSED TECHNIQUES/Ratio", MoveEditorScreen.moveRecordGroup(move));
 
+        // Stale class fields on a technique move are ignored: the move files
+        // under its technique alone, whatever class it was authored with.
         move.shikigamiMove = true;
-        assertEquals("SHIKIGAMI", MoveEditorScreen.moveRecordGroup(move));
+        assertEquals("CURSED TECHNIQUES/Ratio", MoveEditorScreen.moveRecordGroup(move));
 
         move.shikigamiMove = null;
         move.moveTypes = List.of(MoveType.SORCERER.name(), MoveType.SHIKIGAMI.name());
-        assertEquals(List.of("CURSED TECHNIQUES/Ratio", "SHIKIGAMI"),
+        assertEquals(List.of("CURSED TECHNIQUES/Ratio"),
+            MoveEditorScreen.moveRecordGroups(move));
+    }
+
+    @Test
+    void techniqueMoveDraftsCarryNoCharacterClass() {
+        MoveData move = new MoveData();
+        move.tags = new ArrayList<>(List.of(MoveTag.UTILITY.name()));
+        move.moveTypes = new ArrayList<>(List.of(MoveType.SORCERER.name()));
+        MoveEditorScreen.applyRequiredTechnique(move, "Disaster Plants");
+
+        assertTrue(move.isTechniqueMove());
+        assertNull(move.moveTypes);
+        assertTrue(move.effectiveMoveTypes().isEmpty());
+        assertFalse(MoveEditorScreen.setMoveTypeSelected(move, MoveType.CURSED_SPIRIT, true));
+
+        MoveData saved = MoveEditorScreen.normalizedCopyForSave(move);
+        assertNull(saved.moveTypes);
+        assertNull(saved.moveType);
+        assertNull(saved.shikigamiMove);
+
+        // Clearing the technique gives the move back a default class so it
+        // stays learnable by matching characters.
+        MoveEditorScreen.applyRequiredTechnique(move, "  ");
+        assertNull(move.requiredTechniqueId);
+        assertFalse(move.isTechniqueMove());
+        assertEquals(List.of(MoveType.SORCERER.name()), move.moveTypes);
+    }
+
+    @Test
+    void cursedSpiritTechniqueMovesAreGroupedByTechnique() {
+        MoveData move = new MoveData();
+        move.moveTypes = List.of(MoveType.CURSED_SPIRIT.name());
+        move.requiredTechniqueId = "Disaster Plants";
+
+        assertEquals(List.of("CURSED TECHNIQUES/Disaster Plants"),
+            MoveEditorScreen.moveRecordGroups(move));
+
+        move.requiredTechniqueId = null;
+        assertEquals(List.of("CURSED SPIRIT"),
+            MoveEditorScreen.moveRecordGroups(move));
+
+        move.requiredTechniqueId = "Disaster Plants";
+        move.moveTypes = List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name());
+        assertEquals(List.of("CURSED TECHNIQUES/Disaster Plants"),
             MoveEditorScreen.moveRecordGroups(move));
     }
 
@@ -823,6 +871,20 @@ class MoveEditorScreenTest {
         dodge.defenseType = DefenseType.BLOCK.name();
         MoveData savedBlock = MoveEditorScreen.normalizedCopyForSave(dodge);
         assertEquals(0, savedBlock.getNeverHitTier());
+    }
+
+    @Test
+    void resourceEffectsAppearOnlyOnSupportedMoveTriggers() {
+        assertEquals(List.of(
+                AbilityEffectType.TRANSACT_BOUNDED_RESOURCE,
+                AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER),
+            MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_START));
+        assertTrue(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_FIRE)
+            .contains(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_FIRE)
+            .contains(AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_HIT)
+            .contains(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE));
     }
 
     private static MoveData moveWithAllSectionDetails() {

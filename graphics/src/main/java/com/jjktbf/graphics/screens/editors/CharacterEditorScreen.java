@@ -1558,13 +1558,17 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             && !abilities.availableMoveIds().contains(move.id)) {
             return "This move must be granted by an ability.";
         }
-        CharacterType characterType = character.effectiveType();
-        if (built.getMoveTypes().stream().noneMatch(characterType::canLearn)) {
-            String moveTypes = built.getMoveTypes().stream()
-                .map(CharacterEditorScreen::labelForMoveType)
-                .collect(java.util.stream.Collectors.joining(" or "));
-            return moveTypes + " moves cannot be learned by "
-                + labelForCharacterType(characterType) + " characters.";
+        // Technique moves carry no class — the technique-requirement check
+        // below alone decides who may learn them.
+        if (!move.isTechniqueMove()) {
+            CharacterType characterType = character.effectiveType();
+            if (built.getMoveTypes().stream().noneMatch(characterType::canLearn)) {
+                String moveTypes = built.getMoveTypes().stream()
+                    .map(CharacterEditorScreen::labelForMoveType)
+                    .collect(java.util.stream.Collectors.joining(" or "));
+                return moveTypes + " moves cannot be learned by "
+                    + labelForCharacterType(characterType) + " characters.";
+            }
         }
         // A GRANT_MOVE-granted move bypasses all requirements, mirroring
         // Character.validateAndBuildMoveList. UNLOCK_MOVE-granted moves are

@@ -913,8 +913,8 @@ public final class AbilityActivationEngine {
                             : effect.perTickRemovalChance,
                         effect.ceUpkeepPerTick == null ? 0.0 : effect.ceUpkeepPerTick);
                     boolean accepted = extendStatusForCurrentPhase(state)
-                        ? target.addStatusEffect(applied, state.getCurrentPhase())
-                        : target.addStatusEffect(applied);
+                        ? target.addStatusEffect(applied, state.getCurrentPhase(), owner)
+                        : target.addStatusEffect(applied, owner);
                     if (!accepted) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
                         .source(owner).target(target).move(move)
@@ -1045,6 +1045,9 @@ public final class AbilityActivationEngine {
                     }
                 }
             }
+            case CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER -> {
+                // CombatResolver snapshots this move-start effect onto its action segment.
+            }
             case STUN_CURRENT_ACTION -> {
                 for (BattleCombatant target : targets) {
                     if (!target.stunCurrentAction(tick)) continue;
@@ -1070,9 +1073,10 @@ public final class AbilityActivationEngine {
                 for (BattleCombatant target : targets) {
                     int previousMaxHp = target.getMaxHp();
                     int previousMaxCe = target.getMaxCursedEnergy();
-                    boolean applied = extendStatusForCurrentPhase(state)
-                        ? target.addAutomaticStatusEffect(effect, state.getCurrentPhase())
-                        : target.addAutomaticStatusEffect(effect);
+                    boolean applied = target.addAutomaticStatusEffect(
+                        effect,
+                        extendStatusForCurrentPhase(state) ? state.getCurrentPhase() : null,
+                        owner);
                     if (!applied) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
                         .source(owner).target(target).move(move)

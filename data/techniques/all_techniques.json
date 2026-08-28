@@ -1343,4 +1343,155 @@
       "minimum" : 35
     } ]
   } ]
+}, {
+  "id" : "000006",
+  "name" : "Disaster Plants",
+  "description" : "Hanami's innate technique creates and commands cursed plants, from binding roots and defensive timber to pacifying flowers, parasitic buds, and stored life force.",
+  "skillTree" : [ {
+    "id" : "node-000000",
+    "contentType" : "MOVE",
+    "contentId" : "000141",
+    "x" : 40.0,
+    "y" : 325.0,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 0
+    } ]
+  }, {
+    "id" : "node-000001",
+    "contentType" : "MOVE",
+    "contentId" : "000142",
+    "x" : 360.0,
+    "y" : 125.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000000",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 30
+    } ]
+  }, {
+    "id" : "node-000002",
+    "contentType" : "MOVE",
+    "contentId" : "000143",
+    "x" : 360.0,
+    "y" : 325.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000000",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 20
+    } ]
+  }, {
+    "id" : "node-000003",
+    "contentType" : "MOVE",
+    "contentId" : "000145",
+    "x" : 360.0,
+    "y" : 525.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000000",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 40
+    } ]
+  }, {
+    "id" : "node-000004",
+    "contentType" : "MOVE",
+    "contentId" : "000144",
+    "x" : 700.0,
+    "y" : 325.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000002",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 60
+    } ]
+  }, {
+    "id" : "node-000005",
+    "contentType" : "MOVE",
+    "contentId" : "000146",
+    "x" : 700.0,
+    "y" : 125.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000001",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 80
+    } ]
+  }, {
+    "id" : "node-000006",
+    "contentType" : "ABILITY",
+    "contentId" : "000061",
+    "x" : 700.0,
+    "y" : 525.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000003",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 50
+    } ]
+  }, {
+    "id" : "node-000007",
+    "contentType" : "MOVE",
+    "contentId" : "000147",
+    "x" : 1040.0,
+    "y" : 525.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000006",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 70
+    } ]
+  }, {
+    "id" : "node-000008",
+    "contentType" : "MOVE",
+    "contentId" : "000148",
+    "x" : 1380.0,
+    "y" : 525.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000007",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 110
+    } ]
+  }, {
+    "id" : "node-000009",
+    "contentType" : "ABILITY",
+    "contentId" : "000060",
+    "x" : 1040.0,
+    "y" : 125.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000005",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 90
+    } ]
+  }, {
+    "id" : "node-000010",
+    "contentType" : "MOVE",
+    "contentId" : "000150",
+    "x" : 40.0,
+    "y" : 40.0,
+    "prerequisites" : [ {
+      "type" : "MASTERY",
+      "minimum" : 65
+    } ]
+  } ]
 } ]

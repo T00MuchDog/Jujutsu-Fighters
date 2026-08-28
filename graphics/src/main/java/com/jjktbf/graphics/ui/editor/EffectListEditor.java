@@ -591,13 +591,17 @@ public class EffectListEditor extends Table {
 
         if (type.uses(AbilityEffectParameter.DECIMAL, effect)) {
             boolean percentage = isPercentage(type, effect);
-            Double displayed = percentage && effect.doubleValue != null
-                ? effect.doubleValue * 100.0 : effect.doubleValue;
+            // Explicit branches, not ternaries: a mixed double/Double ternary
+            // unboxes the boxed operand, which is null while the field is
+            // transiently empty (e.g. after backspace clears the text).
+            Double displayed = effect.doubleValue;
+            if (percentage && displayed != null) displayed = displayed * 100.0;
             TextField decimal = decimalField(displayed);
             decimal.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     Double value = parseDouble(decimal.getText());
-                    effect.doubleValue = percentage && value != null ? value / 100.0 : value;
+                    if (percentage && value != null) effect.doubleValue = value / 100.0;
+                    else                             effect.doubleValue = value;
                 }
             });
             addRow(fields, decimalLabel(type, effect), decimal);
@@ -770,7 +774,8 @@ public class EffectListEditor extends Table {
             String pairFirst = "Pair first";
             String pairSecond = "Pair second";
             String pairBoth = "Pair both";
-            if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE) {
+            if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                || type == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER) {
                 targetBox.setItems(self);
             } else if (moveEffectEditor) {
                 targetBox.setItems(self, enemy, ally, both, selfAndAlly,
@@ -1297,6 +1302,9 @@ public class EffectListEditor extends Table {
                 summary.append(" | +").append(effect.targetResourceAmount)
                     .append(' ').append(effect.targetResourceKey);
             }
+        }
+        if (type == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER) {
+            summary.append(" | consume all ").append(effect.sourceResourceKey);
         }
         return summary.toString();
     }

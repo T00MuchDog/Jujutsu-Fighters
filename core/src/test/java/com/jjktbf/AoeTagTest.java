@@ -8,6 +8,8 @@ import com.jjktbf.model.combat.BattleTeamId;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.model.combat.SeededRandomSource;
+import com.jjktbf.model.character.AbilityEffectTarget;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.move.AoeType;
@@ -15,7 +17,10 @@ import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveData;
+import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
+import com.jjktbf.model.move.StatusEffectType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -174,6 +179,50 @@ class AoeTagTest {
             .hitComponents(List.of(new HitComponent(10, Set.of(MoveTag.PHYSICAL), 0, false, true)))
             .build();
         assertNull(single.getAoeType());
+    }
+
+    @Test
+    void utilityAoeFansOnFireEnemyRowsOutToEveryEnemy() {
+        MoveEffectData debuff = AbilityEffectType.APPLY_STATUS.createDefaultMoveEffect();
+        debuff.effectId = "effect-000000";
+        debuff.trigger = MoveEffectTrigger.ON_FIRE.name();
+        debuff.target = AbilityEffectTarget.ENEMY.name();
+        debuff.stringValue = StatusEffectType.ACCURACY_DECREASE.name();
+        debuff.durationRounds = 1;
+        debuff.durationTicks = 0;
+        debuff.magnitude = 10.0;
+        Move move = new Move.Builder("UTILITY_AOE")
+            .name("Utility AOE").category(MoveCategory.UTILITY)
+            .apCost(2).unleashPoint(1)
+            .tags(Set.of(MoveTag.UTILITY, MoveTag.AOE))
+            .aoeType(AoeType.ALL_ENEMIES)
+            .effects(List.of(debuff))
+            .build();
+
+        assertEquals(MoveTargeting.ALL_ENEMIES, MoveTargeting.forMove(move),
+            "a utility move with AOE and on-fire enemy rows fans out like an attack");
+
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant ally = fighter("Ally");
+        BattleCombatant e1 = fighter("E1");
+        BattleCombatant e2 = fighter("E2");
+        BattleTeam players = BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker, ally));
+        BattleTeam enemies = BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(e1, e2));
+        BattleState state = new BattleState(players, enemies);
+
+        BattlePlan plan = new BattlePlan(attacker.getMaxApBar(), attacker.getCurrentCe(), 60);
+        plan.place(move, 1, 0);
+        attacker.setTimeline(plan.toLegacyTimeline());
+        resolveRound(state);
+
+        assertTrue(e1.hasEffect(StatusEffectType.ACCURACY_DECREASE),
+            "first enemy debuffed by the utility AOE");
+        assertTrue(e2.hasEffect(StatusEffectType.ACCURACY_DECREASE),
+            "second enemy debuffed by the utility AOE");
+        assertFalse(ally.hasEffect(StatusEffectType.ACCURACY_DECREASE),
+            "ally untouched by ALL_ENEMIES AOE");
+        assertFalse(attacker.hasEffect(StatusEffectType.ACCURACY_DECREASE),
+            "caster untouched by its own AOE");
     }
 
     // --- helpers (mirrors MultiCombatantResolverTest fixtures) ---

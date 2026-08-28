@@ -31,7 +31,8 @@ import java.util.Set;
  *
  * Technique restriction:
  *  - If requiredTechniqueId is non-null, only characters who possess that specific
- *    innate technique can learn or use this move.
+ *    innate technique can learn or use this move. Technique moves carry no
+ *    character class: any class may learn them while they possess the technique.
  */
 public class Move {
 
@@ -45,7 +46,11 @@ public class Move {
     /** Display name. */
     private final String name;
 
-    /** Character classes of move used by learning eligibility. */
+    /**
+     * Character classes of move used by learning eligibility. Empty for
+     * technique moves: they are class-agnostic and learnable by any character
+     * that possesses the technique.
+     */
     private final Set<MoveType> moveTypes;
 
     /** Flavour description shown to the player. */
@@ -313,8 +318,12 @@ public class Move {
     private Move(Builder b) {
         this.id                  = b.id;
         this.name                = b.name;
+        // Technique moves carry no character class regardless of what was
+        // authored alongside the technique requirement.
         this.moveTypes           = java.util.Collections.unmodifiableSet(
-            EnumSet.copyOf(b.moveTypes));
+            b.requiredTechniqueId == null
+                ? EnumSet.copyOf(b.moveTypes)
+                : EnumSet.noneOf(MoveType.class));
         this.description         = b.description;
         this.category            = b.category;
         this.tags                = immutableTags(b.tags, b.category);
@@ -582,6 +591,8 @@ public class Move {
     }
     public java.util.Map<String, Integer> getPrerequisites() { return prerequisites; }
     public String getRequiredTechniqueId()        { return requiredTechniqueId; }
+    /** True when this move belongs to a cursed technique and carries no class. */
+    public boolean isTechniqueMove()              { return requiredTechniqueId != null; }
     public String getRequiredCursedToolId()       { return requiredCursedToolId; }
     public boolean isFreeMove()                    { return isFreeMove; }
     public boolean mustBeGranted()                 { return mustBeGranted; }
@@ -1008,8 +1019,11 @@ public class Move {
             return this;
         }
         public Builder moveTypes(Set<MoveType> v)          {
-            this.moveTypes = v == null || v.isEmpty()
-                ? EnumSet.of(MoveType.SORCERER) : EnumSet.copyOf(v);
+            // Null keeps the sorcerer default; an explicitly empty set is the
+            // technique-move representation (no character class).
+            this.moveTypes = v == null ? EnumSet.of(MoveType.SORCERER)
+                : v.isEmpty() ? EnumSet.noneOf(MoveType.class)
+                : EnumSet.copyOf(v);
             return this;
         }
         public Builder description(String v)               { this.description = v; return this; }
@@ -1072,7 +1086,10 @@ public class Move {
             return this;
         }
         public Builder prerequisites(java.util.Map<String, Integer> v) { this.prerequisites = v; return this; }
-        public Builder requiredTechniqueId(String v)       { this.requiredTechniqueId = v; return this; }
+        public Builder requiredTechniqueId(String v)       {
+            this.requiredTechniqueId = v == null || v.isBlank() ? null : v.trim();
+            return this;
+        }
         public Builder requiredCursedToolId(String v)      { this.requiredCursedToolId = v; return this; }
         public Builder freeMove(boolean v)                 { this.isFreeMove = v; return this; }
         public Builder mustBeGranted(boolean v)            { this.mustBeGranted = v; return this; }
@@ -1107,6 +1124,10 @@ public class Move {
                 throw new IllegalStateException("unleashPoint must be in [1, apCost]");
             if (moveCap < 0)
                 throw new IllegalStateException("moveCap must be non-negative");
+            if (requiredTechniqueId == null && moveTypes.isEmpty())
+                throw new IllegalStateException(
+                    "Move requires at least one move type unless it belongs to a technique (name='"
+                        + name + "')");
 
             Set<MoveTag> effectiveTags = tags != null ? tags : category.getTags();
             if (moveTypes.contains(MoveType.CURSED_SPIRIT)

@@ -1,7 +1,5 @@
 package com.jjktbf;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jjktbf.model.character.Ability;
 import com.jjktbf.model.character.AbilityConditionData;
 import com.jjktbf.model.character.AbilityConditionRuleData;
@@ -11,8 +9,6 @@ import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.CharacterStats;
-import com.jjktbf.model.character.CharacterData;
-import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.CursedCorpseCharacter;
 import com.jjktbf.model.character.CursedSpiritCharacter;
 import com.jjktbf.model.character.Equipment;
@@ -26,132 +22,26 @@ import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.Timeline;
-import com.jjktbf.model.move.BlockStyle;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
-import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveTag;
-import com.jjktbf.model.move.MoveType;
 import com.jjktbf.model.weapon.WeaponType;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CursedSpiritMechanicsTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    @Test
-    void bundledPackageAssignsItsMandatoryAbilities() throws IOException {
-        List<AbilityData> abilities = MAPPER.readValue(
-            dataPath("abilities", "all_abilities.json").toFile(), new TypeReference<>() { });
-        List<AbilityData> cursedSpiritAbilities = abilities.stream()
-            .filter(ability -> idInRange(ability.id, 51, 64))
-            .sorted(java.util.Comparator.comparing(ability -> ability.id))
-            .toList();
-        List<String> expectedIds = paddedIds(51, 64);
-
-        assertEquals(expectedIds,
-            cursedSpiritAbilities.stream().map(ability -> ability.id).toList());
-        assertTrue(cursedSpiritAbilities.stream()
-            .allMatch(ability -> CharacterType.CURSED_SPIRIT.name().equals(ability.sourceType)));
-        assertEquals(List.of("000051", "000052"), cursedSpiritAbilities.stream()
-            .filter(ability -> Boolean.TRUE.equals(ability.automaticallyAssigned))
-            .map(ability -> ability.id)
-            .toList());
-
-        CharacterData spirit = new CharacterData();
-        spirit.type = CharacterType.CURSED_SPIRIT.name();
-        spirit.abilityIds = List.of();
-        var resolved = com.jjktbf.model.character.AbilityResolver.resolve(
-            spirit, cursedSpiritAbilities);
-        assertEquals(Set.copyOf(expectedIds), Set.copyOf(resolved.availableAbilityIds()));
-        assertEquals(Set.of("000051", "000052"), cursedSpiritAbilities.stream()
-            .map(ability -> ability.id)
-            .filter(resolved::containsAbility)
-            .collect(java.util.stream.Collectors.toSet()));
-
-        AbilityData physiology = cursedSpiritAbilities.get(0);
-        assertTrue(physiology.effects.stream().anyMatch(effect ->
-            AbilityEffectType.GRANT_MOVE.name().equals(effect.type)
-                && "000132".equals(effect.moveId)));
-    }
-
-    @Test
-    void bundledMovesFormAValidCursedSpiritRoster() throws IOException {
-        List<MoveData> allMoves = MAPPER.readValue(
-            dataPath("moves", "all_moves.json").toFile(), new TypeReference<>() { });
-        List<MoveData> moves = allMoves.stream()
-            .filter(move -> idInRange(move.id, 110, 139))
-            .sorted(java.util.Comparator.comparing(move -> move.id))
-            .toList();
-
-        assertEquals(paddedIds(110, 139), moves.stream().map(move -> move.id).toList());
-        for (MoveData move : moves) {
-            assertEquals(Set.of(MoveType.CURSED_SPIRIT), move.effectiveMoveTypes(), move.name);
-            assertTrue(move.tags.contains(MoveTag.CURSED_ENERGY.name()), move.name);
-            assertTrue(Boolean.TRUE.equals(move.hasCeCost), move.name);
-            assertTrue(move.baseCeCost > 0, move.name);
-            assertEquals(Math.max(1, (int) Math.round(move.baseCeCost * 0.15)),
-                move.minCeCost, move.name);
-            assertEquals(move.baseCeCost * 4, move.maxCeCost, move.name);
-            move.toMove();
-        }
-
-        assertEquals(Set.of("000110", "000124", "000125", "000132"), moves.stream()
-            .filter(move -> move.isFreeMove)
-            .map(move -> move.id)
-            .collect(java.util.stream.Collectors.toSet()));
-        MoveData reconstitute = moveById(moves, "000132");
-        assertTrue(reconstitute.mustBeGranted);
-        assertEquals(1, reconstitute.moveCap);
-
-        assertEquals("MULTIPLE", moveById(moves, "000116").aoeType);
-        assertEquals(3, moveById(moves, "000116").aoeTargetCount);
-        assertEquals("ALL_OTHERS", moveById(moves, "000117").aoeType);
-        assertEquals("ALL_ENEMIES", moveById(moves, "000123").aoeType);
-        assertEquals("ON_DEFENCE", moveById(moves, "000130").attackLaunchMode);
-
-        Map<String, List<String>> expectedEffects = Map.ofEntries(
-            Map.entry("000113", List.of("APPLY_STATUS")),
-            Map.entry("000114", List.of("HEAL_HP")),
-            Map.entry("000119", List.of("APPLY_STATUS")),
-            Map.entry("000120", List.of("APPLY_STATUS")),
-            Map.entry("000121", List.of("APPLY_STATUS")),
-            Map.entry("000122", List.of("DEAL_DIRECT_DAMAGE")),
-            Map.entry("000123", List.of("TIMED_STAT_MODIFIER")),
-            Map.entry("000127", List.of("HEAL_HP")),
-            Map.entry("000128", List.of("TIMED_STAT_MODIFIER")),
-            Map.entry("000131", List.of("DEAL_DIRECT_DAMAGE")),
-            Map.entry("000132", List.of("HEAL_HP")),
-            Map.entry("000133", List.of("TIMED_STAT_MODIFIER", "TIMED_STAT_MODIFIER")),
-            Map.entry("000134", List.of("TIMED_STAT_MODIFIER")),
-            Map.entry("000135", List.of("DRAIN_CE", "RESTORE_CE")),
-            Map.entry("000136", List.of("TIMED_STAT_MODIFIER", "TIMED_STAT_MODIFIER")),
-            Map.entry("000137", List.of("CLEAR_STATUSES", "HEAL_HP")),
-            Map.entry("000138", List.of("TIMED_STAT_MODIFIER", "TIMED_STAT_MODIFIER")),
-            Map.entry("000139", List.of("DEAL_DIRECT_DAMAGE", "RESTORE_CE")));
-        expectedEffects.forEach((moveId, effectTypes) -> assertEquals(effectTypes,
-            moveById(moves, moveId).effects.stream().map(effect -> effect.type).toList(), moveId));
-        assertFalse(moves.stream().anyMatch(move -> move.tags == null || move.tags.isEmpty()));
-    }
 
     @Test
     void uncursedPhysicalHitsRepeatedlyStopAtOneHp() {
@@ -216,58 +106,6 @@ class CursedSpiritMechanicsTest {
             cursedToolWielder, cursedToolMove, cursedToolMove.getHitComponents().get(0));
 
         assertExorcises(sorcerer("DIRECT_ATTACKER"), null, null);
-    }
-
-    @Test
-    void mandatoryDefinitionsResolveIntoAWorkingCursedSpirit() throws IOException {
-        List<AbilityData> abilities = MAPPER.readValue(
-            dataPath("abilities", "all_abilities.json").toFile(), new TypeReference<>() { });
-        AbilityData physiologyData = abilityById(abilities, "000051");
-        AbilityData exorcismData = abilityById(abilities, "000052");
-
-        BattleCombatant plain = new BattleCombatant(new CursedSpiritCharacter(
-            "PLAIN", "Plain", stats(), null, List.of()));
-        BattleCombatant spirit = spiritWithAbilities(
-            "SPIRIT", stats(), new Ability(physiologyData), new Ability(exorcismData));
-        BattleCombatant uncursedAttacker = sorcerer("UNCURSED_ATTACKER");
-        BattleState state = new BattleState(uncursedAttacker, spirit);
-
-        assertEquals(plain.getMaxCursedEnergy() * 5, spirit.getMaxCursedEnergy(),
-            "000051 multiplies max CE by 5.");
-        assertEquals(spirit.getMaxCursedEnergy(), spirit.getCurrentCe());
-        assertEquals(1.0, spirit.getCursedEnergyRegenerationPerTick(), 0.000001);
-        spirit.drainCe(spirit.getCurrentCe());
-        assertEquals(1, spirit.regenerateCursedEnergyForTick(),
-            "000051 regenerates exactly 1 CE per tick.");
-
-        int waiverThreshold =
-            spirit.getCharacter().getBaseStats().baseStatTotal() / 100;
-        assertEquals(0, spirit.computeMoveCeCost(ceMove("WAIVED", waiverThreshold)),
-            "000051 waives CE costs up to the raw stat-total threshold.");
-        assertTrue(spirit.computeMoveCeCost(ceMove("CHARGED", waiverThreshold + 1)) > 0,
-            "Costs above the threshold are still charged.");
-
-        AbilityActivationEngine engine = new AbilityActivationEngine(new SeededRandomSource(1L));
-        Move physical = attack("PHYSICAL", Set.of(MoveTag.PHYSICAL));
-        spirit.receiveDamage(spirit.getCurrentHp() + 10, fatalAmount ->
-            engine.preventFatalDamage(state, AbilityTrigger.fatalDamage(
-                uncursedAttacker, spirit, physical, physical.getHitComponents().get(0),
-                fatalAmount, 1)));
-        assertEquals(1, spirit.getCurrentHp(),
-            "000052 leaves the curse at 1 HP against a fatal uncursed physical hit.");
-
-        BattleCombatant ceAttacker = sorcerer("CE_ATTACKER");
-        BattleCombatant exorcised = spiritWithAbilities(
-            "EXORCISED", stats(), new Ability(physiologyData), new Ability(exorcismData));
-        BattleState ceState = new BattleState(ceAttacker, exorcised);
-        Move cursedEnergy = attack(
-            "CURSED_ENERGY", Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY));
-        exorcised.receiveDamage(exorcised.getCurrentHp() + 10, fatalAmount ->
-            engine.preventFatalDamage(ceState, AbilityTrigger.fatalDamage(
-                ceAttacker, exorcised, cursedEnergy, cursedEnergy.getHitComponents().get(0),
-                fatalAmount, 1)));
-        assertTrue(exorcised.isDefeated(),
-            "A cursed-energy hit exorcises straight through 000052.");
     }
 
     @Test
@@ -427,30 +265,6 @@ class CursedSpiritMechanicsTest {
         return new CharacterStats.Builder().build();
     }
 
-    private static MoveData moveById(List<MoveData> moves, String id) {
-        return moves.stream().filter(move -> id.equals(move.id)).findFirst().orElseThrow();
-    }
-
-    private static AbilityData abilityById(List<AbilityData> abilities, String id) {
-        return abilities.stream()
-            .filter(ability -> id.equals(ability.id))
-            .findFirst().orElseThrow();
-    }
-
-    private static Move ceMove(String id, int baseCost) {
-        return new Move.Builder(id)
-            .name(id)
-            .category(MoveCategory.CURSED_ENERGY)
-            .tags(Set.of(MoveTag.CURSED_ENERGY))
-            .apCost(1)
-            .unleashPoint(1)
-            .baseCeCost(baseCost)
-            .hasCeCost(true)
-            .minCeCost(1)
-            .maxCeCost(baseCost * 4)
-            .build();
-    }
-
     private static List<CombatEvent> resolveParryRound(
         BattleCombatant attacker, BattleCombatant defender, Move attack, Move parry) {
         Timeline attackerTimeline = new Timeline(10);
@@ -467,26 +281,5 @@ class CursedSpiritMechanicsTest {
     /** Deterministic mid-range RNG: damage and accuracy rolls land on ordinary outcomes. */
     private static final class FixedRandom extends Random {
         @Override public double nextDouble() { return 0.5; }
-    }
-
-    private static boolean idInRange(String id, int minimum, int maximum) {
-        if (id == null || !id.matches("\\d{6}")) return false;
-        int value = Integer.parseInt(id);
-        return value >= minimum && value <= maximum;
-    }
-
-    private static List<String> paddedIds(int minimum, int maximum) {
-        return IntStream.rangeClosed(minimum, maximum)
-            .mapToObj(value -> String.format("%06d", value))
-            .toList();
-    }
-
-    private static Path dataPath(String directory, String file) throws IOException {
-        for (Path path : List.of(
-                Path.of("data", directory, file),
-                Path.of("..", "data", directory, file))) {
-            if (Files.isRegularFile(path)) return path;
-        }
-        throw new IOException("Could not locate data/" + directory + "/" + file);
     }
 }

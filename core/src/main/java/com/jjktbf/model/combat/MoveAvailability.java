@@ -289,6 +289,16 @@ public final class MoveAvailability {
             if (sourceKey != null) values.put(sourceKey, sourceValue - sourceAmount);
             if (targetKey != null) values.put(targetKey, targetValue + targetAmount);
         }
+        for (AbilityEffectData consumer : boundedResourcePowerConsumers(actor, move)) {
+            String sourceKey = normalizedResourceKey(consumer.sourceResourceKey);
+            if (sourceKey == null) return "Required resource is not available.";
+            Integer sourceValue = resourceValue(actor, sourceKey, values, maximums);
+            if (sourceValue == null) {
+                return "Required resource is not available: " + sourceKey + ".";
+            }
+            if (sourceValue <= 0) return "Not enough " + sourceKey + ".";
+            values.put(sourceKey, 0);
+        }
         return null;
     }
 
@@ -314,9 +324,11 @@ public final class MoveAvailability {
     ) {
         if (actor == null || move == null || !move.usesUnifiedEffects()) return List.of();
         int mastery = TechniqueMasteryResolver.masteryOf(actor);
-        return move.effectsFor(MoveEffectTrigger.ON_START, -1).stream()
+        return move.getEffects().stream()
             .filter(effect -> AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.name()
                 .equalsIgnoreCase(effect.type))
+            .filter(effect -> effect.resolvedTrigger() == MoveEffectTrigger.ON_START
+                || effect.resolvedTrigger() == MoveEffectTrigger.ON_FIRE)
             .filter(effect -> guaranteed(effect, mastery))
             .map(effect -> TechniqueMasteryResolver.resolve(effect, mastery))
             .toList();
@@ -328,11 +340,35 @@ public final class MoveAvailability {
     ) {
         if (actor != null) return guaranteedBoundedResourceTransactions(actor, move);
         if (move == null || !move.usesUnifiedEffects()) return List.of();
-        return move.effectsFor(MoveEffectTrigger.ON_START, -1).stream()
+        return move.getEffects().stream()
             .filter(effect -> AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.name()
                 .equalsIgnoreCase(effect.type))
+            .filter(effect -> effect.resolvedTrigger() == MoveEffectTrigger.ON_START
+                || effect.resolvedTrigger() == MoveEffectTrigger.ON_FIRE)
             .filter(effect -> guaranteed(effect, 0))
             .map(effect -> (AbilityEffectData) effect)
+            .toList();
+    }
+
+    /** Guaranteed consume-all rows that derive one move's base power from a resource. */
+    public static List<AbilityEffectData> guaranteedBoundedResourcePowerConsumers(
+        BattleCombatant actor,
+        Move move
+    ) {
+        return boundedResourcePowerConsumers(actor, move);
+    }
+
+    private static List<AbilityEffectData> boundedResourcePowerConsumers(
+        BattleCombatant actor,
+        Move move
+    ) {
+        if (move == null || !move.usesUnifiedEffects()) return List.of();
+        int mastery = actor == null ? 0 : TechniqueMasteryResolver.masteryOf(actor);
+        return move.effectsFor(MoveEffectTrigger.ON_START, -1).stream()
+            .filter(effect -> AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.name()
+                .equalsIgnoreCase(effect.type))
+            .filter(effect -> guaranteed(effect, mastery))
+            .map(effect -> TechniqueMasteryResolver.resolve(effect, mastery))
             .toList();
     }
 

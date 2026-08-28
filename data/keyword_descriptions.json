@@ -506,5 +506,13 @@
   {
     "term": "Visualise the Soul",
     "description": "A character ability that marks physical melee attacks as soul-aware."
+  },
+  {
+    "term": "CURSED ENERGY PARASITE",
+    "description": "A cleanseable one-round status. When its holder voluntarily pays CE for a move, it deals 2% max HP for 1-19 CE, 4% for 20-39 CE, or 6% for 40 or more CE. Reapplication refreshes rather than stacks."
+  },
+  {
+    "term": "FLOWER OFFERING",
+    "description": "Hanami's stored life-force resource. It holds up to three charges, and the Life-Force Beam consumes every charge at move start for 60 Base Power per charge."
   }
 ]

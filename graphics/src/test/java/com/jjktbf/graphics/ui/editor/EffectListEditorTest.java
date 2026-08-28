@@ -33,6 +33,23 @@ class EffectListEditorTest {
     }
 
     @Test
+    void flowerOfferingEffectsExposeResourceControls() {
+        AbilityEffectData transaction =
+            AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.createDefault();
+        assertTrue(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.uses(
+            AbilityEffectParameter.SOURCE_RESOURCE, transaction));
+        assertTrue(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.uses(
+            AbilityEffectParameter.TARGET_RESOURCE, transaction));
+
+        AbilityEffectData consumer =
+            AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.createDefault();
+        assertTrue(AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.uses(
+            AbilityEffectParameter.SOURCE_RESOURCE, consumer));
+        assertFalse(AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.uses(
+            AbilityEffectParameter.TARGET_RESOURCE, consumer));
+    }
+
+    @Test
     void summonSelectorOnlyRecognizesShikigamiDefinitions() {
         CharacterData sorcerer = character("000001", null);
         CharacterData shikigami = character("000002", CharacterType.SHIKIGAMI.name());

@@ -85,6 +85,9 @@ public enum StatusEffectType {
      */
     CURSED_SPEECH_WARD("Cursed Speech Ward", 0),
 
+    /** Damages the holder whenever they voluntarily pay cursed energy for a move. */
+    CURSED_ENERGY_PARASITE("Cursed Energy Parasite", 0),
+
     /** Multiplies every base stat by 0.8 and deals max-HP damage each active tick. */
     POISON("Poison", 0.8);
 
@@ -205,7 +208,7 @@ public enum StatusEffectType {
     public boolean refreshesOnReapply() {
         return this == RESTRAINED || this == WET || this == FROZEN
             || this == BURNED || this == FATIGUED || this == POISON
-            || this == CURSED_SPEECH_WARD;
+            || this == CURSED_SPEECH_WARD || this == CURSED_ENERGY_PARASITE;
     }
 
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */

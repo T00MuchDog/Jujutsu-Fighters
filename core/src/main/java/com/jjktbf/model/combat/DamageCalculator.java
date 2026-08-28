@@ -181,7 +181,34 @@ public final class DamageCalculator {
         boolean         temporaryGuaranteesNormalAccuracy,
         int             temporaryNeverHitTier
     ) {
+        return resolve(attacker, defender, move, component, currentTick, rng,
+            currentRound, forceFullBlock, requireFiredDefense, connectedHitHook,
+            temporaryNeverMissTier, temporaryGuaranteesNormalAccuracy,
+            temporaryNeverHitTier, 1.0);
+    }
+
+    /** Resolve one component with an execution-scoped base-power snapshot. */
+    static DamageResult resolve(
+        BattleCombatant attacker,
+        BattleCombatant defender,
+        Move            move,
+        HitComponent    component,
+        int             currentTick,
+        RandomSource    rng,
+        int             currentRound,
+        boolean         forceFullBlock,
+        boolean         requireFiredDefense,
+        ConnectedHitHook connectedHitHook,
+        int             temporaryNeverMissTier,
+        boolean         temporaryGuaranteesNormalAccuracy,
+        int             temporaryNeverHitTier,
+        double          executionBasePowerMultiplier
+    ) {
         if (component == null) throw new IllegalArgumentException("hit component is required");
+        if (!Double.isFinite(executionBasePowerMultiplier)
+            || executionBasePowerMultiplier <= 0.0) {
+            throw new IllegalArgumentException("execution base-power multiplier must be positive");
+        }
         // Use ability-modified stats for all calculations
         CharacterStats acs = attacker.getEffectiveStats();
 
@@ -287,7 +314,8 @@ public final class DamageCalculator {
                 int staggerTicks = stagger ? parrySeg.getMove().getParryStaggerTicks() : 0;
                 if (perfect && stagger) staggerTicks += PERFECT_PARRY_BONUS_STAGGER_TICKS;
                 int reflected = perfect && component.isRanged()
-                    ? reflectedDamage(attacker, move, component, currentTick, rng)
+                    ? reflectedDamage(attacker, move, component, currentTick, rng,
+                        executionBasePowerMultiplier)
                     : 0;
                 return DamageResult.parried(
                     move, component, parrySeg, staggerTicks, codedModifiers.events())
@@ -341,6 +369,7 @@ public final class DamageCalculator {
 
         // --- 4. Apply defensive block before Defense ---
         double attackValue = component.getBasePower()
+            * executionBasePowerMultiplier
             * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
             * power;
         if (activeBlockSegment != null) {
@@ -432,7 +461,8 @@ public final class DamageCalculator {
         Move            move,
         HitComponent    component,
         int             currentTick,
-        RandomSource    rng
+        RandomSource    rng,
+        double          executionBasePowerMultiplier
     ) {
         CharacterStats acs = attacker.getEffectiveStats();
         double power = PowerCalculator.compute(
@@ -443,6 +473,7 @@ public final class DamageCalculator {
         power = Math.max(0.0, attacker.modifyBattleStat(
             com.jjktbf.model.character.BattleStatKey.POWER, power));
         double attackValue = component.getBasePower()
+            * executionBasePowerMultiplier
             * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
             * power;
         return applyDamageFormula(attacker, attacker, move, component,

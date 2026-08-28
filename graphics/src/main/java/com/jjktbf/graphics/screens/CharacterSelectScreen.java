@@ -26,7 +26,9 @@ import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterRepository;
 import com.jjktbf.model.character.CombatStats;
+import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.SlotBudgetEnforcer;
+import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MovePool;
@@ -41,10 +43,12 @@ import com.jjktbf.multiplayer.protocol.MatchCharacterSelectionRequest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -65,6 +69,9 @@ public class CharacterSelectScreen implements Screen {
     private static final float WINDOWS_MOVE_PANEL_HEADER_HEIGHT = 36f;
     private static final float MIN_CHARACTER_INFO_HEIGHT = 205f;
     private static final float WINDOWS_MIN_CHARACTER_INFO_HEIGHT = 307.5f;
+    private static final float MAC_TECHNIQUE_SECTION_TARGET_HEIGHT = 190f;
+    private static final float MAC_TECHNIQUE_SECTION_MIN_HEIGHT = 100f;
+    private static final float MAC_PROFILE_SUMMARY_MIN_HEIGHT = 260f;
     private static final float DESCRIPTION_TARGET_HEIGHT = 45f;
     private static final float WINDOWS_DESCRIPTION_TARGET_HEIGHT = 67.5f;
     private static final float HEADER_HEIGHT = 58f;
@@ -107,6 +114,7 @@ public class CharacterSelectScreen implements Screen {
     private static final Color STAT_MID_COLOR = new Color(1f, 1f, 0f, 1f);
     private static final Color STAT_MAX_COLOR = new Color(0.260f, 0.820f, 0.360f, 1f);
     private static final Color STAT_TRACK_COLOR = new Color(0.770f, 0.790f, 0.720f, 1f);
+    private static final String RANDOM_ROW_LABEL = "Random";
     private static final String[] STAT_LABELS = {
         "Vitality", "Strength", "Durability", "Speed", "Combat Ability",
         "CE Reserves", "CE Efficiency", "CE Output", "Jujutsu Skill", "CT Mastery"
@@ -198,6 +206,7 @@ public class CharacterSelectScreen implements Screen {
     private com.jjktbf.model.character.Character profileCharacter;
     private List<Integer> learnedMoveCeCosts = List.of();
     private int cursorIndex;
+    private final Random random = new Random();
     private Phase phase = Phase.PLAYER;
     /**
      * Picks for the current side, in slot order. For ONE_V_ONE each side fills
@@ -214,6 +223,7 @@ public class CharacterSelectScreen implements Screen {
     private String loadError;
     private String learnedMovesError;
     private String moveSetSaveError;
+    private String moveSetRequiredWarning;
     private float rosterScrollOffset;
     private float rosterScrollMax;
     private List<MoveCardView> learnedDrawerCards = List.of();
@@ -340,6 +350,7 @@ public class CharacterSelectScreen implements Screen {
         clearLearnedMoveDrag();
         learnedMovesError = null;
         moveSetSaveError = null;
+        moveSetRequiredWarning = null;
         resetRosterScroll();
         resetMoveScroll();
         try {
@@ -360,6 +371,7 @@ public class CharacterSelectScreen implements Screen {
             if (characters.isEmpty()) {
                 loadError = "No characters found. Use Character Editor to create one.";
             }
+            setCursor(0);
         } catch (IOException e) {
             loadError = "Failed to load data: " + e.getMessage();
         }
@@ -404,13 +416,13 @@ public class CharacterSelectScreen implements Screen {
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
-            cursorIndex = (cursorIndex - 1 + characters.size()) % characters.size();
+            setCursor((cursorIndex - 1 + rosterRowCount()) % rosterRowCount());
             revealRosterCursor();
             resetMoveScroll();
             game.audio().play(SoundCue.UI_NAVIGATE);
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
-            cursorIndex = (cursorIndex + 1) % characters.size();
+            setCursor((cursorIndex + 1) % rosterRowCount());
             revealRosterCursor();
             resetMoveScroll();
             game.audio().play(SoundCue.UI_NAVIGATE);
@@ -433,19 +445,120 @@ public class CharacterSelectScreen implements Screen {
         float firstRowTop = listBounds.y + listBounds.height
             - (windowsLayout ? 69f : 46f);
         int index = (int) ((firstRowTop + rosterScrollOffset - y) / rowHeight());
-        if (index >= 0 && index < characters.size()) {
+        if (index >= 0 && index < rosterRowCount()) {
             if (index == cursorIndex) {
                 confirmSelection();
             } else {
-                cursorIndex = index;
+                setCursor(index);
                 resetMoveScroll();
                 game.audio().play(SoundCue.UI_NAVIGATE);
             }
         }
     }
 
+    /** Roster rows shown in the list: the pinned Random row plus every fighter. */
+    private int rosterRowCount() {
+        return characters.size() + 1;
+    }
+
+    private boolean cursorOnRandomRow() {
+        return cursorIndex == 0;
+    }
+
+    private CharacterData cursorCharacter() {
+        return characters.get(cursorIndex - 1);
+    }
+
+    /** Fighter shown on the detail page, or null while the Random row is highlighted. */
+    private CharacterData detailCharacter() {
+        return cursorOnRandomRow() ? null : cursorCharacter();
+    }
+
+    /** Move the cursor; the Random row shows no profile, so hide its drawer. */
+    private void setCursor(int index) {
+        cursorIndex = index;
+        if (cursorOnRandomRow()) learnedDrawerExpanded = false;
+    }
+
+    private CharacterData pickRandomCharacter() {
+        return randomCandidate(characters, currentPicks(), random);
+    }
+
+    /**
+     * Battle-only move set for a random pick whose authored move set is empty:
+     * every slot-free learned move plus random learned moves filling each pool's
+     * slot budget. Never persisted — it applies to this battle's pick only.
+     */
+    private List<String> randomBattleMoveSet() {
+        if (profileCharacter == null) return List.of();
+        return randomMoveSetIds(
+            profileCharacter.getLearnedMoves(),
+            profileCharacter::consumesMoveSetSlot,
+            SlotBudgetEnforcer.slotBudgetFor(
+                profileCharacter.getCombatStats(), MovePool.COMBAT_ARTS),
+            SlotBudgetEnforcer.slotBudgetFor(
+                profileCharacter.getCombatStats(), MovePool.JUJUTSU_ARTS),
+            random);
+    }
+
+    /**
+     * Random equipped-move ids within the per-pool slot budgets. Slot-free
+     * moves are always equipped; chosen ids retain learned order.
+     */
+    static List<String> randomMoveSetIds(
+        List<Move> learned,
+        java.util.function.Predicate<Move> consumesSlot,
+        int combatArtsSlots,
+        int jujutsuArtsSlots,
+        Random random
+    ) {
+        Map<MovePool, Integer> remaining = new EnumMap<>(MovePool.class);
+        remaining.put(MovePool.COMBAT_ARTS, Math.max(0, combatArtsSlots));
+        remaining.put(MovePool.JUJUTSU_ARTS, Math.max(0, jujutsuArtsSlots));
+        Set<String> chosen = new HashSet<>();
+        List<Move> shuffled = new ArrayList<>(learned);
+        java.util.Collections.shuffle(shuffled, random);
+        for (Move move : shuffled) {
+            if (!consumesSlot.test(move)) {
+                chosen.add(move.getId());
+            } else {
+                MovePool pool = move.getPool();
+                int left = remaining.getOrDefault(pool, 0);
+                if (left > 0) {
+                    remaining.put(pool, left - 1);
+                    chosen.add(move.getId());
+                }
+            }
+        }
+        return learned.stream().map(Move::getId).filter(chosen::contains).toList();
+    }
+
+    /**
+     * Uniformly random roster fighter among those not already picked for the
+     * side being filled, or null when every fighter is already on that side.
+     */
+    static CharacterData randomCandidate(
+        java.util.List<CharacterData> roster,
+        java.util.List<CharacterData> sidePicks,
+        Random random
+    ) {
+        java.util.List<CharacterData> candidates = new ArrayList<>(roster.size());
+        for (CharacterData candidate : roster) {
+            if (sidePicks.stream().noneMatch(picked -> picked.id.equals(candidate.id))) {
+                candidates.add(candidate);
+            }
+        }
+        if (candidates.isEmpty()) return null;
+        return candidates.get(random.nextInt(candidates.size()));
+    }
+
     private void confirmSelection() {
-        CharacterData picked = characters.get(cursorIndex);
+        boolean randomPick = cursorOnRandomRow();
+        CharacterData picked = randomPick ? pickRandomCharacter() : cursorCharacter();
+        if (picked == null) {
+            game.audio().play(SoundCue.UI_DENIED);
+            return;
+        }
         learnedMovesFor(picked);
         if (profileCharacter == null) {
             game.audio().play(SoundCue.UI_DENIED);
@@ -458,6 +571,18 @@ public class CharacterSelectScreen implements Screen {
             return;
         }
         List<String> selectedMoveSet = List.copyOf(moveSetIdsFor(picked));
+        if (randomPick && selectedMoveSet.isEmpty()) {
+            // Authored move set never configured: equip a battle-only random set.
+            selectedMoveSet = randomBattleMoveSet();
+        }
+        if (selectedMoveSet.isEmpty()) {
+            // Fighters ship with no move set: the player must choose one on
+            // the detail page before the fighter can be picked.
+            moveSetRequiredWarning = "CHOOSE A MOVE SET FIRST";
+            game.audio().play(SoundCue.UI_DENIED);
+            return;
+        }
+        moveSetRequiredWarning = null;
         game.audio().play(SoundCue.UI_CONFIRM);
         currentPicks.add(picked);
         currentMoveSets().add(selectedMoveSet);
@@ -467,7 +592,7 @@ public class CharacterSelectScreen implements Screen {
 
         if (currentPicks.size() < format.fightersPerSide()) {
             // More slots to fill on this side.
-            cursorIndex = 0;
+            setCursor(0);
             resetRosterScroll();
             resetMoveScroll();
             return;
@@ -481,7 +606,7 @@ public class CharacterSelectScreen implements Screen {
                 playerMoveSets));
         } else if (phase == Phase.PLAYER) {
             phase = Phase.CPU;
-            cursorIndex = 0;
+            setCursor(0);
             resetRosterScroll();
             resetMoveScroll();
         } else {
@@ -514,7 +639,7 @@ public class CharacterSelectScreen implements Screen {
         if (!cpuPicks.isEmpty()) {
             cpuPicks.remove(cpuPicks.size() - 1);
             cpuMoveSets.remove(cpuMoveSets.size() - 1);
-            cursorIndex = 0;
+            setCursor(0);
             resetRosterScroll();
             resetMoveScroll();
             return true;
@@ -524,7 +649,7 @@ public class CharacterSelectScreen implements Screen {
             playerMoveSets.remove(playerMoveSets.size() - 1);
             playerChoice = playerPicks.isEmpty() ? null : playerPicks.get(playerPicks.size() - 1);
             phase = Phase.PLAYER;
-            cursorIndex = 0;
+            setCursor(0);
             resetRosterScroll();
             resetMoveScroll();
             return true;
@@ -570,7 +695,7 @@ public class CharacterSelectScreen implements Screen {
                 Math.max(0f, listBounds.width - 16f),
                 Math.max(0f, listBounds.height - 77f));
             rosterScrollMax = Math.max(0f,
-                characters.size() * WINDOWS_ROW_HEIGHT - rosterViewportBounds.height);
+                rosterRowCount() * WINDOWS_ROW_HEIGHT - rosterViewportBounds.height);
             rosterScrollOffset = clamp(rosterScrollOffset, 0f, rosterScrollMax);
             revealRosterCursor();
         }
@@ -595,10 +720,31 @@ public class CharacterSelectScreen implements Screen {
 
         drawHeader();
         drawRoster();
-        drawCharacterPage(characters.get(cursorIndex));
-        drawLearnedDrawer(characters.get(cursorIndex));
+        CharacterData detail = detailCharacter();
+        if (detail != null) {
+            drawCharacterPage(detail);
+            drawLearnedDrawer(detail);
+        } else {
+            drawRandomPlaceholder();
+        }
         drawLearnedMoveDragAvatar();
         batch.end();
+    }
+
+    /** Blank detail page shown while the Random row is highlighted — no profile. */
+    private void drawRandomPlaceholder() {
+        assets.battleUi.card.draw(batch, detailBounds.x, detailBounds.y,
+            detailBounds.width, detailBounds.height);
+        String mark = "?";
+        assets.fontXLarge.setColor(BattleUiAssets.TEXT);
+        assets.fontXLarge.draw(batch, mark,
+            detailBounds.x + (detailBounds.width - textWidth(assets.fontXLarge, mark)) / 2f,
+            detailBounds.y + detailBounds.height * 0.60f);
+        String caption = "RANDOM FIGHTER";
+        assets.fontMedium.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.fontMedium.draw(batch, caption,
+            detailBounds.x + (detailBounds.width - textWidth(assets.fontMedium, caption)) / 2f,
+            detailBounds.y + detailBounds.height * 0.60f - (windowsLayout ? 60f : 40f));
     }
 
     private void drawError() {
@@ -652,17 +798,29 @@ public class CharacterSelectScreen implements Screen {
         float rowTop = listBounds.y + listBounds.height - (windowsLayout ? 69f : 46f);
         java.util.List<CharacterData> sidePicks = currentPicks();
         if (windowsLayout) beginClip(rosterViewportBounds);
-        for (int i = 0; i < characters.size(); i++) {
-            float rowY = rowTop - (i + 1) * rowHeight + rosterScrollOffset;
-            if (i == cursorIndex) {
+        for (int row = 0; row < rosterRowCount(); row++) {
+            float rowY = rowTop - (row + 1) * rowHeight + rosterScrollOffset;
+            if (row == cursorIndex) {
                 assets.battleUi.cardOver.draw(batch, listBounds.x + 8f, rowY,
                     listBounds.width - 16f, rowHeight - (windowsLayout ? 6f : 4f));
             }
-            CharacterData character = characters.get(i);
+            if (row == 0) {
+                // Pinned Random row; confirming it picks a random fighter.
+                assets.fontMedium.setColor(row == cursorIndex
+                    ? BattleUiAssets.TEXT
+                    : BattleUiAssets.YELLOW);
+                String label = windowsLayout
+                    ? fitOrEllipsize(assets.fontMedium, RANDOM_ROW_LABEL, listBounds.width - 36f)
+                    : RANDOM_ROW_LABEL;
+                assets.fontMedium.draw(batch, label, listBounds.x + 18f,
+                    rowY + (windowsLayout ? 40.5f : 27f));
+                continue;
+            }
+            CharacterData character = characters.get(row - 1);
             // Dim a character already picked on the side currently being filled.
             boolean alreadyPicked = sidePicks.stream().anyMatch(c -> c.id.equals(character.id));
             BitmapFont rosterFont = assets.fontMedium;
-            rosterFont.setColor(i == cursorIndex
+            rosterFont.setColor(row == cursorIndex
                 ? BattleUiAssets.TEXT
                 : (alreadyPicked ? new Color(0.55f, 0.55f, 0.55f, 1f) : Color.WHITE));
             String rosterName = windowsLayout
@@ -687,7 +845,8 @@ public class CharacterSelectScreen implements Screen {
             int row = characters.stream().filter(c -> c.id.equals(picked.id))
                 .mapToInt(characters::indexOf).findFirst().orElse(-1);
             if (row < 0) continue;
-            float rowY = rowTop - (row + 1) * rowHeight + rosterScrollOffset;
+            // Character rows sit one row below the pinned Random row.
+            float rowY = rowTop - (row + 2) * rowHeight + rosterScrollOffset;
             assets.fontSmall.setColor(BattleUiAssets.YELLOW);
             assets.fontSmall.draw(batch, prefix + (slot + 1), listBounds.x + 14f,
                 rowY + (windowsLayout ? 21f : 14f));
@@ -733,7 +892,12 @@ public class CharacterSelectScreen implements Screen {
             contentHeight - minimumInfoHeight - movePanelGap());
         float movesPanelHeight = Math.min(desiredMovesHeight, maximumMovesHeight);
         float sectionGap = movesPanelHeight > 0f ? movePanelGap() : 0f;
-        float infoBottom = contentBottom + movesPanelHeight + sectionGap;
+        float techniqueBottom = contentBottom + movesPanelHeight + sectionGap;
+        float techniqueSectionHeight = hasCursedTechnique(character)
+            ? macTechniqueSectionHeight(contentTop - techniqueBottom)
+            : 0f;
+        float techniqueSectionGap = techniqueSectionHeight > 0f ? movePanelGap() : 0f;
+        float infoBottom = techniqueBottom + techniqueSectionHeight + techniqueSectionGap;
         float infoHeight = contentTop - infoBottom;
 
         // Left column: profile sprite with HP/CE bars, sized around the moves panel.
@@ -743,8 +907,9 @@ public class CharacterSelectScreen implements Screen {
         float barGap = windowsLayout ? 12f : 8f;
         boolean hasCursedTechnique = character.innateTechniqueName != null
             && !character.innateTechniqueName.isBlank();
-        float techniqueGap = hasCursedTechnique ? (windowsLayout ? 24f : 16f) : 0f;
-        float techniqueHeight = hasCursedTechnique ? assets.fontSmall.getCapHeight() * 2f : 0f;
+        boolean showInlineTechniqueName = hasCursedTechnique && techniqueSectionHeight <= 0f;
+        float techniqueGap = showInlineTechniqueName ? 16f : 0f;
+        float techniqueHeight = showInlineTechniqueName ? assets.fontSmall.getCapHeight() * 2f : 0f;
         float barsAndSpacing = (windowsLayout ? 36f : 24f)
             + barHeight * 2f + barGap + techniqueGap + techniqueHeight;
         float spriteSize = Math.min(leftWidth, Math.max(0f, infoHeight - barsAndSpacing));
@@ -761,19 +926,23 @@ public class CharacterSelectScreen implements Screen {
             float barX = leftCenterX - barWidth / 2f;
             float hpY = spriteY - (windowsLayout ? 36f : 24f) - barHeight;
             float ceY = hpY - barGap - barHeight;
-            CombatStats combat = new CombatStats(character.toCharacterStats(), statMode);
+            CombatStats fallbackStats = new CombatStats(character.toCharacterStats(), statMode);
+            int maximumHp = profileCombatant != null
+                ? profileCombatant.getMaxHp() : fallbackStats.getMaxHp();
+            int maximumCe = profileCombatant != null
+                ? profileCombatant.getMaxCursedEnergy() : fallbackStats.getMaxCursedEnergy();
             float statusBarTextGeometryScale = windowsLayout ? 1.5f : 1f;
             StatusBar hp = new StatusBar(
                 "HP", new Color(0.260f, 0.820f, 0.360f, 1f), statusBarTextGeometryScale);
             hp.setBounds(barX, hpY, barWidth, barHeight);
-            hp.setValues(combat.getMaxHp(), combat.getMaxHp());
+            hp.setValues(maximumHp, maximumHp);
             hp.draw(batch, assets.fontMedium, assets.battleUi, true);
             StatusBar ce = new StatusBar(
                 "CE", new Color(0.220f, 0.500f, 0.940f, 1f), statusBarTextGeometryScale);
             ce.setBounds(barX, ceY, barWidth, barHeight);
-            ce.setValues(combat.getMaxCursedEnergy(), combat.getMaxCursedEnergy());
+            ce.setValues(maximumCe, maximumCe);
             ce.draw(batch, assets.fontMedium, assets.battleUi, true);
-            if (hasCursedTechnique) {
+            if (showInlineTechniqueName) {
                 assets.fontSmall.setColor(Color.BLACK);
                 float originalScaleX = assets.fontSmall.getData().scaleX;
                 float originalScaleY = assets.fontSmall.getData().scaleY;
@@ -802,7 +971,72 @@ public class CharacterSelectScreen implements Screen {
             - (windowsLayout ? 21f : 14f);
         drawDescription(displayDescription(character), rightX, rightWidth, descriptionTop, infoBottom, detailFont);
 
+        if (techniqueSectionHeight > 0f) {
+            drawMacTechniqueSection(
+                character,
+                innerLeft,
+                innerWidth,
+                techniqueBottom + techniqueSectionHeight,
+                techniqueBottom);
+        }
+
         drawMoveSet(character, moves, innerLeft, contentBottom, innerWidth, movesPanelHeight);
+    }
+
+    private void drawMacTechniqueSection(
+        CharacterData character,
+        float x,
+        float width,
+        float top,
+        float bottom
+    ) {
+        BitmapFont titleFont = assets.fontMedium;
+        titleFont.setColor(BattleUiAssets.TEXT);
+        String title = "CURSED TECHNIQUE: " + character.innateTechniqueName;
+        titleFont.draw(batch, fitOrEllipsize(titleFont, title, width), x, top);
+
+        float contentTop = top - 28f;
+        if (contentTop - 18f <= bottom) return;
+        float dividerX = x + width * 0.50f;
+        float columnGap = 16f;
+        float descriptionWidth = Math.max(0f, dividerX - columnGap - x);
+        float listsX = dividerX + columnGap;
+        float listsWidth = Math.max(0f, x + width - listsX);
+        float listGap = 12f;
+        float listWidth = Math.max(0f, (listsWidth - listGap) / 2f);
+        float abilitiesX = listsX + listWidth + listGap;
+
+        batch.setColor(new Color(0.560f, 0.640f, 0.800f, 1f));
+        batch.draw(assets.battleUi.pixel,
+            dividerX, bottom, 2f, Math.max(0f, contentTop - bottom));
+        batch.setColor(Color.WHITE);
+
+        assets.fontSmall.setColor(BattleUiAssets.MUTED);
+        assets.fontSmall.draw(batch, "TECHNIQUE DESCRIPTION", x, contentTop);
+        assets.fontSmall.draw(batch, "MOVES", listsX, contentTop);
+        assets.fontSmall.draw(batch, "ABILITIES", abilitiesX, contentTop);
+
+        float bodyTop = contentTop - 20f;
+        drawWrappedText(
+            profileTechniqueDescription(character),
+            x,
+            bodyTop,
+            descriptionWidth,
+            bottom,
+            BattleUiAssets.TEXT,
+            19f);
+        drawPointList(
+            profileTechniqueMoves.stream().map(Move::getName).toList(),
+            listsX,
+            bodyTop,
+            listWidth,
+            bottom);
+        drawPointList(
+            profileTechniqueAbilities.stream().map(Ability::getName).toList(),
+            abilitiesX,
+            bodyTop,
+            listWidth,
+            bottom);
     }
 
     private void drawWindowsCharacterPage(CharacterData character) {
@@ -939,12 +1173,7 @@ public class CharacterSelectScreen implements Screen {
         float bottom,
         boolean compactLayout
     ) {
-        int[] values = {
-            character.vitality, character.strength, character.durability, character.speed,
-            character.combatAbility, character.cursedEnergyReserves,
-            character.cursedEnergyEfficiency, character.cursedEnergyOutput,
-            character.jujutsuSkill, character.cursedTechniqueMastery
-        };
+        int[] values = displayStatValues(character);
         int screenWidth = Gdx.graphics.getWidth();
         if (compactLayout) {
             drawWindowsCompactStats(character, values, x, top, bottom, screenWidth);
@@ -998,7 +1227,7 @@ public class CharacterSelectScreen implements Screen {
             if (descriptionTop - 32f <= bottom) return;
             font.setColor(BattleUiAssets.MUTED);
             font.draw(batch, "CHARACTER PROFILE", x, descriptionTop);
-            drawWindowsWrappedText(
+            drawWrappedText(
                 displayDescription(character),
                 x,
                 descriptionTop - 32f,
@@ -1157,15 +1386,8 @@ public class CharacterSelectScreen implements Screen {
 
         assets.fontSmall.setColor(BattleUiAssets.MUTED);
         assets.fontSmall.draw(batch, "TECHNIQUE DESCRIPTION", x, contentTop);
-        String description = profileTechnique != null
-            && profileTechnique.description != null
-            && !profileTechnique.description.isBlank()
-                ? displayDescription(profileTechnique.description)
-                : (hasCursedTechnique(character)
-                    ? "No technique description available."
-                    : "This character does not possess an innate cursed technique.");
-        drawWindowsWrappedText(
-            description,
+        drawWrappedText(
+            profileTechniqueDescription(character),
             x,
             contentTop - 24f,
             columnWidth,
@@ -1184,21 +1406,21 @@ public class CharacterSelectScreen implements Screen {
             assets.fontSmall.draw(batch, "CONT.", secondMovesX, contentTop);
         }
         assets.fontSmall.draw(batch, "ABILITIES", abilitiesX, contentTop);
-        drawWindowsPointList(
+        drawPointList(
             firstMoves,
             rightX,
             contentTop - 24f,
             listWidth,
             bottom);
         if (!secondMoves.isEmpty()) {
-            drawWindowsPointList(
+            drawPointList(
                 secondMoves,
                 secondMovesX,
                 contentTop - 24f,
                 listWidth,
                 bottom);
         }
-        drawWindowsPointList(
+        drawPointList(
             profileTechniqueAbilities.stream().map(Ability::getName).toList(),
             abilitiesX,
             contentTop - 24f,
@@ -1206,7 +1428,18 @@ public class CharacterSelectScreen implements Screen {
             bottom);
     }
 
-    private void drawWindowsWrappedText(
+    private String profileTechniqueDescription(CharacterData character) {
+        if (profileTechnique != null
+            && profileTechnique.description != null
+            && !profileTechnique.description.isBlank()) {
+            return displayDescription(profileTechnique.description);
+        }
+        return hasCursedTechnique(character)
+            ? "No technique description available."
+            : "This character does not possess an innate cursed technique.";
+    }
+
+    private void drawWrappedText(
         String value,
         float x,
         float top,
@@ -1214,10 +1447,10 @@ public class CharacterSelectScreen implements Screen {
         float bottom,
         Color color
     ) {
-        drawWindowsWrappedText(value, x, top, width, bottom, color, 22.5f);
+        drawWrappedText(value, x, top, width, bottom, color, 22.5f);
     }
 
-    private void drawWindowsWrappedText(
+    private void drawWrappedText(
         String value,
         float x,
         float top,
@@ -1236,7 +1469,7 @@ public class CharacterSelectScreen implements Screen {
         }
     }
 
-    private void drawWindowsPointList(
+    private void drawPointList(
         List<String> values,
         float x,
         float top,
@@ -1271,11 +1504,7 @@ public class CharacterSelectScreen implements Screen {
 
     private void drawStats(CharacterData character, float x, float width, float topY, float rowHeight,
                            BitmapFont font) {
-        int[] values = {
-            character.vitality, character.strength, character.durability, character.speed, character.combatAbility,
-            character.cursedEnergyReserves, character.cursedEnergyEfficiency, character.cursedEnergyOutput,
-            character.jujutsuSkill, character.cursedTechniqueMastery
-        };
+        int[] values = displayStatValues(character);
         for (int i = 0; i < values.length; i++) {
             float y = topY - i * rowHeight;
             String value = String.valueOf(values[i]);
@@ -1290,10 +1519,44 @@ public class CharacterSelectScreen implements Screen {
         }
     }
 
-    private static int baseStatTotal(CharacterData character) {
-        return character.vitality + character.strength + character.durability + character.speed
-            + character.combatAbility + character.cursedEnergyReserves + character.cursedEnergyEfficiency
-            + character.cursedEnergyOutput + character.jujutsuSkill + character.cursedTechniqueMastery;
+    /**
+     * Character-page stat values in {@link #STAT_LABELS} order with passive
+     * ability modifiers applied, so the preview matches the stats the character
+     * enters battle with (e.g. Nine-to-Five Binding Vow's 0.8 multipliers).
+     * Falls back to raw authored values when the profile combatant could not
+     * be built.
+     */
+    private int[] displayStatValues(CharacterData character) {
+        learnedMovesFor(character);
+        return statDisplayValues(character,
+            profileCombatant != null ? profileCombatant.getEffectiveStats() : null);
+    }
+
+    /**
+     * Map stats to the display order. {@code effective} may be null (raw
+     * fallback). StatKey declaration order matches STAT_LABELS order.
+     */
+    static int[] statDisplayValues(CharacterData character, CharacterStats effective) {
+        if (effective == null) {
+            return new int[] {
+                character.vitality, character.strength, character.durability, character.speed,
+                character.combatAbility, character.cursedEnergyReserves,
+                character.cursedEnergyEfficiency, character.cursedEnergyOutput,
+                character.jujutsuSkill, character.cursedTechniqueMastery
+            };
+        }
+        StatKey[] keys = StatKey.values();
+        int[] values = new int[keys.length];
+        for (int i = 0; i < keys.length; i++) {
+            values[i] = keys[i].get(effective);
+        }
+        return values;
+    }
+
+    private int baseStatTotal(CharacterData character) {
+        int total = 0;
+        for (int value : displayStatValues(character)) total += value;
+        return total;
     }
 
     /**
@@ -1333,10 +1596,11 @@ public class CharacterSelectScreen implements Screen {
         resetMoveScroll();
         learnedMovesError = null;
         moveSetSaveError = null;
+        moveSetRequiredWarning = null;
         profileAbilities = List.of();
         profileTechniqueMoves = List.of();
         profileTechniqueAbilities = List.of();
-        profileTechnique = windowsLayout && hasCursedTechnique(character)
+        profileTechnique = hasCursedTechnique(character)
             ? techniqueRepo.findByName(character.innateTechniqueName).orElse(null)
             : null;
         profileCombatant = null;
@@ -1364,7 +1628,7 @@ public class CharacterSelectScreen implements Screen {
             learnedMoveCeCosts = List.copyOf(costs);
             rebuildLearnedDrawerCards();
 
-            if (windowsLayout && hasCursedTechnique(character)) {
+            if (hasCursedTechnique(character)) {
                 profileTechniqueMoves = learnedMoves.stream()
                     .filter(move -> character.innateTechniqueName.equalsIgnoreCase(
                         move.getRequiredTechniqueId()))
@@ -1403,11 +1667,25 @@ public class CharacterSelectScreen implements Screen {
     private List<String> moveSetIdsFor(CharacterData character) {
         learnedMovesFor(character);
         if (profileCharacter == null) return List.of();
-        return moveSetDrafts.computeIfAbsent(character.id, ignored -> {
-            return new ArrayList<>(profileCharacter.getMoveSet().stream()
-                .map(Move::getId)
-                .toList());
-        });
+        return moveSetDrafts.computeIfAbsent(character.id, ignored ->
+            seedMoveSetDraft(character, learnedMoves));
+    }
+
+    /**
+     * Draft move-set ids for a fighter whose detail page is opened for the first
+     * time this visit. Fighters ship with no authored move set, so an unchosen
+     * fighter drafts empty; a previously saved choice drafts from its persisted
+     * ids, in saved order, dropping ids no longer learnable.
+     */
+    static List<String> seedMoveSetDraft(CharacterData character, List<Move> learnedMoves) {
+        List<String> draft = new ArrayList<>();
+        if (character.moveSetIds == null) return draft;
+        Set<String> learnedIds = new HashSet<>();
+        for (Move move : learnedMoves) learnedIds.add(move.getId());
+        for (String moveId : character.moveSetIds) {
+            if (moveId != null && learnedIds.contains(moveId)) draft.add(moveId);
+        }
+        return draft;
     }
 
     private List<Move> moveSetMovesFor(CharacterData character) {
@@ -1451,6 +1729,7 @@ public class CharacterSelectScreen implements Screen {
                 return false;
             }
             moveSetSaveError = null;
+            moveSetRequiredWarning = null;
             profileCharacter = configured;
             moveSetDrafts.put(character.id, new ArrayList<>(canonicalIds));
             moveSetScrollOffset = clamp(moveSetScrollOffset, 0f, moveSetScrollMax);
@@ -1508,6 +1787,11 @@ public class CharacterSelectScreen implements Screen {
             assets.fontSmall.setColor(Color.RED);
             assets.fontSmall.draw(batch, moveSetSaveError,
                 x + padding, y + height / 2f);
+        }
+        if (moveSetRequiredWarning != null) {
+            assets.fontSmall.setColor(Color.RED);
+            assets.fontSmall.draw(batch, moveSetRequiredWarning,
+                x + padding, y + height / 2f - (windowsLayout ? 22f : 15f));
         }
 
         float viewportHeight = Math.min(
@@ -1760,7 +2044,8 @@ public class CharacterSelectScreen implements Screen {
             int segmentIndex = hitMoveSetIndex(x, y);
             if (segmentIndex < 0) return false;
             moveUiConsumedPointer = true;
-            if (removeMoveFromSet(characters.get(cursorIndex), segmentIndex)) {
+            CharacterData detail = detailCharacter();
+            if (detail != null && removeMoveFromSet(detail, segmentIndex)) {
                 game.audio().play(SoundCue.UI_PLAN_REMOVE);
             } else {
                 game.audio().play(SoundCue.UI_DENIED);
@@ -1806,7 +2091,12 @@ public class CharacterSelectScreen implements Screen {
         movePointerX = x;
         movePointerY = y;
         moveUiConsumedPointer = true;
-        CharacterData character = characters.get(cursorIndex);
+        CharacterData character = detailCharacter();
+        if (character == null) {
+            game.audio().play(SoundCue.UI_DENIED);
+            clearLearnedMoveDrag();
+            return true;
+        }
         boolean placed;
         if (!draggingLearnedMove) {
             placed = addMoveToSet(character, pressedLearnedMove);
@@ -1822,7 +2112,9 @@ public class CharacterSelectScreen implements Screen {
 
     private MoveCardView learnedCardAt(float x, float y) {
         if (!learnedDrawerViewportBounds.contains(x, y)) return null;
-        Set<String> selected = Set.copyOf(moveSetIdsFor(characters.get(cursorIndex)));
+        CharacterData detail = detailCharacter();
+        if (detail == null) return null;
+        Set<String> selected = Set.copyOf(moveSetIdsFor(detail));
         for (MoveCardView card : learnedDrawerCards) {
             if (!selected.contains(card.getMove().getId()) && card.getBounds().contains(x, y)) {
                 return card;
@@ -1965,7 +2257,7 @@ public class CharacterSelectScreen implements Screen {
         rosterScrollOffset = rosterScrollOffsetForSelection(
             rosterScrollOffset,
             cursorIndex,
-            characters.size(),
+            rosterRowCount(),
             WINDOWS_ROW_HEIGHT,
             rosterViewportBounds.height);
     }
@@ -2010,6 +2302,13 @@ public class CharacterSelectScreen implements Screen {
         float techniqueGap = compact
             ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP;
         return Math.max(0f, infoHeight - summaryHeight - techniqueGap);
+    }
+
+    static float macTechniqueSectionHeight(float availableProfileHeight) {
+        float available = availableProfileHeight
+            - MAC_PROFILE_SUMMARY_MIN_HEIGHT - MOVE_PANEL_GAP;
+        if (available < MAC_TECHNIQUE_SECTION_MIN_HEIGHT) return 0f;
+        return Math.min(MAC_TECHNIQUE_SECTION_TARGET_HEIGHT, available);
     }
 
     private static float windowsMoveSetPanelHeight() {

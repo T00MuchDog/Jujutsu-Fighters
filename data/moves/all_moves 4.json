@@ -47,12 +47,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000001",
   "name" : "Basic Block",
@@ -96,12 +96,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000002",
   "name" : "Jab",
@@ -155,12 +155,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000003",
   "name" : "Elbow Strike",
@@ -209,12 +209,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000004",
   "name" : "Body Blow",
@@ -263,12 +263,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000005",
   "name" : "Sweeping Kick",
@@ -332,12 +332,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000006",
   "name" : "Knee Strike",
@@ -387,12 +387,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000007",
   "name" : "Overhand Punch",
@@ -446,12 +446,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000008",
   "name" : "Reinforced Jab",
@@ -509,12 +509,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000009",
   "name" : "Reinforced Elbow",
@@ -566,12 +566,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000010",
   "name" : "Reinforced Knee",
@@ -629,12 +629,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000011",
   "name" : "Cursed Energy Burst",
@@ -689,12 +689,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000012",
   "name" : "Deflection",
@@ -738,12 +738,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000013",
   "name" : "Reinforced Deflection",
@@ -796,12 +796,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000014",
   "name" : "Cross Guard",
@@ -844,12 +844,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000015",
   "name" : "Reinforced Cross Guard",
@@ -901,12 +901,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000016",
   "name" : "Braced Guard",
@@ -950,12 +950,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : true,
-  "defenceAttackHybrid" : false
+  "flatBlock" : true
 }, {
   "id" : "000017",
   "name" : "Reinforced Braced Guard",
@@ -1006,12 +1006,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : true,
-  "defenceAttackHybrid" : false
+  "flatBlock" : true
 }, {
   "id" : "000018",
   "name" : "Reinforced Basic Block",
@@ -1063,12 +1063,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000019",
   "name" : "Cursed Energy Focus",
@@ -1131,12 +1131,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000020",
   "name" : "Cursed Energy Surge",
@@ -1199,12 +1199,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000021",
   "name" : "Miracle Creation",
@@ -1279,12 +1279,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000022",
   "name" : "Cursed Slash",
@@ -1342,12 +1342,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000023",
   "name" : "Ratio Mark",
@@ -1455,12 +1455,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000024",
   "name" : "Ratio Strike",
@@ -1533,12 +1533,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000025",
   "name" : "Sword Quick Draw",
@@ -1595,12 +1595,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000026",
   "name" : "Simple Domain",
@@ -1665,12 +1665,12 @@
   },
   "attackLaunchMoveId" : "000025",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : true,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : true,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : true
+  "flatBlock" : false
 }, {
   "id" : "000027",
   "name" : "Sidestep",
@@ -1717,12 +1717,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000028",
   "name" : "Evasive Dash",
@@ -1769,12 +1769,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000029",
   "name" : "Divergent Fist",
@@ -1839,16 +1839,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000030",
   "name" : "Summon White Dog",
   "description" : "Draw *ability:000022* from your shadow; it materializes and joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -1902,16 +1903,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000031",
   "name" : "Summon Black Dog",
   "description" : "Draw *ability:000023* from your shadow; it materializes and joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -1965,12 +1967,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000032",
   "name" : "Katana Combination",
@@ -2042,12 +2044,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000033",
   "name" : "Reinforced Parry",
@@ -2098,12 +2100,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : true,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000034",
   "name" : "Keen Observation",
@@ -2173,16 +2175,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000035",
   "name" : "Summon Nue",
   "description" : "Draw *ability:000024* from your shadow; it materializes and joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -2236,16 +2239,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000036",
   "name" : "Summon Toad",
   "description" : "Draw *ability:000025* from your shadow; it materializes and joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -2299,16 +2303,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000037",
   "name" : "Summon Great Serpent",
   "description" : "Draw *ability:000026* from your shadow; it materializes and joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -2362,16 +2367,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000038",
   "name" : "Summon Divine Dog Totality",
   "description" : "Draw *ability:000027* from your shadow; it materializes and joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -2425,16 +2431,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000039",
   "name" : "Summon Toad/Nue Fusion",
   "description" : "Fuse *ability:000025* and *ability:000024* through *ability:000032* into a winged swarm that joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -2488,16 +2495,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000040",
   "name" : "Summon Max Elephant",
   "description" : "Draw *ability:000028* from your shadow; it materializes and joins the fight next ROUND.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 0,
   "hitComponents" : [ ],
@@ -2551,16 +2559,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000041",
   "name" : "Dog Ambush",
   "description" : "Command an active Divine Dog to strike from the target's shadow in a two-hit RANGED assault.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "ATTACK", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 48,
   "hitComponents" : [ {
@@ -2635,16 +2644,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000042",
   "name" : "Nue Lightning Strike",
   "description" : "Command an active *ability:000024* to call lightning down on a distant target and STUN it.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "ATTACK", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 60,
   "hitComponents" : [ {
@@ -2713,12 +2723,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000043",
   "name" : "Toad Pull",
@@ -2775,12 +2785,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000044",
   "name" : "Serpent Snare",
@@ -2849,16 +2859,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000045",
   "name" : "Totality Rush",
   "description" : "Drive *ability:000027* through the target in an overwhelming close-range MELEE rush.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "ATTACK", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 70,
   "hitComponents" : [ {
@@ -2919,12 +2930,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000046",
   "name" : "Winged Toad Snare",
@@ -3006,16 +3017,17 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000047",
   "name" : "Elephant Drop",
   "description" : "Drop *ability:000028* onto every enemy in a HEAVY POTENCY 2 impact with GUARD BREAK.",
+  "moveTypes" : [ "SORCERER" ],
   "tags" : [ "ATTACK", "AOE", "HEAVY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
   "basePower" : 80,
   "hitComponents" : [ {
@@ -3077,12 +3089,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000048",
   "name" : "Shadow Movement",
@@ -3131,12 +3143,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000049",
   "name" : "Desummon",
@@ -3183,12 +3195,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000050",
   "name" : "Divine Dog Bite",
@@ -3238,12 +3250,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000051",
   "name" : "Tracking Pounce",
@@ -3293,12 +3305,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000052",
   "name" : "Rending Pounce",
@@ -3353,12 +3365,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000053",
   "name" : "Electrified Talons",
@@ -3415,12 +3427,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000054",
   "name" : "Lightning Discharge",
@@ -3485,12 +3497,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000055",
   "name" : "Tongue Lash",
@@ -3540,12 +3552,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000056",
   "name" : "Binding Tongue",
@@ -3609,12 +3621,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000057",
   "name" : "Serpent Constrict",
@@ -3681,12 +3693,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000058",
   "name" : "Devouring Lunge",
@@ -3741,12 +3753,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000059",
   "name" : "Totality Claw",
@@ -3796,12 +3808,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000060",
   "name" : "Predator Rush",
@@ -3858,12 +3870,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000061",
   "name" : "Crushing Stomp",
@@ -3920,12 +3932,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000062",
   "name" : "Water Deluge",
@@ -3981,12 +3993,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000063",
   "name" : "Winged Tongue Snare",
@@ -4063,12 +4075,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000064",
   "name" : "Aerial Swarm",
@@ -4139,12 +4151,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000065",
   "name" : "Don't Move",
@@ -4257,12 +4269,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000066",
   "name" : "Blast Away",
@@ -4355,12 +4367,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000067",
   "name" : "Sleep",
@@ -4459,12 +4471,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000068",
   "name" : "Plummet",
@@ -4556,12 +4568,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000069",
   "name" : "Get Twisted",
@@ -4648,12 +4660,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000070",
   "name" : "Return",
@@ -4748,12 +4760,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000071",
   "name" : "Explode",
@@ -4840,12 +4852,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000072",
   "name" : "Die",
@@ -4940,12 +4952,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000073",
   "name" : "Reinforced Strike",
@@ -5001,12 +5013,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000074",
   "name" : "Grapple",
@@ -5057,12 +5069,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000075",
   "name" : "Triple Kick",
@@ -5125,12 +5137,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000076",
   "name" : "Upper Cut",
@@ -5181,12 +5193,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000077",
   "name" : "Reinforced Triple Kick",
@@ -5249,12 +5261,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000078",
   "name" : "Reinforced Upper Cut",
@@ -5310,12 +5322,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000079",
   "name" : "Taunt",
@@ -5372,12 +5384,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000080",
   "name" : "Out of the way",
@@ -5423,12 +5435,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000081",
   "name" : "Sky Rescue",
@@ -5475,12 +5487,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000082",
   "name" : "Coiling Guard",
@@ -5528,12 +5540,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000083",
   "name" : "Rescue Sprint",
@@ -5580,12 +5592,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000084",
   "name" : "Tongue Rescue",
@@ -5632,12 +5644,12 @@
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000085",
   "name" : "Gorilla Mode",
@@ -5690,12 +5702,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000086",
   "name" : "Gorilla Pummel",
@@ -5754,12 +5766,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000087",
   "name" : "Unblockable Drumming Beat",
@@ -5809,12 +5821,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000088",
   "name" : "Return to Panda Core",
@@ -5858,12 +5870,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000089",
   "name" : "Overhead Ratio Cleave",
@@ -5953,12 +5965,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000090",
   "name" : "Spear Throw",
@@ -6016,12 +6028,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000091",
   "name" : "Thrusting Stab",
@@ -6079,12 +6091,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000092",
   "name" : "Ranged Reversal",
@@ -6133,12 +6145,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "SELF_AND_ENEMY",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000093",
   "name" : "Blindside Exchange",
@@ -6191,12 +6203,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "SELF_AND_ENEMY",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000094",
   "name" : "Disorienting Swap",
@@ -6248,12 +6260,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "SELF_AND_ENEMY",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000095",
   "name" : "Cursed Rock Substitution",
@@ -6294,12 +6306,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000096",
   "name" : "Boogie Woogie Counter",
@@ -6342,12 +6354,12 @@
   "attackLaunchMode" : "ON_DEFENCE",
   "attackLaunchMoveId" : "000004",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : true,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : true
+  "flatBlock" : false
 }, {
   "id" : "000097",
   "name" : "Best Friend Exchange",
@@ -6400,12 +6412,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "SELF_AND_ALLY",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000098",
   "name" : "Cross Swap: Melee",
@@ -6454,12 +6466,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "ALLY_AND_ENEMY",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000099",
   "name" : "Cross Swap: Ranged",
@@ -6508,12 +6520,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "ALLY_AND_ENEMY",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000100",
   "name" : "Rapid Exchange",
@@ -6554,12 +6566,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "SELF_AND_ALLY",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000101",
   "name" : "False Clap",
@@ -6607,12 +6619,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000102",
   "name" : "Reinforced Arrow",
@@ -6665,12 +6677,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000103",
   "name" : "Blood-Guided Arrow",
@@ -6744,12 +6756,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000104",
   "name" : "Flowing Red Scale",
@@ -6826,12 +6838,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000105",
   "name" : "Crimson Binding",
@@ -6899,12 +6911,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000106",
   "name" : "Slicing Exorcism",
@@ -6962,12 +6974,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000107",
   "name" : "Convergence",
@@ -7020,12 +7032,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000108",
   "name" : "Piercing Blood",
@@ -7084,12 +7096,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000109",
   "name" : "Cover Ears",
@@ -7150,12 +7162,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000110",
   "name" : "Instinctive Rend",
@@ -7200,12 +7212,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000111",
   "name" : "Raking Flurry",
@@ -7264,12 +7276,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000112",
   "name" : "Distended Hammerblow",
@@ -7314,12 +7326,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000113",
   "name" : "Maw Clamp",
@@ -7373,12 +7385,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000114",
   "name" : "Predatory Lunge",
@@ -7430,12 +7442,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000115",
   "name" : "Malice Bolt",
@@ -7480,12 +7492,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000116",
   "name" : "Cursed Needle Volley",
@@ -7531,12 +7543,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000117",
   "name" : "Compressed Curse Burst",
@@ -7582,12 +7594,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000118",
   "name" : "Ruinous Discharge",
@@ -7632,12 +7644,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000119",
   "name" : "Gnawing Curse",
@@ -7691,12 +7703,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000120",
   "name" : "Festering Spit",
@@ -7750,12 +7762,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000121",
   "name" : "Crushing Coil",
@@ -7809,12 +7821,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000122",
   "name" : "Flesh Projectile",
@@ -7866,12 +7878,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000123",
   "name" : "Hatred Wave",
@@ -7929,12 +7941,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000124",
   "name" : "Condensed Hide",
@@ -7973,12 +7985,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000125",
   "name" : "Lurching Step",
@@ -8016,12 +8028,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000126",
   "name" : "Elastic Deflection",
@@ -8060,12 +8072,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : true,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000127",
   "name" : "Shed the Husk",
@@ -8110,12 +8122,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000128",
   "name" : "Swollen Carapace",
@@ -8167,12 +8179,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000129",
   "name" : "Malice Screen",
@@ -8211,12 +8223,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000130",
   "name" : "Predator's Counter",
@@ -8262,12 +8274,12 @@
   "pairTargeting" : "NONE",
   "attackLaunchMode" : "ON_DEFENCE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : true,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : true
+  "flatBlock" : false
 }, {
   "id" : "000131",
   "name" : "Spiteful Guard",
@@ -8312,12 +8324,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000132",
   "name" : "Reconstitute",
@@ -8355,7 +8367,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "HEAL_HP",
-    "doubleValue" : 0.15,
+    "doubleValue" : 0.2,
     "valueMode" : "PERCENT",
     "target" : "SELF",
     "trigger" : "ON_FIRE",
@@ -8364,18 +8376,18 @@
     }
   } ],
   "isFreeMove" : true,
-  "moveCap" : 2,
+  "moveCap" : 1,
   "aoeTargetCount" : 2,
   "defenseTargeting" : "SELF",
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000133",
   "name" : "Malice Focus",
@@ -8439,12 +8451,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000134",
   "name" : "Cursed Energy Flood",
@@ -8495,12 +8507,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000135",
   "name" : "Feast on Fear",
@@ -8553,12 +8565,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000136",
   "name" : "Oppressive Presence",
@@ -8623,16 +8635,16 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000137",
   "name" : "Molt",
-  "description" : "Cast off every active STATUS at the cost of 10% MAX HP. May be used once per ROUND.",
+  "description" : "Cast off every active STATUS and restore 8% MAX HP. May be used once per ROUND.",
   "moveTypes" : [ "CURSED_SPIRIT" ],
   "tags" : [ "UTILITY", "CURSED_ENERGY" ],
   "basePower" : 0,
@@ -8658,29 +8670,18 @@
   "parryStaggerTicks" : 0,
   "defenseTiming" : "FIXED",
   "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "CLEAR_STATUSES",
     "target" : "SELF",
-    "trigger" : "ON_FIRE",
-    "condition" : {
-      "type" : "ALWAYS"
-    }
+    "trigger" : "ON_FIRE"
   }, {
     "effectId" : "effect-000001",
-    "type" : "DEAL_DIRECT_DAMAGE",
-    "doubleValue" : 0.1,
+    "type" : "HEAL_HP",
+    "doubleValue" : 0.08,
     "valueMode" : "PERCENT",
     "target" : "SELF",
-    "trigger" : "ON_FIRE",
-    "condition" : {
-      "type" : "ALWAYS"
-    }
+    "trigger" : "ON_FIRE"
   } ],
   "isFreeMove" : false,
   "moveCap" : 1,
@@ -8689,12 +8690,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000138",
   "name" : "Harden Core",
@@ -8758,12 +8759,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000139",
   "name" : "Collapse Into Malice",
@@ -8815,12 +8816,12 @@
   "defenseTargetCount" : 2,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 }, {
   "id" : "000140",
   "name" : "Run Away",
@@ -8865,649 +8866,10 @@
   "defenseTargetCount" : 3,
   "pairTargeting" : "NONE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
+  "defenceAttackHybrid" : false,
   "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000141",
-  "name" : "Focused Roots",
-  "description" : "Drive a concentrated root through one enemy, then spear them again after a short duration leaving them RESTRAINED.",
-  "tags" : [ "ATTACK", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 84,
-  "hitComponents" : [ {
-    "basePower" : 62,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
-    "delayTicks" : 0,
-    "requiresPreviousConnection" : false,
-    "avoidable" : true,
-    "baseAccuracy" : 0.89
-  }, {
-    "basePower" : 22,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
-    "delayTicks" : 6,
-    "requiresPreviousConnection" : true,
-    "avoidable" : true,
-    "baseAccuracy" : 0.92
-  } ],
-  "baseAccuracy" : 0.89,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 2,
-  "apCost" : 18,
-  "unleashPoint" : 8,
-  "baseCeCost" : 45,
-  "hasCeCost" : true,
-  "minCeCost" : 7,
-  "maxCeCost" : 160,
-  "defenseType" : "NONE",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 0,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "APPLY_STATUS",
-    "stringValue" : "RESTRAINED",
-    "target" : "ENEMY",
-    "durationRounds" : 0,
-    "durationTicks" : 15,
-    "magnitude" : 0.0,
-    "perTickRemovalChance" : 0.0,
-    "trigger" : "ON_HIT",
-    "hitComponentIndex" : 1,
-    "condition" : {
-      "type" : "ALWAYS"
-    }
-  } ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 0
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : false,
-  "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000142",
-  "name" : "Spreading Roots",
-  "description" : "Flood the ground with a forest of cursed roots that erupts beneath every ENEMY.",
-  "tags" : [ "ATTACK", "AOE", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 46,
-  "hitComponents" : [ {
-    "basePower" : 46,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
-    "delayTicks" : 0,
-    "requiresPreviousConnection" : false,
-    "avoidable" : true,
-    "baseAccuracy" : 0.9
-  } ],
-  "baseAccuracy" : 0.9,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 2,
-  "apCost" : 23,
-  "unleashPoint" : 14,
-  "baseCeCost" : 70,
-  "hasCeCost" : true,
-  "minCeCost" : 10,
-  "maxCeCost" : 220,
-  "defenseType" : "NONE",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 0,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 30
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeType" : "ALL_ENEMIES",
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : false,
-  "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000143",
-  "name" : "Wooden Ball",
-  "description" : "Create a compressed wooden ball that shoots two accurate spears of wood",
-  "tags" : [ "ATTACK", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 60,
-  "hitComponents" : [ {
-    "basePower" : 30,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
-    "delayTicks" : 0,
-    "requiresPreviousConnection" : false,
-    "avoidable" : true,
-    "baseAccuracy" : 0.97
-  }, {
-    "basePower" : 30,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
-    "delayTicks" : 0,
-    "requiresPreviousConnection" : false,
-    "avoidable" : true,
-    "baseAccuracy" : 0.97
-  } ],
-  "baseAccuracy" : 0.9,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 2,
-  "apCost" : 16,
-  "unleashPoint" : 6,
-  "baseCeCost" : 45,
-  "hasCeCost" : true,
-  "minCeCost" : 7,
-  "maxCeCost" : 160,
-  "defenseType" : "NONE",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 0,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 20
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : false,
-  "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000144",
-  "name" : "Wooden Bulwark",
-  "description" : "Raise a living wall around the team, reducing matching damage to every ALLY by 65% for 12 AP TICKS.",
-  "tags" : [ "DEFENSIVE", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 0,
-  "hitComponents" : [ ],
-  "baseAccuracy" : 1.0,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 2,
-  "apCost" : 18,
-  "unleashPoint" : 4,
-  "baseCeCost" : 60,
-  "hasCeCost" : true,
-  "minCeCost" : 9,
-  "maxCeCost" : 200,
-  "defenseType" : "BLOCK",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 12,
-  "blockDamageReduction" : 65,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 60
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "ALL_ALLIES_INCLUDING_SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : true,
-  "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000145",
-  "name" : "Cursed Bud",
-  "description" : "Fire cursed buds into up to two ENEMIES. Each bud implants CURSED ENERGY PARASITE for 2 ROUNDs.",
-  "tags" : [ "ATTACK", "AOE", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 8,
-  "hitComponents" : [ {
-    "basePower" : 8,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
-    "delayTicks" : 0,
-    "requiresPreviousConnection" : false,
-    "avoidable" : true,
-    "baseAccuracy" : 0.84
-  } ],
-  "baseAccuracy" : 0.84,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 1,
-  "apCost" : 18,
-  "unleashPoint" : 11,
-  "baseCeCost" : 50,
-  "hasCeCost" : true,
-  "minCeCost" : 8,
-  "maxCeCost" : 180,
-  "defenseType" : "NONE",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 0,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "APPLY_STATUS",
-    "stringValue" : "CURSED_ENERGY_PARASITE",
-    "target" : "ENEMY",
-    "durationRounds" : 2,
-    "durationTicks" : 0,
-    "magnitude" : 0.0,
-    "perTickRemovalChance" : 0.0,
-    "trigger" : "ON_HIT",
-    "condition" : {
-      "type" : "ALWAYS"
-    }
-  } ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 40
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeType" : "MULTIPLE",
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : false,
-  "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000146",
-  "name" : "Flower Field",
-  "description" : "Blanket every ENEMY in pacifying flowers, preventing ATTACKS for 8 AP TICKS, or 4 while Hanami is at 50% HP or lower.",
-  "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY", "AOE" ],
-  "basePower" : 0,
-  "hitComponents" : [ ],
-  "baseAccuracy" : 1.0,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 1,
-  "apCost" : 16,
-  "unleashPoint" : 6,
-  "baseCeCost" : 30,
-  "hasCeCost" : true,
-  "minCeCost" : 5,
-  "maxCeCost" : 120,
-  "defenseType" : "NONE",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 0,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "TEMP_LOCK_MOVE_TAG",
-    "moveTag" : "ATTACK",
-    "target" : "ENEMY",
-    "durationRounds" : 0,
-    "durationTicks" : 8,
-    "refreshGroup" : "FLOWER_FIELD_ATTACK_LOCK",
-    "trigger" : "ON_FIRE",
-    "condition" : {
-      "type" : "HP_PERCENT_AT_OR_ABOVE",
-      "actor" : "SELF",
-      "percentage" : 0.5
-    }
-  }, {
-    "effectId" : "effect-000001",
-    "type" : "TEMP_LOCK_MOVE_TAG",
-    "moveTag" : "ATTACK",
-    "target" : "ENEMY",
-    "durationRounds" : 0,
-    "durationTicks" : 4,
-    "refreshGroup" : "FLOWER_FIELD_ATTACK_LOCK",
-    "trigger" : "ON_FIRE",
-    "condition" : {
-      "type" : "HP_PERCENT_AT_OR_BELOW",
-      "actor" : "SELF",
-      "percentage" : 0.5
-    }
-  } ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 80
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 1,
-  "aoeType" : "ALL_ENEMIES",
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : false,
-  "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000147",
-  "name" : "Life Force Absorption",
-  "description" : "Draw life from the surrounding plants. On fire, add 1 FLOWER OFFERING charge, up to 3.",
-  "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 0,
-  "hitComponents" : [ ],
-  "baseAccuracy" : 1.0,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 1,
-  "apCost" : 22,
-  "unleashPoint" : 16,
-  "baseCeCost" : 20,
-  "hasCeCost" : false,
-  "minCeCost" : 3,
-  "maxCeCost" : 90,
-  "defenseType" : "NONE",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 0,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "TRANSACT_BOUNDED_RESOURCE",
-    "target" : "SELF",
-    "sourceResourceAmount" : 0,
-    "targetResourceKey" : "FLOWER_OFFERING",
-    "targetResourceAmount" : 1,
-    "trigger" : "ON_FIRE",
-    "condition" : {
-      "type" : "ALWAYS"
-    }
-  } ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 70
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : false,
-  "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000148",
-  "name" : "Flower Offering: Life-Force Beam",
-  "description" : "Consume every FLOWER OFFERING charge at move start and release 60 BASE POWER per charge as a Potency 3 RANGED GUARD BREAK.",
-  "tags" : [ "ATTACK", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 60,
-  "hitComponents" : [ {
-    "basePower" : 60,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK" ],
-    "delayTicks" : 0,
-    "requiresPreviousConnection" : false,
-    "avoidable" : true,
-    "baseAccuracy" : 0.85
-  } ],
-  "baseAccuracy" : 0.84,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 3,
-  "apCost" : 22,
-  "unleashPoint" : 17,
-  "baseCeCost" : 65,
-  "hasCeCost" : true,
-  "minCeCost" : 10,
-  "maxCeCost" : 240,
-  "defenseType" : "NONE",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 0,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER",
-    "target" : "SELF",
-    "sourceResourceKey" : "FLOWER_OFFERING",
-    "trigger" : "ON_START"
-  } ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 110
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 1,
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : false,
-  "percentageBlock" : false,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000149",
-  "name" : "Domain Amplification",
-  "description" : "Coat the body in an empty domain, reducing INNATE TECHNIQUE damage by 75% for 10 AP TICKS while locking the user's own INNATE TECHNIQUE moves.",
-  "moveTypes" : [ "SORCERER", "CURSED_SPIRIT" ],
-  "tags" : [ "DEFENSIVE", "NON_INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 0,
-  "hitComponents" : [ ],
-  "baseAccuracy" : 1.0,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 3,
-  "apCost" : 18,
-  "unleashPoint" : 3,
-  "baseCeCost" : 55,
-  "hasCeCost" : true,
-  "minCeCost" : 8,
-  "maxCeCost" : 200,
-  "defenseType" : "BLOCK",
-  "blockStyle" : "PERCENTAGE",
-  "blockDuration" : 10,
-  "blockAffectedTags" : [ "INNATE_TECHNIQUE" ],
-  "blockDamageReduction" : 75,
-  "blockFlatReduction" : 0,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "TEMP_LOCK_MOVE_TAG",
-    "moveTag" : "INNATE_TECHNIQUE",
-    "target" : "SELF",
-    "durationRounds" : 0,
-    "durationTicks" : 10,
-    "refreshGroup" : "DOMAIN_AMPLIFICATION_LOCK",
-    "trigger" : "ON_FIRE"
-  } ],
-  "prerequisites" : {
-    "jujutsuSkill" : 100
-  },
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : true,
-  "percentageBlock" : true,
-  "flatBlock" : false,
-  "defenceAttackHybrid" : false
-}, {
-  "id" : "000150",
-  "name" : "Root Barrier",
-  "description" : "Construct a small barrier of roots to that BLOCKs a flat  an incoming ATTACK for a short duration",
-  "tags" : [ "DEFENSIVE", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
-  "basePower" : 0,
-  "hitComponents" : [ ],
-  "baseAccuracy" : 1.0,
-  "neverMiss" : false,
-  "guardBreak" : false,
-  "heavy" : false,
-  "potency" : 2,
-  "apCost" : 11,
-  "unleashPoint" : 4,
-  "baseCeCost" : 30,
-  "hasCeCost" : true,
-  "minCeCost" : 5,
-  "maxCeCost" : 160,
-  "defenseType" : "BLOCK",
-  "blockStyle" : "FLAT",
-  "blockDuration" : 8,
-  "blockDamageReduction" : 100,
-  "blockFlatReduction" : 30,
-  "dodgeChance" : 0,
-  "dodgeScope" : "BOTH",
-  "parryStaggerTicks" : 0,
-  "defenseTiming" : "FIXED",
-  "defenseUses" : 0,
-  "onHitEffects" : [ ],
-  "selfEffects" : [ ],
-  "onBlockEffects" : [ ],
-  "onParryEffects" : [ ],
-  "onDodgeEffects" : [ ],
-  "effects" : [ ],
-  "prerequisites" : {
-    "cursedTechniqueMastery" : 65
-  },
-  "requiredTechniqueId" : "Disaster Plants",
-  "isFreeMove" : false,
-  "moveCap" : 0,
-  "aoeTargetCount" : 2,
-  "defenseTargeting" : "SELF",
-  "defenseTargetCount" : 2,
-  "pairTargeting" : "NONE",
-  "mustBeGranted" : false,
-  "parry" : false,
-  "dodge" : false,
-  "anyBlock" : true,
-  "percentageBlock" : false,
-  "flatBlock" : true,
-  "defenceAttackHybrid" : false
+  "flatBlock" : false
 } ]

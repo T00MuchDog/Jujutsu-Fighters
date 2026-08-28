@@ -711,6 +711,83 @@ public class CombatResolver {
     // CE draining
     // -------------------------------------------------------------------------
 
+    /** Capture consume-all resource scaling before CE is paid or the move can be interrupted. */
+    private boolean captureResourceScaledBasePower(
+        BattleCombatant combatant,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (AbilityEffectData effect
+            : MoveAvailability.guaranteedBoundedResourcePowerConsumers(
+                combatant, segment.getMove())) {
+            OptionalInt current = combatant.boundedResourceValue(effect.sourceResourceKey);
+            if (current.isEmpty() || current.getAsInt() <= 0) {
+                events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                    .source(combatant).target(combatant).move(segment.getMove()).tick(tick)
+                    .message("The move requires a charged resource.").build());
+                return false;
+            }
+            int consumed = current.getAsInt();
+            BattleCombatant.BoundedResourceTransaction result =
+                combatant.transactBoundedResources(
+                    effect.sourceResourceKey, consumed, null, 0);
+            if (!result.success()) {
+                events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                    .source(combatant).target(combatant).move(segment.getMove()).tick(tick)
+                    .message("The resource could not be consumed.").build());
+                return false;
+            }
+            segment.multiplyExecutionBasePower(consumed);
+            for (var resourceState : result.changedStates()) {
+                events.add(CombatEvent.of(CombatEvent.Type.RESOURCE_CHANGED)
+                    .source(combatant).target(combatant).move(segment.getMove()).tick(tick)
+                    .codedAbilityState(resourceState)
+                    .message(combatant.getCharacter().getName() + "'s "
+                        + resourceState.displayName() + " is now " + resourceState.currentValue()
+                        + "/" + resourceState.maximumValue() + ".")
+                    .build());
+            }
+        }
+        return true;
+    }
+
+    /** Resolve the reactive bud status after voluntary move payment and before fire. */
+    private void processCursedEnergyParasite(
+        BattleState state,
+        BattleCombatant holder,
+        int ceSpent,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (ceSpent <= 0 || holder == null || !holder.isActive()
+            || !holder.hasEffect(StatusEffectType.CURSED_ENERGY_PARASITE)) {
+            return;
+        }
+        double fraction = ceSpent >= 40 ? 0.06 : ceSpent >= 20 ? 0.04 : 0.02;
+        int requested = Math.max(1, (int) Math.round(holder.getMaxHp() * fraction));
+        BattleCombatant source = holder.statusSource(StatusEffectType.CURSED_ENERGY_PARASITE)
+            .orElse(holder);
+        int applied = holder.receiveDamage(requested,
+            fatalAmount -> abilityActivations.preventFatalDamage(
+                state, AbilityTrigger.fatalDamage(
+                    source, holder, null, null, fatalAmount, tick)));
+        events.addAll(holder.getCodedAbilities().drainPendingEvents(tick));
+        events.add(CombatEvent.of(applied == 0
+                ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
+            .source(source).target(holder).intValue(applied).tick(tick)
+            .message(applied == 0
+                ? holder.getCharacter().getName() + " resisted the cursed-energy parasite!"
+                : "The cursed-energy parasite fed on "
+                    + holder.getCharacter().getName() + "'s CE!")
+            .build());
+        if (applied > 0) {
+            events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                AbilityTrigger.Type.DAMAGE, source, holder, applied, tick)));
+            wakeFromSleep(state, source, holder, null, -1, tick, events);
+        }
+    }
+
     private void drainCeForStartingSegments(
         BattleState state,
         BattleCombatant combatant,
@@ -770,6 +847,10 @@ public class CombatResolver {
                         .build());
                     continue;
                 }
+                if (!captureResourceScaledBasePower(combatant, segment, tick, events)) {
+                    segment.stun();
+                    continue;
+                }
                 events.addAll(abilityActivations.processMoveEffects(
                     state, combatant, List.of(), segment.getMove(),
                     MoveEffectTrigger.ON_START, -1, tick,
@@ -782,6 +863,8 @@ public class CombatResolver {
                     .intValue(drained)
                     .tick(tick)
                     .build());
+                processCursedEnergyParasite(state, combatant, drained, tick, events);
+                if (finishBattleIfNeeded(state, events, tick)) return;
                 events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
                     AbilityTrigger.Type.CE_SPENT, combatant, null, drained, tick)));
                 if (finishBattleIfNeeded(state, events, tick)) return;
@@ -1286,6 +1369,8 @@ public class CombatResolver {
                 .build());
             return;
         }
+        ActionSegment launchedSegment = new ActionSegment(launchedMove, tick, cost);
+        if (!captureResourceScaledBasePower(launcher, launchedSegment, tick, events)) return;
         events.addAll(abilityActivations.processMoveEffects(
             state, launcher, List.of(), launchedMove,
             MoveEffectTrigger.ON_START, -1, tick, List.of(), List.of()));
@@ -1294,6 +1379,8 @@ public class CombatResolver {
             events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
                 .source(launcher).move(launchedMove).intValue(drained).tick(tick)
                 .build());
+            processCursedEnergyParasite(state, launcher, drained, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return;
             events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
                 AbilityTrigger.Type.CE_SPENT, launcher, null, drained, tick)));
             if (finishBattleIfNeeded(state, events, tick)) return;
@@ -1304,7 +1391,6 @@ public class CombatResolver {
             }
         }
 
-        ActionSegment launchedSegment = new ActionSegment(launchedMove, tick, cost);
         resolveMove(
             new FiringEntry(launchedSegment, launcher),
             targets,
@@ -1747,7 +1833,8 @@ public class CombatResolver {
             trigger -> abilityActivations.onAttackConnected(state, trigger),
             execution.temporaryNeverMissTier(),
             execution.temporaryGuaranteesNormalAccuracy(),
-            execution.temporaryNeverHitTier(defender));
+            execution.temporaryNeverHitTier(defender),
+            execution.entry.segment.getExecutionBasePowerMultiplier());
         events.addAll(result.getCodedEvents());
         execution.addRecoil(result.getRecoilDamage(), component, defender);
 

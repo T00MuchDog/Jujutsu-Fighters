@@ -155,27 +155,36 @@ public class MoveEffectData extends AbilityEffectData {
             return "Exchange attack targets must use On fire.";
         }
         if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && moveTrigger != MoveEffectTrigger.ON_START
+            && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+            return "Bounded resource transactions must use On move start or On fire.";
+        }
+        if (effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
             && moveTrigger != MoveEffectTrigger.ON_START) {
-            return "Bounded resource transactions must use On move start.";
+            return "Resource-scaled base power must be captured On move start.";
         }
         if (effectType != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && effectType != AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
             && moveTrigger == MoveEffectTrigger.ON_START) {
-            return "Only bounded resource transactions may use On move start.";
+            return "Only move-start resource effects may use On move start.";
         }
-        if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+        if ((effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                || effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
             && !AbilityConditionType.ALWAYS.name().equalsIgnoreCase(resolvedCondition().type)) {
-            return "Bounded resource transactions must always apply.";
+            return "Move-start resource effects must always apply.";
         }
-        if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+        if ((effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                || effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
             && (Boolean.TRUE.equals(activationChanceEnabled)
                 || activationMasteryProgression != null)) {
-            return "Bounded resource transactions cannot roll an activation chance.";
+            return "Move-start resource effects cannot roll an activation chance.";
         }
         if (target != null) {
             AbilityEffectTarget effectTarget = AbilityEffectTarget.valueOf(target);
-            if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            if ((effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                    || effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
                 && effectTarget != AbilityEffectTarget.SELF) {
-                return "Bounded resource transactions must target self.";
+                return "Move-start resource effects must target self.";
             }
             if ((effectTarget == AbilityEffectTarget.PAIR_FIRST
                     || effectTarget == AbilityEffectTarget.PAIR_SECOND

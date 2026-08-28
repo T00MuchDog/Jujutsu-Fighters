@@ -330,6 +330,10 @@ public enum AbilityEffectType {
         "Atomically consumes one named resource and adds to another. Either side may be omitted for a pure gain or spend.",
         TARGET, SOURCE_RESOURCE, SOURCE_RESOURCE_AMOUNT,
         TARGET_RESOURCE, TARGET_RESOURCE_AMOUNT),
+    CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER(
+        "Consume resource for base power",
+        "Consumes all of a named resource when the move starts and multiplies the move's configured base power by the amount consumed.",
+        TARGET, SOURCE_RESOURCE),
     MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE(
         "Block while shikigami is active",
         "Prevents this move from being used while the selected owned shikigami is active on the field.",
@@ -365,6 +369,7 @@ public enum AbilityEffectType {
             APPLY_NEVER_MISS, APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,
              CANCEL_NEXT_MOVE, STUN_CURRENT_ACTION, TEMP_LOCK_MOVE_TAG, TAUNT,
              EXCHANGE_ATTACK_TARGETS, TRANSACT_BOUNDED_RESOURCE,
+             CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER,
              SUMMON_CHARACTER,
              TRANSFORM_CHARACTER,
             DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
@@ -680,6 +685,10 @@ public enum AbilityEffectType {
                 effect.sourceResourceAmount = 0;
                 effect.targetResourceKey = "RESOURCE";
                 effect.targetResourceAmount = 1;
+            }
+            case CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER -> {
+                effect.target = AbilityEffectTarget.SELF.name();
+                effect.sourceResourceKey = "RESOURCE";
             }
             case SUMMON_CHARACTER -> {
                 // No target needed — the summon joins the owner's team.
@@ -1040,6 +1049,10 @@ public enum AbilityEffectType {
             if (effect.targetResourceAmount != null && effect.targetResourceAmount > 0
                 && isBlank(effect.targetResourceKey)) return "Enter the target resource key.";
         }
+        if (this == CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
+            && isBlank(effect.sourceResourceKey)) {
+            return "Enter the resource key to consume.";
+        }
         if (uses(CODED_FEATURE) && !CodedAbilityRegistry.supportsAbilityEffect(
             effect.codedAbilityKey, effect.codedFeature)) {
             return "Choose a supported coded effect.";
@@ -1270,6 +1283,7 @@ public enum AbilityEffectType {
 
     public boolean isMoveOnly() {
         return this == CODED_MOVE_ACTION || this == EXCHANGE_ATTACK_TARGETS
+            || this == CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
             || isMoveAvailabilityConstraint();
     }
 

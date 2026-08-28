@@ -217,9 +217,10 @@ public final class AbilityApplicator {
                           STUN_CURRENT_ACTION, IGNORE_DAMAGE,
                           DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS,
                            APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,
-                           CANCEL_NEXT_MOVE, TEMP_LOCK_MOVE_TAG,
-                           TRANSACT_BOUNDED_RESOURCE,
-                           DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
+                            CANCEL_NEXT_MOVE, TEMP_LOCK_MOVE_TAG,
+                            TRANSACT_BOUNDED_RESOURCE,
+                            CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER,
+                            DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
                            SUMMON_CHARACTER -> { }
                 }
             }

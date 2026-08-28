@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -119,6 +120,8 @@ public class BattleCombatant {
         new EnumMap<>(StatusEffectType.class);
 
     private final List<StatusEffect> activeEffects;
+    /** Applying combatant retained for status reactions and battle-log attribution. */
+    private final Map<StatusEffect, BattleCombatant> statusSources = new IdentityHashMap<>();
 
     /**
      * Status effects that expired during the most recent {@link #tickStatusEffects()}.
@@ -749,20 +752,23 @@ public class BattleCombatant {
     // -------------------------------------------------------------------------
 
     public boolean addStatusEffect(StatusEffect effect) {
-        if (effect == null || rejectsStatus(effect)) return false;
-        if (effect.getType().refreshesOnReapply()) {
-            removeStatusForRefresh(effect.getType());
-        }
-        activeEffects.add(effect);
-        clampPoolsToMaximums();
-        return true;
+        return applyStatusEffect(effect, null, null);
     }
 
-    public boolean addStatusEffect(StatusEffect effect, BattleState.Phase phase) {
+    /** Apply a status while retaining the combatant that created it. */
+    public boolean addStatusEffect(StatusEffect effect, BattleCombatant source) {
+        return applyStatusEffect(effect, null, source);
+    }
+
+    private boolean applyStatusEffect(
+        StatusEffect effect,
+        BattleState.Phase phase,
+        BattleCombatant source
+    ) {
         if (effect == null || rejectsStatus(effect)) return false;
         int rounds = effect.getDurationRounds();
         int ticks = effect.getDurationTicks();
-        if (rounds > 0) {
+        if (phase != null && rounds > 0) {
             boolean appliedAtRoundEnd = phase == BattleState.Phase.ROUND_END;
             boolean waitsForNextPlanning = phase == BattleState.Phase.RESOLUTION
                 && ticks == 0 && affectsNextPlanning(effect.getType());
@@ -771,9 +777,24 @@ public class BattleCombatant {
         if (effect.getType().refreshesOnReapply()) {
             removeStatusForRefresh(effect.getType());
         }
-        activeEffects.add(effect.withDuration(rounds, ticks));
+        StatusEffect applied = rounds == effect.getDurationRounds()
+            ? effect : effect.withDuration(rounds, ticks);
+        activeEffects.add(applied);
+        if (source != null) statusSources.put(applied, source);
         clampPoolsToMaximums();
         return true;
+    }
+
+    public boolean addStatusEffect(StatusEffect effect, BattleState.Phase phase) {
+        return applyStatusEffect(effect, phase, null);
+    }
+
+    public boolean addStatusEffect(
+        StatusEffect effect,
+        BattleState.Phase phase,
+        BattleCombatant source
+    ) {
+        return applyStatusEffect(effect, phase, source);
     }
 
     /** Convert a validated AUTO_STATUS_APPLY descriptor into a live status. */
@@ -782,6 +803,14 @@ public class BattleCombatant {
     }
 
     public boolean addAutomaticStatusEffect(AbilityEffectData effect, BattleState.Phase phase) {
+        return addAutomaticStatusEffect(effect, phase, null);
+    }
+
+    public boolean addAutomaticStatusEffect(
+        AbilityEffectData effect,
+        BattleState.Phase phase,
+        BattleCombatant source
+    ) {
         if (effect == null || effect.stringValue == null) return false;
         try {
             double storedMagnitude = effect.magnitude != null ? effect.magnitude : 0.0;
@@ -796,7 +825,7 @@ public class BattleCombatant {
             double ceUpkeepPerTick = effect.ceUpkeepPerTick != null ? effect.ceUpkeepPerTick : 0.0;
             StatusEffect status = new StatusEffect(
                 type, rounds, ticks, magnitude, perTickRemovalChance, ceUpkeepPerTick);
-            return phase == null ? addStatusEffect(status) : addStatusEffect(status, phase);
+            return addStatusEffect(status, phase, source);
         } catch (IllegalArgumentException ex) {
             System.err.println("[WARN] Invalid automatic status: " + effect.stringValue);
             return false;
@@ -824,6 +853,15 @@ public class BattleCombatant {
         return activeEffects;
     }
 
+    /** Most recently applied source for a live status type, if one was recorded. */
+    public Optional<BattleCombatant> statusSource(StatusEffectType type) {
+        for (int i = activeEffects.size() - 1; i >= 0; i--) {
+            StatusEffect effect = activeEffects.get(i);
+            if (effect.getType() == type) return Optional.ofNullable(statusSources.get(effect));
+        }
+        return Optional.empty();
+    }
+
     /**
      * Tick down duration of all effects, removing those that have expired.
      *
@@ -845,7 +883,7 @@ public class BattleCombatant {
             } else if (e.getDurationRounds() > 0) {
                 int rounds = e.getDurationRounds() - 1;
                 if (rounds > 0 || e.getDurationTicks() > 0) {
-                    remaining.add(e.withDuration(rounds, e.getDurationTicks()));
+                    retainStatusWithDuration(remaining, e, rounds, e.getDurationTicks());
                 } else {
                     expired.add(e);
                 }
@@ -856,6 +894,7 @@ public class BattleCombatant {
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
+        statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
         resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
@@ -868,13 +907,14 @@ public class BattleCombatant {
             if (effect.getDurationRounds() != 0) {
                 remaining.add(effect);
             } else if (effect.getDurationTicks() > 1) {
-                remaining.add(effect.withDuration(0, effect.getDurationTicks() - 1));
+                retainStatusWithDuration(remaining, effect, 0, effect.getDurationTicks() - 1);
             } else {
                 expired.add(effect);
             }
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
+        statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
         resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
@@ -897,6 +937,7 @@ public class BattleCombatant {
 
     public void removeEffect(StatusEffectType type) {
         activeEffects.removeIf(e -> e.getType() == type);
+        statusSources.keySet().removeIf(effect -> effect.getType() == type);
         resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
     }
@@ -904,6 +945,7 @@ public class BattleCombatant {
     public int removeStatusEffects(StatusEffectType type) {
         int before = activeEffects.size();
         activeEffects.removeIf(effect -> effect.getType() == type);
+        statusSources.keySet().removeIf(effect -> effect.getType() == type);
         resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return before - activeEffects.size();
@@ -911,14 +953,28 @@ public class BattleCombatant {
 
     private void removeStatusForRefresh(StatusEffectType type) {
         activeEffects.removeIf(effect -> effect.getType() == type);
+        statusSources.keySet().removeIf(effect -> effect.getType() == type);
     }
 
     public int clearStatusEffects() {
         int removed = activeEffects.size();
         activeEffects.clear();
+        statusSources.clear();
         resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return removed;
+    }
+
+    private void retainStatusWithDuration(
+        List<StatusEffect> remaining,
+        StatusEffect previous,
+        int rounds,
+        int ticks
+    ) {
+        StatusEffect updated = previous.withDuration(rounds, ticks);
+        remaining.add(updated);
+        BattleCombatant source = statusSources.get(previous);
+        if (source != null) statusSources.put(updated, source);
     }
 
     /** Accrue Burned's fractional max-HP damage and return newly payable whole damage. */

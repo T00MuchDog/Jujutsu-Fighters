@@ -40,9 +40,10 @@ import java.util.function.Consumer;
  *   <li>Whenever INNATE_TECHNIQUE or NON_INNATE_TECHNIQUE is selected,
  *       CURSED_ENERGY is force-selected and LOCKED (grey fill, unclickable,
  *       no hover highlight).</li>
- *   <li>AOE is LOCKED OFF unless ATTACK is selected.</li>
  *   <li>FRIENDLY_FIRE is LOCKED OFF unless AOE is selected.</li>
  * </ul>
+ * AOE itself is freely selectable on any move category — attacks, utility,
+ * and defensive hybrids alike can fan out over multiple targets.
  * The rules revert the instant their gating condition no longer holds.
  */
 public class TagPicker extends Table {
@@ -118,7 +119,6 @@ public class TagPicker extends Table {
         // every other checkbox sharing the skin style. Clone the default style
         // and attach it to each lockable tag only.
         cloneStyleFor(MoveTag.CURSED_ENERGY);
-        cloneStyleFor(MoveTag.AOE);
         cloneStyleFor(MoveTag.FRIENDLY_FIRE);
 
         // Apply the coupling rules to the initial selection, then the locks.
@@ -147,13 +147,10 @@ public class TagPicker extends Table {
         }
     }
 
-    /** Normalize attack targeting tags and their friendly-fire dependency. */
+    /** Normalize the friendly-fire dependency on AOE and strip hit-only tags. */
     static void enforceTargetingRules(Set<MoveTag> tags) {
         if (tags == null) return;
         tags.removeAll(MoveTag.HIT_ONLY_TAGS);
-        if (!tags.contains(MoveTag.ATTACK)) {
-            tags.remove(MoveTag.AOE);
-        }
         if (!tags.contains(MoveTag.AOE)) tags.remove(MoveTag.FRIENDLY_FIRE);
     }
 
@@ -168,17 +165,14 @@ public class TagPicker extends Table {
      *   <li>CE: <b>locked ON</b> when a technique tag is selected — light-grey
      *       fill, disabled (unclickable), no hover highlight, force-checked so
      *       it can't drift from the enforced state.</li>
-     *   <li>Attack targeting: <b>locked OFF</b> unless ATTACK is selected.</li>
      *   <li>Friendly Fire: <b>locked OFF</b> unless AOE is selected.</li>
      * </ul>
      * Unlocked tags behave like every other tag (normal drawables, enabled,
      * navy text + yellow hover).
      */
     private void applyLocks() {
-        boolean attackSelected = selected.contains(MoveTag.ATTACK);
         applyLockOn(MoveTag.CURSED_ENERGY,
             selected.stream().anyMatch(TECHNIQUE_TAGS::contains));
-        applyLockOff(MoveTag.AOE, !attackSelected);
         applyLockOff(MoveTag.FRIENDLY_FIRE, !selected.contains(MoveTag.AOE));
     }
 

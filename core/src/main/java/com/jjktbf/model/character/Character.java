@@ -23,6 +23,8 @@ import java.util.*;
  *   Moves with a requiredTechniqueId are only accessible to characters whose
  *   innateTechniqueName matches (case-insensitive). Characters with no innate
  *   technique (innateTechniqueName == null) cannot use any technique-restricted move.
+ *   Technique moves carry no character class: any character type that possesses
+ *   the technique may learn them.
  */
 public abstract class Character extends Entity {
 
@@ -413,10 +415,13 @@ public abstract class Character extends Entity {
             boolean moveAvailable = granted.contains(move.getId());
             boolean bypass        = granted.bypass().contains(move.getId());
 
-            // Character-class eligibility is absolute: an ability may waive
-            // ordinary learning requirements, but cannot change what kind of
-            // move the character is capable of learning.
-            if (move.getMoveTypes().stream().noneMatch(characterType::canLearn)) {
+            // Character-class eligibility is absolute for classed moves: an
+            // ability may waive ordinary learning requirements, but cannot
+            // change what kind of move the character is capable of learning.
+            // Technique moves carry no class — technique possession alone
+            // decides who may learn them (checked below).
+            if (!move.isTechniqueMove()
+                    && move.getMoveTypes().stream().noneMatch(characterType::canLearn)) {
                 throw new IllegalArgumentException(
                     "Character type " + characterType + " cannot learn "
                         + move.getMoveTypes() + " move '" + move.getName() + "'");

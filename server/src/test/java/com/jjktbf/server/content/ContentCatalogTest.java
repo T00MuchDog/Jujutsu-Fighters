@@ -79,13 +79,13 @@ class ContentCatalogTest {
     @Test
     void loadsPandaAndHiddenGorillaCoreComposition() {
         ContentCatalog catalog = ContentCatalog.load();
-        var panda = catalog.findCharacter("000017").orElseThrow();
-        var gorilla = catalog.findCharacter("000018").orElseThrow();
+        var panda = catalog.findCharacter("000004").orElseThrow();
+        var gorilla = catalog.findCharacter("000021").orElseThrow();
 
         assertEquals(CharacterType.CURSED_CORPSE, panda.getType());
         assertEquals(CharacterType.CURSED_CORPSE, gorilla.getType());
-        assertTrue(catalog.findSelectableCharacter("000017").isPresent());
-        assertFalse(catalog.findSelectableCharacter("000018").isPresent());
+        assertTrue(catalog.findSelectableCharacter("000004").isPresent());
+        assertFalse(catalog.findSelectableCharacter("000021").isPresent());
         assertNull(panda.getInnateTechniqueName());
         assertTrue(new BattleCombatant(panda).isPoisonImmune());
         assertTrue(new BattleCombatant(gorilla).isPoisonImmune());
@@ -106,7 +106,7 @@ class ContentCatalogTest {
     void pandaAutomaticallyUsesOnlyASurvivingCore() {
         ContentCatalog catalog = ContentCatalog.load();
         BattleCombatant panda = new BattleCombatant(
-            catalog.findCharacter("000017").orElseThrow());
+            catalog.findCharacter("000004").orElseThrow());
         BattleCombatant enemy = new BattleCombatant(
             catalog.findCharacter("000000").orElseThrow());
         BattleState state = new BattleState(panda, enemy);
@@ -117,7 +117,7 @@ class ContentCatalogTest {
         var gorillaEvents = engine.process(state, AbilityTrigger.amount(
             AbilityTrigger.Type.DAMAGE, enemy, panda, 1, 1));
 
-        assertEquals("000018", panda.getCharacter().getId());
+        assertEquals("000021", panda.getCharacter().getId());
         assertEquals(panda.getMaxHp(), panda.getCurrentHp());
         assertTrue(gorillaEvents.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.CHARACTER_TRANSFORMED));
@@ -126,7 +126,7 @@ class ContentCatalogTest {
         var failedReturn = engine.process(state, AbilityTrigger.amount(
             AbilityTrigger.Type.DAMAGE, enemy, panda, 1, 2));
 
-        assertEquals("000018", panda.getCharacter().getId());
+        assertEquals("000021", panda.getCharacter().getId());
         assertEquals(0, panda.getCurrentHp());
         assertTrue(failedReturn.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.EFFECT_FAILED));
@@ -138,9 +138,9 @@ class ContentCatalogTest {
     void myBestFriendBuffsOnlyPairedTodoAndYujiBearers() {
         ContentCatalog catalog = ContentCatalog.load();
         BattleCombatant todo = new BattleCombatant(
-            catalog.findCharacter("000019").orElseThrow());
+            catalog.findCharacter("000006").orElseThrow());
         BattleCombatant yuji = new BattleCombatant(
-            catalog.findCharacter("000016").orElseThrow());
+            catalog.findCharacter("000010").orElseThrow());
         BattleCombatant enemy = new BattleCombatant(
             catalog.findCharacter("000000").orElseThrow());
         BattleState paired = new BattleState(
@@ -157,7 +157,7 @@ class ContentCatalogTest {
         assertTrue(yuji.getEffectiveStats().getCombatAbility() > yujiBase);
 
         BattleCombatant soloTodo = new BattleCombatant(
-            catalog.findCharacter("000019").orElseThrow());
+            catalog.findCharacter("000006").orElseThrow());
         BattleState solo = new BattleState(soloTodo, new BattleCombatant(
             catalog.findCharacter("000000").orElseThrow()));
         int soloBase = soloTodo.getEffectiveStats().getCombatAbility();

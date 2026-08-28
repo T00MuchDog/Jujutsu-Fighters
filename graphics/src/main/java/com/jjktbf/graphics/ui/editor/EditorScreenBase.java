@@ -1448,7 +1448,7 @@ public abstract class EditorScreenBase<D> implements Screen {
         return row;
     }
 
-    private void addFormLabel(Table row, String text) {
+    protected void addFormLabel(Table row, String text) {
         Label label = new Label(text, skin);
         if (windowsLayout) {
             row.add(label).left().minWidth(0f).prefWidth(300f).maxWidth(300f).padRight(PAD);

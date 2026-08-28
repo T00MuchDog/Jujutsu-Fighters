@@ -1881,7 +1881,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000007",
+    "characterId" : "000013",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -1944,7 +1944,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000008",
+    "characterId" : "000014",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -2215,7 +2215,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000009",
+    "characterId" : "000015",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -2278,7 +2278,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000010",
+    "characterId" : "000016",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -2341,7 +2341,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000011",
+    "characterId" : "000017",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -2404,7 +2404,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000012",
+    "characterId" : "000018",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -2467,7 +2467,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000014",
+    "characterId" : "000020",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -2530,7 +2530,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SUMMON_CHARACTER",
-    "characterId" : "000013",
+    "characterId" : "000019",
     "trigger" : "ON_FIRE",
     "condition" : {
       "type" : "ALWAYS"
@@ -2607,7 +2607,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000007",
+    "characterId" : "000013",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -2615,7 +2615,7 @@
   }, {
     "effectId" : "effect-000001",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000008",
+    "characterId" : "000014",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -2685,7 +2685,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000009",
+    "characterId" : "000015",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -2755,7 +2755,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000010",
+    "characterId" : "000016",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -2824,7 +2824,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000011",
+    "characterId" : "000017",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -2899,7 +2899,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000012",
+    "characterId" : "000018",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -2982,7 +2982,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000014",
+    "characterId" : "000020",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -3056,7 +3056,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE",
-    "characterId" : "000013",
+    "characterId" : "000019",
     "trigger" : "AVAILABILITY",
     "condition" : {
       "type" : "ALWAYS"
@@ -5675,7 +5675,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000018",
+    "characterId" : "000021",
     "transformationHpMode" : "FULL",
     "target" : "SELF",
     "trigger" : "ON_FIRE",
@@ -5846,7 +5846,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000017",
+    "characterId" : "000004",
     "transformationHpMode" : "FULL",
     "target" : "SELF",
     "trigger" : "ON_FIRE"

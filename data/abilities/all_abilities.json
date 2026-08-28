@@ -804,7 +804,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000018",
+    "characterId" : "000021",
     "transformationHpMode" : "FULL",
     "target" : "SELF"
   } ],
@@ -855,7 +855,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000017",
+    "characterId" : "000004",
     "transformationHpMode" : "FULL",
     "target" : "SELF"
   } ],
@@ -1033,15 +1033,15 @@
         "children" : [ {
           "type" : "CHARACTER_PRESENT",
           "actor" : "ALLY",
-          "characterId" : "000003"
+          "characterId" : "000000"
         }, {
           "type" : "CHARACTER_PRESENT",
           "actor" : "ALLY",
-          "characterId" : "000016"
+          "characterId" : "000010"
         }, {
           "type" : "CHARACTER_PRESENT",
           "actor" : "ALLY",
-          "characterId" : "000019"
+          "characterId" : "000006"
         } ]
       } ]
     },

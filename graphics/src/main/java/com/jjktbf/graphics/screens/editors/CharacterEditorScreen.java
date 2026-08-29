@@ -43,6 +43,7 @@ import com.jjktbf.model.character.CharacterRepository;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.StatTier;
 import com.jjktbf.model.combat.PowerCalculator;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MovePool;
@@ -108,6 +109,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
     private final AbilityRepository   abilityRepo;
     private final TechniqueRepository techniqueRepo;
     private final CursedToolRepository cursedToolRepo;
+    private final DomainRepository domainRepo;
 
     // Form handles (refreshed on selection change)
     private StatField[] statFields;
@@ -156,7 +158,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         List<String> availableMoveIds,
         List<String> abilityIds,
         boolean availableAbilityIdsDefined,
-        List<String> availableAbilityIds
+        List<String> availableAbilityIds,
+        List<String> availableDomainIds
     ) { }
 
     private record CharacterEvaluation(
@@ -187,6 +190,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         abilityRepo = new AbilityRepository("data/abilities");
         techniqueRepo = new TechniqueRepository("data/techniques");
         cursedToolRepo = new CursedToolRepository("data/tools");
+        domainRepo = new DomainRepository("data/domains");
         wireStatKeyInput();
     }
 
@@ -243,6 +247,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         cd.availableMoveIds = new ArrayList<>();
         cd.abilityIds = new ArrayList<>();
         cd.availableAbilityIds = new ArrayList<>();
+        cd.availableDomainIds = new ArrayList<>();
         return cd;
     }
 
@@ -271,6 +276,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         d.abilityIds = stored.abilityIds != null ? new ArrayList<>(stored.abilityIds) : new ArrayList<>();
         d.availableAbilityIds = stored.availableAbilityIds != null
             ? new ArrayList<>(stored.availableAbilityIds) : null;
+        d.availableDomainIds = stored.availableDomainIds != null
+            ? new ArrayList<>(stored.availableDomainIds) : new ArrayList<>();
         return d;
     }
 
@@ -334,6 +341,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         abilityRepo.load();
         techniqueRepo.load();
         cursedToolRepo.load();
+        domainRepo.load();
         records.clear();
         records.addAll(charRepo.getAll());
     }
@@ -383,6 +391,17 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             if (missingAvailableAbility != null) {
                 return ValidationResult.error(
                     "Remove missing available ability reference " + missingAvailableAbility
+                        + " before saving.");
+            }
+        }
+        if (d.availableDomainIds != null) {
+            String missingDomain = d.availableDomainIds.stream()
+                .filter(domainId -> domainId == null || domainRepo.findById(domainId).isEmpty())
+                .map(String::valueOf)
+                .findFirst().orElse(null);
+            if (missingDomain != null) {
+                return ValidationResult.error(
+                    "Remove missing available Domain reference " + missingDomain
                         + " before saving.");
             }
         }
@@ -940,6 +959,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
                 technique,
                 moveRepo.getAll(),
                 abilityRepo.getAll(),
+                domainRepo.getAll(),
                 character,
                 false,
                 () -> onTreeSelectionChanged(character, displayedNames),
@@ -988,6 +1008,10 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
                 : moveAssignmentError(character, resolvedAbilities(character), move,
                     false, false);
         }
+        if (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) {
+            return domainRepo.findById(node.contentId).isEmpty()
+                ? "This Domain no longer exists." : null;
+        }
         AbilityData ability = abilityRepo.findById(node.contentId).orElse(null);
         return ability == null ? "This ability no longer exists." : null;
     }
@@ -1025,7 +1049,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
                 .map(SkillTreeNodeData::copy)
                 .forEach(copy.skillTree::add);
         }
-        TechniqueSkillTree.synchronize(copy, moveRepo.getAll(), abilityRepo.getAll());
+        TechniqueSkillTree.synchronize(
+            copy, moveRepo.getAll(), abilityRepo.getAll(), domainRepo.getAll());
         return copy;
     }
 
@@ -1935,7 +1960,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
     private void ensureTechniqueTreesSynchronized() {
         if (techniqueTreesSynchronized) return;
         techniqueRepo.getAll().forEach(technique -> TechniqueSkillTree.synchronize(
-            technique, moveRepo.getAll(), abilityRepo.getAll()));
+            technique, moveRepo.getAll(), abilityRepo.getAll(), domainRepo.getAll()));
         techniqueTreesSynchronized = true;
     }
 
@@ -1981,7 +2006,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             copyForKey(character.availableMoveIds),
             copyForKey(character.abilityIds),
             character.availableAbilityIds != null,
-            copyForKey(character.availableAbilityIds));
+            copyForKey(character.availableAbilityIds),
+            copyForKey(character.availableDomainIds));
     }
 
     private static List<String> copyForKey(List<String> values) {

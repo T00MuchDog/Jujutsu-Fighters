@@ -122,6 +122,8 @@ public class BattleCombatant {
     private final List<StatusEffect> activeEffects;
     /** Applying combatant retained for status reactions and battle-log attribution. */
     private final Map<StatusEffect, BattleCombatant> statusSources = new IdentityHashMap<>();
+    /** Runtime source lease retained independently from combatant attribution. */
+    private final Map<StatusEffect, String> statusLeases = new IdentityHashMap<>();
 
     /**
      * Status effects that expired during the most recent {@link #tickStatusEffects()}.
@@ -752,18 +754,19 @@ public class BattleCombatant {
     // -------------------------------------------------------------------------
 
     public boolean addStatusEffect(StatusEffect effect) {
-        return applyStatusEffect(effect, null, null);
+        return applyStatusEffect(effect, null, null, null);
     }
 
     /** Apply a status while retaining the combatant that created it. */
     public boolean addStatusEffect(StatusEffect effect, BattleCombatant source) {
-        return applyStatusEffect(effect, null, source);
+        return applyStatusEffect(effect, null, source, null);
     }
 
     private boolean applyStatusEffect(
         StatusEffect effect,
         BattleState.Phase phase,
-        BattleCombatant source
+        BattleCombatant source,
+        String sourceLease
     ) {
         if (effect == null || rejectsStatus(effect)) return false;
         int rounds = effect.getDurationRounds();
@@ -781,12 +784,15 @@ public class BattleCombatant {
             ? effect : effect.withDuration(rounds, ticks);
         activeEffects.add(applied);
         if (source != null) statusSources.put(applied, source);
+        if (sourceLease != null && !sourceLease.isBlank()) {
+            statusLeases.put(applied, sourceLease.trim());
+        }
         clampPoolsToMaximums();
         return true;
     }
 
     public boolean addStatusEffect(StatusEffect effect, BattleState.Phase phase) {
-        return applyStatusEffect(effect, phase, null);
+        return applyStatusEffect(effect, phase, null, null);
     }
 
     public boolean addStatusEffect(
@@ -794,7 +800,17 @@ public class BattleCombatant {
         BattleState.Phase phase,
         BattleCombatant source
     ) {
-        return applyStatusEffect(effect, phase, source);
+        return applyStatusEffect(effect, phase, source, null);
+    }
+
+    /** Apply a status owned by a removable runtime source lease. */
+    public boolean addStatusEffect(
+        StatusEffect effect,
+        BattleState.Phase phase,
+        BattleCombatant source,
+        String sourceLease
+    ) {
+        return applyStatusEffect(effect, phase, source, sourceLease);
     }
 
     /** Convert a validated AUTO_STATUS_APPLY descriptor into a live status. */
@@ -811,6 +827,15 @@ public class BattleCombatant {
         BattleState.Phase phase,
         BattleCombatant source
     ) {
+        return addAutomaticStatusEffect(effect, phase, source, null);
+    }
+
+    public boolean addAutomaticStatusEffect(
+        AbilityEffectData effect,
+        BattleState.Phase phase,
+        BattleCombatant source,
+        String sourceLease
+    ) {
         if (effect == null || effect.stringValue == null) return false;
         try {
             double storedMagnitude = effect.magnitude != null ? effect.magnitude : 0.0;
@@ -825,7 +850,7 @@ public class BattleCombatant {
             double ceUpkeepPerTick = effect.ceUpkeepPerTick != null ? effect.ceUpkeepPerTick : 0.0;
             StatusEffect status = new StatusEffect(
                 type, rounds, ticks, magnitude, perTickRemovalChance, ceUpkeepPerTick);
-            return addStatusEffect(status, phase, source);
+            return addStatusEffect(status, phase, source, sourceLease);
         } catch (IllegalArgumentException ex) {
             System.err.println("[WARN] Invalid automatic status: " + effect.stringValue);
             return false;
@@ -895,6 +920,7 @@ public class BattleCombatant {
         activeEffects.clear();
         activeEffects.addAll(remaining);
         statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
+        statusLeases.keySet().removeIf(effect -> !activeEffects.contains(effect));
         resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
@@ -915,6 +941,7 @@ public class BattleCombatant {
         activeEffects.clear();
         activeEffects.addAll(remaining);
         statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
+        statusLeases.keySet().removeIf(effect -> !activeEffects.contains(effect));
         resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
@@ -938,6 +965,7 @@ public class BattleCombatant {
     public void removeEffect(StatusEffectType type) {
         activeEffects.removeIf(e -> e.getType() == type);
         statusSources.keySet().removeIf(effect -> effect.getType() == type);
+        statusLeases.keySet().removeIf(effect -> effect.getType() == type);
         resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
     }
@@ -946,6 +974,7 @@ public class BattleCombatant {
         int before = activeEffects.size();
         activeEffects.removeIf(effect -> effect.getType() == type);
         statusSources.keySet().removeIf(effect -> effect.getType() == type);
+        statusLeases.keySet().removeIf(effect -> effect.getType() == type);
         resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return before - activeEffects.size();
@@ -954,12 +983,14 @@ public class BattleCombatant {
     private void removeStatusForRefresh(StatusEffectType type) {
         activeEffects.removeIf(effect -> effect.getType() == type);
         statusSources.keySet().removeIf(effect -> effect.getType() == type);
+        statusLeases.keySet().removeIf(effect -> effect.getType() == type);
     }
 
     public int clearStatusEffects() {
         int removed = activeEffects.size();
         activeEffects.clear();
         statusSources.clear();
+        statusLeases.clear();
         resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return removed;
@@ -975,6 +1006,8 @@ public class BattleCombatant {
         remaining.add(updated);
         BattleCombatant source = statusSources.get(previous);
         if (source != null) statusSources.put(updated, source);
+        String sourceLease = statusLeases.get(previous);
+        if (sourceLease != null) statusLeases.put(updated, sourceLease);
     }
 
     /** Accrue Burned's fractional max-HP damage and return newly payable whole damage. */
@@ -1159,6 +1192,25 @@ public class BattleCombatant {
         return match != null && runtimeAbilityEffects.stream()
             .filter(effect -> effect.remainingUses != 0)
             .anyMatch(effect -> match.test(effect.effect));
+    }
+
+    /** Remove every persistent status/runtime modifier owned by one source lease. */
+    public int removeEffectsByLease(String sourceLease) {
+        if (sourceLease == null || sourceLease.isBlank()) return 0;
+        String normalized = sourceLease.trim();
+        int removed = runtimeAbilityEffects.size();
+        runtimeAbilityEffects.removeIf(effect -> normalized.equals(effect.sourceLease));
+        removed -= runtimeAbilityEffects.size();
+        List<StatusEffect> leasedStatuses = activeEffects.stream()
+            .filter(effect -> normalized.equals(statusLeases.get(effect)))
+            .toList();
+        activeEffects.removeAll(leasedStatuses);
+        leasedStatuses.forEach(statusSources::remove);
+        leasedStatuses.forEach(statusLeases::remove);
+        removed += leasedStatuses.size();
+        resetStatusDamageProgressIfCured();
+        clampPoolsToMaximums();
+        return removed;
     }
 
     /** A temporary Never Miss claim reserved for one complete attack execution. */
@@ -1469,6 +1521,7 @@ public class BattleCombatant {
         private final int notBeforeExpiryRound;
         /** Runtime-only tag; re-applying with the same group refreshes instead of stacking. */
         private final String refreshGroup;
+        private final String sourceLease;
         private final BattleCombatant source;
         private final int applicationRound;
         private final int applicationTick;
@@ -1501,6 +1554,8 @@ public class BattleCombatant {
                     && phase == BattleState.Phase.RESOLUTION);
             notBeforeExpiryRound = currentRound + (mustReachNextPlanning ? 1 : 0);
             this.refreshGroup = refreshGroup;
+            this.sourceLease = source.runtimeLease == null || source.runtimeLease.isBlank()
+                ? null : source.runtimeLease.trim();
             this.source = effectSource;
             this.applicationRound = currentRound;
             this.applicationTick = applicationTick;
@@ -1518,7 +1573,8 @@ public class BattleCombatant {
             AbilityEffectType type;
             try { type = AbilityEffectType.fromName(effect.type); }
             catch (IllegalArgumentException ex) { return false; }
-            if (type == AbilityEffectType.TEMP_LOCK_MOVE_TAG) return true;
+            if (type == AbilityEffectType.TEMP_LOCK_MOVE_TAG
+                || type == AbilityEffectType.TEMP_LOCK_TECHNIQUE) return true;
             if (type == AbilityEffectType.TIMED_STAT_MODIFIER
                 && AbilityEffectType.statType(effect) == AbilityEffectType.StatType.BATTLE) {
                 try {
@@ -1664,6 +1720,17 @@ public class BattleCombatant {
             if (known.getId().equals(move.getId())) return true;
         }
         return false;
+    }
+
+    /** True while one temporary effect locks this exact technique name. */
+    public boolean isTechniqueLocked(String techniqueName) {
+        if (techniqueName == null || techniqueName.isBlank()) return false;
+        return runtimeAbilityEffects.stream().anyMatch(runtime ->
+            runtime.remainingUses != 0
+                && AbilityEffectType.TEMP_LOCK_TECHNIQUE.name()
+                    .equalsIgnoreCase(runtime.effect.type)
+                && runtime.effect.stringValue != null
+                && techniqueName.equalsIgnoreCase(runtime.effect.stringValue));
     }
 
     /**

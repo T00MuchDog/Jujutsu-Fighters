@@ -17,6 +17,7 @@ import com.jjktbf.graphics.ui.ContentSizedDialog;
 import com.jjktbf.graphics.ui.DynamicSelectBox;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.AbilityData;
+import com.jjktbf.model.character.AbilityConditionData;
 import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectParameter;
@@ -31,6 +32,10 @@ import com.jjktbf.model.character.TransformationHpMode;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.character.coded.RatioAbility;
+import com.jjktbf.model.domain.DomainData;
+import com.jjktbf.model.domain.DomainAudience;
+import com.jjktbf.model.domain.DomainDeliveryClass;
+import com.jjktbf.model.domain.DomainTrigger;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffectType;
@@ -49,11 +54,13 @@ public class EffectListEditor extends Table {
     private static final String SELECT_ABILITY = "[select an ability]";
     private static final String SELECT_TECHNIQUE = "[select a technique]";
     private static final String SELECT_CHARACTER = "[select a shikigami]";
+    private static final String SELECT_DOMAIN = "[select a Domain]";
     private static final String SELECT_FORM = "[select a character form]";
     private static final String NO_MOVES = "[no moves available]";
     private static final String NO_ABILITIES = "[no abilities available]";
     private static final String NO_TECHNIQUES = "[no techniques available]";
     private static final String NO_CHARACTERS = "[no shikigami available]";
+    private static final String NO_DOMAINS = "[no Domains available]";
     private static final String NO_FORMS = "[no character forms available]";
 
     private final Skin skin;
@@ -62,6 +69,7 @@ public class EffectListEditor extends Table {
     private final List<AbilityData> abilities;
     private final List<InnateTechniqueData> techniques;
     private final List<CharacterData> characters;
+    private final List<DomainData> domains;
     private final Runnable onDirty;
     private final Runnable requestRebuild;
     private final Consumer<SoundCue> soundPlayer;
@@ -70,6 +78,7 @@ public class EffectListEditor extends Table {
     private final boolean passiveAbility;
     private final List<AbilityEffectType> availableTypes;
     private final boolean moveEffectEditor;
+    private final boolean domainEffectEditor;
     private final UiProfile uiProfile;
     private final boolean windowsLayout;
 
@@ -87,7 +96,7 @@ public class EffectListEditor extends Table {
         UiProfile uiProfile,
         Skin skin
     ) {
-        this(effects, moves, abilities, techniques, characters, onDirty,
+        this(effects, moves, abilities, techniques, characters, List.of(), onDirty,
             requestRebuild, soundPlayer, masteryEligible, passiveAbility,
             java.util.Arrays.stream(AbilityEffectType.values())
                 .filter(type -> !type.isMoveOnly())
@@ -110,6 +119,51 @@ public class EffectListEditor extends Table {
         UiProfile uiProfile,
         Skin skin
     ) {
+        this(effects, moves, abilities, techniques, characters, List.of(), onDirty,
+            requestRebuild, soundPlayer, masteryEligible, passiveAbility,
+            availableTypes, moveEffectEditor, false, uiProfile, skin);
+    }
+
+    public EffectListEditor(
+        List<AbilityEffectData> effects,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<InnateTechniqueData> techniques,
+        List<CharacterData> characters,
+        List<DomainData> domains,
+        Runnable onDirty,
+        Runnable requestRebuild,
+        Consumer<SoundCue> soundPlayer,
+        boolean masteryEligible,
+        boolean passiveAbility,
+        List<AbilityEffectType> availableTypes,
+        boolean moveEffectEditor,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
+        this(effects, moves, abilities, techniques, characters, domains, onDirty,
+            requestRebuild, soundPlayer, masteryEligible, passiveAbility,
+            availableTypes, moveEffectEditor, false, uiProfile, skin);
+    }
+
+    public EffectListEditor(
+        List<AbilityEffectData> effects,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<InnateTechniqueData> techniques,
+        List<CharacterData> characters,
+        List<DomainData> domains,
+        Runnable onDirty,
+        Runnable requestRebuild,
+        Consumer<SoundCue> soundPlayer,
+        boolean masteryEligible,
+        boolean passiveAbility,
+        List<AbilityEffectType> availableTypes,
+        boolean moveEffectEditor,
+        boolean domainEffectEditor,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
         super(skin);
         this.skin = skin;
         this.effects = effects == null ? new ArrayList<>() : effects;
@@ -117,6 +171,7 @@ public class EffectListEditor extends Table {
         this.abilities = abilities == null ? List.of() : abilities;
         this.techniques = techniques == null ? List.of() : techniques;
         this.characters = characters == null ? List.of() : characters;
+        this.domains = domains == null ? List.of() : domains;
         this.onDirty = onDirty;
         this.requestRebuild = requestRebuild;
         this.soundPlayer = soundPlayer == null ? cue -> { } : soundPlayer;
@@ -125,6 +180,7 @@ public class EffectListEditor extends Table {
         this.availableTypes = availableTypes == null || availableTypes.isEmpty()
             ? List.of(AbilityEffectType.APPLY_STATUS) : List.copyOf(availableTypes);
         this.moveEffectEditor = moveEffectEditor;
+        this.domainEffectEditor = domainEffectEditor;
         this.uiProfile = uiProfile;
         this.windowsLayout = uiProfile == UiProfile.WINDOWS;
 
@@ -187,6 +243,7 @@ public class EffectListEditor extends Table {
             : effects.get(index).copy();
         AbilityEffectType initialType = safeType(working.type);
         initialType.prepare(working);
+        if (domainEffectEditor) prepareDomainMetadata(working);
 
         SelectBox<String> typeBox = new DynamicSelectBox<>(skin, uiProfile);
         typeBox.setItems(effectTypeLabels());
@@ -211,6 +268,7 @@ public class EffectListEditor extends Table {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 AbilityEffectType selected = typeFromLabel(typeBox.getSelected());
                 selected.reset(working);
+                if (domainEffectEditor) prepareDomainMetadata(working);
                 hint.setText(selected.description());
                 error.setText("");
                 rebuildFields[0].run();
@@ -241,6 +299,14 @@ public class EffectListEditor extends Table {
                     error.setText(validationError);
                     soundPlayer.accept(SoundCue.UI_DENIED);
                     return;
+                }
+                if (domainEffectEditor) {
+                    String domainError = domainMetadataValidationError(working);
+                    if (domainError != null) {
+                        error.setText(domainError);
+                        soundPlayer.accept(SoundCue.UI_DENIED);
+                        return;
+                    }
                 }
                 if ((selected == AbilityEffectType.GRANT_MOVE
                     || selected == AbilityEffectType.UNLOCK_MOVE)
@@ -338,6 +404,10 @@ public class EffectListEditor extends Table {
             AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE)
             ? nonNegativeDecimalField(effect.perTickRemovalChance == null
                 ? null : effect.perTickRemovalChance * 100.0) : null;
+
+        if (domainEffectEditor) {
+            addDomainMetadataFields(fields, effect, refreshFields);
+        }
 
         if (type.uses(AbilityEffectParameter.CODED_FEATURE)) {
             List<CodedAbilityRegistry.AbilityFeature> features =
@@ -651,6 +721,18 @@ public class EffectListEditor extends Table {
                 }
             });
             addRow(fields, "Ability", abilityBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.DOMAIN_ID)) {
+            SelectBox<String> domainBox = new DynamicSelectBox<>(skin, uiProfile);
+            domainBox.setItems(domainReferenceLabels(effect.domainId));
+            domainBox.setSelected(domainReferenceLabel(effect.domainId));
+            domainBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.domainId = referenceIdFromLabel(domainBox.getSelected());
+                }
+            });
+            addRow(fields, "Domain", domainBox);
         }
 
         if (type.uses(AbilityEffectParameter.CHARACTER_ID)) {
@@ -1175,6 +1257,11 @@ public class EffectListEditor extends Table {
         AbilityEffectType type = safeType(effect == null ? null : effect.type);
         if (effect == null) return type.displayName();
         StringBuilder summary = new StringBuilder(type.displayName());
+        if (domainEffectEditor) {
+            summary.append(" | ").append(pretty(effect.domainTrigger))
+                .append(" -> ").append(pretty(effect.domainAudience))
+                .append(" [").append(pretty(effect.domainDeliveryClass)).append(']');
+        }
         if (type.uses(AbilityEffectParameter.CODED_FEATURE)) {
             summary.append(" | ").append(codedFeature(effect).label());
         }
@@ -1238,6 +1325,9 @@ public class EffectListEditor extends Table {
         }
         if (type.uses(AbilityEffectParameter.ABILITY_ID) && effect.abilityId != null) {
             summary.append(" | ").append(abilityReferenceLabel(effect.abilityId));
+        }
+        if (type.uses(AbilityEffectParameter.DOMAIN_ID) && effect.domainId != null) {
+            summary.append(" | ").append(domainReferenceLabel(effect.domainId));
         }
         if (type.uses(AbilityEffectParameter.CHARACTER_ID) && effect.characterId != null) {
             summary.append(" | ").append(type == AbilityEffectType.TRANSFORM_CHARACTER
@@ -1530,6 +1620,153 @@ public class EffectListEditor extends Table {
 
     private static String abilityLabel(AbilityData ability) {
         return ability.id + " - " + ability.name;
+    }
+
+    private String[] domainReferenceLabels(String currentId) {
+        List<String> labels = new ArrayList<>();
+        labels.add(SELECT_DOMAIN);
+        for (DomainData domain : domains) labels.add(domainLabel(domain));
+        if (currentId != null && !currentId.isBlank()
+            && domains.stream().noneMatch(domain -> currentId.equals(domain.id))) {
+            labels.add(currentId + " - (missing)");
+        }
+        if (domains.isEmpty()) labels.add(NO_DOMAINS);
+        return labels.toArray(new String[0]);
+    }
+
+    private String domainReferenceLabel(String domainId) {
+        if (domainId == null || domainId.isBlank()) return SELECT_DOMAIN;
+        return domains.stream()
+            .filter(domain -> domainId.equals(domain.id))
+            .findFirst()
+            .map(EffectListEditor::domainLabel)
+            .orElse(domainId + " - (missing)");
+    }
+
+    private static String domainLabel(DomainData domain) {
+        return domain.id + " - " + domain.name;
+    }
+
+    private void addDomainMetadataFields(
+        Table fields,
+        AbilityEffectData effect,
+        Runnable refreshFields
+    ) {
+        SelectBox<String> trigger = enumBox(DomainTrigger.values(), effect.domainTrigger,
+            value -> effect.domainTrigger = value);
+        addRow(fields, "Domain trigger", trigger);
+
+        SelectBox<String> audience = enumBox(DomainAudience.values(), effect.domainAudience,
+            value -> effect.domainAudience = value);
+        addRow(fields, "Domain audience", audience);
+
+        SelectBox<String> delivery = enumBox(
+            DomainDeliveryClass.values(), effect.domainDeliveryClass,
+            value -> effect.domainDeliveryClass = value);
+        addRow(fields, "Delivery class", delivery);
+
+        TextField interval = nonNegativeIntegerField(effect.domainIntervalTicks);
+        interval.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                effect.domainIntervalTicks = parseInteger(interval.getText());
+            }
+        });
+        addRow(fields, "Interval (ticks)", interval);
+
+        CheckBox chanceEnabled = new CheckBox(" Roll activation chance", skin);
+        chanceEnabled.setChecked(Boolean.TRUE.equals(effect.domainActivationChanceEnabled));
+        chanceEnabled.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                effect.domainActivationChanceEnabled = chanceEnabled.isChecked();
+                refreshFields.run();
+            }
+        });
+        addRow(fields, "Chance", chanceEnabled);
+        if (Boolean.TRUE.equals(effect.domainActivationChanceEnabled)) {
+            TextField chance = nonNegativeDecimalField(
+                effect.domainActivationChance == null
+                    ? 100.0 : effect.domainActivationChance * 100.0);
+            chance.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    Double value = parseDouble(chance.getText());
+                    effect.domainActivationChance = value == null ? null : value / 100.0;
+                }
+            });
+            addRow(fields, "Activation chance (%)", chance);
+        }
+
+        CheckBox conditionEnabled = new CheckBox(" Use condition", skin);
+        conditionEnabled.setChecked(effect.domainCondition != null);
+        conditionEnabled.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                effect.domainCondition = conditionEnabled.isChecked()
+                    ? AbilityConditionData.always() : null;
+                refreshFields.run();
+            }
+        });
+        addRow(fields, "Condition", conditionEnabled);
+        if (effect.domainCondition != null) {
+            fields.add(new Label("Domain condition", skin)).padRight(8).top();
+            fields.add(new ConditionTreeEditor(
+                effect.domainCondition, moves, () -> { }, soundPlayer,
+                masteryEligible, uiProfile, skin)).growX().row();
+        }
+    }
+
+    private <E extends Enum<E>> SelectBox<String> enumBox(
+        E[] values,
+        String selected,
+        Consumer<String> onChange
+    ) {
+        SelectBox<String> box = new DynamicSelectBox<>(skin, uiProfile);
+        box.setItems(java.util.Arrays.stream(values)
+            .map(value -> pretty(value.name())).toArray(String[]::new));
+        E fallback = values[0];
+        E current = java.util.Arrays.stream(values)
+            .filter(value -> value.name().equalsIgnoreCase(selected))
+            .findFirst().orElse(fallback);
+        box.setSelected(pretty(current.name()));
+        onChange.accept(current.name());
+        box.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                onChange.accept(enumName(box.getSelected()));
+            }
+        });
+        return box;
+    }
+
+    private static void prepareDomainMetadata(AbilityEffectData effect) {
+        if (effect.domainTrigger == null) effect.domainTrigger = DomainTrigger.ON_ESTABLISH.name();
+        if (effect.domainAudience == null) effect.domainAudience = DomainAudience.ALL_MEMBERS.name();
+        if (effect.domainDeliveryClass == null) {
+            effect.domainDeliveryClass = DomainDeliveryClass.EFFECT.name();
+        }
+        if (effect.domainIntervalTicks == null) effect.domainIntervalTicks = 1;
+        if (effect.domainActivationChanceEnabled == null) {
+            effect.domainActivationChanceEnabled = false;
+        }
+        if (effect.domainActivationChance == null) effect.domainActivationChance = 1.0;
+    }
+
+    private static String domainMetadataValidationError(AbilityEffectData effect) {
+        try {
+            DomainTrigger.valueOf(effect.domainTrigger);
+            DomainAudience.valueOf(effect.domainAudience);
+            DomainDeliveryClass.valueOf(effect.domainDeliveryClass);
+        } catch (RuntimeException exception) {
+            return "Choose valid Domain trigger, audience, and delivery values.";
+        }
+        if (effect.domainIntervalTicks == null || effect.domainIntervalTicks < 1) {
+            return "Domain interval must be at least one tick.";
+        }
+        if (Boolean.TRUE.equals(effect.domainActivationChanceEnabled)
+            && (effect.domainActivationChance == null
+                || effect.domainActivationChance < 0.0
+                || effect.domainActivationChance > 1.0)) {
+            return "Domain activation chance must be between 0% and 100%.";
+        }
+        return effect.domainCondition == null
+            ? null : AbilityConditionType.validationError(effect.domainCondition);
     }
 
     /** Only SHIKIGAMI definitions are valid summon targets. */

@@ -9,6 +9,7 @@ import com.jjktbf.model.character.coded.CodedMoveResponse;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.move.*;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.domain.DomainCollapseReason;
 
 import java.util.*;
 
@@ -63,6 +64,9 @@ public class CombatResolver {
         this.rng = rng;
         this.abilityActivations = new AbilityActivationEngine(rng, summonLookup);
         this.summonLookup = summonLookup;
+        if (summonLookup instanceof DomainDefinitionLookup domains) {
+            this.abilityActivations.withDomainLookup(domains);
+        }
     }
 
     /**
@@ -72,6 +76,11 @@ public class CombatResolver {
     public CombatResolver withSummonLookup(BattleCharacterLookup lookup) {
         this.summonLookup = lookup;
         this.abilityActivations.withCharacterLookup(lookup);
+        return this;
+    }
+
+    public CombatResolver withDomainLookup(DomainDefinitionLookup lookup) {
+        this.abilityActivations.withDomainLookup(lookup);
         return this;
     }
 
@@ -138,6 +147,9 @@ public class CombatResolver {
         appendAutomaticStatusEvents(state, events);
         if (finishBattleIfNeeded(state, events, 0)) return events;
         if (processPendingBattleStarts(state, events)) return events;
+        events.addAll(state.domainBattlefield().processRoundStart(
+            state, abilityActivations::executeDomainEffect));
+        if (finishBattleIfNeeded(state, events, 0)) return events;
         boolean roundStart = false;
         while (true) {
             BattleCombatant entrant = null;
@@ -364,6 +376,15 @@ public class CombatResolver {
                 if (finishBattleIfNeeded(state, events, tick)) return events;
             }
 
+            // Domain-opening effects only queue declarations. Flush the full
+            // same-tick batch before any immediate Domain program is admitted.
+            events.addAll(state.domainBattlefield().resolveDeclarations(
+                state, abilityActivations::executeDomainEffect, tick));
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+            events.addAll(state.domainBattlefield().processTick(
+                state, abilityActivations::executeDomainEffect, tick));
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+
             // Status CE upkeep is charged after this tick's actions and before
             // duration tick-down, so a status pays exactly one installment for
             // every tick it is active — including its application and expiry
@@ -461,6 +482,8 @@ public class CombatResolver {
         for (BattleCombatant combatant : state.activeCombatants()) {
             remainingTicks = Math.max(remainingTicks, combatant.getRemainingTimelineEffectTicks());
         }
+        remainingTicks = Math.max(
+            remainingTicks, state.domainBattlefield().remainingTimelineTicks());
         long timerEnd = remainingTicks <= 0
             ? 0L : Math.min((long) c.gridLimit, (long) c.tick + remainingTicks);
         c.maxTick = Math.max(c.actionMaxTick, (int) timerEnd);
@@ -1436,6 +1459,9 @@ public class CombatResolver {
             .message(attacker.getCharacter().getName() + (reaction ? " reacted with " : " used ")
                 + move.getName() + "!")
             .build());
+        events.addAll(state.domainBattlefield().onOwnerMove(
+            state, attacker, abilityActivations::executeDomainEffect, tick));
+        if (finishBattleIfNeeded(state, events, tick)) return;
         thawFrozenUserWithFireMove(state, attacker, move, tick, events);
         if (finishBattleIfNeeded(state, events, tick)) return;
         // MOVE_FIRED fires once, regardless of how many targets the move hits.
@@ -2776,6 +2802,9 @@ public class CombatResolver {
         events.addAll(abilityActivations.process(
             state, AbilityTrigger.phase(BattleState.Phase.ROUND_END)));
         if (finishBattleIfNeeded(state, events, 0)) return events;
+        events.addAll(state.domainBattlefield().processRoundEnd(
+            state, abilityActivations::executeDomainEffect));
+        if (finishBattleIfNeeded(state, events, 0)) return events;
 
         for (BattleCombatant combatant : combatants) {
             previousMaxHp.put(combatant, combatant.getMaxHp());
@@ -2854,6 +2883,9 @@ public class CombatResolver {
         int tick
     ) {
         reconcileLifecycle(state, tick, events);
+        events.addAll(state.domainBattlefield().reconcileOwners(
+            state, abilityActivations::executeDomainEffect, tick));
+        reconcileLifecycle(state, tick, events);
         if (!cursor.get().deferSummonMaterialization) {
             materializePendingSummons(state, tick, events);
         }
@@ -2862,6 +2894,9 @@ public class CombatResolver {
         c.pendingComponents.clear();
         c.maxTick = c.tick;
         c.roundCostsProcessed = false;
+        events.addAll(state.domainBattlefield().collapseAll(
+            state, DomainCollapseReason.BATTLE_ENDED,
+            abilityActivations::executeDomainEffect, tick));
         if (events.stream().noneMatch(event -> event.getType() == CombatEvent.Type.BATTLE_OVER)) {
             String message = state.getWinner() == null
                 ? "The battle ends in a draw!"
@@ -2930,6 +2965,8 @@ public class CombatResolver {
         for (BattleCombatant summon : state.drainPendingSummons(summonLookup)) {
             BattleCombatant summoner = state.combatant(summon.getSummonerId());
             events.add(CombatEvent.summoned(summoner, summon, tick));
+            events.addAll(state.domainBattlefield().onCombatantEntered(
+                state, summon, abilityActivations::executeDomainEffect, tick));
         }
     }
 

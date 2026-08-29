@@ -51,6 +51,8 @@ public abstract class Character extends Entity {
     private final List<Move> knownMoves;
     private final List<Ability> abilities;
     private final java.util.Set<String> accessibleTechniques;
+    /** Domain definition IDs unlocked through technique-tree Domain nodes. */
+    private java.util.Set<String> accessibleDomainIds = Set.of();
     private final java.util.Set<String> moveSetSlotExemptIds;
 
     /**
@@ -511,6 +513,14 @@ public abstract class Character extends Entity {
     /** Historical battle-facing alias for {@link #getMoveSet()}. */
     public List<Move>      getKnownMoves()           { return knownMoves; }
     public List<Ability>   getAbilities()            { return abilities; }
+    public Set<String>     getAccessibleDomainIds()   { return accessibleDomainIds; }
+    public boolean         canUseTechnique(String techniqueName) {
+        return techniqueName != null
+            && accessibleTechniques.contains(techniqueName.trim().toLowerCase());
+    }
+    public boolean         canEstablishDomain(String domainId) {
+        return domainId != null && accessibleDomainIds.contains(domainId);
+    }
     public boolean         hasInnateTechnique()      { return innateTechniqueName != null; }
     /** The character's weapons and cursed tools (never null). */
     public Equipment       getEquipment()            { return equipment; }
@@ -541,7 +551,7 @@ public abstract class Character extends Entity {
             }
             requested.add(move);
         }
-        return switch (type) {
+        Character copy = switch (type) {
             case SHIKIGAMI -> new ShikigamiCharacter(
                 getId(), getName(), baseStats, innateTechniqueName,
                 learnedMoves, requested, abilities, accessibleTechniques,
@@ -556,6 +566,20 @@ public abstract class Character extends Entity {
                 getId(), getName(), baseStats, innateTechniqueName,
                 learnedMoves, requested, abilities, accessibleTechniques, equipment);
         };
+        copy.accessibleDomainIds = accessibleDomainIds;
+        return copy;
+    }
+
+    /** Returns an immutable character copy with the supplied unlocked Domain IDs. */
+    public Character withAccessibleDomains(Collection<String> domainIds) {
+        Character copy = withMoveSet(knownMoves.stream().map(Move::getId).toList());
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        if (domainIds != null) {
+            domainIds.stream().filter(Objects::nonNull).map(String::trim)
+                .filter(id -> !id.isEmpty()).forEach(normalized::add);
+        }
+        copy.accessibleDomainIds = Collections.unmodifiableSet(normalized);
+        return copy;
     }
 
     /** Base CE charged to a summoner per active tick; non-shikigami default to zero. */

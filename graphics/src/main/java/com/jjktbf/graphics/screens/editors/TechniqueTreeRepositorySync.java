@@ -2,6 +2,8 @@ package com.jjktbf.graphics.screens.editors;
 
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.StatKey;
+import com.jjktbf.model.domain.DomainData;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveRepository;
 import com.jjktbf.model.technique.InnateTechniqueData;
@@ -37,9 +39,11 @@ final class TechniqueTreeRepositorySync {
         TechniqueRepository techniques = new TechniqueRepository("data/techniques");
         MoveRepository moves = new MoveRepository("data/moves");
         AbilityRepository abilities = new AbilityRepository("data/abilities");
+        DomainRepository domains = new DomainRepository("data/domains");
         techniques.load();
         moves.load();
         abilities.load();
+        domains.load();
 
         boolean changed = false;
         for (InnateTechniqueData technique : techniques.getAll()) {
@@ -58,10 +62,46 @@ final class TechniqueTreeRepositorySync {
                 }
             }
             changed |= TechniqueSkillTree.synchronize(
-                technique, moves.getAll(), abilities.getAll());
+                technique, moves.getAll(), abilities.getAll(), domains.getAll());
             changed |= synchronizeMovePrerequisites(technique, moves);
+            changed |= synchronizeDomainPrerequisites(technique, domains);
         }
         if (changed) techniques.save();
+    }
+
+    private static boolean synchronizeDomainPrerequisites(
+        InnateTechniqueData technique,
+        DomainRepository domains
+    ) {
+        if (technique.skillTree == null) return false;
+        boolean changed = false;
+        for (SkillTreeNodeData node : technique.skillTree) {
+            if (node == null || !SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) continue;
+            DomainData domain = domains.findById(node.contentId).orElse(null);
+            if (domain == null) continue;
+            List<SkillTreePrerequisiteData> values = valuePrerequisites(domain.prerequisites);
+            List<SkillTreePrerequisiteData> existing = node.prerequisites == null ? List.of()
+                : node.prerequisites.stream()
+                    .filter(Objects::nonNull)
+                    .filter(requirement -> !SkillTreePrerequisiteData.NODE
+                        .equalsIgnoreCase(requirement.type))
+                    .toList();
+            if (signatures(existing).equals(signatures(values))) continue;
+
+            List<SkillTreePrerequisiteData> merged = new ArrayList<>();
+            if (node.prerequisites != null) {
+                node.prerequisites.stream()
+                    .filter(Objects::nonNull)
+                    .filter(requirement -> SkillTreePrerequisiteData.NODE
+                        .equalsIgnoreCase(requirement.type))
+                    .map(SkillTreePrerequisiteData::copy)
+                    .forEach(merged::add);
+            }
+            merged.addAll(values);
+            node.prerequisites = merged;
+            changed = true;
+        }
+        return changed;
     }
 
     private static boolean synchronizeMovePrerequisites(
@@ -100,9 +140,15 @@ final class TechniqueTreeRepositorySync {
     }
 
     private static List<SkillTreePrerequisiteData> valuePrerequisites(MoveData move) {
+        return valuePrerequisites(move.prerequisites);
+    }
+
+    private static List<SkillTreePrerequisiteData> valuePrerequisites(
+        Map<String, Integer> prerequisites
+    ) {
         List<SkillTreePrerequisiteData> values = new ArrayList<>();
-        if (move.prerequisites == null) return values;
-        for (Map.Entry<String, Integer> entry : move.prerequisites.entrySet()) {
+        if (prerequisites == null) return values;
+        for (Map.Entry<String, Integer> entry : prerequisites.entrySet()) {
             try {
                 StatKey stat = StatKey.fromString(entry.getKey());
                 SkillTreePrerequisiteData requirement = new SkillTreePrerequisiteData();

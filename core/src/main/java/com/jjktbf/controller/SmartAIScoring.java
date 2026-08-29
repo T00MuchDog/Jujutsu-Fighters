@@ -1,6 +1,7 @@
 package com.jjktbf.controller;
 
 import com.jjktbf.model.character.CombatStats;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.BattleStatKey;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
@@ -9,11 +10,14 @@ import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatantId;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
 import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.model.combat.PowerCalculator;
 import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.Timeline;
+import com.jjktbf.model.domain.DomainDefinition;
+import com.jjktbf.model.domain.DomainInstance;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
@@ -462,6 +466,182 @@ final class SmartAIScoring {
     private record LethalOpening(
         Move move, int ceCost, List<BattleCombatant> targets
     ) { }
+
+    // -------------------------------------------------------------------------
+    // Domain-opening valuation and planning
+    // -------------------------------------------------------------------------
+
+    /** Value of an answer (anti-Domain) opening while an enemy Domain stands. */
+    static final double DOMAIN_ANSWER_VALUE = 3.0;
+    /** Value of opening an ordinary Domain when the field is clear. */
+    static final double DOMAIN_OPENING_VALUE = 2.0;
+    /** Discount when an enemy anti-Domain can swallow our sure-hits. */
+    static final double COUNTERED_DOMAIN_FACTOR = 0.5;
+
+    /**
+     * Why this move's Domain declarations would be wasted this round, or null
+     * when every row is plannable. Mirrors the runtime admission rules of
+     * {@code DomainBattlefield.queueDeclaration} so the AI never burns a slot
+     * on a declaration the battlefield would reject.
+     *
+     * <p>Hybrid defensive moves (e.g. a parry that also carries a Domain row)
+     * are never restricted: their defense value stands on its own and the
+     * battlefield simply absorbs the declaration it cannot use.</p>
+     */
+    static String domainOpeningRestriction(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, Move move
+    ) {
+        if (lookup == null || state == null || ai == null || move == null) return null;
+        if (move.isDefensive()) return null;
+        boolean enemyDomainActive = activeEnemyDomain(state, ai) != null;
+        for (MoveEffectData effect : move.getEffects()) {
+            if (effect == null || !AbilityEffectType.ESTABLISH_DOMAIN.name()
+                    .equalsIgnoreCase(effect.type) || effect.domainId == null) {
+                continue;
+            }
+            DomainDefinition definition = lookup.findDomain(effect.domainId.trim())
+                .orElse(null);
+            if (definition == null) return "Unknown Domain";
+            if (definition.antiDomain()) {
+                if (!enemyDomainActive) return "No enemy Domain to answer";
+                continue;
+            }
+            if (!ai.getCharacter().canEstablishDomain(definition.id())) {
+                return "Domain not unlocked";
+            }
+            if (!ai.getCharacter().canUseTechnique(definition.requiredTechniqueName())) {
+                return "Required technique unavailable";
+            }
+            if (ai.isTechniqueLocked(definition.requiredTechniqueName())) {
+                return "Required technique locked";
+            }
+            if (ownsActiveDomain(state, ai, false)) return "Own Domain already active";
+        }
+        return null;
+    }
+
+    /**
+     * Tactical value of the Domain declarations on this move (0 when any row is
+     * restricted). Anti-Domain answers to a standing enemy Domain outrank fresh
+     * openings; an enemy anti-Domain that out-powers our clash pressure devalues
+     * an ordinary opening because its sure-hits will be swallowed.
+     */
+    static double domainMoveValue(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, Move move
+    ) {
+        if (domainOpeningRestriction(lookup, state, ai, move) != null) return 0.0;
+        if (lookup == null || state == null || ai == null || move == null) return 0.0;
+        double best = 0.0;
+        for (MoveEffectData effect : move.getEffects()) {
+            if (effect == null || !AbilityEffectType.ESTABLISH_DOMAIN.name()
+                    .equalsIgnoreCase(effect.type) || effect.domainId == null) {
+                continue;
+            }
+            DomainDefinition definition = lookup.findDomain(effect.domainId.trim())
+                .orElse(null);
+            if (definition == null) continue;
+            double value = definition.antiDomain()
+                ? DOMAIN_ANSWER_VALUE : DOMAIN_OPENING_VALUE;
+            if (!definition.antiDomain() && enemyCounterDominates(state, ai, definition)) {
+                value *= COUNTERED_DOMAIN_FACTOR;
+            }
+            best = Math.max(best, value);
+        }
+        return best;
+    }
+
+    /** Remove segments whose Domain declarations would be rejected or wasted. */
+    static BattlePlan pruneRestrictedDomainOpenings(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, BattlePlan plan
+    ) {
+        if (lookup == null || plan == null) return plan;
+        for (ActionSegment segment : new ArrayList<>(plan.allSegments())) {
+            if (domainOpeningRestriction(lookup, state, ai, segment.getMove()) != null) {
+                plan.remove(segment);
+            }
+        }
+        return plan;
+    }
+
+    /**
+     * Pull the most valuable plannable Domain opening to the head of the plan,
+     * so declarations land before the round's damage races them. Segments keep
+     * their targets; a placement that does not fit leaves the original intact.
+     */
+    static BattlePlan promoteDomainOpenings(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, BattlePlan plan
+    ) {
+        if (lookup == null || plan == null) return plan;
+        ActionSegment best = null;
+        double bestValue = 0.0;
+        for (ActionSegment segment : plan.allSegments()) {
+            Move candidate = segment.getMove();
+            // Defensive hybrids keep their threat-aligned placement — only
+            // pure Domain openers get pulled to the head of the plan.
+            if (candidate != null && candidate.isDefensive()) continue;
+            double value = domainMoveValue(lookup, state, ai, candidate);
+            if (value > bestValue) {
+                best = segment;
+                bestValue = value;
+            }
+        }
+        if (best == null) return plan;
+        int earliestFire = Integer.MAX_VALUE;
+        for (ActionSegment segment : plan.allSegments()) {
+            earliestFire = Math.min(earliestFire, segment.getFireTick());
+        }
+        if (best.getFireTick() <= earliestFire) return plan;
+
+        Move move = best.getMove();
+        List<CombatantId> targets = best.getTargets();
+        int ceCost = best.getActualCeCost();
+        plan.remove(best);
+        ActionSegment promoted = placeAtOrAfter(plan, move, ceCost, 1);
+        if (promoted == null) {
+            ActionSegment restored = placeAtOrAfter(
+                plan, move, ceCost, best.getStartTick());
+            if (restored != null) restored.setTargets(targets);
+            return plan;
+        }
+        promoted.setTargets(targets);
+        return plan;
+    }
+
+    private static DomainInstance activeEnemyDomain(BattleState state, BattleCombatant ai) {
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            if (instance.definition().antiDomain()) continue;
+            BattleCombatant owner = state.combatant(instance.ownerId());
+            if (owner != null && !owner.isAlliedWith(ai)) return instance;
+        }
+        return null;
+    }
+
+    private static boolean ownsActiveDomain(
+        BattleState state, BattleCombatant ai, boolean antiDomain
+    ) {
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            if (instance.definition().antiDomain() == antiDomain
+                && instance.ownerId().equals(ai.getInstanceId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when an enemy anti-Domain protects against this Domain's pressure. */
+    private static boolean enemyCounterDominates(
+        BattleState state, BattleCombatant ai, DomainDefinition definition
+    ) {
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            if (!instance.definition().antiDomain()) continue;
+            BattleCombatant owner = state.combatant(instance.ownerId());
+            if (owner == null || owner.isAlliedWith(ai)) continue;
+            if (instance.definition().counterPotency() >= definition.clashPressurePerTick()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     // -------------------------------------------------------------------------
     // Placement helpers

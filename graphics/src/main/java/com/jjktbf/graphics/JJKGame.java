@@ -39,6 +39,7 @@ import com.jjktbf.graphics.screens.MultiplayerRosterWaitingScreen;
 import com.jjktbf.graphics.screens.editors.AbilityEditorScreen;
 import com.jjktbf.graphics.screens.editors.CharacterEditorScreen;
 import com.jjktbf.graphics.screens.editors.CursedToolEditorScreen;
+import com.jjktbf.graphics.screens.editors.DomainEditorScreen;
 import com.jjktbf.graphics.screens.editors.MoveEditorScreen;
 import com.jjktbf.graphics.screens.editors.TechniqueEditorScreen;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
@@ -50,6 +51,7 @@ import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.move.MoveRepository;
 import com.jjktbf.model.technique.TechniqueRepository;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
 import com.jjktbf.multiplayer.protocol.MatchCharacterSelectionRequest;
 
@@ -147,6 +149,7 @@ public class JJKGame extends Game {
     private AbilityEditorScreen    abilityEditorScreen;
     private TechniqueEditorScreen  techniqueEditorScreen;
     private CursedToolEditorScreen cursedToolEditorScreen;
+    private DomainEditorScreen      domainEditorScreen;
     private MultiplayerMenuScreen multiplayerMenuScreen;
     private HostChallengeScreen hostChallengeScreen;
     private ChallengeBrowserScreen challengeBrowserScreen;
@@ -219,6 +222,7 @@ public class JJKGame extends Game {
         abilityEditorScreen   = new AbilityEditorScreen(this, assets);
         techniqueEditorScreen = new TechniqueEditorScreen(this, assets);
         cursedToolEditorScreen = new CursedToolEditorScreen(this, assets);
+        domainEditorScreen      = new DomainEditorScreen(this, assets);
         multiplayerMenuScreen = new MultiplayerMenuScreen(
             this, assets, guestAccountService);
         hostChallengeScreen = new HostChallengeScreen(
@@ -315,6 +319,7 @@ public class JJKGame extends Game {
         if (abilityEditorScreen != null) abilityEditorScreen.dispose();
         if (techniqueEditorScreen != null) techniqueEditorScreen.dispose();
         if (cursedToolEditorScreen != null) cursedToolEditorScreen.dispose();
+        if (domainEditorScreen != null) domainEditorScreen.dispose();
         if (multiplayerMenuScreen != null) multiplayerMenuScreen.dispose();
         if (hostChallengeScreen != null) hostChallengeScreen.dispose();
         if (challengeBrowserScreen != null) challengeBrowserScreen.dispose();
@@ -458,6 +463,12 @@ public class JJKGame extends Game {
         cursedToolEditorScreen.dispose();
         cursedToolEditorScreen = new CursedToolEditorScreen(this, assets);
         showScreen(cursedToolEditorScreen, MusicTrack.MENU);
+    }
+
+    public void showDomainEditor() {
+        domainEditorScreen.dispose();
+        domainEditorScreen = new DomainEditorScreen(this, assets);
+        showScreen(domainEditorScreen, MusicTrack.MENU);
     }
 
     /**
@@ -704,6 +715,8 @@ public class JJKGame extends Game {
             try {
                 com.jjktbf.model.weapon.CursedToolRepository cursedToolRepo =
                     loadCursedToolRepo();
+                DomainRepository domainRepo = new DomainRepository("data/domains");
+                domainRepo.load();
                 Character player = playerData.toCharacter(
                     moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
                     playerMoveSetIds);
@@ -716,7 +729,8 @@ public class JJKGame extends Game {
                         .map(data -> data.toCharacter(
                             moveRepo, abilityRepo, techniqueRepo, cursedToolRepo)),
                     controlMode
-                );
+                ).withDomainLookup(domainId -> domainRepo.findById(domainId)
+                    .map(data -> data.toDomain()));
                 controller.runBattle(player, cpu, statMode);
             } catch (Throwable t) {
                 // The battle runs on a daemon thread; an uncaught throw would
@@ -808,6 +822,8 @@ public class JJKGame extends Game {
             try {
                 com.jjktbf.model.weapon.CursedToolRepository cursedToolRepo =
                     loadCursedToolRepo();
+                DomainRepository domainRepo = new DomainRepository("data/domains");
+                domainRepo.load();
                 java.util.List<BattleCombatant> playerFighters = java.util.stream.IntStream
                     .range(0, playerTeam.size())
                     .mapToObj(index -> playerTeam.get(index).toCharacter(
@@ -831,7 +847,8 @@ public class JJKGame extends Game {
                         .map(data -> data.toCharacter(
                             moveRepo, abilityRepo, techniqueRepo, cursedToolRepo)),
                     controlMode
-                );
+                ).withDomainLookup(domainId -> domainRepo.findById(domainId)
+                    .map(data -> data.toDomain()));
                 controller.runTeamBattle(state);
             } catch (Throwable t) {
                 try {

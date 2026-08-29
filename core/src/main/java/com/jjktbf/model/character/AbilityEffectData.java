@@ -91,6 +91,9 @@ public class AbilityEffectData {
     /** Ability ID (6-digit) for GRANT_ABILITY. */
     public String abilityId;
 
+    /** Domain definition ID used by Domain-establishment effects. */
+    public String domainId;
+
     /** Canonical character id used by summon and transformation effects. */
     public String characterId;
 
@@ -174,6 +177,26 @@ public class AbilityEffectData {
     /** Optional per-field Cursed Energy Efficiency formulas for over-time CE drain. */
     public Map<String, TechniqueMasteryProgressionData> ceEfficiencyProgression;
 
+    // ── Domain channel metadata ───────────────────────────────────────────────
+    /** DomainTrigger name; used only when this row belongs to a Domain definition. */
+    public String domainTrigger;
+    /** DomainAudience name; used only when this row belongs to a Domain definition. */
+    public String domainAudience;
+    /** DomainDeliveryClass name; used only when this row belongs to a Domain definition. */
+    public String domainDeliveryClass;
+    /** Cadence for EACH_TICK rows. One means every active tick. */
+    public Integer domainIntervalTicks;
+    /** Optional condition evaluated for a Domain audience member. */
+    public AbilityConditionData domainCondition;
+    /** Whether the Domain row rolls domainActivationChance. */
+    public Boolean domainActivationChanceEnabled;
+    /** Domain row activation chance in [0, 1]. */
+    public Double domainActivationChance;
+
+    /** Runtime-only source lease used to remove persistent effects atomically. */
+    @JsonIgnore
+    public String runtimeLease;
+
     @JsonIgnore
     public boolean isCoded() {
         return AbilityEffectType.CODED.name().equalsIgnoreCase(type);
@@ -209,6 +232,7 @@ public class AbilityEffectData {
         this.moveTag = source.moveTag;
         this.moveId = source.moveId;
         this.abilityId = source.abilityId;
+        this.domainId = source.domainId;
         this.characterId = source.characterId;
         this.transformationHpMode = source.transformationHpMode;
         this.returnCondition = source.returnCondition == null
@@ -234,6 +258,15 @@ public class AbilityEffectData {
         this.masteryProgression = TechniqueMasteryProgressions.copy(source.masteryProgression);
         this.ceEfficiencyProgression = TechniqueMasteryProgressions.copy(
             source.ceEfficiencyProgression);
+        this.domainTrigger = source.domainTrigger;
+        this.domainAudience = source.domainAudience;
+        this.domainDeliveryClass = source.domainDeliveryClass;
+        this.domainIntervalTicks = source.domainIntervalTicks;
+        this.domainCondition = source.domainCondition == null
+            ? null : source.domainCondition.copy();
+        this.domainActivationChanceEnabled = source.domainActivationChanceEnabled;
+        this.domainActivationChance = source.domainActivationChance;
+        this.runtimeLease = source.runtimeLease;
     }
 
     /** Translate retired persisted primitive names to the canonical configurable effects. */

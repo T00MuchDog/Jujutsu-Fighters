@@ -87,6 +87,9 @@ public final class MoveAvailability {
         if (actor.getAbilityFlags().lockedMoveTags.stream().anyMatch(move::hasTag)) {
             return "Restricted by an active ability.";
         }
+        if (actor.isTechniqueLocked(move.getRequiredTechniqueId())) {
+            return "The required technique is temporarily unavailable.";
+        }
         if (checkBoundedResources) {
             String resourceRestriction = boundedResourceRestrictionReason(
                 actor, move, alreadyPlannedMoves);

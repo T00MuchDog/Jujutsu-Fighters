@@ -119,6 +119,12 @@ public class BattleController {
         this.controlMode = Objects.requireNonNull(controlMode, "controlMode");
     }
 
+    public BattleController withDomainLookup(DomainDefinitionLookup lookup) {
+        resolver.withDomainLookup(lookup);
+        aiStrategy.withDomainLookup(lookup);
+        return this;
+    }
+
     /**
      * Run a complete battle between two characters (legacy 1v1 entry point).
      * Blocks until the battle is over. Equivalent to a two-team battle where

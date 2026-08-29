@@ -42,6 +42,7 @@ import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.NewShadowStyleAbility;
 import com.jjktbf.model.character.coded.RatioAbility;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.AoeType;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.BlockStyle;
@@ -126,6 +127,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     private final AbilityRepository abilityRepo;
     private final TechniqueRepository techniqueRepo;
     private final CursedToolRepository cursedToolRepo;
+    private final DomainRepository domainRepo;
 
     // Handles to dynamically-shown/hidden widgets, refreshed in rebuildDetail.
     private Container<Actor> categorySectionsContainer;
@@ -144,6 +146,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         abilityRepo = new AbilityRepository("data/abilities");
         techniqueRepo = new TechniqueRepository("data/techniques");
         cursedToolRepo = new CursedToolRepository("data/tools");
+        domainRepo = new DomainRepository("data/domains");
     }
 
     // =========================================================================
@@ -566,6 +569,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         abilityRepo.load();
         techniqueRepo.load();
         cursedToolRepo.load();
+        domainRepo.load();
         records.clear();
         records.addAll(repo.getAll());
     }
@@ -592,6 +596,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         if (d.effects != null) {
             for (int index = 0; index < d.effects.size(); index++) {
                 MoveEffectData effect = d.effects.get(index);
+                if (effect != null && AbilityEffectType.ESTABLISH_DOMAIN.name()
+                    .equalsIgnoreCase(effect.type)
+                    && domainRepo.findById(effect.domainId).isEmpty()) {
+                    return ValidationResult.error(
+                        "Effect " + (index + 1) + ": choose a Domain that still exists.");
+                }
                 if (effect == null || !AbilityEffectType.SUMMON_CHARACTER.name()
                     .equalsIgnoreCase(effect.type)) {
                     if (effect != null && AbilityEffectType.TRANSFORM_CHARACTER.name()
@@ -1854,7 +1864,14 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     private static void synchronizeParentDamageTags(MoveData move) {
-        if (move.tags == null || move.hitComponents == null) return;
+        // A move without authored hit components owns its type tags directly —
+        // e.g. a defence hybrid whose hit is a launched counter-move carries
+        // its own technique tags, not the launched hit's damage tags. There is
+        // nothing to derive, so the authored tags must survive untouched.
+        if (move.tags == null || move.hitComponents == null
+            || move.hitComponents.isEmpty()) {
+            return;
+        }
         move.tags = new ArrayList<>(move.tags);
         move.tags.removeIf(tag -> {
             try { return MoveTag.TYPE_TAGS.contains(MoveTag.valueOf(tag)); }
@@ -2338,6 +2355,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             List.of(),
             techniqueRepo.getAll(),
             charRepo.getAll(),
+            domainRepo.getAll(),
             this::markDirty,
             this::rebuildDetail,
             game.audio()::play,

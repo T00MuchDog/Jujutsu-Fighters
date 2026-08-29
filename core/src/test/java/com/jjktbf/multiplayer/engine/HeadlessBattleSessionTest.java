@@ -12,6 +12,10 @@ import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.ShikigamiCharacter;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.CeEfficiencyCalculator;
+import com.jjktbf.model.combat.BattleCharacterLookup;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
+import com.jjktbf.model.domain.DomainData;
+import com.jjktbf.model.domain.DomainDefinition;
 import com.jjktbf.model.move.AoeType;
 import com.jjktbf.model.move.CombatantPairTargeting;
 import com.jjktbf.model.move.HitComponent;
@@ -189,6 +193,145 @@ class HeadlessBattleSessionTest {
         assertFalse(second.events().stream().anyMatch(
             event -> event.type() == BattleEventType.ROUND_START && event.roundNumber() == 2
         ));
+    }
+
+    @Test
+    void authoritativeDomainEventsAndStateSurviveTheWireSnapshot() {
+        DomainData data = new DomainData();
+        data.id = "TEST_DOMAIN";
+        data.name = "Test Domain";
+        data.requiredTechniqueName = "Test Technique";
+        data.durationRounds = 2;
+        DomainDefinition domain = data.toDomain();
+        MoveEffectData establish = AbilityEffectType.ESTABLISH_DOMAIN.createDefaultMoveEffect();
+        establish.effectId = "ESTABLISH_TEST_DOMAIN";
+        establish.domainId = domain.id();
+        establish.trigger = MoveEffectTrigger.ON_FIRE.name();
+        Move opening = new Move.Builder("OPEN_TEST_DOMAIN")
+            .name("Open Test Domain")
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY, MoveTag.CURSED_ENERGY))
+            .apCost(1)
+            .unleashPoint(1)
+            .freeMove(true)
+            .effects(List.of(establish))
+            .build();
+        CharacterStats stats = new CharacterStats.Builder()
+            .cursedEnergyEfficiency(160)
+            .build();
+        Character owner = new SorcererCharacter(
+            "domain-owner", "Domain Owner", stats, "Test Technique", List.of(opening))
+            .withAccessibleDomains(List.of(domain.id()));
+        Character opponent = new SorcererCharacter(
+            "opponent", "Opponent", stats, null,
+            List.of(physicalAttack("IDLE_MOVE", 1, true)));
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One", owner, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", opponent, PlayerSide.PLAYER_TWO),
+            11L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK,
+            new TestContentLookup(domain)
+        );
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+
+        assertTrue(session.applyCommand(
+            "player-1",
+            command(session, "domain-plan",
+                new PlanPlacement(opening.getId(), 1, PLAYER_ONE_ID, List.of()))
+        ).accepted());
+        CommandResult resolved = session.applyCommand(
+            "player-2", command(session, "empty-plan"));
+
+        assertTrue(resolved.accepted());
+        assertTrue(resolved.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.DOMAIN_ESTABLISHED
+                && domain.id().equals(event.domainId())
+                && event.domainInstanceId() != null));
+        assertEquals(1, resolved.state().domainBattlefield().activeDomains().size());
+        assertEquals(domain.id(), resolved.state().domainBattlefield()
+            .activeDomains().get(0).domainId());
+        assertEquals(PLAYER_ONE_ID, resolved.state().domainBattlefield()
+            .activeDomains().get(0).ownerInstanceId());
+    }
+
+    @Test
+    void reconnectSnapshotPreservesTheActiveDomainBattlefield() {
+        DomainData data = new DomainData();
+        data.id = "RECONNECT_DOMAIN";
+        data.name = "Reconnect Domain";
+        data.requiredTechniqueName = "Reconnect Technique";
+        data.durationRounds = 2;
+        data.internalBarrierIntegrity = 40;
+        DomainDefinition domain = data.toDomain();
+        MoveEffectData establish = AbilityEffectType.ESTABLISH_DOMAIN.createDefaultMoveEffect();
+        establish.effectId = "ESTABLISH_RECONNECT_DOMAIN";
+        establish.domainId = domain.id();
+        establish.trigger = MoveEffectTrigger.ON_FIRE.name();
+        Move opening = new Move.Builder("OPEN_RECONNECT_DOMAIN")
+            .name("Open Reconnect Domain")
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY, MoveTag.CURSED_ENERGY))
+            .apCost(1)
+            .unleashPoint(1)
+            .freeMove(true)
+            .effects(List.of(establish))
+            .build();
+        CharacterStats stats = new CharacterStats.Builder()
+            .cursedEnergyEfficiency(160)
+            .build();
+        Character owner = new SorcererCharacter(
+            "domain-owner", "Domain Owner", stats, "Reconnect Technique", List.of(opening))
+            .withAccessibleDomains(List.of(domain.id()));
+        Character opponent = new SorcererCharacter(
+            "opponent", "Opponent", stats, null,
+            List.of(physicalAttack("IDLE_MOVE", 1, true)));
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One", owner, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", opponent, PlayerSide.PLAYER_TWO),
+            11L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK,
+            new TestContentLookup(domain)
+        );
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+        session.applyCommand(
+            "player-1",
+            command(session, "domain-plan",
+                new PlanPlacement(opening.getId(), 1, PLAYER_ONE_ID, List.of())));
+        session.applyCommand("player-2", command(session, "empty-plan"));
+
+        // The owner drops and reconnects mid-Domain: the authoritative snapshot
+        // a reconnecting client receives must still describe the Domain.
+        session.setConnected("player-1", false);
+        session.setConnected("player-1", true);
+        MatchState snapshot = session.snapshot();
+        assertEquals(1, snapshot.domainBattlefield().activeDomains().size());
+        var active = snapshot.domainBattlefield().activeDomains().get(0);
+        assertEquals(domain.id(), active.domainId());
+        assertEquals(PLAYER_ONE_ID, active.ownerInstanceId());
+        assertEquals(40, active.internalBarrierIntegrity());
+        assertTrue(active.memberInstanceIds().contains(PLAYER_ONE_ID));
+        assertTrue(active.memberInstanceIds().contains(PLAYER_TWO_ID));
+
+        // And it must survive the JSON wire exactly once more.
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            MatchState overTheWire = mapper.readValue(
+                mapper.writeValueAsString(snapshot), MatchState.class);
+            assertEquals(active.instanceId(),
+                overTheWire.domainBattlefield().activeDomains().get(0).instanceId());
+            assertEquals(active.memberInstanceIds(),
+                overTheWire.domainBattlefield().activeDomains().get(0).memberInstanceIds());
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 
     @Test
@@ -1450,5 +1593,20 @@ class HeadlessBattleSessionTest {
             .maxCeCost(baseCeCost * 2)
             .freeMove(true)
             .build();
+    }
+
+    private record TestContentLookup(DomainDefinition domain)
+        implements BattleCharacterLookup, DomainDefinitionLookup {
+
+        @Override
+        public Optional<Character> findCharacter(String characterId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<DomainDefinition> findDomain(String domainId) {
+            return domain != null && domain.id().equals(domainId)
+                ? Optional.of(domain) : Optional.empty();
+        }
     }
 }

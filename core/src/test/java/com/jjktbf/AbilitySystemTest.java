@@ -79,7 +79,10 @@ class AbilitySystemTest {
             if (type == AbilityEffectType.GRANT_MOVE
                 || type == AbilityEffectType.UNLOCK_MOVE) effect.moveId = "MOVE";
             if (type == AbilityEffectType.GRANT_ABILITY) effect.abilityId = "ABILITY";
-            if (type == AbilityEffectType.UNLOCK_TECHNIQUE) effect.stringValue = "Technique";
+            if (type.uses(AbilityEffectParameter.TECHNIQUE)) {
+                effect.stringValue = "Technique";
+            }
+            if (type.uses(AbilityEffectParameter.DOMAIN_ID)) effect.domainId = "DOMAIN";
             if (type.uses(AbilityEffectParameter.CHARACTER_ID)) effect.characterId = "000010";
             assertNull(type.validationError(effect), type.name());
         }

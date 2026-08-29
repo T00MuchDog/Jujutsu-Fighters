@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.combat.BattleStatMode;
+import com.jjktbf.model.combat.CombatEvent;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -75,6 +77,35 @@ class ProtocolJsonTest {
             () -> restored.roundStartCharacterStates().clear());
         assertThrows(UnsupportedOperationException.class,
             () -> restored.recentEvents().clear());
+    }
+
+    @Test
+    void combatAndWireEventEnumsRemainInExactParity() {
+        Set<String> core = java.util.Arrays.stream(CombatEvent.Type.values())
+            .map(Enum::name).collect(java.util.stream.Collectors.toSet());
+        Set<String> wire = java.util.Arrays.stream(BattleEventType.values())
+            .map(Enum::name).collect(java.util.stream.Collectors.toSet());
+
+        assertEquals(core, wire);
+    }
+
+    @Test
+    void domainEventMetadataRoundTrips() throws Exception {
+        BattleEventState event = new BattleEventState(
+            "domain-event", BattleEventType.DOMAIN_COLLAPSED, 3, 7,
+            PlayerSide.PLAYER_ONE, "caster", "Caster",
+            null, null, null, null, null,
+            null, 25, null, "The Domain collapses.",
+            "PLAYER-f1", null, null, null, null, null,
+            "domain-1", "domain-2", "UNLIMITED_VOID", "Unlimited Void",
+            "INTERNAL_BARRIER_BROKEN");
+
+        BattleEventState restored = mapper.readValue(
+            mapper.writeValueAsString(event), BattleEventState.class);
+
+        assertEquals(event, restored);
+        assertEquals("domain-1", restored.domainInstanceId());
+        assertEquals("INTERNAL_BARRIER_BROKEN", restored.domainCollapseReason());
     }
 
     @Test
@@ -284,7 +315,7 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(21, joined.protocolVersion());
+        assertEquals(22, joined.protocolVersion());
         assertEquals(42L, joined.stateVersion());
         assertEquals(1_700_000_060_000L, messages.get(6).disconnectDeadline());
         assertEquals(1_700_000_090_000L, joined.state().planningDeadline());
@@ -462,6 +493,13 @@ class ProtocolJsonTest {
             null,
             42,
             List.of(event),
+            new DomainBattlefieldState(
+                List.of(new DomainState(
+                    "domain-1", "UNLIMITED_VOID", "Unlimited Void", "PLAYER-f1",
+                    false, "CLOSED", "NONE", List.of("ENEMY-f1"),
+                    List.of("PLAYER-f1", "ENEMY-f1"), List.of("PLAYER-f1"),
+                    1, 4, 80, 60, -1)),
+                List.of(new DomainClashState("domain-1", "domain-2"))),
             1_700_000_090_000L,
             1_700_000_000_000L
         );

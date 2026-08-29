@@ -15,6 +15,8 @@ import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.domain.DomainBattlefield;
+import com.jjktbf.model.domain.DomainEffectExecutor;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,6 +40,7 @@ public final class AbilityActivationEngine {
 
     private final RandomSource rng;
     private BattleCharacterLookup characterLookup;
+    private DomainDefinitionLookup domainLookup;
 
     public AbilityActivationEngine(RandomSource rng) {
         this(rng, null);
@@ -50,7 +53,56 @@ public final class AbilityActivationEngine {
 
     public AbilityActivationEngine withCharacterLookup(BattleCharacterLookup lookup) {
         this.characterLookup = lookup;
+        if (lookup instanceof DomainDefinitionLookup domains) this.domainLookup = domains;
         return this;
+    }
+
+    public AbilityActivationEngine withDomainLookup(DomainDefinitionLookup lookup) {
+        this.domainLookup = lookup;
+        return this;
+    }
+
+    /** Shared primitive executor used by active Domain programs. */
+    public List<CombatEvent> executeDomainEffect(
+        BattleState state,
+        BattleCombatant owner,
+        BattleCombatant target,
+        AbilityEffectData authored,
+        int tick,
+        String sourceLease
+    ) {
+        if (state == null || owner == null || target == null || authored == null
+            || !owner.isActive() || !target.isActive()) {
+            return List.of();
+        }
+        int mastery = TechniqueMasteryResolver.masteryOf(owner);
+        AbilityEffectData effect = TechniqueMasteryResolver.resolve(authored, mastery);
+        AbilityConditionData condition = effect.domainCondition == null
+            ? AbilityConditionData.always()
+            : TechniqueMasteryResolver.resolve(effect.domainCondition, mastery);
+        AbilityTrigger trigger = new AbilityTrigger(
+            AbilityTrigger.Type.TIMELINE_TICK, owner, target, null, null,
+            0, tick, state.getCurrentPhase(), null, null);
+        if (!evaluateMoveCondition(
+            condition, owner, target, state, trigger, List.of(trigger))) {
+            return List.of();
+        }
+        double chance = Boolean.TRUE.equals(effect.domainActivationChanceEnabled)
+            ? Math.max(0.0, Math.min(1.0,
+                effect.domainActivationChance == null ? 0.0 : effect.domainActivationChance))
+            : 1.0;
+        if (chance <= 0.0 || (chance < 1.0 && rng.nextDouble() >= chance)) return List.of();
+
+        effect.runtimeLease = sourceLease;
+        effect.target = owner == target
+            ? AbilityEffectTarget.SELF.name() : AbilityEffectTarget.ENEMY.name();
+        List<CombatEvent> events = new ArrayList<>();
+        ArrayDeque<AbilityTrigger> followUps = new ArrayDeque<>();
+        applyEffect(
+            state, owner, target, effect, tick, events, followUps,
+            true, null, null, List.of(target), List.of(target), List.of());
+        while (!followUps.isEmpty()) events.addAll(process(state, followUps.removeFirst()));
+        return events;
     }
 
     public List<CombatEvent> process(BattleState state, AbilityTrigger initialTrigger) {
@@ -913,8 +965,10 @@ public final class AbilityActivationEngine {
                             : effect.perTickRemovalChance,
                         effect.ceUpkeepPerTick == null ? 0.0 : effect.ceUpkeepPerTick);
                     boolean accepted = extendStatusForCurrentPhase(state)
-                        ? target.addStatusEffect(applied, state.getCurrentPhase(), owner)
-                        : target.addStatusEffect(applied, owner);
+                        ? target.addStatusEffect(
+                            applied, state.getCurrentPhase(), owner, effect.runtimeLease)
+                        : target.addStatusEffect(
+                            applied, null, owner, effect.runtimeLease);
                     if (!accepted) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
                         .source(owner).target(target).move(move)
@@ -973,7 +1027,7 @@ public final class AbilityActivationEngine {
                  IGNORE_DAMAGE, DAMAGE_SHIELD,
                  SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS, APPLY_NEVER_HIT,
                  GUARANTEE_NEXT_BLACK_FLASH, CANCEL_NEXT_MOVE,
-                 TEMP_LOCK_MOVE_TAG -> {
+                 TEMP_LOCK_MOVE_TAG, TEMP_LOCK_TECHNIQUE -> {
                 for (BattleCombatant target : targets) {
                     addRuntimeEffect(
                         state, owner, target, effect, tick, events, effect.refreshGroup);
@@ -1076,7 +1130,8 @@ public final class AbilityActivationEngine {
                     boolean applied = target.addAutomaticStatusEffect(
                         effect,
                         extendStatusForCurrentPhase(state) ? state.getCurrentPhase() : null,
-                        owner);
+                        owner,
+                        effect.runtimeLease);
                     if (!applied) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
                         .source(owner).target(target).move(move)
@@ -1117,6 +1172,8 @@ public final class AbilityActivationEngine {
                                 : state.drainPendingSummons(characterLookup)) {
                             events.add(CombatEvent.summoned(
                                 state.combatant(summon.getSummonerId()), summon, tick));
+                            events.addAll(state.domainBattlefield().onCombatantEntered(
+                                state, summon, this::executeDomainEffect, tick));
                         }
                     }
                 }
@@ -1160,6 +1217,36 @@ public final class AbilityActivationEngine {
                         state.voluntarilyDesummon(target);
                     }
                 }
+            }
+            case ESTABLISH_DOMAIN -> {
+                if (!moveContext || effect.domainId == null || effect.domainId.isBlank()
+                    || domainLookup == null) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                        .message("The Domain could not be resolved.").build());
+                    break;
+                }
+                var definition = domainLookup.findDomain(effect.domainId.trim());
+                if (definition.isEmpty()) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                        .message("Unknown Domain " + effect.domainId + ".").build());
+                    break;
+                }
+                DomainBattlefield.DeclarationResult result = state.domainBattlefield()
+                    .queueDeclaration(state, definition.get(), owner, moveTargets, tick);
+                if (!result.accepted()) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                        .domainId(definition.get().id()).domainName(definition.get().name())
+                        .message(result.error()).build());
+                    break;
+                }
+                events.add(CombatEvent.of(CombatEvent.Type.DOMAIN_DECLARED)
+                    .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                    .domainId(definition.get().id()).domainName(definition.get().name())
+                    .message(owner.getCharacter().getName() + " declares "
+                        + definition.get().name() + ".").build());
             }
             case CODED_MOVE_ACTION -> {
                 StatusEffect coded = StatusEffect.coded(

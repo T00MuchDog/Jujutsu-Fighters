@@ -93,6 +93,7 @@ public final class AppPaths {
     private static final String BUNDLED_CHARACTERS = "data/characters/all_characters.json";
     private static final String BUNDLED_ABILITIES = "data/abilities/all_abilities.json";
     private static final String BUNDLED_TECHNIQUES = "data/techniques/all_techniques.json";
+    private static final String BUNDLED_DOMAINS = "data/domains/all_domains.json";
     private static final String BUNDLED_CURSED_TOOLS = "data/tools/all_tools.json";
     private static final String BUNDLED_KEYWORD_DESCRIPTIONS = "data/keyword_descriptions.json";
     private static final String BUNDLED_VERSION = "jjktbf-version.properties";
@@ -102,6 +103,7 @@ public final class AppPaths {
         BUNDLED_MOVES,
         BUNDLED_ABILITIES,
         BUNDLED_TECHNIQUES,
+        BUNDLED_DOMAINS,
         BUNDLED_CHARACTERS,
         BUNDLED_CURSED_TOOLS,
         BUNDLED_KEYWORD_DESCRIPTIONS

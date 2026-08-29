@@ -571,6 +571,7 @@ public class StatVerificationTest {
         try {
             writeJson(resourceRoot, "jjktbf-version.properties", "game.version=1.0.0\n");
             writeJson(resourceRoot, "data/tools/all_tools.json", "[]");
+            writeJson(resourceRoot, "data/domains/all_domains.json", "[]");
             writeJson(resourceRoot, "data/moves/all_moves.json", """
                 [ { "id": "000000", "name": "Tree Move", "description": "Release move" } ]
                 """);
@@ -710,6 +711,7 @@ public class StatVerificationTest {
         try {
             writeJson(resourceRoot, "jjktbf-version.properties", "game.version=1.0.0\n");
             writeJson(resourceRoot, "data/tools/all_tools.json", "[]");
+            writeJson(resourceRoot, "data/domains/all_domains.json", "[]");
             writeJson(resourceRoot, "data/moves/all_moves.json", """
                 [ { "id": "000000", "name": "Release One Move" } ]
                 """);
@@ -760,6 +762,7 @@ public class StatVerificationTest {
 
             writeJson(resourceRoot, "jjktbf-version.properties", "game.version=1.0.1\n");
             writeJson(resourceRoot, "data/tools/all_tools.json", "[]");
+            writeJson(resourceRoot, "data/domains/all_domains.json", "[]");
             writeJson(resourceRoot, "data/moves/all_moves.json", """
                 [ { "id": "000000", "name": "Release Two Move" } ]
                 """);
@@ -816,6 +819,7 @@ public class StatVerificationTest {
         try {
             writeJson(resourceRoot, "jjktbf-version.properties", "game.version=1.0.0\n");
             writeJson(resourceRoot, "data/tools/all_tools.json", "[]");
+            writeJson(resourceRoot, "data/domains/all_domains.json", "[]");
             writeJson(resourceRoot, "data/moves/all_moves.json", """
                 [ { "id": "000000", "name": "Bundled Move", "description": "New move text" } ]
                 """);

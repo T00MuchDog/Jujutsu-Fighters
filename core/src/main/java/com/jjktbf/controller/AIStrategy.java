@@ -4,6 +4,7 @@ import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
 import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.SeededRandomSource;
@@ -31,6 +32,20 @@ import java.util.Random;
  * interface — the controller does not need to change.
  */
 public interface AIStrategy {
+
+    /**
+     * Supply the immutable Domain catalog so Domain-opening and anti-Domain
+     * moves can be valued and pruned during team planning. Strategies that do
+     * not plan around Domains ignore the lookup.
+     */
+    default AIStrategy withDomainLookup(DomainDefinitionLookup lookup) {
+        return this;
+    }
+
+    /** The injected Domain catalog, or null when the strategy ignores Domains. */
+    default DomainDefinitionLookup domainLookup() {
+        return null;
+    }
 
     /**
      * Build the AI's complete round plan: which moves to commit and where to
@@ -68,6 +83,9 @@ public interface AIStrategy {
         for (BattleCombatant ai : aiTeam) {
             BattleCombatant opponent = state.firstActiveEnemyOf(ai);
             BattlePlan plan = selectPlan(ai, opponent, rng);
+            plan = SmartAIScoring.pruneRestrictedDomainOpenings(
+                domainLookup(), state, ai, plan);
+            plan = SmartAIScoring.promoteDomainOpenings(domainLookup(), state, ai, plan);
             java.util.List<Move> alreadyPlannedMoves = new java.util.ArrayList<>();
             for (com.jjktbf.model.combat.ActionSegment segment
                 : new java.util.ArrayList<>(plan.allSegments())) {

@@ -14,6 +14,8 @@ import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterRepository;
+import com.jjktbf.model.domain.DomainData;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveRepository;
 import com.jjktbf.model.technique.InnateTechniqueData;
@@ -33,12 +35,14 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
     private final TechniqueRepository repo;
     private final MoveRepository moveRepo;
     private final AbilityRepository abilityRepo;
+    private final DomainRepository domainRepo;
 
     public TechniqueEditorScreen(JJKGame game, AssetLoader assets) {
         super(game, assets);
         repo = new TechniqueRepository("data/techniques");
         moveRepo = new MoveRepository("data/moves");
         abilityRepo = new AbilityRepository("data/abilities");
+        domainRepo = new DomainRepository("data/domains");
     }
 
     @Override protected String title() { return "TECHNIQUE EDITOR"; }
@@ -63,7 +67,8 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
                 .map(SkillTreeNodeData::copy)
                 .forEach(copy.skillTree::add);
         }
-        TechniqueSkillTree.synchronize(copy, moveRepo.getAll(), abilityRepo.getAll());
+        TechniqueSkillTree.synchronize(
+            copy, moveRepo.getAll(), abilityRepo.getAll(), domainRepo.getAll());
         return copy;
     }
 
@@ -84,6 +89,7 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
         repo.load();
         moveRepo.load();
         abilityRepo.load();
+        domainRepo.load();
         records.clear();
         records.addAll(repo.getAll());
     }
@@ -117,7 +123,8 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
             if (renamed) {
                 rewriteTechniqueReferences(previousName, technique.name, characterRepo);
             }
-            TechniqueSkillTree.synchronize(technique, moveRepo.getAll(), abilityRepo.getAll());
+            TechniqueSkillTree.synchronize(
+                technique, moveRepo.getAll(), abilityRepo.getAll(), domainRepo.getAll());
             applyAuthoredPrerequisites(technique);
             if (characterRepo != null) {
                 for (CharacterData character : characterRepo.getAll()) {
@@ -134,6 +141,7 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
             repo.save();
             moveRepo.save();
             abilityRepo.save();
+            domainRepo.save();
             if (characterRepo != null && (renamed || prunedSelections)) characterRepo.save();
         } catch (Exception exception) {
             return ValidationResult.error("Save failed: " + exception.getMessage());
@@ -156,9 +164,12 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
             "TECHNIQUE".equalsIgnoreCase(ability.sourceType)
                 && ability.sourceValue != null
                 && ability.sourceValue.equalsIgnoreCase(technique.name));
-        if (referencedByMove || referencedByAbility) {
+        boolean referencedByDomain = domainRepo.getAll().stream().anyMatch(domain ->
+            !domain.antiDomain && domain.requiredTechniqueName != null
+                && domain.requiredTechniqueName.equalsIgnoreCase(technique.name));
+        if (referencedByMove || referencedByAbility || referencedByDomain) {
             return ValidationResult.error(
-                "Cannot delete a technique while moves or abilities belong to its technique tree.");
+                "Cannot delete a technique while moves, abilities, or Domains belong to its tree.");
         }
         try {
             repo.delete(id);
@@ -171,7 +182,8 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
 
     @Override
     protected Actor buildDetailForm(InnateTechniqueData technique) {
-        TechniqueSkillTree.synchronize(technique, moveRepo.getAll(), abilityRepo.getAll());
+        TechniqueSkillTree.synchronize(
+            technique, moveRepo.getAll(), abilityRepo.getAll(), domainRepo.getAll());
         Table form = formRoot();
 
         Table identity = formSection(form, "NAME");
@@ -189,6 +201,7 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
             technique,
             moveRepo.getAll(),
             abilityRepo.getAll(),
+            domainRepo.getAll(),
             null,
             true,
             this::markDirty,
@@ -237,6 +250,12 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
                 character.innateTechniqueName = newName;
             }
         }
+        for (DomainData domain : domainRepo.getAll()) {
+            if (!domain.antiDomain && domain.requiredTechniqueName != null
+                && domain.requiredTechniqueName.equalsIgnoreCase(previousName)) {
+                domain.requiredTechniqueName = newName;
+            }
+        }
     }
 
     private void applyAuthoredPrerequisites(InnateTechniqueData technique) {
@@ -276,6 +295,25 @@ public class TechniqueEditorScreen extends EditorScreenBase<InnateTechniqueData>
                         .filter(java.util.Objects::nonNull)
                         .mapToInt(Integer::intValue)
                         .max().orElse(0);
+            } else if (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) {
+                DomainData domain = domainRepo.findById(node.contentId).orElse(null);
+                if (domain == null) continue;
+                Map<String, Integer> prerequisites = new LinkedHashMap<>();
+                if (node.prerequisites != null) {
+                    for (SkillTreePrerequisiteData requirement : node.prerequisites) {
+                        if (requirement == null || requirement.minimum == null) continue;
+                        String stat = null;
+                        if (SkillTreePrerequisiteData.MASTERY.equalsIgnoreCase(requirement.type)) {
+                            stat = "cursedTechniqueMastery";
+                        } else if (SkillTreePrerequisiteData.STAT.equalsIgnoreCase(requirement.type)) {
+                            stat = requirement.stat;
+                        }
+                        if (stat != null) prerequisites.merge(
+                            stat, requirement.minimum, Math::max);
+                    }
+                }
+                prerequisites.putIfAbsent("cursedTechniqueMastery", 0);
+                domain.prerequisites = prerequisites;
             }
         }
     }

@@ -8,6 +8,7 @@ public enum AbilityEffectParameter {
     STAT_MULTIPLIER_CURVE,
     MOVE_SCOPE,
     MOVE_ID,
+    DOMAIN_ID,
     ABILITY_ID,
     CHARACTER_ID,
     TRANSFORMATION_HP,

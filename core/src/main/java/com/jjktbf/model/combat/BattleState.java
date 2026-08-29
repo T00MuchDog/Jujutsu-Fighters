@@ -7,6 +7,7 @@ import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.domain.DomainBattlefield;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,6 +76,7 @@ public class BattleState {
     private final Map<CombatantId, Map<String, Integer>> summonCooldownsByOwner = new LinkedHashMap<>();
     private final List<BattleCombatant> pendingLifecycleChanges = new ArrayList<>();
     private final TargetExchangeRegistry targetExchanges = new TargetExchangeRegistry();
+    private final DomainBattlefield domainBattlefield = new DomainBattlefield();
 
     public record AutomaticStatusApplication(
         BattleCombatant source,
@@ -275,6 +277,10 @@ public class BattleState {
 
     public TargetExchangeRegistry targetExchanges() {
         return targetExchanges;
+    }
+
+    public DomainBattlefield domainBattlefield() {
+        return domainBattlefield;
     }
 
     /** Fix this round's shared timeline size after all round-start effects run. */

@@ -425,7 +425,7 @@
   },
   {
     "term": "Simple Domain",
-    "description": "A New Shadow Style stance that automatically parries the next attack at Potency 1, then answers a Melee parry with Sword Quick Draw."
+    "description": "A non-innate barrier technique that opens a Simple Domain, nullifying the next hostile technique contact."
   },
   {
     "term": "Sidestep",
@@ -461,7 +461,11 @@
   },
   {
     "term": "New Shadow Style",
-    "description": "A learned school that grants access to Batto Sword Drawing and Simple Domain."
+    "description": "A learned school that grants access to Batto Sword Drawing and New Shadow Style Simple Domain."
+  },
+  {
+    "term": "New Shadow Style Simple Domain",
+    "description": "A New Shadow Style stance that automatically parries the next attack at Potency 1, then answers a Melee parry with Sword Quick Draw."
   },
   {
     "term": "Simple Domain Binding Vow",

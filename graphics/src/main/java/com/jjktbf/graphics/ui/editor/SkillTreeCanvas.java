@@ -28,6 +28,7 @@ import com.jjktbf.graphics.ui.text.KeywordTooltip;
 import com.jjktbf.model.character.AbilityData;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.StatKey;
+import com.jjktbf.model.domain.DomainData;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
@@ -69,6 +70,7 @@ public class SkillTreeCanvas extends WidgetGroup {
     private final boolean windowsLayout;
     private final Map<String, MoveData> movesById = new LinkedHashMap<>();
     private final Map<String, AbilityData> abilitiesById = new LinkedHashMap<>();
+    private final Map<String, DomainData> domainsById = new LinkedHashMap<>();
     private final Map<String, NodeView> viewsByNodeId = new LinkedHashMap<>();
     private final Drawable background;
     private final Drawable connector;
@@ -94,7 +96,7 @@ public class SkillTreeCanvas extends WidgetGroup {
         UiProfile uiProfile,
         Skin skin
     ) {
-        this(technique, moves, abilities, character, editable, onChanged, onStatus,
+        this(technique, moves, abilities, List.of(), character, editable, onChanged, onStatus,
             activationError, (node, stat) -> false, soundPlayer, uiProfile, skin);
     }
 
@@ -102,6 +104,43 @@ public class SkillTreeCanvas extends WidgetGroup {
         InnateTechniqueData technique,
         List<MoveData> moves,
         List<AbilityData> abilities,
+        List<DomainData> domains,
+        CharacterData character,
+        boolean editable,
+        Runnable onChanged,
+        Consumer<String> onStatus,
+        Function<SkillTreeNodeData, String> activationError,
+        Consumer<SoundCue> soundPlayer,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
+        this(technique, moves, abilities, domains, character, editable, onChanged, onStatus,
+            activationError, (node, stat) -> false, soundPlayer, uiProfile, skin);
+    }
+
+    public SkillTreeCanvas(
+        InnateTechniqueData technique,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        CharacterData character,
+        boolean editable,
+        Runnable onChanged,
+        Consumer<String> onStatus,
+        Function<SkillTreeNodeData, String> activationError,
+        BiPredicate<SkillTreeNodeData, StatKey> prerequisiteWaiver,
+        Consumer<SoundCue> soundPlayer,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
+        this(technique, moves, abilities, List.of(), character, editable, onChanged, onStatus,
+            activationError, prerequisiteWaiver, soundPlayer, uiProfile, skin);
+    }
+
+    public SkillTreeCanvas(
+        InnateTechniqueData technique,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<DomainData> domains,
         CharacterData character,
         boolean editable,
         Runnable onChanged,
@@ -134,6 +173,9 @@ public class SkillTreeCanvas extends WidgetGroup {
         if (abilities != null) abilities.stream().filter(Objects::nonNull)
             .filter(ability -> ability.id != null)
             .forEach(ability -> abilitiesById.put(ability.id, ability));
+        if (domains != null) domains.stream().filter(Objects::nonNull)
+            .filter(domain -> domain.id != null)
+            .forEach(domain -> domainsById.put(domain.id, domain));
 
         rebuildNodes();
         addListener(new InputListener() {
@@ -687,6 +729,10 @@ public class SkillTreeCanvas extends WidgetGroup {
             MoveData move = movesById.get(node.contentId);
             return move == null ? "Missing move " + node.contentId : move.name;
         }
+        if (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) {
+            DomainData domain = domainsById.get(node.contentId);
+            return domain == null ? "Missing Domain " + node.contentId : domain.name;
+        }
         AbilityData ability = abilitiesById.get(node.contentId);
         return ability == null ? "Missing ability " + node.contentId : ability.name;
     }
@@ -696,6 +742,9 @@ public class SkillTreeCanvas extends WidgetGroup {
         if (SkillTreeNodeData.MOVE.equalsIgnoreCase(node.contentType)) {
             MoveData move = movesById.get(node.contentId);
             description = move == null ? "" : move.description;
+        } else if (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) {
+            DomainData domain = domainsById.get(node.contentId);
+            description = domain == null ? "" : domain.description;
         } else {
             AbilityData ability = abilitiesById.get(node.contentId);
             description = ability == null ? "" : ability.mechanicText;

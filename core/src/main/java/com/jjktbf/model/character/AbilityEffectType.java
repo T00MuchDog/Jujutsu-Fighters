@@ -24,6 +24,7 @@ import static com.jjktbf.model.character.AbilityEffectParameter.CHARACTER_ID;
 import static com.jjktbf.model.character.AbilityEffectParameter.TRANSFORMATION_HP;
 import static com.jjktbf.model.character.AbilityEffectParameter.RETURN_CONDITION;
 import static com.jjktbf.model.character.AbilityEffectParameter.MOVE_ID;
+import static com.jjktbf.model.character.AbilityEffectParameter.DOMAIN_ID;
 import static com.jjktbf.model.character.AbilityEffectParameter.MOVE_SCOPE;
 import static com.jjktbf.model.character.AbilityEffectParameter.STAT;
 import static com.jjktbf.model.character.AbilityEffectParameter.STATUS_TYPE;
@@ -313,6 +314,10 @@ public enum AbilityEffectType {
         "Temporarily lock move tag",
         "Prevents the target from planning moves with one tag for the duration.",
         TARGET, MOVE_SCOPE, DURATION),
+    TEMP_LOCK_TECHNIQUE(
+        "Temporarily lock technique",
+        "Prevents the target from using one named technique for the duration.",
+        TARGET, TECHNIQUE, DURATION),
     TAUNT(
         "Taunt",
         "Draws enemies' single-target MELEE attacks onto the target for the configured rounds and ticks. Area-of-effect attacks are unaffected.",
@@ -352,7 +357,11 @@ public enum AbilityEffectType {
     DESUMMON_TARGET_SHIKIGAMI(
         "Desummon target shikigami",
         "Voluntarily dismisses the targeted shikigami combatant.",
-        TARGET);
+        TARGET),
+    ESTABLISH_DOMAIN(
+        "Establish Domain",
+        "Establishes the selected Domain definition when this move effect fires.",
+        DOMAIN_ID);
 
     /**
      * Effects that require an active ability condition to run at battle time.
@@ -367,13 +376,15 @@ public enum AbilityEffectType {
             TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
             IGNORE_DAMAGE, DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE,
             APPLY_NEVER_MISS, APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,
-             CANCEL_NEXT_MOVE, STUN_CURRENT_ACTION, TEMP_LOCK_MOVE_TAG, TAUNT,
+             CANCEL_NEXT_MOVE, STUN_CURRENT_ACTION, TEMP_LOCK_MOVE_TAG,
+             TEMP_LOCK_TECHNIQUE, TAUNT,
              EXCHANGE_ATTACK_TARGETS, TRANSACT_BOUNDED_RESOURCE,
              CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER,
              SUMMON_CHARACTER,
              TRANSFORM_CHARACTER,
-            DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
-            CODED_MOVE_ACTION);
+             DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
+             ESTABLISH_DOMAIN,
+             CODED_MOVE_ACTION);
 
     private static final Set<StatusEffectType> SUPPORTED_AUTO_STATUSES =
         Collections.unmodifiableSet(EnumSet.allOf(StatusEffectType.class));
@@ -527,6 +538,7 @@ public enum AbilityEffectType {
         effect.moveTag = null;
         effect.moveId = null;
         effect.abilityId = null;
+        effect.domainId = null;
         effect.characterId = null;
         effect.transformationHpMode = null;
         effect.returnCondition = null;
@@ -662,6 +674,10 @@ public enum AbilityEffectType {
             case TEMP_LOCK_MOVE_TAG -> {
                 effect.target = AbilityEffectTarget.ENEMY.name();
                 effect.moveTag = MoveTag.CURSED_ENERGY.name();
+                effect.durationRounds = 1;
+            }
+            case TEMP_LOCK_TECHNIQUE -> {
+                effect.target = AbilityEffectTarget.SELF.name();
                 effect.durationRounds = 1;
             }
             case TAUNT -> {
@@ -834,6 +850,7 @@ public enum AbilityEffectType {
         if (!uses(MOVE_SCOPE)) effect.moveTag = null;
         if (!uses(MOVE_ID)) effect.moveId = null;
         if (!uses(ABILITY_ID)) effect.abilityId = null;
+        if (!uses(DOMAIN_ID)) effect.domainId = null;
         if (!uses(CHARACTER_ID)) effect.characterId = null;
         if (!uses(TRANSFORMATION_HP)) effect.transformationHpMode = null;
         if (!uses(RETURN_CONDITION)) effect.returnCondition = null;
@@ -935,6 +952,7 @@ public enum AbilityEffectType {
         }
         if (uses(MOVE_ID) && isBlank(effect.moveId)) return "Choose a move.";
         if (uses(ABILITY_ID) && isBlank(effect.abilityId)) return "Choose an ability to grant.";
+        if (uses(DOMAIN_ID) && isBlank(effect.domainId)) return "Choose a Domain.";
         if (uses(CHARACTER_ID) && isBlank(effect.characterId)) {
             return this == SUMMON_CHARACTER
                 ? "Choose a shikigami to summon."
@@ -1284,6 +1302,7 @@ public enum AbilityEffectType {
     public boolean isMoveOnly() {
         return this == CODED_MOVE_ACTION || this == EXCHANGE_ATTACK_TARGETS
             || this == CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
+            || this == ESTABLISH_DOMAIN
             || isMoveAvailabilityConstraint();
     }
 

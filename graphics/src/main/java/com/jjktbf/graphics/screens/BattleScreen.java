@@ -45,6 +45,8 @@ import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.TeamBattlePlan;
+import com.jjktbf.model.domain.DomainClash;
+import com.jjktbf.model.domain.DomainInstance;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.Move;
@@ -59,6 +61,9 @@ import com.jjktbf.multiplayer.protocol.BattlePhase;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
 import com.jjktbf.multiplayer.protocol.ActionSegmentStatus;
 import com.jjktbf.multiplayer.protocol.CharacterState;
+import com.jjktbf.multiplayer.protocol.DomainBattlefieldState;
+import com.jjktbf.multiplayer.protocol.DomainClashState;
+import com.jjktbf.multiplayer.protocol.DomainState;
 import com.jjktbf.multiplayer.protocol.ErrorResponse;
 import com.jjktbf.multiplayer.protocol.HitComponentState;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
@@ -307,6 +312,16 @@ public class BattleScreen implements Screen, BattleView {
      * as soon as dialogue resumes.
      */
     private float logScrollOffset = 0f;
+
+    // ── Active Domain banners ────────────────────────────────────────────────
+    /**
+     * One status line per active Domain/anti-Domain, kept in step with playback
+     * events during resolution and re-synced from the authoritative battlefield
+     * (local {@code BattleState} or server {@code MatchState}) after each round
+     * and on reconnect. Updated on the battle thread as immutable snapshots so
+     * the render thread always sees a consistent list.
+     */
+    private volatile List<DomainBanner> domainBanners = List.of();
     /**
      * Wheel listener installed as the input processor only while awaiting the
      * next round, so the log scrolls on actual scroll-wheel events (LibGDX has
@@ -593,6 +608,7 @@ public class BattleScreen implements Screen, BattleView {
         soundedOnlineRound = -1;
         loggedOnlineEventIds.clear();
         soundedOnlineEventIds.clear();
+        domainBanners = List.of();
         onlineCommandPending = false;
         resetMultiplayerPlanningCountdown();
         battleEntranceStarted = false;
@@ -851,6 +867,7 @@ public class BattleScreen implements Screen, BattleView {
         if (speedControlsVisible()) drawSpeedControls();
         drawBattleActionButton();
         if (SHOW_TICK_COUNTER) drawTickCounter(sw, sh);
+        drawDomainBanners(sw, sh);
         drawMoveUnleashAnimation(sw, sh);
         drawHitFlashes(sw, sh);
         batch.end();
@@ -886,6 +903,7 @@ public class BattleScreen implements Screen, BattleView {
             if (SHOW_TICK_COUNTER) {
                 drawTickCounter(WindowsBattleCanvas.WIDTH, WindowsBattleCanvas.HEIGHT);
             }
+            drawDomainBanners(WindowsBattleCanvas.WIDTH, WindowsBattleCanvas.HEIGHT);
             if (!planningUiEditable()) {
                 drawMoveUnleashAnimation(
                     WINDOWS_EXECUTION_WIDTH, WINDOWS_EXECUTION_HEIGHT,
@@ -1027,6 +1045,203 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     /** Temporary execution readout for checking timeline playback. */
+    // -------------------------------------------------------------------------
+    // Active Domain banners
+    // -------------------------------------------------------------------------
+
+    /** One immutable status line for an active Domain or anti-Domain. */
+    private static final class DomainBanner {
+        final String instanceId;
+        final String name;
+        final String ownerName;
+        final boolean antiDomain;
+        final String duration;
+        final boolean clashing;
+
+        DomainBanner(
+            String instanceId, String name, String ownerName,
+            boolean antiDomain, String duration, boolean clashing
+        ) {
+            this.instanceId = instanceId;
+            this.name = name;
+            this.ownerName = ownerName == null ? "" : ownerName;
+            this.antiDomain = antiDomain;
+            this.duration = duration == null ? "" : duration;
+            this.clashing = clashing;
+        }
+
+        DomainBanner withClash(boolean clashing) {
+            return clashing == this.clashing ? this
+                : new DomainBanner(instanceId, name, ownerName, antiDomain, duration, clashing);
+        }
+
+        String label() {
+            StringBuilder text = new StringBuilder(antiDomain ? "[ANTI-DOMAIN] " : "[DOMAIN] ");
+            text.append(name);
+            if (!ownerName.isBlank()) text.append(" - ").append(ownerName);
+            if (!duration.isEmpty()) text.append(" (").append(duration).append(')');
+            if (clashing) text.append("  <<CLASH>>");
+            return text.toString();
+        }
+    }
+
+    /** Track a local playback event so banners pace with the battle log. */
+    private void applyLocalDomainEvent(CombatEvent event) {
+        switch (event.getType()) {
+            case DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED -> addDomainBanner(
+                event.getDomainInstanceId(), event.getDomainName(),
+                event.getSource() == null || event.getSource().getCharacter() == null
+                    ? "" : event.getSource().getCharacter().getName(),
+                event.getType() == CombatEvent.Type.DOMAIN_COUNTER_ESTABLISHED);
+            case DOMAIN_COLLAPSED -> removeDomainBanner(event.getDomainInstanceId());
+            case DOMAIN_CLASH_STARTED -> {
+                setDomainClash(event.getDomainInstanceId(), true);
+                setDomainClash(event.getRelatedDomainInstanceId(), true);
+            }
+            case DOMAIN_CLASH_ENDED -> {
+                setDomainClash(event.getDomainInstanceId(), false);
+                setDomainClash(event.getRelatedDomainInstanceId(), false);
+            }
+            default -> { }
+        }
+    }
+
+    /** Track an online playback event so banners pace with the battle log. */
+    private void applyOnlineDomainEvent(BattleEventState event) {
+        switch (event.type()) {
+            case DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED -> addDomainBanner(
+                event.domainInstanceId(), event.domainName(),
+                event.sourceCharacterName() == null ? "" : event.sourceCharacterName(),
+                event.type() == BattleEventType.DOMAIN_COUNTER_ESTABLISHED);
+            case DOMAIN_COLLAPSED -> removeDomainBanner(event.domainInstanceId());
+            case DOMAIN_CLASH_STARTED -> {
+                setDomainClash(event.domainInstanceId(), true);
+                setDomainClash(event.relatedDomainInstanceId(), true);
+            }
+            case DOMAIN_CLASH_ENDED -> {
+                setDomainClash(event.domainInstanceId(), false);
+                setDomainClash(event.relatedDomainInstanceId(), false);
+            }
+            default -> { }
+        }
+    }
+
+    /** Rebuild banners from the authoritative local battlefield. */
+    private void syncLocalDomainBanners(BattleState state) {
+        if (state == null) return;
+        List<DomainBanner> banners = new ArrayList<>();
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            BattleCombatant owner = state.combatant(instance.ownerId());
+            banners.add(new DomainBanner(
+                instance.instanceId(), instance.definition().name(),
+                owner == null || owner.getCharacter() == null
+                    ? "" : owner.getCharacter().getName(),
+                instance.definition().antiDomain(),
+                domainDurationText(
+                    instance.remainingRounds(), instance.remainingTicks()),
+                false));
+        }
+        domainBanners = List.copyOf(banners);
+        for (DomainClash clash : state.domainBattlefield().clashes()) {
+            setDomainClash(clash.firstInstanceId(), true);
+            setDomainClash(clash.secondInstanceId(), true);
+        }
+    }
+
+    /** Rebuild banners from a server snapshot (also the reconnect path). */
+    private void syncOnlineDomainBanners(MatchState state) {
+        if (state == null) return;
+        DomainBattlefieldState battlefield = state.domainBattlefield();
+        List<DomainBanner> banners = new ArrayList<>();
+        for (DomainState domain : battlefield.activeDomains()) {
+            banners.add(new DomainBanner(
+                domain.instanceId(), domain.name(),
+                onlineDomainOwnerName(state, domain.ownerInstanceId()),
+                domain.antiDomain(),
+                domainDurationText(domain.remainingRounds(), domain.remainingTicks()),
+                false));
+        }
+        domainBanners = List.copyOf(banners);
+        for (DomainClashState clash : battlefield.clashes()) {
+            setDomainClash(clash.firstDomainInstanceId(), true);
+            setDomainClash(clash.secondDomainInstanceId(), true);
+        }
+    }
+
+    private static String onlineDomainOwnerName(MatchState state, String ownerInstanceId) {
+        if (ownerInstanceId == null) return "";
+        for (PlayerSide side : PlayerSide.values()) {
+            var player = state.player(side);
+            if (player.isEmpty()) continue;
+            for (CharacterState combatant : player.get().combatants()) {
+                if (ownerInstanceId.equals(combatant.instanceId())) {
+                    return combatant.name() == null ? "" : combatant.name();
+                }
+            }
+        }
+        return "";
+    }
+
+    private static String domainDurationText(int rounds, int ticks) {
+        if (rounds < 0) return "held";
+        if (rounds == 0) return ticks > 0 ? ticks + "t" : "";
+        return ticks <= 0 ? rounds + "r" : rounds + "r " + ticks + "t";
+    }
+
+    private void addDomainBanner(
+        String instanceId, String name, String ownerName, boolean antiDomain
+    ) {
+        if (instanceId == null || name == null) return;
+        List<DomainBanner> banners = new ArrayList<>(domainBanners);
+        banners.removeIf(banner -> instanceId.equals(banner.instanceId));
+        banners.add(new DomainBanner(instanceId, name, ownerName, antiDomain, "", false));
+        domainBanners = List.copyOf(banners);
+    }
+
+    private void removeDomainBanner(String instanceId) {
+        if (instanceId == null) return;
+        List<DomainBanner> banners = new ArrayList<>(domainBanners);
+        banners.removeIf(banner -> instanceId.equals(banner.instanceId));
+        domainBanners = List.copyOf(banners);
+    }
+
+    private void setDomainClash(String instanceId, boolean clashing) {
+        if (instanceId == null) return;
+        boolean present = domainBanners.stream()
+            .anyMatch(banner -> instanceId.equals(banner.instanceId)
+                && banner.clashing != clashing);
+        if (!present) return;
+        List<DomainBanner> banners = new ArrayList<>(domainBanners);
+        banners.replaceAll(banner -> instanceId.equals(banner.instanceId)
+            ? banner.withClash(clashing) : banner);
+        domainBanners = List.copyOf(banners);
+    }
+
+    /** Status strip under the top edge: one centered line per active Domain. */
+    private void drawDomainBanners(float screenWidth, float screenHeight) {
+        List<DomainBanner> banners = domainBanners;
+        if (banners.isEmpty()) return;
+        float y = screenHeight - 14f;
+        for (int index = 0; index < banners.size(); index++) {
+            DomainBanner banner = banners.get(index);
+            String label = banner.label();
+            GlyphLayout layout = new GlyphLayout(assets.fontSmall, label);
+            float x = (screenWidth - layout.width) / 2f;
+            Color text = banner.clashing
+                ? new Color(1f, 0.45f, 0.30f, 1f)
+                : banner.antiDomain
+                    ? new Color(0.50f, 0.85f, 1f, 1f)
+                    : new Color(0.72f, 0.55f, 1f, 1f);
+            assets.fontSmall.setColor(Color.BLACK);
+            assets.fontSmall.draw(batch, label, x + 1f, y - 1f);
+            assets.fontSmall.setColor(text);
+            assets.fontSmall.draw(batch, label, x, y);
+            y -= 18f;
+        }
+        // Restore a neutral color so later draws never inherit the banner tint.
+        assets.fontSmall.setColor(Color.WHITE);
+    }
+
     private void drawTickCounter(float screenWidth, float screenHeight) {
         String label = "TICK: " + currentExecutionTick;
         GlyphLayout layout = new GlyphLayout(assets.fontSmall, label);
@@ -2233,6 +2448,7 @@ public class BattleScreen implements Screen, BattleView {
             if (e.getType() == CombatEvent.Type.BATTLE_OVER) {
                 playMissingLocalFaints(state);
             }
+            applyLocalDomainEvent(e);
             if (!skipRoundRequested) {
                 BattleAudioRouter.cueFor(e)
                     .ifPresent(cue -> postLocal(() -> game.audio().play(cue)));
@@ -2336,6 +2552,11 @@ public class BattleScreen implements Screen, BattleView {
                 }
             }
         }
+        // Authoritative re-sync: playback banner updates pace with the log,
+        // this corrects any drift (durations, barriers, clashes) after the round.
+        if (!abortRequested && isCurrentLocalBattleThread()) {
+            syncLocalDomainBanners(state);
+        }
     }
 
     private static boolean hasLocalPlaybackEffect(CombatEvent event) {
@@ -2375,7 +2596,8 @@ public class BattleScreen implements Screen, BattleView {
         return switch (type) {
             case CE_DRAINED, CE_RESTORED,
                  HP_RESTORED, MAX_HP_CHANGED, MAX_CE_CHANGED,
-                 MOVE_SUMMON, BFS_EXPIRED -> false;
+                 MOVE_SUMMON, BFS_EXPIRED,
+                 DOMAIN_BARRIER_DAMAGED -> false;
             case CE_DEPLETED -> move != null;
             case DAMAGE_DEALT, DAMAGE_IGNORED -> move != null && source != target;
             default -> true;
@@ -2391,7 +2613,8 @@ public class BattleScreen implements Screen, BattleView {
         return switch (type) {
             case CE_DRAINED, CE_RESTORED,
                  HP_RESTORED, MAX_HP_CHANGED, MAX_CE_CHANGED,
-                 MOVE_SUMMON, BFS_ENTERED, BFS_EXPIRED -> false;
+                 MOVE_SUMMON, BFS_ENTERED, BFS_EXPIRED,
+                 DOMAIN_BARRIER_DAMAGED -> false;
             case CE_DEPLETED -> moveId != null;
             case DAMAGE_DEALT, DAMAGE_IGNORED -> moveId != null
                 && (sourceId == null || !sourceId.equals(targetId));
@@ -2726,6 +2949,7 @@ public class BattleScreen implements Screen, BattleView {
         multiplayerState = state;
         onlinePlayer = local;
         onlineEnemy = opponent;
+        syncOnlineDomainBanners(state);
         syncMultiplayerPlanningCountdown(state);
         initOnlineMoves(local, opponent);
 
@@ -3346,6 +3570,9 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private boolean applyPlaybackEvent(BattleEventState event) {
+        // Domain banners track playback so the status strip paces with the log
+        // instead of snapping to the post-round snapshot.
+        applyOnlineDomainEvent(event);
         // The summon joins with an entrance animation; playback holds on it the
         // same way it holds on a faint (flag returned after the log line below
         // has been queued so the join message still types out first). A skipped

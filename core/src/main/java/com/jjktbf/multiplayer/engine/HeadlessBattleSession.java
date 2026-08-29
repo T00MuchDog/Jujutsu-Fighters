@@ -23,6 +23,7 @@ import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
 import com.jjktbf.model.text.MoveDescriptionVariables;
+import com.jjktbf.model.domain.DomainInstance;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
 import com.jjktbf.multiplayer.protocol.ActionSegmentStatus;
@@ -34,6 +35,9 @@ import com.jjktbf.multiplayer.protocol.CharacterState;
 import com.jjktbf.multiplayer.protocol.CommandResult;
 import com.jjktbf.multiplayer.protocol.CommandType;
 import com.jjktbf.multiplayer.protocol.ErrorResponse;
+import com.jjktbf.multiplayer.protocol.DomainBattlefieldState;
+import com.jjktbf.multiplayer.protocol.DomainClashState;
+import com.jjktbf.multiplayer.protocol.DomainState;
 import com.jjktbf.multiplayer.protocol.HitComponentState;
 import com.jjktbf.multiplayer.protocol.MatchState;
 import com.jjktbf.multiplayer.protocol.MatchStatus;
@@ -714,6 +718,7 @@ public final class HeadlessBattleSession {
             endReason,
             stateVersion,
             recentEvents,
+            domainBattlefieldState(),
             planningDeadline,
             clock.millis()
         );
@@ -1463,7 +1468,12 @@ public final class HeadlessBattleSession {
                 relatedTargetCombatant == null
                     ? null : relatedTargetCombatant.getCharacter().getName(),
                 relatedTargetCombatant == null || relatedTargetCombatant.getInstanceId() == null
-                    ? null : relatedTargetCombatant.getInstanceId().value()
+                    ? null : relatedTargetCombatant.getInstanceId().value(),
+                event.getDomainInstanceId(),
+                event.getRelatedDomainInstanceId(),
+                event.getDomainId(),
+                event.getDomainName(),
+                event.getDomainCollapseReason()
             ));
         }
         return wireEvents;
@@ -1528,9 +1538,41 @@ public final class HeadlessBattleSession {
             case DAMAGE_DEALT, DAMAGE_IGNORED, HP_RESTORED,
                  MAX_HP_CHANGED, MAX_CE_CHANGED, BLACK_FLASH,
                  CE_DRAINED, CE_RESTORED,
-                 CHARACTER_TRANSFORMED, CHARACTER_REVERTED -> event.getIntValue();
+                 CHARACTER_TRANSFORMED, CHARACTER_REVERTED,
+                 DOMAIN_BARRIER_DAMAGED -> event.getIntValue();
             default -> null;
         };
+    }
+
+    private DomainBattlefieldState domainBattlefieldState() {
+        List<DomainState> domains = battleState.domainBattlefield().activeDomains().stream()
+            .map(this::domainState)
+            .toList();
+        List<DomainClashState> clashes = battleState.domainBattlefield().clashes().stream()
+            .map(clash -> new DomainClashState(
+                clash.firstInstanceId(), clash.secondInstanceId()))
+            .toList();
+        return new DomainBattlefieldState(domains, clashes);
+    }
+
+    private DomainState domainState(DomainInstance domain) {
+        return new DomainState(
+            domain.instanceId(),
+            domain.definition().id(),
+            domain.definition().name(),
+            domain.ownerId().value(),
+            domain.definition().antiDomain(),
+            domain.definition().topology().name(),
+            domain.definition().counterType().name(),
+            domain.selectedTargetIds().stream().map(CombatantId::value).toList(),
+            domain.memberIds().stream().map(CombatantId::value).toList(),
+            domain.protectedIds().stream().map(CombatantId::value).toList(),
+            domain.remainingRounds(),
+            domain.remainingTicks(),
+            domain.internalBarrierIntegrity(),
+            domain.externalBarrierIntegrity(),
+            domain.remainingCounterUses()
+        );
     }
 
     private List<String> moveTags(Move move) {

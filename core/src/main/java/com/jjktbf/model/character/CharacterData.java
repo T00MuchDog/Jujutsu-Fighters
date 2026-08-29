@@ -144,6 +144,9 @@ public class CharacterData {
      */
     public List<String> availableAbilityIds;
 
+    /** Domain IDs unlocked by active technique-tree Domain nodes. */
+    public List<String> availableDomainIds;
+
     // -------------------------------------------------------------------------
     // Derived helpers
     // -------------------------------------------------------------------------
@@ -298,8 +301,9 @@ public class CharacterData {
         validateDirectMoveAssignments(moveRepo, new ArrayList<>(availableMoveIds));
         List<String> effectiveMoveSetIds = requestedMoveSetIds != null
             ? requestedMoveSetIds : moveSetIds;
-        return effectiveMoveSetIds == null
+        Character character = effectiveMoveSetIds == null
             ? resolved.character() : resolved.character().withMoveSet(effectiveMoveSetIds);
+        return character.withAccessibleDomains(availableDomainIds);
     }
 
     /**

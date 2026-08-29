@@ -154,6 +154,10 @@ public class MoveEffectData extends AbilityEffectData {
             && moveTrigger != MoveEffectTrigger.ON_FIRE) {
             return "Exchange attack targets must use On fire.";
         }
+        if (effectType == AbilityEffectType.ESTABLISH_DOMAIN
+            && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+            return "Establish Domain must use On fire.";
+        }
         if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
             && moveTrigger != MoveEffectTrigger.ON_START
             && moveTrigger != MoveEffectTrigger.ON_FIRE) {

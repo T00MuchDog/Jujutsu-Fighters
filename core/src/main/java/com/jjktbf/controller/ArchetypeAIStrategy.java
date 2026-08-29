@@ -7,6 +7,7 @@ import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
 import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.TeamBattlePlan;
@@ -65,6 +66,19 @@ public class ArchetypeAIStrategy implements AIStrategy {
     private static final Set<String> AGGRESSIVE_IDS = Set.of("000003", "000005"); // Yuji Itadori, Maki Zenin
     private static final Set<String> PASSIVE_IDS = Set.of("000002");              // Miwa Kasumi
 
+    private DomainDefinitionLookup domainLookup;
+
+    @Override
+    public AIStrategy withDomainLookup(DomainDefinitionLookup lookup) {
+        this.domainLookup = lookup;
+        return this;
+    }
+
+    @Override
+    public DomainDefinitionLookup domainLookup() {
+        return domainLookup;
+    }
+
     // -------------------------------------------------------------------------
     // Team plan (the real entry point) — owns pruning/normalisation/targeting
     // -------------------------------------------------------------------------
@@ -79,6 +93,9 @@ public class ArchetypeAIStrategy implements AIStrategy {
 
         for (BattleCombatant ai : aiTeam) {
             BattlePlan plan = planFor(state, ai, rng);
+            plan = SmartAIScoring.pruneRestrictedDomainOpenings(
+                domainLookup, state, ai, plan);
+            plan = SmartAIScoring.promoteDomainOpenings(domainLookup, state, ai, plan);
 
             List<Move> alreadyPlanned = new ArrayList<>();
             for (ActionSegment segment : new ArrayList<>(plan.allSegments())) {

@@ -39,14 +39,19 @@ public final class BattleAudioRouter {
             case CE_RESTORED -> positiveCue(event.getIntValue(), SoundCue.BATTLE_CE_RESTORE);
             case CE_DEPLETED -> event.getMove() == null
                 ? Optional.empty() : Optional.of(SoundCue.BATTLE_STUN);
-            case STATUS_APPLIED, COMBATANT_SUMMONED -> Optional.of(SoundCue.BATTLE_STATUS_APPLY);
+            case STATUS_APPLIED, BFS_ENTERED, COMBATANT_SUMMONED ->
+                Optional.of(SoundCue.BATTLE_STATUS_APPLY);
             case STATUS_EXPIRED, BFS_EXPIRED -> Optional.of(SoundCue.BATTLE_STATUS_EXPIRE);
             case COMBATANT_DEFEATED, COMBATANT_REMOVED -> Optional.empty();
             case ABILITY_ACTIVATED, CHARACTER_TRANSFORMED, CHARACTER_REVERTED ->
                 Optional.of(SoundCue.BATTLE_ABILITY);
             case RATIO_TRIGGERED -> Optional.of(SoundCue.BATTLE_RATIO);
             case ROUND_END -> Optional.of(SoundCue.BATTLE_ROUND_END);
-            case BATTLE_OVER -> Optional.empty();
+            case MOVE_STARTED, ROUND_START, BATTLE_OVER,
+                 DOMAIN_DECLARED, DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED,
+                 DOMAIN_CLASH_STARTED, DOMAIN_CLASH_ENDED, DOMAIN_BARRIER_DAMAGED,
+                 DOMAIN_SURE_HIT_APPLIED, DOMAIN_SURE_HIT_NEGATED, DOMAIN_COLLAPSED ->
+                Optional.empty();
         };
     }
 
@@ -80,7 +85,11 @@ public final class BattleAudioRouter {
                 Optional.of(SoundCue.BATTLE_ABILITY);
             case RATIO_TRIGGERED -> Optional.of(SoundCue.BATTLE_RATIO);
             case ROUND_END -> Optional.of(SoundCue.BATTLE_ROUND_END);
-            case MOVE_STARTED, ROUND_START, BATTLE_OVER -> Optional.empty();
+            case MOVE_STARTED, ROUND_START, BATTLE_OVER,
+                 DOMAIN_DECLARED, DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED,
+                 DOMAIN_CLASH_STARTED, DOMAIN_CLASH_ENDED, DOMAIN_BARRIER_DAMAGED,
+                 DOMAIN_SURE_HIT_APPLIED, DOMAIN_SURE_HIT_NEGATED, DOMAIN_COLLAPSED ->
+                Optional.empty();
         };
     }
 

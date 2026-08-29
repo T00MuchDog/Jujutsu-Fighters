@@ -17,6 +17,7 @@ public class CombatEvent {
 
     public enum Type {
         // Move execution
+        MOVE_STARTED,
         MOVE_FIRED,         // move unleashed — attack resolved
         MOVE_MISSED,
         MOVE_BLOCKED,        // block fully negated the damage (BLOCK at 100% reduction)
@@ -41,6 +42,17 @@ public class CombatEvent {
         EFFECT_FAILED,
         RESOURCE_CHANGED,
 
+        // Domains
+        DOMAIN_DECLARED,
+        DOMAIN_ESTABLISHED,
+        DOMAIN_COUNTER_ESTABLISHED,
+        DOMAIN_CLASH_STARTED,
+        DOMAIN_CLASH_ENDED,
+        DOMAIN_BARRIER_DAMAGED,
+        DOMAIN_SURE_HIT_APPLIED,
+        DOMAIN_SURE_HIT_NEGATED,
+        DOMAIN_COLLAPSED,
+
         // Damage
         DAMAGE_DEALT,
         DAMAGE_IGNORED,
@@ -64,6 +76,7 @@ public class CombatEvent {
         COMBATANT_REMOVED,
 
         // BFS
+        BFS_ENTERED,
         BFS_EXPIRED,
 
         // Abilities
@@ -71,6 +84,7 @@ public class CombatEvent {
         RATIO_TRIGGERED,
 
         // Round / battle
+        ROUND_START,
         ROUND_END,
         BATTLE_OVER
     }
@@ -90,6 +104,11 @@ public class CombatEvent {
     private final String          previousCharacterId;
     private final String          characterId;
     private final String          characterName;
+    private final String          domainInstanceId;
+    private final String          relatedDomainInstanceId;
+    private final String          domainId;
+    private final String          domainName;
+    private final String          domainCollapseReason;
     private final String          message;    // human-readable description
 
     private CombatEvent(Builder b) {
@@ -105,6 +124,11 @@ public class CombatEvent {
         this.previousCharacterId = b.previousCharacterId;
         this.characterId = b.characterId;
         this.characterName = b.characterName;
+        this.domainInstanceId = b.domainInstanceId;
+        this.relatedDomainInstanceId = b.relatedDomainInstanceId;
+        this.domainId = b.domainId;
+        this.domainName = b.domainName;
+        this.domainCollapseReason = b.domainCollapseReason;
         this.message   = b.message;
     }
 
@@ -120,6 +144,11 @@ public class CombatEvent {
     public String          getPreviousCharacterId() { return previousCharacterId; }
     public String          getCharacterId() { return characterId; }
     public String          getCharacterName() { return characterName; }
+    public String          getDomainInstanceId() { return domainInstanceId; }
+    public String          getRelatedDomainInstanceId() { return relatedDomainInstanceId; }
+    public String          getDomainId() { return domainId; }
+    public String          getDomainName() { return domainName; }
+    public String          getDomainCollapseReason() { return domainCollapseReason; }
     public String          getMessage()  { return message; }
 
     @Override
@@ -158,6 +187,11 @@ public class CombatEvent {
         private String          previousCharacterId;
         private String          characterId;
         private String          characterName;
+        private String          domainInstanceId;
+        private String          relatedDomainInstanceId;
+        private String          domainId;
+        private String          domainName;
+        private String          domainCollapseReason;
         private String          message = "";
 
         private Builder(Type type) { this.type = type; }
@@ -179,6 +213,17 @@ public class CombatEvent {
         public Builder previousCharacterId(String v) { this.previousCharacterId = v; return this; }
         public Builder characterId(String v) { this.characterId = v; return this; }
         public Builder characterName(String v) { this.characterName = v; return this; }
+        public Builder domainInstanceId(String v) { this.domainInstanceId = v; return this; }
+        public Builder relatedDomainInstanceId(String v) {
+            this.relatedDomainInstanceId = v;
+            return this;
+        }
+        public Builder domainId(String v) { this.domainId = v; return this; }
+        public Builder domainName(String v) { this.domainName = v; return this; }
+        public Builder domainCollapseReason(String v) {
+            this.domainCollapseReason = v;
+            return this;
+        }
         public Builder message(String v)          { this.message  = v; return this; }
 
         public CombatEvent build() { return new CombatEvent(this); }

@@ -122,6 +122,35 @@ class MoveEditorScreenTest {
     }
 
     @Test
+    void componentlessAttackHybridKeepsAuthoredMoveLevelTypeTags() {
+        // A defence hybrid whose hit is a launched counter-move carries no hit
+        // components of its own; its type tags describe the move itself, not
+        // the launched hit, and must survive tag edits and saves.
+        MoveData draft = new MoveData();
+        draft.id = "DELEGATED_COUNTER";
+        draft.tags = new ArrayList<>(List.of(
+            MoveTag.ATTACK.name(), MoveTag.DEFENSIVE.name(), MoveTag.UTILITY.name(),
+            MoveTag.CURSED_ENERGY.name(), MoveTag.NON_INNATE_TECHNIQUE.name()));
+        draft.hitComponents = new ArrayList<>();
+        draft.apCost = 5;
+        draft.unleashPoint = 1;
+
+        // Tag-picker callback path: the picked set lands on the draft, then
+        // the component sync runs.
+        draft.tags.add(MoveTag.PHYSICAL.name());
+        MoveEditorScreen.applyMoveDamageTagsToComponents(
+            draft, Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY));
+
+        assertTrue(draft.tags.contains(MoveTag.PHYSICAL.name()));
+        assertTrue(draft.tags.contains(MoveTag.NON_INNATE_TECHNIQUE.name()));
+        assertTrue(draft.tags.contains(MoveTag.CURSED_ENERGY.name()));
+
+        MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
+        assertTrue(saved.tags.contains(MoveTag.NON_INNATE_TECHNIQUE.name()));
+        assertTrue(saved.tags.contains(MoveTag.CURSED_ENERGY.name()));
+    }
+
+    @Test
     void saveCopyMigratesLegacySingleHitAttacks() {
         MoveData draft = new MoveData();
         draft.tags = new ArrayList<>(List.of(

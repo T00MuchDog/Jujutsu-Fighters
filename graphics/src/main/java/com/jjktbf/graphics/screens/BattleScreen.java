@@ -3269,7 +3269,7 @@ public class BattleScreen implements Screen, BattleView {
             .prerequisites(prerequisites)
             .defenseTargeting(TargetListSupport.moveStateDefenseTargeting(state))
             .defenseTargetCount(TargetListSupport.moveStateDefenseTargetCount(state))
-            .pairTargeting(TargetListSupport.moveStatePairTargeting(state))
+            .targeting(TargetListSupport.moveStateTargeting(state))
             .freeMove(true);
         if (!planningEffects.isEmpty()) builder.effects(planningEffects);
         if (TargetListSupport.moveStateAoeType(state) != null) {

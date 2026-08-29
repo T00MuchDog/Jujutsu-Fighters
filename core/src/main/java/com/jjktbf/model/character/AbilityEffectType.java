@@ -166,6 +166,10 @@ public enum AbilityEffectType {
         "Multiply incoming damage",
         "Multiplies damage taken from matching moves. 0.95 reduces it by 5%.",
         MOVE_SCOPE, DECIMAL),
+    BLOCK_EFFECTIVENESS_MULTIPLY(
+        "Multiply block effectiveness",
+        "Multiplies the percentage or flat amount blocked from the current incoming hit.",
+        DECIMAL),
     GRANT_MOVE(
         "Grant move",
         "Adds one move to the character's available moves, bypassing all requirements.",
@@ -593,8 +597,9 @@ public enum AbilityEffectType {
             }
             case CE_COST_WAIVE_BY_STAT_TOTAL -> effect.intValue = 100;
             case CE_COST_MULTIPLY, MOVE_ACCURACY_MULTIPLY,
-                 OPPONENT_ACCURACY_MULTIPLY, DAMAGE_MULTIPLY, MOVE_BASE_POWER_MULTIPLY,
-                 INCOMING_DAMAGE_MULTIPLY, MODIFY_DEFENSE -> effect.doubleValue = 1.10;
+                  OPPONENT_ACCURACY_MULTIPLY, DAMAGE_MULTIPLY, MOVE_BASE_POWER_MULTIPLY,
+                  INCOMING_DAMAGE_MULTIPLY, BLOCK_EFFECTIVENESS_MULTIPLY,
+                  MODIFY_DEFENSE -> effect.doubleValue = 1.10;
             case MOVE_BASE_POWER_SCALE_BY_STAT -> {
                 effect.minimumStatMultiplier = 0.5;
                 effect.maximumStatMultiplier = 2.0;
@@ -1104,7 +1109,8 @@ public enum AbilityEffectType {
                     : null;
             case STAT_MULTIPLY, CE_COST_MULTIPLY, MOVE_ACCURACY_MULTIPLY,
                   OPPONENT_ACCURACY_MULTIPLY, DAMAGE_MULTIPLY, MOVE_BASE_POWER_MULTIPLY,
-                  INCOMING_DAMAGE_MULTIPLY, MODIFY_DEFENSE, DEFENSE_FROM_DURABILITY,
+                  INCOMING_DAMAGE_MULTIPLY, BLOCK_EFFECTIVENESS_MULTIPLY,
+                  MODIFY_DEFENSE, DEFENSE_FROM_DURABILITY,
                   BATTLE_STAT_ODDS_MULTIPLY ->
                 effect.doubleValue <= 0 || effect.doubleValue == 1.0
                     ? "Enter a positive multiplier other than 1.0." : null;
@@ -1286,7 +1292,8 @@ public enum AbilityEffectType {
 
     /** Effect primitives that may be activated from a move effect row. */
     public boolean isMoveEffect() {
-        return requiresActivation() || isAccuracyPriority() || isMoveAvailabilityConstraint();
+        return requiresActivation() || isAccuracyPriority() || isMoveAvailabilityConstraint()
+            || isBlockEffectivenessModifier();
     }
 
     /** Move constraints queried before placement and again when the move fires. */
@@ -1299,10 +1306,16 @@ public enum AbilityEffectType {
         return this == NEVER_MISS || this == NEVER_HIT;
     }
 
+    /** Calculation-only move primitive queried while an incoming hit is blocked. */
+    public boolean isBlockEffectivenessModifier() {
+        return this == BLOCK_EFFECTIVENESS_MULTIPLY;
+    }
+
     public boolean isMoveOnly() {
         return this == CODED_MOVE_ACTION || this == EXCHANGE_ATTACK_TARGETS
             || this == CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
             || this == ESTABLISH_DOMAIN
+            || isBlockEffectivenessModifier()
             || isMoveAvailabilityConstraint();
     }
 

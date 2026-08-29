@@ -45,6 +45,11 @@ public final class DamageCalculator {
         CodedHitModifiers onAttackConnected(AbilityTrigger trigger);
     }
 
+    @FunctionalInterface
+    interface BlockEffectivenessHook {
+        double multiplierFor(Move blockMove);
+    }
+
     /**
      * Global damage scale factor.
      * Lower = less damage per hit, longer fights.
@@ -183,7 +188,7 @@ public final class DamageCalculator {
     ) {
         return resolve(attacker, defender, move, component, currentTick, rng,
             currentRound, forceFullBlock, requireFiredDefense, connectedHitHook,
-            temporaryNeverMissTier, temporaryGuaranteesNormalAccuracy,
+            null, temporaryNeverMissTier, temporaryGuaranteesNormalAccuracy,
             temporaryNeverHitTier, 1.0);
     }
 
@@ -199,6 +204,7 @@ public final class DamageCalculator {
         boolean         forceFullBlock,
         boolean         requireFiredDefense,
         ConnectedHitHook connectedHitHook,
+        BlockEffectivenessHook blockEffectivenessHook,
         int             temporaryNeverMissTier,
         boolean         temporaryGuaranteesNormalAccuracy,
         int             temporaryNeverHitTier,
@@ -379,7 +385,10 @@ public final class DamageCalculator {
                     .withRecoil(codedModifiers.recoilDamage())
                     .withPerfectRead(true);
             }
-            attackValue = activeBlockSegment.getMove().applyBlockTo(attackValue);
+            double blockMultiplier = blockEffectivenessHook == null ? 1.0
+                : blockEffectivenessHook.multiplierFor(activeBlockSegment.getMove());
+            attackValue = activeBlockSegment.getMove().applyBlockTo(
+                attackValue, blockMultiplier);
             if (attackValue == 0) {
                 return DamageResult.blocked(
                     move, component, activeBlockSegment, codedModifiers.events())

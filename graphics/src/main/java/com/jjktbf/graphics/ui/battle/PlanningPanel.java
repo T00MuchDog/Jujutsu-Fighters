@@ -30,7 +30,7 @@ import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
 import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
@@ -596,7 +596,7 @@ public class PlanningPanel {
 
     private static boolean isOrderedPairMove(Move move) {
         return move != null
-            && move.getPairTargeting() == CombatantPairTargeting.ALLY_AND_ENEMY;
+            && move.getTargeting() == Targeting.ALLY_AND_ENEMY;
     }
 
     private static boolean requiresExplicitTargets(Move move) {

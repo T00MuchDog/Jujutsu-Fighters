@@ -8,6 +8,7 @@ import com.jjktbf.model.character.coded.CodedMoveResponse;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectMessages;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveEffectData;
@@ -368,6 +369,34 @@ public final class AbilityActivationEngine {
         if (!move.isAttackLaunchChanceEnabled()) return true;
         double chance = Math.max(0.0, Math.min(1.0, move.getAttackLaunchChance() / 100.0));
         return chance > 0.0 && (chance >= 1.0 || rng.nextDouble() < chance);
+    }
+
+    /** Resolve conditional calculation-only modifiers on an active block move. */
+    public double blockEffectivenessMultiplier(
+        BattleState state,
+        BattleCombatant blocker,
+        BattleCombatant attacker,
+        Move blockMove,
+        Move incomingMove,
+        HitComponent component,
+        int tick
+    ) {
+        if (blockMove == null || incomingMove == null || component == null) return 1.0;
+        AbilityTrigger trigger = AbilityTrigger.attackConnected(
+            attacker, blocker, incomingMove, component, tick);
+        double multiplier = 1.0;
+        int mastery = TechniqueMasteryResolver.masteryOf(blocker);
+        for (MoveEffectData authored
+                : blockMove.effectsFor(MoveEffectTrigger.BLOCK_CALCULATION, -1)) {
+            if (!AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY.name()
+                .equalsIgnoreCase(authored.type)) continue;
+            if (!activateMoveEffect(
+                state, blocker, attacker, blockMove, authored,
+                MoveEffectTrigger.BLOCK_CALCULATION, -1, trigger, tick)) continue;
+            AbilityEffectData resolved = TechniqueMasteryResolver.resolve(authored, mastery);
+            multiplier *= resolved.doubleValue == null ? 1.0 : resolved.doubleValue;
+        }
+        return multiplier;
     }
 
     private static AbilityTrigger moveEffectTrigger(
@@ -794,7 +823,7 @@ public final class AbilityActivationEngine {
                   ATTACK_HIT, ATTACK_MISSED, MOVE_BLOCKED, EVENT_TARGET,
                   TIMELINE_POINT_REACHED -> history.stream().anyMatch(candidate ->
                 eventLeafMatches(type, condition, owner, enemy, state, candidate, targetLocal));
-            case ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, FATAL_DAMAGE,
+            case ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, INCOMING_HIT_HAS_TAG, FATAL_DAMAGE,
                  INCOMING_HIT_LACKS_CURSED_ENERGY ->
                 eventLeafMatches(type, condition, owner, enemy, state, trigger, targetLocal);
             case ROUND_REACHED -> state.getRoundNumber() >= conditionRound(condition, owner);
@@ -1263,7 +1292,8 @@ public final class AbilityActivationEngine {
             }
             case MAX_ACTIVE_SUMMONS, SUMMON_CE_UPKEEP_PER_ACTIVE_TICK,
                    BATTLE_STAT_ODDS_MULTIPLY,
-                   MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE -> { }
+                   MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE,
+                   BLOCK_EFFECTIVENESS_MULTIPLY -> { }
         }
     }
 
@@ -1367,7 +1397,7 @@ public final class AbilityActivationEngine {
                   DAMAGE_TAKEN_AT_LEAST, CE_SPENT_AT_LEAST, CE_LOST_AT_LEAST,
                   CE_RESTORED_AT_LEAST,
                    STATUS_APPLIED, STATUS_REMOVED, MANUAL_ACTIVATION, BATTLE_STARTED,
-                   ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG,
+                   ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, INCOMING_HIT_HAS_TAG,
                    FATAL_DAMAGE, INCOMING_HIT_LACKS_CURSED_ENERGY -> true;
             default -> false;
         };
@@ -1426,6 +1456,9 @@ public final class AbilityActivationEngine {
                     || moveContext && trigger.type() == AbilityTrigger.Type.ATTACK_HIT)
                 && eventActorMatches(condition, owner, state, trigger.actor())
                 && connectedHitHasTag(trigger, condition.moveTag);
+            case INCOMING_HIT_HAS_TAG -> trigger.type() == AbilityTrigger.Type.ATTACK_CONNECTED
+                && trigger.target() == owner
+                && incomingHitHasTag(trigger, condition.moveTag);
             case FATAL_DAMAGE -> trigger.type() == AbilityTrigger.Type.FATAL_DAMAGE
                 && eventActorMatches(condition, owner, state, trigger.target());
             case INCOMING_HIT_LACKS_CURSED_ENERGY ->
@@ -1608,6 +1641,20 @@ public final class AbilityActivationEngine {
             return trigger.hitComponent().getTags().contains(tag);
         }
         return trigger.move() != null && trigger.move().hasTag(tag.name());
+    }
+
+    private static boolean incomingHitHasTag(AbilityTrigger trigger, String tagName) {
+        MoveTag tag;
+        try { tag = MoveTag.valueOf(tagName); }
+        catch (Exception exception) { return false; }
+        HitComponent component = trigger.hitComponent();
+        if (component == null) return false;
+        if (tag == MoveTag.CURSED_ENERGY) {
+            return BlockAttackType.from(component) != BlockAttackType.PHYSICAL;
+        }
+        return component.hasTag(tag)
+            || !MoveTag.HIT_TAGS.contains(tag)
+                && trigger.move() != null && trigger.move().hasTag(tag.name());
     }
 
     private static boolean incomingHitLacksCursedEnergy(AbilityTrigger trigger) {

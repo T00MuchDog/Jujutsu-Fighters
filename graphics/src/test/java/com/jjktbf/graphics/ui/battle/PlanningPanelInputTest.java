@@ -11,7 +11,7 @@ import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.move.AoeType;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveData;
@@ -305,7 +305,7 @@ class PlanningPanelInputTest {
         Move move = new Move.Builder("PAIR")
             .name("Pair")
             .category(MoveCategory.UTILITY)
-            .pairTargeting(CombatantPairTargeting.ALLY_AND_ENEMY)
+            .targeting(Targeting.ALLY_AND_ENEMY)
             .apCost(5)
             .unleashPoint(1)
             .build();

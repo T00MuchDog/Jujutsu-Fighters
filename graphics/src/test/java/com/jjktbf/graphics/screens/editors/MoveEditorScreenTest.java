@@ -8,7 +8,8 @@ import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.BlockStyle;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.BlockAttackType;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveEffectData;
@@ -236,7 +237,8 @@ class MoveEditorScreenTest {
         assertEquals(DefenseType.BLOCK.name(), saved.defenseType);
         assertEquals(BlockStyle.FLAT.name(), saved.blockStyle);
         assertEquals(4, saved.blockDuration);
-        assertEquals(List.of(MoveTag.PHYSICAL.name()), saved.blockAffectedTags);
+        assertEquals(List.of(BlockAttackType.PHYSICAL.name()), saved.blockAttackTypes);
+        assertNull(saved.blockAffectedTags);
         assertEquals(20, saved.blockFlatReduction);
         assertEquals(1, saved.selfEffects.size());
 
@@ -259,9 +261,13 @@ class MoveEditorScreenTest {
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
 
         assertEquals(1, saved.moveCap);
+        assertEquals(List.of(
+            BlockAttackType.PHYSICAL.name(),
+            BlockAttackType.PHYSICAL_CURSED_ENERGY.name(),
+            BlockAttackType.CURSED_ENERGY.name()), saved.blockAttackTypes);
+        assertNull(saved.blockAffectedTags);
         assertEquals(List.of(MoveTag.PHYSICAL.name(), MoveTag.CURSED_ENERGY.name()),
-            saved.blockAffectedTags);
-        assertNotSame(draft.blockAffectedTags, saved.blockAffectedTags);
+            draft.blockAffectedTags);
     }
 
     @Test
@@ -324,14 +330,14 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void saveCopyPreservesGenericPairTargeting() {
+    void saveCopyPreservesGenericTargeting() {
         MoveData draft = new MoveData();
         draft.tags = new ArrayList<>(List.of(MoveTag.UTILITY.name()));
-        draft.pairTargeting = CombatantPairTargeting.ALLY_AND_ENEMY.name();
+        draft.targeting = Targeting.ALLY_AND_ENEMY.name();
 
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
 
-        assertEquals("ALLY_AND_ENEMY", saved.pairTargeting);
+        assertEquals("ALLY_AND_ENEMY", saved.targeting);
     }
 
     @Test
@@ -914,6 +920,10 @@ class MoveEditorScreenTest {
             .contains(AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER));
         assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_HIT)
             .contains(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_HIT)
+            .contains(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY));
+        assertEquals(List.of(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY),
+            MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.BLOCK_CALCULATION));
     }
 
     private static MoveData moveWithAllSectionDetails() {

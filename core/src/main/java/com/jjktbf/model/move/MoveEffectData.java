@@ -158,6 +158,14 @@ public class MoveEffectData extends AbilityEffectData {
             && moveTrigger != MoveEffectTrigger.ON_FIRE) {
             return "Establish Domain must use On fire.";
         }
+        if (effectType.isBlockEffectivenessModifier()
+            && moveTrigger != MoveEffectTrigger.BLOCK_CALCULATION) {
+            return effectType.displayName() + " must use While blocking.";
+        }
+        if (!effectType.isBlockEffectivenessModifier()
+            && moveTrigger == MoveEffectTrigger.BLOCK_CALCULATION) {
+            return "Only block-effectiveness modifiers may use While blocking.";
+        }
         if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
             && moveTrigger != MoveEffectTrigger.ON_START
             && moveTrigger != MoveEffectTrigger.ON_FIRE) {

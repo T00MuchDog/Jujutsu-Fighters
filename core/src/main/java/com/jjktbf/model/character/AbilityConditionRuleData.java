@@ -220,6 +220,7 @@ public class AbilityConditionRuleData {
     private static boolean containsPreResolutionHook(AbilityConditionData condition) {
         return containsType(condition, AbilityConditionType.ATTACK_CONNECTED)
             || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_HAS_TAG)
             || containsType(condition, AbilityConditionType.FATAL_DAMAGE)
             || containsType(condition, AbilityConditionType.INCOMING_HIT_LACKS_CURSED_ENERGY);
     }
@@ -231,7 +232,8 @@ public class AbilityConditionRuleData {
         List<AbilityEffectData> effects
     ) {
         if (containsType(condition, AbilityConditionType.ATTACK_CONNECTED)
-            || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG)) {
+            || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_HAS_TAG)) {
             return false;
         }
         boolean fatalOpportunity = containsType(condition, AbilityConditionType.FATAL_DAMAGE)
@@ -266,7 +268,8 @@ public class AbilityConditionRuleData {
             return "Fatal damage incoming is not a runtime opportunity for " + label + ".";
         }
         if ((containsType(condition, AbilityConditionType.ATTACK_CONNECTED)
-            || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG))
+            || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_HAS_TAG))
             && !("RATIO".equals(key) && "REINFORCEMENT_RATIO".equals(feature))) {
             return "Connected-hit conditions are not runtime opportunities for " + label + ".";
         }

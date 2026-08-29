@@ -159,10 +159,10 @@ class ProtocolJsonTest {
 
         assertEquals("SINGLE_ALLY", restored.defenseTargeting());
         assertEquals(4, restored.defenseTargetCount());
-        assertEquals("ALLY_AND_ENEMY", restored.pairTargeting());
+        assertEquals("ALLY_AND_ENEMY", restored.targeting());
         assertEquals("SELF", legacy.defenseTargeting());
         assertEquals(2, legacy.defenseTargetCount());
-        assertEquals("NONE", legacy.pairTargeting());
+        assertEquals("DEFAULT", legacy.targeting());
     }
 
     @Test

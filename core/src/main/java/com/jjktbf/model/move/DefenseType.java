@@ -30,10 +30,10 @@ public enum DefenseType {
      * {@code 0} = use the move's apCost as the window, {@code -1} = until end of
      * round, {@code >0} = that many AP ticks from the unleash point.</p>
      *
-     * <p>Tag filtering via {@code blockAffectedTags}: a block fires iff it covers
-     * every damage tag the incoming attack uses (attack tags ⊆ block tags).
-     * null/empty = covers all damage types. See
-     * {@link Move#coveredByBlockTags}.</p>
+     * <p>Coverage uses three independent dimensions: one of three attack
+     * categories, accepted MELEE/RANGED tags, and accepted elemental tags.
+     * Every tag on the incoming hit must be accepted. Empty dimensions accept
+     * everything. See {@link Move#blocksAttack(Move, HitComponent)}.</p>
      *
      * <p>A GUARD_BREAK attack ignores blocks entirely. Blocks are subject to the
      * potency gate: a block only applies when {@code block.potency >= attack.potency}.</p>

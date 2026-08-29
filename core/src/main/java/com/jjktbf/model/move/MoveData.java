@@ -151,7 +151,14 @@ public class MoveData {
 
     /** Block/dodge/parry shared field: duration in AP ticks. 0 = use move's apCost. -1 = end of round. */
     public int     blockDuration = 0;
-    /** Tags this block or parry affects. Null = all damage types. */
+    /** Exact attack categories this block or parry affects. Null/empty = all three. */
+    public List<String> blockAttackTypes;
+    /** Accepted hit ranges (MELEE / RANGED). Null/empty = both and untagged hits. */
+    public List<String> blockRanges;
+    /** Blockable elemental tags. Every element on a hit must be selected. Null/empty = all. */
+    public List<String> blockElementalTags;
+    /** Legacy mixed coverage list; migrated into the three fields above on load. */
+    @Deprecated
     public List<String> blockAffectedTags;
     /** PERCENTAGE block only: percentage of damage reduced (0-100). 100 = full block. */
     public int     blockDamageReduction = 100;
@@ -259,8 +266,9 @@ public class MoveData {
      */
     public int defenseTargetCount = 2;
 
-    /** Ordered combatant-pair targeting shape. Missing/invalid values resolve to NONE. */
-    public String pairTargeting = "NONE";
+    /** Ordered combatant-pair targeting shape. Missing/invalid values resolve to DEFAULT. */
+    @com.fasterxml.jackson.annotation.JsonAlias("pairTargeting")
+    public String targeting = "DEFAULT";
 
     /**
      * {@link AttackLaunchMode} enum name for a Defensive+Attack hybrid: when the
@@ -720,7 +728,9 @@ public class MoveData {
             .defenseType(resolveDefenseType())
             .blockStyle(resolveBlockStyle())
             .blockDuration(blockDuration)
-            .blockAffectedTags(blockAffectedTags)
+            .blockAttackTypes(effectiveBlockAttackTypes())
+            .blockRanges(effectiveBlockRanges())
+            .blockElementalTags(effectiveBlockElementalTags())
             .blockDamageReduction(blockDamageReduction)
             .blockFlatReduction(blockFlatReduction)
             .dodgeChance(dodgeChance)
@@ -738,7 +748,7 @@ public class MoveData {
             .aoeTargetCount(aoeTargetCount >= 2 ? aoeTargetCount : 2)
             .defenseTargeting(DefenseTargeting.fromName(defenseTargeting))
             .defenseTargetCount(defenseTargetCount >= 2 ? defenseTargetCount : 2)
-            .pairTargeting(CombatantPairTargeting.fromName(pairTargeting));
+            .targeting(Targeting.fromName(targeting));
 
         // Defensive+Attack hybrid launch settings. Cleared for non-hybrids so
         // stale fields can never take effect on an ordinary move.
@@ -813,6 +823,100 @@ public class MoveData {
                 catch (IllegalArgumentException e) { yield DefenseType.NONE; }
             }
         };
+    }
+
+    private Set<BlockAttackType> effectiveBlockAttackTypes() {
+        java.util.EnumSet<BlockAttackType> parsed =
+            java.util.EnumSet.noneOf(BlockAttackType.class);
+        if (blockAttackTypes != null) {
+            for (String stored : blockAttackTypes) {
+                if (stored == null || stored.isBlank()) continue;
+                parsed.add(BlockAttackType.valueOf(stored.trim().toUpperCase()));
+            }
+            return parsed;
+        }
+        if (blockAffectedTags == null) return parsed;
+
+        boolean physical = containsLegacyBlockTag(MoveTag.PHYSICAL);
+        boolean cursedEnergy = containsLegacyBlockTag(MoveTag.CURSED_ENERGY)
+            || containsLegacyBlockTag(MoveTag.INNATE_TECHNIQUE)
+            || containsLegacyBlockTag(MoveTag.NON_INNATE_TECHNIQUE);
+        if (physical) parsed.add(BlockAttackType.PHYSICAL);
+        if (cursedEnergy) parsed.add(BlockAttackType.CURSED_ENERGY);
+        if (physical && cursedEnergy) parsed.add(BlockAttackType.PHYSICAL_CURSED_ENERGY);
+        return parsed;
+    }
+
+    private Set<MoveTag> effectiveBlockRanges() {
+        return blockRanges != null
+            ? parsedBlockTags(blockRanges, MoveTag.RANGE_TAGS, "range", true)
+            : parsedBlockTags(blockAffectedTags, MoveTag.RANGE_TAGS, "range", false);
+    }
+
+    private Set<MoveTag> effectiveBlockElementalTags() {
+        return blockElementalTags != null
+            ? parsedBlockTags(
+                blockElementalTags, MoveTag.ELEMENTAL_TAGS, "elemental", true)
+            : parsedBlockTags(
+                blockAffectedTags, MoveTag.ELEMENTAL_TAGS, "elemental", false);
+    }
+
+    private boolean containsLegacyBlockTag(MoveTag expected) {
+        return blockAffectedTags.stream().anyMatch(stored ->
+            stored != null && expected.name().equalsIgnoreCase(stored.trim()));
+    }
+
+    private static Set<MoveTag> parsedBlockTags(
+        List<String> storedTags,
+        Set<MoveTag> allowed,
+        String dimension,
+        boolean strict
+    ) {
+        java.util.EnumSet<MoveTag> parsed = java.util.EnumSet.noneOf(MoveTag.class);
+        if (storedTags == null) return parsed;
+        for (String stored : storedTags) {
+            if (stored == null || stored.isBlank()) continue;
+            MoveTag tag;
+            try {
+                tag = MoveTag.valueOf(stored.trim().toUpperCase());
+            } catch (IllegalArgumentException exception) {
+                if (!strict) continue;
+                throw new IllegalArgumentException(
+                    "Invalid block " + dimension + " tag: " + stored, exception);
+            }
+            if (allowed.contains(tag)) {
+                parsed.add(tag);
+            } else if (strict) {
+                throw new IllegalArgumentException(
+                    tag + " is not a block " + dimension + " tag.");
+            }
+        }
+        return parsed;
+    }
+
+    /** Translate the retired mixed block tag list into explicit coverage dimensions. */
+    public boolean migrateLegacyBlockCoverage() {
+        if (blockAffectedTags == null) return false;
+        if (blockAttackTypes == null) {
+            Set<BlockAttackType> types = effectiveBlockAttackTypes();
+            blockAttackTypes = types.isEmpty() ? null
+                : types.stream().map(BlockAttackType::name)
+                    .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        }
+        if (blockRanges == null) {
+            Set<MoveTag> ranges = effectiveBlockRanges();
+            blockRanges = ranges.isEmpty() ? null
+                : ranges.stream().map(MoveTag::name)
+                    .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        }
+        if (blockElementalTags == null) {
+            Set<MoveTag> elements = effectiveBlockElementalTags();
+            blockElementalTags = elements.isEmpty() ? null
+                : elements.stream().map(MoveTag::name)
+                    .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        }
+        blockAffectedTags = null;
+        return true;
     }
 
     /**
@@ -1153,8 +1257,16 @@ public class MoveData {
         d.defenseType           = move.getDefenseType().name();
         d.blockStyle            = move.getBlockStyle() != null ? move.getBlockStyle().name() : "PERCENTAGE";
         d.blockDuration         = move.getBlockDuration();
-        d.blockAffectedTags     = move.getBlockAffectedTags() != null
-                                    ? new java.util.ArrayList<>(move.getBlockAffectedTags()) : null;
+        d.blockAttackTypes      = move.getBlockAttackTypes().isEmpty() ? null
+            : move.getBlockAttackTypes().stream().map(BlockAttackType::name)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        d.blockRanges           = move.getBlockRanges().isEmpty() ? null
+            : move.getBlockRanges().stream().map(MoveTag::name)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        d.blockElementalTags    = move.getBlockElementalTags().isEmpty() ? null
+            : move.getBlockElementalTags().stream().map(MoveTag::name)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        d.blockAffectedTags     = null;
         d.blockDamageReduction  = move.getBlockDamageReduction();
         d.blockFlatReduction    = move.getBlockFlatReduction();
         d.dodgeChance           = move.getDodgeChance();
@@ -1174,7 +1286,7 @@ public class MoveData {
         }
         d.defenseTargeting    = move.getDefenseTargeting().name();
         d.defenseTargetCount  = move.getDefenseTargetCount();
-        d.pairTargeting       = move.getPairTargeting().name();
+        d.targeting       = move.getTargeting().name();
         d.attackLaunchMode    = move.getAttackLaunchMode() != null
                                     ? move.getAttackLaunchMode().name() : null;
         d.attackLaunchCondition = move.getAttackLaunchCondition() != null

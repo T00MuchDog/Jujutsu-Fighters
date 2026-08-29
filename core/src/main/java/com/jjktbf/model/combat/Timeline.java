@@ -236,8 +236,8 @@ public class Timeline {
      *
      * <p>Coverage rules per defense type:
      * <ul>
-     *   <li>{@link com.jjktbf.model.move.DefenseType#BLOCK BLOCK} — uses
-     *       {@link Move#coveredByBlockTags(List)} (attack tags ⊆ block tags).</li>
+     *   <li>{@link com.jjktbf.model.move.DefenseType#BLOCK BLOCK} — matches the
+     *       incoming hit's attack category, range, and elemental tags.</li>
      *   <li>{@link com.jjktbf.model.move.DefenseType#PARRY PARRY} — uses the
      *       same affected-tag coverage as BLOCK.</li>
      *   <li>{@link com.jjktbf.model.move.DefenseType#DODGE DODGE} — uses
@@ -283,8 +283,7 @@ public class Timeline {
             if (incomingMove != null) {
                 if ((type == com.jjktbf.model.move.DefenseType.BLOCK
                         || type == com.jjktbf.model.move.DefenseType.PARRY)
-                        && !incomingMove.coveredByBlockTags(
-                            move.getBlockAffectedTags(), component)) continue;
+                        && !move.blocksAttack(incomingMove, component)) continue;
                 if (type == com.jjktbf.model.move.DefenseType.DODGE
                         && !move.dodgeAppliesTo(incomingMove, component)) continue;
             }
@@ -314,7 +313,7 @@ public class Timeline {
                 com.jjktbf.model.move.DefenseType dt = move.getDefenseType();
                 if ((dt == com.jjktbf.model.move.DefenseType.BLOCK
                         || dt == com.jjktbf.model.move.DefenseType.PARRY)
-                        && !incomingMove.coveredByBlockTags(move.getBlockAffectedTags())) continue;
+                        && !move.blocksAttack(incomingMove)) continue;
                 if (dt == com.jjktbf.model.move.DefenseType.DODGE
                         && !move.dodgeAppliesTo(incomingMove)) continue;
             }
@@ -366,8 +365,7 @@ public class Timeline {
             if (incomingMove != null) {
                 if ((move.getDefenseType() == com.jjktbf.model.move.DefenseType.BLOCK
                         || move.getDefenseType() == com.jjktbf.model.move.DefenseType.PARRY)
-                        && !incomingMove.coveredByBlockTags(
-                            move.getBlockAffectedTags(), component)) continue;
+                        && !move.blocksAttack(incomingMove, component)) continue;
                 if (move.getDefenseType() == com.jjktbf.model.move.DefenseType.DODGE
                         && !move.dodgeAppliesTo(incomingMove, component)) continue;
             }

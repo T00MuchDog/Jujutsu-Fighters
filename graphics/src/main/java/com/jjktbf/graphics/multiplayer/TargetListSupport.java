@@ -4,7 +4,7 @@ import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.move.AoeType;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.multiplayer.protocol.MoveState;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
@@ -136,17 +136,17 @@ public final class TargetListSupport {
         return value instanceof Number number ? Math.max(1, number.intValue()) : 1;
     }
 
-    public static CombatantPairTargeting moveStatePairTargeting(MoveState move) {
-        Object value = invokeOptional(move, "pairTargeting");
+    public static Targeting moveStateTargeting(MoveState move) {
+        Object value = invokeOptional(move, "targeting");
         return value == null
-            ? CombatantPairTargeting.NONE : CombatantPairTargeting.fromName(value.toString());
+            ? Targeting.DEFAULT : Targeting.fromName(value.toString());
     }
 
     /** Client-side projection of the server's canonical explicit-target shape. */
     public static TargetRequirements moveStateTargetRequirements(MoveState move) {
         if (move == null) return new TargetRequirements(0, 0, List.of());
         MoveTargetSelection.Requirements requirements = MoveTargetSelection.requirements(
-            moveStatePairTargeting(move),
+            moveStateTargeting(move),
             moveStateDefenseTargeting(move),
             moveStateDefenseTargetCount(move),
             move.tags().contains("ATTACK")

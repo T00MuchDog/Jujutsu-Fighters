@@ -14,7 +14,7 @@ import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.TeamBattlePlan;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.Move;
@@ -36,22 +36,22 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class CombatantPairTargetingTest {
+class TargetingTest {
     @Test
-    void moveDataRoundTripsPairTargetingAndDefaultsSafely() throws Exception {
+    void moveDataRoundTripsTargetingAndDefaultsSafely() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         MoveData data = moveData("PAIR");
-        data.pairTargeting = CombatantPairTargeting.ALLY_AND_ENEMY.name();
+        data.targeting = Targeting.ALLY_AND_ENEMY.name();
 
         MoveData restored = mapper.readValue(mapper.writeValueAsString(data), MoveData.class);
         Move move = restored.toMove();
 
-        assertEquals(CombatantPairTargeting.ALLY_AND_ENEMY, move.getPairTargeting());
-        assertEquals("ALLY_AND_ENEMY", MoveData.fromMove(move).pairTargeting);
-        assertEquals(CombatantPairTargeting.NONE,
-            moveData("DEFAULT").toMove().getPairTargeting());
-        assertEquals(CombatantPairTargeting.NONE,
-            CombatantPairTargeting.fromName("unknown"));
+        assertEquals(Targeting.ALLY_AND_ENEMY, move.getTargeting());
+        assertEquals("ALLY_AND_ENEMY", MoveData.fromMove(move).targeting);
+        assertEquals(Targeting.DEFAULT,
+            moveData("DEFAULT").toMove().getTargeting());
+        assertEquals(Targeting.DEFAULT,
+            Targeting.fromName("unknown"));
     }
 
     @Test
@@ -60,7 +60,7 @@ class CombatantPairTargetingTest {
         BattleCombatant ally = fighter("Ally");
         BattleCombatant enemy = fighter("Enemy");
         BattleState state = state(actor, ally, enemy);
-        Move move = pairMove("PAIR", CombatantPairTargeting.ALLY_AND_ENEMY);
+        Move move = pairMove("PAIR", Targeting.ALLY_AND_ENEMY);
 
         assertNotNull(MoveTargetSelection.validationError(
             state, actor, move, List.of(enemy.getInstanceId(), ally.getInstanceId())));
@@ -80,7 +80,7 @@ class CombatantPairTargetingTest {
         BattleState state = state(actor, ally, enemy);
         int grid = TeamBattlePlan.gridLengthForRound(state);
 
-        Move pair = pairMove("PAIR", CombatantPairTargeting.ALLY_AND_ENEMY);
+        Move pair = pairMove("PAIR", Targeting.ALLY_AND_ENEMY);
         BattlePlan actorPlan = new BattlePlan(actor.getMaxApBar(), actor.getCurrentCe(), grid);
         actorPlan.placeWithTargets(pair, 1, 0, List.of(ally.getInstanceId()));
         assertNotNull(actorPlan.missingTargetError());
@@ -115,7 +115,7 @@ class CombatantPairTargetingTest {
         BattleCombatant ally = fighter("Ally");
         BattleCombatant enemy = fighter("Enemy");
         BattleState state = state(actor, ally, enemy);
-        Move pair = pairMove("PAIR", CombatantPairTargeting.ALLY_AND_ENEMY);
+        Move pair = pairMove("PAIR", Targeting.ALLY_AND_ENEMY);
         BattlePlan plan = new BattlePlan(actor.getMaxApBar(), actor.getCurrentCe(),
             TeamBattlePlan.gridLengthForRound(state));
         plan.place(pair, 1, 0);
@@ -128,12 +128,12 @@ class CombatantPairTargetingTest {
     }
 
     @Test
-    void pairTargetingRejectsDamagingMovesAndDelayedPairEffects() {
+    void targetingRejectsDamagingMovesAndDelayedPairEffects() {
         assertThrows(IllegalStateException.class, () -> new Move.Builder("ATTACK_PAIR")
             .name("Attack Pair")
             .category(MoveCategory.PHYSICAL)
             .tags(java.util.Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK))
-            .pairTargeting(CombatantPairTargeting.SELF_AND_ENEMY)
+            .targeting(Targeting.SELF_AND_ENEMY)
             .apCost(5)
             .unleashPoint(1)
             .build());
@@ -142,19 +142,19 @@ class CombatantPairTargetingTest {
             .name("Paired Defense")
             .category(MoveCategory.DEFENSIVE)
             .defenseType(DefenseType.DODGE)
-            .pairTargeting(CombatantPairTargeting.SELF_AND_ALLY)
+            .targeting(Targeting.SELF_AND_ALLY)
             .apCost(5)
             .unleashPoint(1)
             .build();
-        assertEquals(CombatantPairTargeting.SELF_AND_ALLY,
-            pairedDefense.getPairTargeting());
+        assertEquals(Targeting.SELF_AND_ALLY,
+            pairedDefense.getTargeting());
 
         assertThrows(IllegalStateException.class, () -> new Move.Builder("PAIR_COUNTER")
             .name("Pair Counter")
             .category(MoveCategory.DEFENSIVE)
             .tags(java.util.Set.of(MoveTag.DEFENSIVE, MoveTag.ATTACK, MoveTag.PHYSICAL))
             .defenseType(DefenseType.DODGE)
-            .pairTargeting(CombatantPairTargeting.SELF_AND_ALLY)
+            .targeting(Targeting.SELF_AND_ALLY)
             .attackLaunchMode(com.jjktbf.model.move.AttackLaunchMode.ON_DEFENCE)
             .hitComponents(List.of(new com.jjktbf.model.move.HitComponent(
                 10, java.util.Set.of(MoveTag.PHYSICAL), 0, false, true)))
@@ -168,7 +168,7 @@ class CombatantPairTargetingTest {
         assertThrows(IllegalStateException.class, () -> new Move.Builder("DELAYED_PAIR")
             .name("Delayed Pair")
             .category(MoveCategory.UTILITY)
-            .pairTargeting(CombatantPairTargeting.SELF_AND_ENEMY)
+            .targeting(Targeting.SELF_AND_ENEMY)
             .effects(List.of(effect))
             .apCost(5)
             .unleashPoint(1)
@@ -192,7 +192,7 @@ class CombatantPairTargetingTest {
             .dodgeChance(100)
             .blockDuration(10)
             .defenseUses(1)
-            .pairTargeting(CombatantPairTargeting.SELF_AND_ALLY)
+            .targeting(Targeting.SELF_AND_ALLY)
             .apCost(5)
             .unleashPoint(1)
             .build();
@@ -240,11 +240,11 @@ class CombatantPairTargetingTest {
         return data;
     }
 
-    private static Move pairMove(String id, CombatantPairTargeting targeting) {
+    private static Move pairMove(String id, Targeting targeting) {
         return new Move.Builder(id)
             .name(id)
             .category(MoveCategory.UTILITY)
-            .pairTargeting(targeting)
+            .targeting(targeting)
             .apCost(5)
             .unleashPoint(1)
             .build();

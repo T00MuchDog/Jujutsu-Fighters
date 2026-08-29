@@ -1002,7 +1002,7 @@
   }, {
     "id" : "node-000010",
     "contentType" : "MOVE",
-    "contentId" : "000140",
+    "contentId" : "000139",
     "x" : 418.0,
     "y" : 516.0,
     "prerequisites" : [ {
@@ -1350,7 +1350,7 @@
   "skillTree" : [ {
     "id" : "node-000000",
     "contentType" : "MOVE",
-    "contentId" : "000141",
+    "contentId" : "000140",
     "x" : 40.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1360,7 +1360,7 @@
   }, {
     "id" : "node-000001",
     "contentType" : "MOVE",
-    "contentId" : "000142",
+    "contentId" : "000141",
     "x" : 360.0,
     "y" : 125.0,
     "prerequisites" : [ {
@@ -1374,7 +1374,7 @@
   }, {
     "id" : "node-000002",
     "contentType" : "MOVE",
-    "contentId" : "000143",
+    "contentId" : "000142",
     "x" : 360.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1388,7 +1388,7 @@
   }, {
     "id" : "node-000003",
     "contentType" : "MOVE",
-    "contentId" : "000145",
+    "contentId" : "000144",
     "x" : 360.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1396,13 +1396,17 @@
       "nodeId" : "node-000000",
       "attached" : true
     }, {
+      "type" : "STAT",
+      "stat" : "jujutsuSkill",
+      "minimum" : 75
+    }, {
       "type" : "MASTERY",
-      "minimum" : 40
+      "minimum" : 70
     } ]
   }, {
     "id" : "node-000004",
     "contentType" : "MOVE",
-    "contentId" : "000144",
+    "contentId" : "000143",
     "x" : 700.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1416,7 +1420,7 @@
   }, {
     "id" : "node-000005",
     "contentType" : "MOVE",
-    "contentId" : "000146",
+    "contentId" : "000145",
     "x" : 700.0,
     "y" : 125.0,
     "prerequisites" : [ {
@@ -1444,7 +1448,7 @@
   }, {
     "id" : "node-000007",
     "contentType" : "MOVE",
-    "contentId" : "000147",
+    "contentId" : "000146",
     "x" : 1040.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1458,7 +1462,7 @@
   }, {
     "id" : "node-000008",
     "contentType" : "MOVE",
-    "contentId" : "000148",
+    "contentId" : "000147",
     "x" : 1380.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1486,12 +1490,30 @@
   }, {
     "id" : "node-000010",
     "contentType" : "MOVE",
-    "contentId" : "000150",
+    "contentId" : "000148",
     "x" : 40.0,
     "y" : 40.0,
     "prerequisites" : [ {
       "type" : "MASTERY",
       "minimum" : 65
+    } ]
+  }, {
+    "id" : "node-000011",
+    "contentType" : "MOVE",
+    "contentId" : "000150",
+    "x" : 40.0,
+    "y" : 190.0,
+    "prerequisites" : [ {
+      "type" : "STAT",
+      "stat" : "jujutsuSkill",
+      "minimum" : 0
+    }, {
+      "type" : "STAT",
+      "stat" : "combatAbility",
+      "minimum" : 70
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 90
     } ]
   } ]
 } ]

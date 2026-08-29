@@ -2,7 +2,7 @@ package com.jjktbf.model.combat;
 
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.move.AoeType;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.Move;
 
@@ -46,7 +46,7 @@ public final class MoveTargetSelection {
     public static Requirements requirements(Move move) {
         if (move == null) return NONE;
         return requirements(
-            move.getPairTargeting(),
+            move.getTargeting(),
             DefenseTargeting.forMove(move),
             move.getDefenseTargetCount(),
             move.isHostile(),
@@ -57,7 +57,7 @@ public final class MoveTargetSelection {
 
     /** Shared projection used by protocol DTOs before they are reconstructed as a Move. */
     public static Requirements requirements(
-        CombatantPairTargeting pair,
+        Targeting pair,
         DefenseTargeting defense,
         int defenseTargetCount,
         boolean hostile,
@@ -65,7 +65,7 @@ public final class MoveTargetSelection {
         AoeType aoeType,
         int aoeTargetCount
     ) {
-        pair = pair == null ? CombatantPairTargeting.NONE : pair;
+        pair = pair == null ? Targeting.DEFAULT : pair;
         switch (pair) {
             case SELF_AND_ENEMY:
                 return new Requirements(1, 1, List.of(Relationship.ENEMY));
@@ -74,7 +74,7 @@ public final class MoveTargetSelection {
             case ALLY_AND_ENEMY:
                 return new Requirements(2, 2,
                     List.of(Relationship.ALLY, Relationship.ENEMY));
-            case NONE:
+            case DEFAULT:
                 break;
         }
 

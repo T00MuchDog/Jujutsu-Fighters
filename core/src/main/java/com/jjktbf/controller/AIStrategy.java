@@ -10,7 +10,7 @@ import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.TeamBattlePlan;
 import com.jjktbf.model.move.Move;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 
 import java.util.List;
 import java.util.Random;
@@ -146,12 +146,12 @@ public interface AIStrategy {
             List<BattleCombatant> eligibleEnemies = enemies.stream()
                 .filter(enemy -> CursedSpeechAbility.canTarget(move, enemy))
                 .toList();
-            CombatantPairTargeting pair = move.getPairTargeting();
-            if (pair != CombatantPairTargeting.NONE) {
-                boolean needsAlly = pair == CombatantPairTargeting.SELF_AND_ALLY
-                    || pair == CombatantPairTargeting.ALLY_AND_ENEMY;
-                boolean needsEnemy = pair == CombatantPairTargeting.SELF_AND_ENEMY
-                    || pair == CombatantPairTargeting.ALLY_AND_ENEMY;
+            Targeting pair = move.getTargeting();
+            if (pair != Targeting.DEFAULT) {
+                boolean needsAlly = pair == Targeting.SELF_AND_ALLY
+                    || pair == Targeting.ALLY_AND_ENEMY;
+                boolean needsEnemy = pair == Targeting.SELF_AND_ENEMY
+                    || pair == Targeting.ALLY_AND_ENEMY;
                 if ((needsAlly && allies.isEmpty())
                     || (needsEnemy && eligibleEnemies.isEmpty())) {
                     plan.remove(segment);

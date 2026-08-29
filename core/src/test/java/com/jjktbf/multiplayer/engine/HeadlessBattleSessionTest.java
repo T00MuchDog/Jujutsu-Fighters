@@ -17,7 +17,7 @@ import com.jjktbf.model.combat.DomainDefinitionLookup;
 import com.jjktbf.model.domain.DomainData;
 import com.jjktbf.model.domain.DomainDefinition;
 import com.jjktbf.model.move.AoeType;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
@@ -557,7 +557,7 @@ class HeadlessBattleSessionTest {
         Move pair = new Move.Builder("PAIR")
             .name("Pair")
             .category(MoveCategory.UTILITY)
-            .pairTargeting(CombatantPairTargeting.ALLY_AND_ENEMY)
+            .targeting(Targeting.ALLY_AND_ENEMY)
             .apCost(5)
             .unleashPoint(1)
             .freeMove(true)
@@ -578,7 +578,7 @@ class HeadlessBattleSessionTest {
         assertTrue(accepted.accepted());
         var moveState = accepted.state().player(PlayerSide.PLAYER_ONE).orElseThrow()
             .character().knownMoves().get(0);
-        assertEquals("ALLY_AND_ENEMY", moveState.pairTargeting());
+        assertEquals("ALLY_AND_ENEMY", moveState.targeting());
         assertEquals(List.of(allyId, PLAYER_TWO_ID), accepted.state()
             .player(PlayerSide.PLAYER_ONE).orElseThrow().character().plan()
             .queuedSegments().get(0).targetIds());

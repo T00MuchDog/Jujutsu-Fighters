@@ -7,6 +7,7 @@ public enum MoveEffectTrigger {
     ON_START("On move start"),
     ON_FIRE("On move fire"),
     ON_HIT("On hit"),
+    BLOCK_CALCULATION("While blocking"),
     ON_BLOCK("On block"),
     ON_PARRY("On parry"),
     ON_DODGE("On dodge");

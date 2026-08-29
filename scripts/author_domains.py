@@ -298,7 +298,7 @@ def opening_move(move_id, name, description, technique, domain_id, ce_cost,
         "aoeTargetCount": 2,
         "defenseTargeting": "SELF",
         "defenseTargetCount": 2,
-        "pairTargeting": "NONE",
+        "targeting": "DEFAULT",
         "mustBeGranted": False,
         "prerequisites": {
             "cursedTechniqueMastery": mastery,

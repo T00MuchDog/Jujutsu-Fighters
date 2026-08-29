@@ -45,8 +45,9 @@ import com.jjktbf.model.character.coded.RatioAbility;
 import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.AoeType;
 import com.jjktbf.model.move.AttackLaunchMode;
+import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.BlockStyle;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.DefenseTiming;
 import com.jjktbf.model.move.DefenseType;
@@ -173,6 +174,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         m.defenseType = DefenseType.NONE.name();
         m.blockStyle = BlockStyle.PERCENTAGE.name();
         m.blockDuration = 0;
+        m.blockAttackTypes = null;
+        m.blockRanges = null;
+        m.blockElementalTags = null;
         m.blockAffectedTags = null;
         m.blockDamageReduction = 100;
         m.blockFlatReduction = 0;
@@ -203,6 +207,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         MoveData draft = deepCopy(stored);
         draft.migrateLegacyEffects();
         draft.migrateLegacyHitTags();
+        draft.migrateLegacyBlockCoverage();
         draft.migrateLegacyNeverMissTier();
         return draft;
     }
@@ -233,6 +238,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.defenseType           = s.defenseType;
         d.blockStyle            = s.blockStyle;
         d.blockDuration         = s.blockDuration;
+        d.blockAttackTypes      = s.blockAttackTypes != null
+                                  ? new ArrayList<>(s.blockAttackTypes) : null;
+        d.blockRanges           = s.blockRanges != null
+                                  ? new ArrayList<>(s.blockRanges) : null;
+        d.blockElementalTags    = s.blockElementalTags != null
+                                  ? new ArrayList<>(s.blockElementalTags) : null;
         d.blockAffectedTags     = s.blockAffectedTags != null
                                   ? new ArrayList<>(s.blockAffectedTags) : null;
         d.blockDamageReduction  = s.blockDamageReduction;
@@ -273,7 +284,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.aoeTargetCount        = s.aoeTargetCount;
         d.defenseTargeting      = s.defenseTargeting;
         d.defenseTargetCount    = s.defenseTargetCount;
-        d.pairTargeting         = s.pairTargeting;
+        d.targeting         = s.targeting;
         d.attackLaunchMode      = s.attackLaunchMode;
         d.attackLaunchCondition = s.attackLaunchCondition != null
                                   ? s.attackLaunchCondition.copy() : null;
@@ -1235,15 +1246,15 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         aoeFieldsContainer = null;
         attackLaunchContainer = null;
 
-        Table pairTargeting = formSection(sections, "PAIR TARGETING");
-        CombatantPairTargeting currentPair =
-            CombatantPairTargeting.fromName(d.pairTargeting);
-        d.pairTargeting = currentPair.name();
-        pairTargeting.add(labelledRow(
+        Table targeting = formSection(sections, "PAIR TARGETING");
+        Targeting currentPair =
+            Targeting.fromName(d.targeting);
+        d.targeting = currentPair.name();
+        targeting.add(labelledRow(
             "Combatants (" + currentPair.displayName() + ")",
-            new EnumSelectBox<>(CombatantPairTargeting.class, currentPair.name(), false,
+            new EnumSelectBox<>(Targeting.class, currentPair.name(), false,
                 value -> {
-                    d.pairTargeting = value;
+                    d.targeting = value;
                     game.audio().play(SoundCue.UI_NAVIGATE);
                     markDirty();
                 }, skin, uiProfile))).growX().row();
@@ -2084,9 +2095,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         t.add(labelledIntField("Potency (1–5)", d.potency, 1, 5,
                 v -> { d.potency = v; })).growX().row();
 
-        // Affected tags — multi-toggle
-        t.add(new Label("Affected Tags (blank = all)", skin)).padTop(4).row();
-        t.add(buildBlockTagToggles(d)).growX().row();
+        addBlockCoverageFields(t, d);
+
+        t.add(new Label("CONDITIONAL BLOCK EFFECTIVENESS", skin, "small"))
+            .padTop(8f).row();
+        t.add(buildMoveEffectsEditor(
+            d, MoveEffectTrigger.BLOCK_CALCULATION, null)).growX().row();
 
         addDefenseTimingAndUsesFields(t, d);
         return t;
@@ -2113,8 +2127,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         t.add(labelledIntField("Potency (1–5)", d.potency, 1, 5,
                 v -> { d.potency = v; })).growX().row();
 
-        t.add(new Label("Affected Tags (blank = all)", skin)).padTop(4).row();
-        t.add(buildBlockTagToggles(d)).growX().row();
+        addBlockCoverageFields(t, d);
 
         // Stagger ticks applied to the attacker on a successful non-GUARD_BREAK parry.
         t.add(labelledIntField("Stagger Ticks on Attacker (0 = none)",
@@ -2194,26 +2207,50 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         };
     }
 
-    private Actor buildBlockTagToggles(MoveData d) {
+    private void addBlockCoverageFields(Table table, MoveData move) {
+        table.add(new Label("Attack Types (blank = all)", skin)).padTop(4).row();
+        table.add(buildBlockCoverageToggles(
+            move.blockAttackTypes,
+            java.util.Arrays.stream(BlockAttackType.values()).map(BlockAttackType::name).toList(),
+            value -> move.blockAttackTypes = value)).growX().row();
+
+        table.add(new Label("Ranges (blank = all)", skin)).padTop(4).row();
+        table.add(buildBlockCoverageToggles(
+            move.blockRanges,
+            List.of(MoveTag.MELEE.name(), MoveTag.RANGED.name()),
+            value -> move.blockRanges = value)).growX().row();
+
+        table.add(new Label("Blockable Elements (blank = all)", skin)).padTop(4).row();
+        table.add(buildBlockCoverageToggles(
+            move.blockElementalTags,
+            List.of(MoveTag.ICE.name(), MoveTag.ELECTRIC.name(),
+                MoveTag.FIRE.name(), MoveTag.WATER.name()),
+            value -> move.blockElementalTags = value)).growX().row();
+    }
+
+    private Actor buildBlockCoverageToggles(
+        List<String> current,
+        List<String> options,
+        Consumer<List<String>> setter
+    ) {
         Table grid = new Table(skin);
         grid.defaults().pad(3);
-        MoveTag[] affected = { MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY,
-                               MoveTag.INNATE_TECHNIQUE, MoveTag.NON_INNATE_TECHNIQUE };
         Set<String> selected = new LinkedHashSet<>();
-        if (d.blockAffectedTags != null) selected.addAll(d.blockAffectedTags);
+        if (current != null) selected.addAll(current);
 
         int col = 0;
-        for (MoveTag tag : affected) {
-            CheckBox cb = new CheckBox(pretty(tag.name()), skin);
-            cb.setChecked(selected.contains(tag.name()));
+        for (String option : options) {
+            String label = BlockAttackType.PHYSICAL_CURSED_ENERGY.name().equals(option)
+                ? BlockAttackType.PHYSICAL_CURSED_ENERGY.displayName() : pretty(option);
+            CheckBox cb = new CheckBox(label, skin);
+            cb.setChecked(selected.contains(option));
             cb.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     game.audio().play(SoundCue.UI_TOGGLE);
-                    Set<String> cur = new LinkedHashSet<>(
-                        d.blockAffectedTags == null ? List.of() : d.blockAffectedTags);
-                    if (cb.isChecked()) cur.add(tag.name());
-                    else                cur.remove(tag.name());
-                    d.blockAffectedTags = cur.isEmpty() ? null : new ArrayList<>(cur);
+                    if (cb.isChecked()) selected.add(option);
+                    else selected.remove(option);
+                    List<String> ordered = options.stream().filter(selected::contains).toList();
+                    setter.accept(ordered.isEmpty() ? null : new ArrayList<>(ordered));
                     markDirty();
                 }
             });
@@ -2454,6 +2491,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     static List<AbilityEffectType> moveEffectTypes(MoveEffectTrigger trigger) {
+        if (trigger == MoveEffectTrigger.BLOCK_CALCULATION) {
+            return List.of(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY);
+        }
         if (trigger == MoveEffectTrigger.AVAILABILITY) {
             return java.util.Arrays.stream(AbilityEffectType.values())
                 .filter(AbilityEffectType::isMoveAvailabilityConstraint)
@@ -2479,6 +2519,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .filter(AbilityEffectType::isMoveEffect)
             .filter(type -> !type.isAccuracyPriority())
             .filter(type -> !type.isMoveAvailabilityConstraint())
+            .filter(type -> !type.isBlockEffectivenessModifier())
             .filter(type -> type != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE)
             .filter(type -> type != AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
             .filter(type -> !types.contains(type))
@@ -3440,6 +3481,7 @@ static void applyRequiredTechnique(MoveData d, String text) {
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         copy.moveType = null;
         copy.shikigamiMove = null;
+        copy.migrateLegacyBlockCoverage();
         copy.migrateLegacyHitTags();
         if (copy.hitComponents != null && hasTag(copy, MoveTag.ATTACK)) {
             synchronizeParentDamageTags(copy);
@@ -3487,6 +3529,9 @@ static void applyRequiredTechnique(MoveData d, String text) {
             d.defenseType = DefenseType.NONE.name();
             d.blockStyle = BlockStyle.PERCENTAGE.name();
             d.blockDuration = 0;
+            d.blockAttackTypes = null;
+            d.blockRanges = null;
+            d.blockElementalTags = null;
             d.blockAffectedTags = null;
             d.blockDamageReduction = 100;
             d.blockFlatReduction = 0;
@@ -3502,7 +3547,9 @@ static void applyRequiredTechnique(MoveData d, String text) {
                 d.effects.removeIf(effect -> effect != null
                     && (MoveEffectTrigger.ON_BLOCK.name().equalsIgnoreCase(effect.trigger)
                         || MoveEffectTrigger.ON_PARRY.name().equalsIgnoreCase(effect.trigger)
-                        || MoveEffectTrigger.ON_DODGE.name().equalsIgnoreCase(effect.trigger)));
+                        || MoveEffectTrigger.ON_DODGE.name().equalsIgnoreCase(effect.trigger)
+                        || MoveEffectTrigger.BLOCK_CALCULATION.name()
+                            .equalsIgnoreCase(effect.trigger)));
             }
         } else if (d.effects != null) {
             if (!DefenseType.DODGE.name().equals(d.defenseType)) {
@@ -3515,8 +3562,11 @@ static void applyRequiredTechnique(MoveData d, String text) {
                 default -> null;
             };
             d.effects.removeIf(effect -> effect != null
-                && isDefenseTrigger(effect.trigger)
-                && (active == null || !active.name().equalsIgnoreCase(effect.trigger)));
+                && ((isDefenseTrigger(effect.trigger)
+                        && (active == null || !active.name().equalsIgnoreCase(effect.trigger)))
+                    || (MoveEffectTrigger.BLOCK_CALCULATION.name()
+                        .equalsIgnoreCase(effect.trigger)
+                        && active != MoveEffectTrigger.ON_BLOCK)));
         }
     }
 

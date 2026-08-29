@@ -32,6 +32,7 @@ public class MoveRepository extends BaseRepository<MoveData> {
             if (move != null) {
                 migrated |= move.migrateLegacyEffects();
                 migrated |= move.migrateLegacyHitTags();
+                migrated |= move.migrateLegacyBlockCoverage();
             }
         }
         if (migrated) save();

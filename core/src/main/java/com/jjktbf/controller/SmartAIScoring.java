@@ -104,17 +104,16 @@ final class SmartAIScoring {
     }
 
     /**
-     * Whether a block's affected-tags cover cursed energy. A block with no
-     * declared damage tags covers everything (per {@link Move#coveredByBlockTags}).
+     * Whether a block covers either cursed-energy attack category. A block with
+     * no declared attack categories covers all three.
      */
     static boolean blockCoversCursedEnergy(Move block) {
         if (block == null) return false;
-        List<String> tags = block.getBlockAffectedTags();
-        if (tags == null || tags.isEmpty()) return true;
-        for (String tag : tags) {
-            if ("CURSED_ENERGY".equalsIgnoreCase(tag)) return true;
-        }
-        return false;
+        var types = block.getBlockAttackTypes();
+        return types.isEmpty()
+            || types.contains(com.jjktbf.model.move.BlockAttackType.CURSED_ENERGY)
+            || types.contains(
+                com.jjktbf.model.move.BlockAttackType.PHYSICAL_CURSED_ENERGY);
     }
 
     private static boolean hasMeaningfulEffects(Move move) {
@@ -188,7 +187,7 @@ final class SmartAIScoring {
         if (intel.attacks.isEmpty()) return 0;
         boolean coversAny = false;
         for (Move attack : intel.attacks) {
-            if (attack.coveredByBlockTags(block.getBlockAffectedTags())) {
+            if (block.blocksAttack(attack)) {
                 coversAny = true;
                 break;
             }

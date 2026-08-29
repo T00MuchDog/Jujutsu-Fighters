@@ -1211,7 +1211,7 @@
   }, {
     "effectId" : "effect-000003",
     "type" : "GRANT_MOVE",
-    "moveId" : "000132"
+    "moveId" : "000131"
   } ],
   "masteryThreshold" : 0,
   "automaticallyAssigned" : true

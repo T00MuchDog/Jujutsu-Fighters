@@ -10,7 +10,7 @@ import com.jjktbf.model.combat.BattleTeamId;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.SeededRandomSource;
-import com.jjktbf.model.move.CombatantPairTargeting;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
@@ -38,7 +38,7 @@ class TargetExchangeEffectTest {
             BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(todo)),
             BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(attacker, replacement)));
 
-        plan(todo, exchange(CombatantPairTargeting.SELF_AND_ENEMY, "RANGED"),
+        plan(todo, exchange(Targeting.SELF_AND_ENEMY, "RANGED"),
             replacement.getInstanceId());
         plan(attacker, attack("Ranged", MoveTag.RANGED), todo.getInstanceId());
         replacement.setTimeline(new BattlePlan(300, 300, 60).toLegacyTimeline());
@@ -67,7 +67,7 @@ class TargetExchangeEffectTest {
 
         BattlePlan todoPlan = new BattlePlan(300, 300, 60);
         todoPlan.placeWithTargets(exchange(
-            CombatantPairTargeting.ALLY_AND_ENEMY, "MELEE"), 1, 0,
+            Targeting.ALLY_AND_ENEMY, "MELEE"), 1, 0,
             List.of(ally.getInstanceId(), replacement.getInstanceId()));
         todo.setTimeline(todoPlan.toLegacyTimeline());
         ally.setTimeline(new BattlePlan(300, 300, 60).toLegacyTimeline());
@@ -153,7 +153,7 @@ class TargetExchangeEffectTest {
         actor.setTimeline(plan.toLegacyTimeline());
     }
 
-    private static Move exchange(CombatantPairTargeting targeting, String scope) {
+    private static Move exchange(Targeting targeting, String scope) {
         MoveEffectData effect = AbilityEffectType.EXCHANGE_ATTACK_TARGETS.createDefaultMoveEffect();
         effect.trigger = MoveEffectTrigger.ON_FIRE.name();
         effect.moveTag = scope;
@@ -164,7 +164,7 @@ class TargetExchangeEffectTest {
             .name("Exchange").category(MoveCategory.UTILITY)
             .tags(Set.of(MoveTag.UTILITY))
             .apCost(2).unleashPoint(1)
-            .pairTargeting(targeting)
+            .targeting(targeting)
             .effects(List.of(effect))
             .build();
     }

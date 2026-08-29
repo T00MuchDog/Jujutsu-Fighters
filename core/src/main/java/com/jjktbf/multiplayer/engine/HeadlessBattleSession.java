@@ -1350,7 +1350,7 @@ public final class HeadlessBattleSession {
             move.getRequiredTechniqueId(),
             move.getDefenseTargeting().name(),
             move.getDefenseTargetCount(),
-            move.getPairTargeting().name(),
+            move.getTargeting().name(),
             move.getAttackLaunchMode() == null ? null : move.getAttackLaunchMode().name(),
             move.getAttackLaunchMoveId(),
             MoveAvailability.guaranteedBoundedResourceTransactions(combatant, move).stream()

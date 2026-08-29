@@ -1272,7 +1272,7 @@ public class CombatResolver {
         List<BattleCombatant> beneficiaries
     ) {
         if (move.getDefenseTargeting() == DefenseTargeting.SELF
-            && move.getPairTargeting() == CombatantPairTargeting.NONE) return;
+            && move.getTargeting() == Targeting.DEFAULT) return;
 
         boolean casterIsBeneficiary = false;
         boolean grantedToAlly = false;
@@ -1310,7 +1310,7 @@ public class CombatResolver {
     private List<BattleCombatant> resolveDefenseBeneficiaries(
         BattleState state, BattleCombatant caster, ActionSegment segment, Move move
     ) {
-        if (move.getPairTargeting() != CombatantPairTargeting.NONE) {
+        if (move.getTargeting() != Targeting.DEFAULT) {
             return resolvePairEndpoints(state, caster, segment, move).stream()
                 .filter(combatant -> combatant != null && combatant.isActive()
                     && combatant.isAlliedWith(caster))
@@ -1552,9 +1552,9 @@ public class CombatResolver {
         ActionSegment segment,
         Move move
     ) {
-        if (move == null || move.getPairTargeting() == null) return List.of();
+        if (move == null || move.getTargeting() == null) return List.of();
         List<CombatantId> selected = segment == null ? List.of() : segment.getTargets();
-        return switch (move.getPairTargeting()) {
+        return switch (move.getTargeting()) {
             case SELF_AND_ENEMY, SELF_AND_ALLY -> {
                 BattleCombatant other = selected.isEmpty() ? null : state.combatant(selected.get(0));
                 yield owner.isActive() && other != null && other.isActive()
@@ -1567,7 +1567,7 @@ public class CombatResolver {
                 yield ally != null && ally.isActive() && enemy != null && enemy.isActive()
                     ? List.of(ally, enemy) : List.of();
             }
-            case NONE -> List.of();
+            case DEFAULT -> List.of();
         };
     }
 
@@ -1857,6 +1857,8 @@ public class CombatResolver {
             // where a not-yet-fired same-tick defense contested regardless of speed.
             true,
             trigger -> abilityActivations.onAttackConnected(state, trigger),
+            blockMove -> abilityActivations.blockEffectivenessMultiplier(
+                state, defender, attacker, blockMove, move, component, tick),
             execution.temporaryNeverMissTier(),
             execution.temporaryGuaranteesNormalAccuracy(),
             execution.temporaryNeverHitTier(defender),

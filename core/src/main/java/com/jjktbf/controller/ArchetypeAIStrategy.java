@@ -46,6 +46,8 @@ import java.util.Set;
  */
 public class ArchetypeAIStrategy implements AIStrategy {
 
+    private static final double RESERVE_SWITCH_HP_THRESHOLD = 0.25;
+
     private static final String CURSED_SPEECH = "Cursed Speech";
     private static final String TEN_SHADOWS = "Ten Shadows";
     private static final String RATIO = "Ratio";
@@ -90,8 +92,26 @@ public class ArchetypeAIStrategy implements AIStrategy {
         int commonGridLength = TeamBattlePlan.gridLengthForRound(state);
         TeamBattlePlan teamPlan = new TeamBattlePlan(
             aiTeam.isEmpty() ? null : aiTeam.get(0).getTeamId(), commonGridLength);
+        List<BattleCombatant> availableReserves = aiTeam.isEmpty()
+            ? new ArrayList<>()
+            : new ArrayList<>(state.teamOf(aiTeam.get(0)).reserves());
 
         for (BattleCombatant ai : aiTeam) {
+            if (ai.isFighter() && !availableReserves.isEmpty()
+                && (double) ai.getCurrentHp() / Math.max(1, ai.getMaxHp())
+                    <= RESERVE_SWITCH_HP_THRESHOLD) {
+                BattleCombatant incoming = availableReserves.stream()
+                    .max(java.util.Comparator
+                        .comparingDouble((BattleCombatant reserve) ->
+                            (double) reserve.getCurrentHp() / Math.max(1, reserve.getMaxHp()))
+                        .thenComparingInt(reserve -> -reserve.getRosterOrder()))
+                    .orElse(null);
+                if (incoming != null) {
+                    teamPlan.switchTo(ai.getInstanceId(), incoming.getInstanceId());
+                    availableReserves.remove(incoming);
+                    continue;
+                }
+            }
             BattlePlan plan = planFor(state, ai, rng);
             plan = SmartAIScoring.pruneRestrictedDomainOpenings(
                 domainLookup, state, ai, plan);

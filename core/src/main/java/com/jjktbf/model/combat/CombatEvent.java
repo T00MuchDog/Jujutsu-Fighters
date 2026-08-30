@@ -72,6 +72,8 @@ public class CombatEvent {
 
         // Combatant lifecycle
         COMBATANT_SUMMONED,
+        COMBATANT_SWITCHED,
+        COMBATANT_REPLACED,
         COMBATANT_DEFEATED,
         COMBATANT_REMOVED,
 

@@ -87,6 +87,23 @@ class DatabaseMigrationTest {
                 + "protocol_version, ruleset, format, host_character_ids, created_at, expires_at) "
                 + "VALUES ('new', 'host', 'Host', 'OPEN', '1.4.1', 12, "
                 + "'STANDARD', 'ONE_V_ONE', '000001', 2, 1000)");
+            String sixRoster = String.join(",", java.util.List.of(
+                "fighter-identifier-01", "fighter-identifier-02", "fighter-identifier-03",
+                "fighter-identifier-04", "fighter-identifier-05", "fighter-identifier-06"));
+            try (var insert = connection.prepareStatement("INSERT INTO challenge "
+                + "(id, creator_player_id, creator_display_name, status, game_version, "
+                + "protocol_version, ruleset, format, host_character_ids, created_at, expires_at) "
+                + "VALUES ('six', 'host', 'Host', 'OPEN', '1.4.1', 23, "
+                + "'STANDARD', 'SIX_V_SIX', ?, 3, 1000)")) {
+                insert.setString(1, sixRoster);
+                insert.executeUpdate();
+            }
+            try (var six = statement.executeQuery(
+                "SELECT format, host_character_ids FROM challenge WHERE id = 'six'")) {
+                assertTrue(six.next());
+                assertEquals("SIX_V_SIX", six.getString("format"));
+                assertEquals(sixRoster, six.getString("host_character_ids"));
+            }
         }
     }
 

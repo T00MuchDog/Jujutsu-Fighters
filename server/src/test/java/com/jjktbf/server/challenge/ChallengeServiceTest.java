@@ -119,6 +119,39 @@ class ChallengeServiceTest {
     }
 
     @Test
+    void sixOnSixChallengePreservesOrderedSixFighterRosters() {
+        SessionIdentity host = fixture.createGuest("Six Host");
+        SessionIdentity requester = fixture.createGuest("Six Requester");
+        List<String> hostRoster = fixture.catalog().characterSummaries().stream()
+            .map(summary -> summary.characterId())
+            .toList();
+        List<String> requesterRoster = new java.util.ArrayList<>(hostRoster);
+        java.util.Collections.reverse(requesterRoster);
+
+        ChallengeSummary challenge = fixture.challengeService().createChallenge(
+            host,
+            ChallengeCreateRequest.forBattle(
+                BattleFormat.SIX_V_SIX,
+                BattleStatMode.STANDARD,
+                hostRoster));
+        ChallengeSummary pending = fixture.challengeService().requestJoin(
+            requester,
+            challenge.challengeId(),
+            ChallengeAcceptRequest.forBattle(
+                BattleFormat.SIX_V_SIX,
+                BattleStatMode.STANDARD,
+                requesterRoster));
+        AcceptedMatchSetup accepted = fixture.challengeService().acceptChallenge(
+            host, challenge.challengeId(), ChallengeDecisionRequest.forChallenge(pending));
+
+        assertEquals(BattleFormat.SIX_V_SIX, accepted.format());
+        assertEquals(hostRoster, accepted.playerOne().characterIds());
+        assertEquals(requesterRoster, accepted.playerTwo().characterIds());
+        assertEquals(6, accepted.playerOne().characters().size());
+        assertEquals(6, accepted.playerTwo().characters().size());
+    }
+
+    @Test
     void newFlowSelectsCharactersOnlyAfterHostAccepts() {
         SessionIdentity host = fixture.createGuest("Selection Host");
         SessionIdentity requester = fixture.createGuest("Selection Requester");

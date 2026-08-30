@@ -284,7 +284,9 @@ class ProtocolJsonTest {
     void socketMessagesRoundTripForEveryExplicitType() throws Exception {
         MatchState state = completeMatchState();
         ActionCommand command = ActionCommand.submitPlan(
-            "command-1", state.matchId(), state.stateVersion(), List.of(new PlanPlacement("000004", 13)));
+            "command-1", state.matchId(), state.stateVersion(),
+            List.of(new PlanPlacement("000004", 13)),
+            List.of(new SwitchSelection("PLAYER-f2", "PLAYER-f4")));
         ErrorResponse error = new ErrorResponse(
             "STATE_VERSION_MISMATCH",
             "The match state changed.",
@@ -315,7 +317,9 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(22, joined.protocolVersion());
+        assertEquals(23, joined.protocolVersion());
+        assertEquals(List.of(new SwitchSelection("PLAYER-f2", "PLAYER-f4")),
+            command.payload().switches());
         assertEquals(42L, joined.stateVersion());
         assertEquals(1_700_000_060_000L, messages.get(6).disconnectDeadline());
         assertEquals(1_700_000_090_000L, joined.state().planningDeadline());

@@ -2512,6 +2512,19 @@ public class BattleScreen implements Screen, BattleView {
                     }
                 });
             }
+            if (e.getType() == CombatEvent.Type.COMBATANT_SWITCHED
+                || e.getType() == CombatEvent.Type.COMBATANT_REPLACED) {
+                BattleCombatant incoming = e.getTarget();
+                postLocal(() -> {
+                    syncLocalBattlefield(state);
+                    initPanels();
+                    updatePanels();
+                    if (!skipRoundRequested && incoming != null) {
+                        startLocalPanelEntrance(
+                            incoming, localSummonIsOnPlayerSide(state, incoming));
+                    }
+                });
+            }
             applyLocalAbilityEvent(e);
             if (hasLocalPlaybackEffect(e)) {
                 final CombatEvent ev = e;
@@ -3074,6 +3087,19 @@ public class BattleScreen implements Screen, BattleView {
                 "SUMMON".equalsIgnoreCase(combatant.role())))
             .toList();
         List<TeamPlanningPanel.PageSpec> pages = new ArrayList<>();
+        List<TeamPlanningPanel.PartyMember> party = local.combatants().stream()
+            .filter(character -> "FIGHTER".equalsIgnoreCase(character.role()))
+            .map(character -> new TeamPlanningPanel.PartyMember(
+                character.instanceId(),
+                character.name(),
+                character.currentHp(),
+                character.maxHp(),
+                isActiveCombatant(character),
+                "RESERVE".equalsIgnoreCase(character.lifecycle()),
+                character.currentHp() <= 0
+                    || "DEFEATED".equalsIgnoreCase(character.lifecycle()),
+                character.rosterOrder()))
+            .toList();
         for (CharacterState character : local.combatants()) {
             if (!isActiveCombatant(character)) continue;
             List<PlanningPanel.TargetOption> allies = local.combatants().stream()
@@ -3120,6 +3146,7 @@ public class BattleScreen implements Screen, BattleView {
             BattleTeamId.PLAYER,
             gridLength,
             pages,
+            party,
             assets.battleUi,
             Gdx.graphics.getWidth(),
             Gdx.graphics.getHeight()
@@ -3330,7 +3357,8 @@ public class BattleScreen implements Screen, BattleView {
             return;
         }
         MultiplayerMatchService.PlanSubmission submission =
-            multiplayerMatchService.submitPlan(teamPlanningPanel.getPlacements());
+            multiplayerMatchService.submitPlan(
+                teamPlanningPanel.getPlacements(), teamPlanningPanel.getSwitches());
         if (!submission.sent()) {
             if (!timedOut) teamPlanningPanel.unlock();
             if (!timedOut) game.audio().play(SoundCue.UI_DENIED);
@@ -3586,6 +3614,19 @@ public class BattleScreen implements Screen, BattleView {
                 startedEntrance = startOnlineSummonEntrance(event.targetSide(),
                     onlineCombatantForEvent(event.targetSide(),
                         event.targetInstanceId(), event.targetCharacterId()));
+            }
+        }
+        if (event.type() == BattleEventType.COMBATANT_SWITCHED
+            || event.type() == BattleEventType.COMBATANT_REPLACED) {
+            CharacterState outgoing = onlineVisualForEvent(
+                event.sourceSide(), event.sourceInstanceId(), event.sourceCharacterId());
+            CharacterState incoming = onlineCombatantForEvent(
+                event.targetSide(), event.targetInstanceId(), event.targetCharacterId());
+            removeOnlineCombatantImmediately(event.sourceSide(), outgoing);
+            if (skipRoundRequested) {
+                addOnlineCombatantToField(event.targetSide(), incoming);
+            } else {
+                startedEntrance = startOnlineSummonEntrance(event.targetSide(), incoming);
             }
         }
         CharacterState target = onlineVisualForEvent(

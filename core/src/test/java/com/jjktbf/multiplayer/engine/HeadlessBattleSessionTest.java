@@ -35,6 +35,7 @@ import com.jjktbf.multiplayer.protocol.PlanPlacement;
 import com.jjktbf.multiplayer.protocol.PlayerSide;
 import com.jjktbf.multiplayer.protocol.PlayerState;
 import com.jjktbf.multiplayer.protocol.RoundStartCharacterState;
+import com.jjktbf.multiplayer.protocol.SwitchSelection;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -986,6 +987,57 @@ class HeadlessBattleSessionTest {
             .flatMap(combatant -> combatant.plan().resolvedSegments().stream())
             .map(segment -> segment.actorId())
             .collect(java.util.stream.Collectors.toSet()));
+    }
+
+    @Test
+    void sixFighterRosterFieldsThreeAndAcceptsAuthoritativeSwitchIntent() {
+        Move attack = physicalAttack("SWITCH_ATTACK", 10, true);
+        List<Character> players = java.util.stream.IntStream.rangeClosed(1, 6)
+            .mapToObj(index -> character("player-switch-" + index, "Player " + index, attack))
+            .toList();
+        List<Character> enemies = java.util.stream.IntStream.rangeClosed(1, 6)
+            .mapToObj(index -> character("enemy-switch-" + index, "Enemy " + index, attack))
+            .toList();
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "switch-match",
+            new MatchParticipant("player-1", "Player One", players, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", enemies, PlayerSide.PLAYER_TWO),
+            2210L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK);
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "switch-match");
+
+        PlayerState initial = session.snapshot().player(PlayerSide.PLAYER_ONE).orElseThrow();
+        assertEquals(List.of("ACTIVE", "ACTIVE", "ACTIVE", "RESERVE", "RESERVE", "RESERVE"),
+            initial.combatants().stream().map(combatant -> combatant.lifecycle()).toList());
+
+        CommandResult submitted = session.applyCommand("player-1", ActionCommand.submitPlan(
+            "switch-plan",
+            "switch-match",
+            session.getStateVersion(),
+            List.of(),
+            List.of(new SwitchSelection("PLAYER-f1", "PLAYER-f4"))));
+        assertTrue(submitted.accepted());
+        CommandResult resolved = session.applyCommand("player-2", ActionCommand.submitPlan(
+            "switch-enemy-attack", "switch-match", session.getStateVersion(), List.of(
+                new PlanPlacement(attack.getId(), 1, "ENEMY-f1", "PLAYER-f1"))));
+
+        assertTrue(resolved.accepted());
+        PlayerState switched = resolved.state().player(PlayerSide.PLAYER_ONE).orElseThrow();
+        assertEquals("RESERVE", switched.combatants().get(0).lifecycle());
+        assertEquals("ACTIVE", switched.combatants().get(3).lifecycle());
+        assertTrue(resolved.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.COMBATANT_SWITCHED
+                && "PLAYER-f1".equals(event.sourceInstanceId())
+                && "PLAYER-f4".equals(event.targetInstanceId())));
+        assertTrue(resolved.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.DAMAGE_DEALT
+                && "PLAYER-f4".equals(event.targetInstanceId())));
+        assertEquals(List.of("PLAYER-f4"), resolved.state()
+            .player(PlayerSide.PLAYER_TWO).orElseThrow()
+            .combatants().get(0).plan().resolvedSegments().get(0).targetIds());
     }
 
     @Test

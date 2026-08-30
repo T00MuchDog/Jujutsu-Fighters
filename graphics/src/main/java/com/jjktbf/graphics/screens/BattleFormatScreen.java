@@ -112,10 +112,13 @@ public final class BattleFormatScreen implements Screen {
         Table buttonRow = new Table();
         FormatButton oneOnOne = makeFormatButton("1V1", BattleFormat.ONE_V_ONE);
         FormatButton twoOnTwo = makeFormatButton("2V2", BattleFormat.TWO_V_TWO);
+        FormatButton sixOnSix = makeFormatButton("6V6", BattleFormat.SIX_V_SIX);
         formatButtons.add(oneOnOne);
         formatButtons.add(twoOnTwo);
-        formatButtonCells.add(buttonRow.add(oneOnOne).growX().padRight(8f));
-        formatButtonCells.add(buttonRow.add(twoOnTwo).growX().padLeft(8f));
+        formatButtons.add(sixOnSix);
+        formatButtonCells.add(buttonRow.add(oneOnOne).growX().padRight(6f));
+        formatButtonCells.add(buttonRow.add(twoOnTwo).growX().pad(0f, 6f, 0f, 6f));
+        formatButtonCells.add(buttonRow.add(sixOnSix).growX().padLeft(6f));
         formatPanel.add(buttonRow).growX().expandY().fillY();
         root.add(formatPanel).growX()
             .maxWidth(windowsLayout ? WINDOWS_PANEL_MAX_WIDTH : MAC_PANEL_MAX_WIDTH)

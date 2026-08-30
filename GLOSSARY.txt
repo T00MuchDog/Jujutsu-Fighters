@@ -8,21 +8,22 @@ When in doubt about what to call something, use the term defined here.
 All code field names, editor labels, flavour text, and event messages should be
 consistent with this document.
 
-Everything below is verified against the source under core/src/main/java.
+Everything below is verified against committed source and canonical data.
 Placeholder tuning knobs are marked PLACEHOLDER.
 
 ================================================================================
   CONTENTS
 ================================================================================
 
+   0. NEW PLAYER TUTORIAL         (MainMenuScreen.java, PlanningPanel.java)
   1.  CHARACTER STATS             (StatKey.java, CharacterStats.java)
   2.  BATTLE STATS                (BattleStatKey.java)
   3.  COMBAT STATS                (CombatStats.java)
   4.  MOVE STRUCTURE              (Move.java, MoveData.java)
-  5.  MOVE TAGS                   (MoveTag.java)
-  6.  MOVE CATEGORIES             (MoveCategory.java)
+  5.  MOVE TAGS & HIT TAGS        (MoveTag.java, HitComponent.java)
+  6.  MOVE & HIT CATEGORIES       (MoveCategory.java, HitComponent.java)
   7.  MOVE POOLS & MOVE SLOTS     (MovePool.java, SlotBudgetEnforcer.java)
-  8.  DEFENSE TYPES               (DefenseType.java, BlockStyle.java, DodgeScope.java)
+  8.  DEFENSE TYPES               (DefenseType.java, BlockAttackType.java)
   9.  AP TIMELINE                 (Timeline.java, ActionSegment.java)
   10. COMBAT PHASES               (BattleState.java)
   11. DAMAGE CALCULATION          (DamageCalculator.java, PowerCalculator.java)
@@ -32,9 +33,86 @@ Placeholder tuning knobs are marked PLACEHOLDER.
   15. CODED ABILITIES             (coded/*.java, CodedAbilityRegistry.java)
   16. STATUS EFFECTS              (StatusEffectType.java)
   17. COMBAT EVENTS               (CombatEvent.java)
-  18. AI                          (AIStrategy.java, GreedyAIStrategy.java)
+  18. AI                          (AIStrategy.java, ArchetypeAIStrategy.java)
   19. EDITORS                     (graphics .../screens/editors/*.java)
-  20. CONTENT CATALOG             (data/*.json — current shipped content)
+   20. DOMAINS                     (model/domain/*.java, data/domains/*.json)
+   21. CONTENT CATALOG             (data/*.json — current shipped content)
+
+================================================================================
+  0. NEW PLAYER TUTORIAL
+================================================================================
+
+START A LOCAL FIGHT
+  1. From the main menu choose SINGLE PLAYER.
+  2. Choose 1V1 for the simplest first match, or 2V2 for a team fight.
+  3. Leave STAT MODE: STANDARD for normal character stats, or toggle to
+     STAT MODE: EQUALIZED to blend runtime stats halfway toward the baseline of
+     80 without changing moves or abilities.
+  4. Pick your fighter(s), then the CPU fighter(s). Choose a MOVE SET when the
+     selected fighter has more than one; a fighter with no selected set cannot be
+     confirmed. RANDOM FIGHTER chooses an unpicked fighter and, when necessary,
+     builds a legal battle-only random move set.
+  5. On the battle screen choose START BATTLE.
+
+PLAN A ROUND
+  Each fighter has an OFFENSE timeline and a DEFENSE timeline. They are separate
+  boards, so offensive and defensive segments may occupy the same ticks, but both
+  boards share that fighter's AP and CE budgets.
+
+  • Click a move card to place it in the first legal gap, or drag it onto a
+    timeline to choose its start tick.
+  • Drag a placed segment to retime it. Right-click it, or drag it off the
+    timeline, to remove it. Gaps are allowed; segments on the same board cannot
+    overlap or extend past the grid.
+  • In team fights, targeted moves ask for an ENEMY, ALLY, or set of TARGETS.
+    Click a placed targeted segment to change its target before locking in.
+  • Choose LOCK IN (shown as LOCK in the compact layout) when satisfied. In 2V2,
+    use the page arrows or LEFT/RIGHT to plan each fighter; the team plan submits
+    only after both fighters are locked.
+
+READ THE TIMELINE
+  A move occupies its AP Cost in ticks. Its important timing is its fire tick:
+
+      fireTick = startTick + unleashPoint - 1
+
+  Example: a move placed at tick 3 with Unleash 2 fires at tick 4. CE is shown as
+  reserved while planning but is actually paid when the segment starts. If prior
+  actions, upkeep, or drains leave too little CE at that moment, the move is
+  cancelled while its AP remains spent.
+
+  When different fighters act on the same tick, instant moves (Unleash 1) have
+  priority, then higher Speed, then a random tie-break. If one fighter has an
+  offensive and defensive move firing together, that fighter's defense fires
+  first. Multi-hit moves may land later than the parent segment's fire tick; each
+  hit resolves on its own impact tick.
+
+DEFEND
+  • BLOCK reduces covered damage. GUARD_BREAK can bypass it and a stronger attack
+    can beat a lower-Potency block.
+  • PARRY negates a covered hit and may stagger a melee attacker. INTANGIBLE
+    attacks bypass parries.
+  • DODGE rolls its listed chance against the ranges it covers. A successful roll
+    avoids the hit completely.
+  • A FIXED defense opens on its fire tick. Fire it before the expected impact;
+    merely sharing a tick is not enough if the faster attack resolves first.
+  • A REACTION defense arms on its fire tick and opens when a matching attack
+    arrives. It is easier to time but cannot earn a Perfect Read.
+  • Read every defense card for its Potency, attack/range/element coverage,
+    duration, use limit, and timing. These properties are move-specific.
+
+RESOLVE AND WIN
+  After all plans are locked, both sides resolve tick by tick. Review the round,
+  choose NEXT ROUND, and plan again. The fight ends when one side has no living
+  fighters; living summons do not keep a defeated team in the fight. Elimination
+  within one deferred multi-target/recoil resolution batch can produce a draw;
+  otherwise battle-over is checked after each firing move.
+
+BEGINNER TACTICS
+  Start with one affordable attack and one defense instead of spending every AP
+  and CE point. Compare fire ticks rather than only segment positions, place fixed
+  defenses slightly before the impact you expect, and preserve CE for later
+  rounds and upkeep. In 2V2, verify both fighters' targets before LOCK IN and
+  focus attacks when removing one enemy is more valuable than splitting damage.
 
 ================================================================================
   1. CHARACTER STATS  (StatKey.java, CharacterStats.java)
@@ -103,6 +181,12 @@ BASE STAT TOTAL (BST)
   The sum of all ten raw authored CharacterStats values before StatScale or
   ability modifiers. Cursed Spirit Physiology uses this raw total to determine
   which low authored CE costs are waived.
+
+  Character Select displays construction-time passive-adjusted stats, including
+  passive-adjusted Max HP and Max CE. Its on-screen "Base Stat Total" is therefore
+  a display total and may differ from canonical raw BST; combat rules that name
+  BST always mean the raw authored total above. If a preview combatant cannot be
+  constructed, Character Select falls back to the authored values.
 
 ================================================================================
   2. BATTLE STATS  (BattleStatKey.java)
@@ -205,10 +289,13 @@ are the Move/MoveData field names.
     id                    6-digit zero-padded string (e.g. "000003"). Auto-assigned
                           by MoveRepository; resequenced on delete.
     name, description     Display text.
-    moveTypes             Authored learning classes. CURSED_SPIRIT moves are
-                          available only to cursed spirits unless another type is
-                          also listed; cursed-spirit entries must explicitly carry
-                          CURSED_ENERGY.
+    moveTypes             Authored learning classes for NON-TECHNIQUE moves. Such
+                          a move must retain at least one class; CURSED_SPIRIT moves
+                          are class-restricted and must explicitly carry
+                          CURSED_ENERGY. A move with requiredTechniqueId is a
+                          TECHNIQUE MOVE: its class list is ignored and omitted on
+                          save because any character type possessing or unlocking
+                          that technique may learn it.
     category              MoveCategory (derived from tags; see §6).
     tags                  Set<MoveTag> — the original data tags, retained for
                           UI, filtering, ability scoping, and round-tripping.
@@ -218,9 +305,14 @@ are the Move/MoveData field names.
     basePower             Combined raw damage number across every hit component.
                           0 for non-attacking moves.
     hitComponents         Ordered damage instances. Each stores basePower, its own
-                          damage-type tags, a delayTicks offset from unleash,
-                          requiresPreviousConnection, and avoidable. Legacy moves
-                          without this list synthesize one component from basePower.
+                          HIT TAGS, a delayTicks offset from unleash,
+                          requiresPreviousConnection, avoidable, and optional
+                          accuracy. Hit tags may include damage type, MELEE/RANGED,
+                          GUARD_BREAK, INTANGIBLE, and elemental tags. Power,
+                          defense coverage, reactions, and Black Flash are resolved
+                          from the current component, so different hits in one move
+                          can behave differently. Legacy attacks without this list
+                          synthesize one component from the move-level fields.
     baseAccuracy          Fraction [0.0, 1.0] — inherent accuracy before ACC/EVA.
                           1.0 = 100% (still subject to the hit roll).
     neverMiss             If true, the move bypasses the hit roll and always hits.
@@ -240,13 +332,26 @@ are the Move/MoveData field names.
   Defensive data (used only when defenseType != NONE; see §8)
     defenseType           NONE / BLOCK / PARRY / DODGE / SHIELD.
     blockStyle            PERCENTAGE / FLAT. Used only when defenseType = BLOCK.
-    blockDuration         0 = whole segment (start..end); -1 = end of round;
-                          >0 = that many ticks from the unleash point. Shared by
-                          BLOCK, PARRY, and DODGE.
-    blockAffectedTags     Null = reduces all damage types. Else reduces only
-                          attacks whose tags are a subset of this list. (BLOCK.)
-    blockDamageReduction  0–100, PERCENTAGE block only. 100 = full negation.
-    blockFlatReduction    FLAT block only. Subtracted from final damage (floor 1).
+    defenseTiming         FIXED opens at the defense's fire tick. REACTION arms at
+                          the fire tick and opens when the next matching hostile
+                          attack arrives. Shared by BLOCK, PARRY, and DODGE.
+    blockDuration         0 = one whole AP segment's duration; -1 = end of round;
+                          >0 = that many ticks after the window opens. For FIXED the
+                          anchor is the fire tick; for REACTION it is the trigger
+                          tick.
+    defenseUses           Number of attacks the active defense may contest. 0 =
+                          unlimited. The use cap does not shorten the time window.
+    blockAttackTypes      Accepted defensive attack categories: PHYSICAL,
+                          PHYSICAL_CURSED_ENERGY, CURSED_ENERGY. Empty = all.
+    blockRanges           Accepted MELEE/RANGED hit tags. Empty = all, including
+                          untagged hits.
+    blockElementalTags    Accepted ICE/ELECTRIC/FIRE/WATER hit tags. Empty = all.
+                          These three per-hit profiles apply to BLOCK and PARRY;
+                          blockAffectedTags is a legacy migration field only.
+    blockDamageReduction  0–100, PERCENTAGE block only; conditional effectiveness
+                          determines whether the live reduction reaches 100.
+    blockFlatReduction    FLAT block only. Subtracted from attack value before
+                          ordinary Defense, with an attack-value floor of 1.
     dodgeChance           0–100%. DODGE only — probability to avoid a matching
                           incoming attack entirely (no damage). Chance-based;
                           not potency-gated.
@@ -268,9 +373,14 @@ are the Move/MoveData field names.
                             AVAILABILITY    gates whether the move can be planned
                                             (e.g. MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE).
                             ACCURACY_CHECK  modifies the hit roll (NEVER_MISS / NEVER_HIT).
+                            ON_START        when the segment begins, before CE is
+                                            paid; consumption remains spent if a
+                                            later interruption cancels the move.
                             ON_FIRE         on unleash (hit/miss/block agnostic).
                             ON_HIT          on a connected hit (may bind to one
                                             hitComponent via hitComponentIndex).
+                            BLOCK_CALCULATION  while this BLOCK calculates its
+                                            reduction against the current hit.
                             ON_BLOCK / ON_PARRY / ON_DODGE  on the matching defense.
     Per-row shape         type (AbilityEffectType) + target (SELF / ENEMY / BOTH) +
                           an optional condition + duration/magnitude as the type
@@ -309,7 +419,8 @@ are the Move/MoveData field names.
       reproduces the authored stats exactly. A peak summoner (300/300) doubles them.
 
   Area of effect (MoveTag.AOE + AoeType)
-    aoeType               Authoritative AOE targeting shape for an AOE-tagged move
+    aoeType               Authoritative targeting shape for an AOE-tagged ATTACK
+                          or hostile UTILITY move
                           (AoeType.java): MULTIPLE / ALL_ENEMIES / ALL_OTHERS. Defaults
                           to ALL_ENEMIES when blank; FRIENDLY_FIRE tag migrates to
                           ALL_OTHERS. Drives MoveTargeting (NONE / SINGLE_ENEMY /
@@ -319,6 +430,12 @@ are the Move/MoveData field names.
                           Planning requires 1..N distinct active enemies. Invalid
                           targets are refilled in stable roster order at fire time,
                           but never beyond the number originally selected.
+
+  Ordered pair targeting (Targeting)
+    targeting             DEFAULT / SELF_AND_ENEMY / SELF_AND_ALLY /
+                          ALLY_AND_ENEMY. SELF is implicit; selected target ids
+                          contain only the named non-self endpoints, in enum order.
+                          Legacy pairTargeting JSON is accepted as an alias.
 
   Learning / gating
     prerequisites         Map<stat name → minimum value>. All must be met to
@@ -339,32 +456,42 @@ are the Move/MoveData field names.
                           or cursed tool). Authored via the Move Editor's Weapon
                           Type dropdown.
 
-  Modifier flags (back dedicated MoveTag entries; see §5)
-    guardBreak  boolean  → Move.isGuardBreak() → GUARD_BREAK tag
-    heavy       boolean  → Move.isHeavy()      → HEAVY tag
+  Legacy / modifier flags
+    guardBreak  Legacy move-wide field migrated onto each hit component.
+    heavy       Backs the move-level HEAVY tag and protects the whole segment from
+                STUN_CURRENT_ACTION.
 
   Other accessors worth knowing:
     isBlackFlashEligible()  true when any individual hit component is eligible.
-    isMelee() / isRanged()  derived from the presence of the MELEE/RANGED tags.
-    isIntangible()          derived from the presence of the INTANGIBLE tag.
+    isMelee() / isRanged() / isGuardBreak() / isIntangible()
+                            aggregate "any hit" queries. They are conveniences for
+                            filtering; the resolver still uses the current hit.
     isDefensive()           derived from category == DEFENSIVE.
     isBlock() / isParry() / isDodge()  derived from defenseType.
     isActiveDefense()       true for BLOCK/PARRY/DODGE (has a tracked window).
     dodgeAppliesTo(move)   DODGE scope vs an incoming attack's range.
-    parryStaggersAttacker(move)  true iff a parry should stagger the attacker.
-    coveredByBlockTags(tags)  true if the attacker's tags are a subset of a
-                              block's blockAffectedTags (block-coverage check).
-    applyBlockTo(value)      applies a block's reduction to a damage value.
+    parryStaggersAttacker(move, hit)  true only for a covered, non-GUARD_BREAK,
+                                      non-RANGED hit when stagger ticks are positive.
+    blocksAttack(move, hit)  checks the current hit against all three defense
+                              coverage dimensions.
+    applyBlockTo(value, multiplier)  applies authored block reduction after
+                                      conditional effectiveness modifiers.
 
 ================================================================================
-  5. MOVE TAGS  (MoveTag.java)
+  5. MOVE TAGS & HIT TAGS  (MoveTag.java, HitComponent.java)
 ================================================================================
 
-Tags classify a move. Multiple tags combine; category and pool are derived from
-the tag set at runtime. The canonical terms for describing a move's type are the
-tag names below.
+MOVE TAGS describe the parent action: ATTACK / UTILITY / DEFENSIVE, AOE,
+FRIENDLY_FIRE, HEAVY, weapon requirements, and learning/filtering metadata.
 
-  TYPE TAGS (select the Power formula / MoveCategory — MoveTag.TYPE_TAGS):
+HIT TAGS describe one damage instance: damage type, range, GUARD_BREAK,
+INTANGIBLE, and elements. A HitComponent validates and derives its own category.
+Power, Black Flash, block/parry coverage, and elemental reactions use that current
+hit. Move.hasTag and Move.isMelee/isRanged/isGuardBreak/isIntangible aggregate
+hit-only tags for filtering convenience; that does not make them parent-owned.
+Parent type tags are normally synchronized from the union of component type tags.
+
+  TYPE HIT TAGS (select the hit's Power formula / MoveCategory):
     PHYSICAL              Pure physical strike (fists, weapons, body).
                           Governed by Strength + Combat Ability.
     CURSED_ENERGY         Raw cursed energy without a specific technique. May
@@ -385,20 +512,21 @@ tag names below.
     UTILITY               Non-damaging move (buffs, marks, resource moves). Not
                           slot-gated by category; counted under Jujutsu Arts
                           unless it carries PHYSICAL.
-    DEFENSIVE             A move that reduces or blocks incoming damage
-                          (PERCENTAGE_BLOCK / FLAT_BLOCK). Applied BEFORE Defense
+    DEFENSIVE             A move that blocks, parries, dodges, or otherwise
+                          protects against incoming damage. BLOCK applies BEFORE Defense
                           in the damage pipeline.
 
-  RANGE TAGS (MoveTag.RANGE_TAGS — meaningful only on ATTACK moves):
+  RANGE HIT TAGS (MoveTag.RANGE_TAGS):
     MELEE                 Close-quarters strike. Modifier tag: does not affect
                           Power, category, or Black Flash eligibility. Lives only
                           in the tag set (no dedicated Move flag).
     RANGED                Distance strike (projectile, beam, thrown weapon).
                           Same rules as MELEE.
 
-  AOE / FRIENDLY-FIRE TAGS:
-    AOE                  Marks an area-of-effect attack. Paired with aoeType and
-                         aoeTargetCount (see "Area of effect" in §4).
+  AOE / FRIENDLY-FIRE MOVE TAGS:
+    AOE                  Marks an action that resolves against multiple
+                         combatants. It supports attacks and hostile utility
+                         effects. Paired with aoeType and aoeTargetCount (§4).
     FRIENDLY_FIRE        On an AOE move, migrates aoeType to ALL_OTHERS so the
                          attack can also hit allies. Lives only in the tag set.
 
@@ -412,13 +540,13 @@ tag names below.
     equippedWeaponTypes, or a cursed tool in equippedCursedToolIds). A cursed
     tool of that type also zeroes the move's CE cost.
 
-  COMBAT MODIFIER TAG:
-    INTANGIBLE            An attack carrying this tag cannot be parried and ignores
+  COMBAT MODIFIER HIT TAG:
+    INTANGIBLE            A hit carrying this tag cannot be parried and ignores
                           all BLOCK reduction, including full blocks. Dodge,
                           accuracy, ordinary Defense, coded resistance, and damage
                           immunity are unaffected. Lives only in the tag set.
 
-  ELEMENTAL TAGS (MoveTag.ELEMENTAL_TAGS; authored per hit component):
+  ELEMENTAL HIT TAGS (MoveTag.ELEMENTAL_TAGS; authored per hit component):
     ICE                   A connected hit has a 5% chance to apply FROZEN, raised
                           to 50% when the target is WET. An ICE hit always cures
                           BURNED.
@@ -432,7 +560,9 @@ tag names below.
                           one round.
     Elemental reactions occur on connected hits, including hits fully negated by
     BLOCK, but not on misses, dodges, or parries. Elemental tags do not affect the
-    Power formula, move category, or Black Flash eligibility.
+    Power formula, move category, or Black Flash eligibility. They can gate a
+    BLOCK/PARRY through blockElementalTags and can alter a block through an
+    INCOMING_HIT_HAS_TAG condition.
 
   IMMEDIATE EFFECTS:
     STUN_CURRENT_ACTION   Cancels the target's not-yet-fired action segment(s)
@@ -440,30 +570,33 @@ tag names below.
                           effect row with trigger, target, optional condition,
                           and optional activation chance. HEAVY segments resist.
 
-  MODIFIER FLAGS (also backed by a dedicated boolean on Move):
-    GUARD_BREAK           A successful hit ignores the defender's BLOCK defensive
+  OTHER HIT / MOVE MODIFIERS:
+    GUARD_BREAK           A hit ignores the defender's BLOCK defensive
                           moves — the block applies no reduction and cannot negate
                           the hit. Dodges and parries are unaffected; only blocks
                           bypass. A guard-break attack is still negated by a parry
-                          but does NOT get staggered by one. Backed by
-                          Move.isGuardBreak().
-    HEAVY                 An action segment carrying this move is IMMUNE to
+                           but does NOT get staggered by one. The old move-wide
+                           boolean is migrated to hit tags; Move.isGuardBreak()
+                           means at least one hit has it.
+    HEAVY                 A move-level tag. An action segment carrying it is IMMUNE to
                           STUN_CURRENT_ACTION. HEAVY does not resist CE depletion,
                           ability cancellation, or the STAGGER status.
                           The "heavy beats stun" half of the stun ↔ heavy
                           interaction. Backed by Move.isHeavy().
 
-  Black Flash eligibility rule (evaluated per hit component): a component must
+  Black Flash eligibility rule (evaluated independently per hit): a component must
     contain both PHYSICAL and CURSED_ENERGY, and must not contain
     INNATE_TECHNIQUE or NON_INNATE_TECHNIQUE.
 
 ================================================================================
-  6. MOVE CATEGORIES  (MoveCategory.java)
+  6. MOVE & HIT CATEGORIES  (MoveCategory.java, HitComponent.java)
 ================================================================================
 
-Categories are derived at runtime from the move's tag set (exact set match via
-MoveCategory.fromTags). They determine the Power formula and Black Flash
-eligibility. Pool (slot budget) is derived separately from the raw tags (§7).
+For a damaging action, each hit derives a category from its own exact type-tag set.
+That category selects Power and Black Flash eligibility. The parent move keeps a
+derived category for UI and compatibility, while pool/slot budget is derived
+separately from the parent raw tags (§7). UTILITY and DEFENSIVE are parent action
+categories rather than damaging hit categories.
 
   Category                                Tags                              BF?
   PHYSICAL                                {PHYSICAL}                        No
@@ -523,10 +656,41 @@ MOVE SLOTS
 A DEFENSIVE move picks one defense type. Three are implemented (BLOCK, PARRY,
 DODGE); SHIELD is reserved.
 
-Shared duration rules (blockDuration; same for BLOCK, PARRY, DODGE):
-    blockDuration = 0    defense lasts the whole segment (start..endTick).
-    blockDuration = -1   defense lasts until end of round.
-    blockDuration > 0    defense lasts that many ticks from the unleash point.
+DEFENSE TIMING AND DURATION
+  FIXED      The window opens when the defensive move fires.
+  REACTION   Firing arms the defense until round end. The first matching hostile
+             attack triggers its window at that attack's impact tick. It triggers
+             once per placement and whiffs if no attack arrives.
+
+  Shared blockDuration rules for BLOCK, PARRY, and DODGE:
+    blockDuration = 0    use the move's AP Cost as the window length.
+    blockDuration = -1   window lasts until end of round.
+    blockDuration > 0    window lasts that many ticks.
+  A FIXED window is anchored to its fire tick; a REACTION window is anchored to
+  the attack that triggers it.
+
+DEFENSE USES
+  defenseUses limits how many attacks a live defense may contest; 0 is unlimited.
+  A potency-valid BLOCK spends a use when it contests. A successful PARRY spends
+  one. DODGE spends one whenever it takes its chance roll, even when that roll
+  fails. Spending all uses disables the defense without changing its time window.
+
+DEFENSE COVERAGE PROFILE — BLOCK and PARRY
+  Coverage is checked independently for every HitComponent. Three dimensions must
+  all accept the incoming hit; an empty dimension is unrestricted.
+
+    blockAttackTypes      Exact one-of-three defensive category membership:
+      PHYSICAL                  pure physical
+      PHYSICAL_CURSED_ENERGY    physical plus CE or either technique type
+      CURSED_ENERGY             non-physical raw CE, innate technique,
+                                non-innate technique, or mixed techniques
+    blockRanges           Every MELEE/RANGED tag on the hit must be selected. A
+                          nonempty range set rejects a hit with no range tag.
+    blockElementalTags    Every ICE/ELECTRIC/FIRE/WATER tag on the hit must be
+                          selected. A non-elemental hit remains accepted.
+
+  Technique simplification exists only for defensive coverage. It does not change
+  the hit's actual tags, Power category, prerequisites, or Black Flash rules.
 
 POTENCY GATE — attack vs defence
   Every attack and every BLOCK/PARRY move carries a potency (1–5). A BLOCK or
@@ -550,24 +714,32 @@ NONE
 
 BLOCK
   Damage reduction. The reduction formula is set by BlockStyle:
-    PERCENTAGE  attack value × (1 − blockDamageReduction/100).
-                blockDamageReduction = 100  → full negation (outcome BLOCKED).
-                blockDamageReduction < 100  → partial (outcome MOVE_BLOCK_REDUCED).
-    FLAT        subtract blockFlatReduction (damage floor 1).
+    PERCENTAGE  effectiveReduction = min(100,
+                  blockDamageReduction × effectiveness multipliers)
+                attack value × (1 − effectiveReduction/100).
+    FLAT        subtract blockFlatReduction × effectiveness multipliers
+                (damage floor 1).
   Applied BEFORE Defense in the damage pipeline. Do NOT call "blockDamageReduction"
   the "Defense" value — Defense is the computed stat applied AFTER the block.
-  blockAffectedTags: null/empty = all damage types; else only attacks whose tags
-  are a subset of the list (Move.coveredByBlockTags).
+  BLOCK_EFFECTIVENESS_MULTIPLY rows run at BLOCK_CALCULATION against the current
+  incoming hit; every matching row's value multiplies together. The row may use a
+  condition, activation chance, and mastery progression. Authored 100% can become
+  partial, and authored less than 100% can become a full MOVE_BLOCKED outcome.
+
+  INCOMING_HIT_HAS_TAG normally checks the current hit's selected tag. Its
+  CURSED_ENERGY option also matches innate/non-innate techniques and physical-plus-
+  cursed/technique hits, so it is broader than BlockAttackType.CURSED_ENERGY.
   On a block, onBlockEffects fire on the defender.
 
 PARRY
-  A short reactive window that negates a hit entirely (outcome PARRIED, no damage
-  roll). Parries are weapon moves: they carry a weapon-type tag (e.g. KATANA), so
-  only a character with that weapon equipped (weapon or cursed tool) can use one.
-  Parries are type-agnostic — any ATTACK can be parried.
-  On a successful parry of a non-GUARD_BREAK attack, the attacker is STAGGERED
-  for parryStaggerTicks AP ticks (0 = no stagger). A GUARD_BREAK attack is still
-  negated but is NOT staggered.
+  A defense that negates a covered hit entirely (outcome PARRIED, no damage roll).
+  Parries use the same attack-type, range, and elemental profile as blocks; only a
+  profile with all three dimensions empty is unrestricted. Some parries require a
+  weapon because that authored move carries a weapon tag, but weapon use is not a
+  universal PARRY rule.
+  On a successful parry of a non-GUARD_BREAK, non-RANGED hit, the attacker is
+  STAGGERED for parryStaggerTicks AP ticks (0 = no stagger). Guard-break and ranged
+  hits are still negated but do not stagger their user.
   On a parry, onParryEffects fire on the defender.
 
 DODGE
@@ -576,6 +748,17 @@ DODGE
   (works vs physical and cursed energy) and NOT potency-gated. dodgeScope
   (DodgeScope): MELEE / RANGED / BOTH.
   On a dodge, onDodgeEffects fire on the defender.
+
+PERFECT READ
+  A FIXED defense makes a Perfect Read when its fire tick exactly equals the
+  current hit's impact tick. REACTION defenses never qualify.
+    BLOCK    fully negates the hit regardless of style or authored reduction.
+    DODGE    succeeds automatically.
+    PARRY    adds 2 stagger ticks against a melee hit. Against a RANGED hit it
+             reflects that hit instead of staggering.
+  Reflection reruns the original attacker's Power/outgoing modifiers against that
+  attacker's current Defense/incoming modifiers. It contests no defense and cannot
+  Black Flash. An off-tick ranged parry only negates the hit.
 
 SHIELD
   Reserved for a future defence flavour. Not yet implemented — the editor exposes
@@ -614,7 +797,7 @@ ACTION COUNTER
 
 ACTION SEGMENT
   One move's occupancy on the timeline.
-    startTick      CE is drained here.
+    startTick      ON_START effects run, then CE is drained here.
     fireTick       = startTick + unleashPoint − 1. The move's effect resolves here.
     endTick        = startTick + apCost − 1. The last tick of the segment.
     actualCeCost   CE after efficiency scaling (drained at startTick).
@@ -662,9 +845,8 @@ ROUND END (round maintenance)
   currentTick resets to 0, ROUND_START automatic statuses re-apply.
 
 BATTLE OVER
-  One or both combatants have 0 HP. Winner is declared. Simultaneous KO = draw
-  (winner is null). checkAndResolveBattleOver sets the phase when either
-  combatant isDefeated().
+  A side has no living actual fighters. Living summons do not prevent its defeat.
+  The surviving side wins; simultaneous elimination is a draw (winner is null).
 
 ROUND
   One full cycle of PLANNING → RESOLUTION → ROUND END. roundNumber starts at 1.
@@ -675,32 +857,40 @@ ROUND
 ================================================================================
 
 Pipeline:
-  1. DODGE           — a matching active dodge may avoid the attack.
+  Each HitComponent follows this pipeline on its own impact tick:
+  1. DODGE           — a matching active dodge may avoid the hit; Perfect Read
+                        makes a fixed dodge automatic.
   2. HIT ROLL        — does the move connect? (neverMiss / guaranteed hit /
                        guaranteed dodge / hitChance roll)
   3. CODED CONNECT   — onAttackConnected runs on a confirmed connection only.
-  4. PARRY           — a matching, sufficiently potent parry negates the hit;
-                       skipped for INTANGIBLE attacks.
+  4. PARRY           — a profile-matching, sufficiently potent parry negates the
+                       hit; skipped for INTANGIBLE. Perfect ranged parries reflect.
   5. BLOCK BYPASS    — INTANGIBLE bypasses forced and active blocks; GUARD_BREAK
                        bypasses blocks but not parries.
   6. POWER           — PowerCalculator.compute(category, attackerStats), then run
                        through attacker.modifyBattleStat(POWER).
-  7. BLOCK REDUCTION — active BLOCK reduces attackValue unless bypassed.
+  7. BLOCK REDUCTION — a profile-matching active BLOCK spends a use, evaluates
+                       BLOCK_CALCULATION multipliers, and reduces attackValue.
+                       A Perfect Read fully negates before this calculation.
   8. DEFENSE         — max(1, defender.computeCurrentDefense(tick) × codedModifiers.defenseMultiplier()).
   9. DAMAGE FORMULA  — scale, roll, and damage multipliers applied (see below).
- 10. BLACK FLASH     — BF roll on eligible moves; ×2.5 if proc'd.
+  10. BLACK FLASH     — BF roll on an eligible hit; ×2.5 if proc'd.
 
-  DAMAGE FORMULA (verbatim, DamageCalculator):
-    power       = PowerCalculator.compute(category, acs)
+  DAMAGE FORMULA (DamageCalculator; component means the current hit):
+    power       = PowerCalculator.compute(component.category, attackerStats)
     if category == PHYSICAL: power ×= PHYSICAL_POWER_MULTIPLIER  (0.85)
     power       = attacker.modifyBattleStat(POWER, power)
-    attackValue = basePower × basePowerMultiplierFor(move) × power
-    attackValueAfterBlock = block applied to attackValue (if any active block)
+    attackValue = component.basePower × executionBasePowerMultiplier
+                  × basePowerMultiplierFor(move) × power
+    attackValueAfterBlock = block applied with conditional effectiveness
     defense     = max(1, defender.computeCurrentDefense(tick) × codedModifiers.defenseMultiplier())
     randomRoll  = ROLL_MIN + (1 − ROLL_MIN) × rng.nextDouble()     // ROLL_MIN = 0.85
     rawDamage   = round( (attackValueAfterBlock / defense)
-                         × DAMAGE_SCALE × randomRoll
-                         × attacker.getAbilityFlags().damageMultiplierFor(move) )
+                          × DAMAGE_SCALE × randomRoll
+                          × attacker.damageMultiplierFor(move)
+                          × defender.incomingDamageMultiplierFor(move)
+                          × elementalStatusMultiplier )
+    elementalStatusMultiplier = ×2 for ELECTRIC into WET; ×0.5 for MELEE while BURNED
     rawDamage   = max(1, rawDamage)                                 // floor 1 on a hit
     rawDamage   = attacker.modifyBattleStat(DAMAGE_DEALT, rawDamage)
     finalDamage = rawDamage  (× BF_DAMAGE_MULTIPLIER if Black Flash proc'd)
@@ -725,19 +915,20 @@ POWER (PowerCalculator — integer division; cursedEnergyBase is shared;
   PHYSICAL_INNATE_NON_INNATE_TECHNIQUE(physical + innateTechnique × 3 + nonInnateTechnique × 2) / 6
   UTILITY, DEFENSIVE                  0
 
-OUTCOMES (DamageResult.Outcome):
+  OUTCOMES (DamageResult.Outcome):
   MISS      Hit roll failed (or guaranteed dodge). No damage.
   DODGED    A live DODGE defence avoided the attack (dodgeChance roll). No damage.
-  PARRIED   A live PARRY negated the attack (potency-gated). No damage; the
-            attacker may be STAGGERED if the move lacked GUARD_BREAK.
-  BLOCKED   Connected but fully negated by a BLOCK (PERCENTAGE at 100%).
+  PARRIED   A live PARRY negated the hit (coverage- and potency-gated). A melee
+             attacker may be STAGGERED; a perfect ranged parry may reflect damage.
+  BLOCKED   Connected but fully negated because effective percentage reached 100%,
+             a Perfect Read escalated the block, or another full-block rule applied.
   HIT       Connected. Final damage applied (may include partial block reduction).
 
 RESOLUTION ORDER (DamageCalculator.resolve):
   dodge roll (DODGE, chance-based) → hit roll → coded onAttackConnected →
-  parry check (PARRY, potency-gated) → forceFullBlock → block query (BLOCK,
-  potency-gated; bypassed by GUARD_BREAK or INTANGIBLE) → power → block reduction →
-  defense → damage → Black Flash.
+  parry profile/potency check → forceFullBlock → block profile/potency query
+  (bypassed by GUARD_BREAK or INTANGIBLE) → Power → Perfect Read or conditional
+  block reduction → Defense → damage → Black Flash.
 
 RAW DAMAGE     Damage before the Black Flash multiplier.
 FINAL DAMAGE   Damage after all modifiers (block reduction, BF multiplier). What is
@@ -748,9 +939,9 @@ FINAL DAMAGE   Damage after all modifiers (block reduction, BF multiplier). What
 ================================================================================
 
 BLACK FLASH (BF)
-  A rare critical hit that multiplies damage, rolled only on BF-eligible moves
-  (the four PHYSICAL + CE-bearing categories, §6). BF_DAMAGE_MULTIPLIER = ×2.5,
-  applied to raw damage.
+  A rare critical hit rolled independently on eligible hit components. A hit must
+  contain PHYSICAL + CURSED_ENERGY and no technique tag (§6).
+  BF_DAMAGE_MULTIPLIER = ×2.5, applied to raw damage.
 
 BLACK FLASH CHANCE
   Base BF_BASE_CHANCE = 3% (0.03). Modified by BF_CHANCE_ADD and by BFS escalation.
@@ -826,7 +1017,8 @@ CURSED SPIRIT PHYSIOLOGY
     - A move's final effective CE cost is waived when its authored baseCeCost is
       <= max(1, floor(raw ten-stat BST / 100)). The check uses the authored base
       cost and raw stats, not the scaled cost or ability-modified stats.
-    - Reconstitute (move 000132) is granted as a slot-free, once-per-round move.
+    - Reconstitute (move 000131) is granted as a slot-free move usable twice per
+      round; each use heals 15% Max HP.
 
 EXORCISE
   Defeat a cursed spirit by reducing it to 0 HP with cursed power. A fatal hit
@@ -881,147 +1073,86 @@ CHARACTER-SOURCE ABILITY
   An ability whose sourceType is CHARACTER. It is available to every character;
   CHARACTER does not mean character-exclusive. Only assigned abilities are active.
 
-ABILITY EFFECT TYPES  (grouped as in source).
-  Each type owns its editor display name, description, required parameters, and
-  defaults. TRIGGERED RUNTIME EFFECTS are the members of the explicit
-  ACTIVATION_REQUIRED set (queried via requiresActivation()): applied by the
-  passive dispatcher on activation, not at construction. (This set replaces the
-  former ordinal >= HEAL_HP check so adding activation-required effects such as
-  SUMMON_CHARACTER does not silently shift the boundary.) Move effect rows reuse
-  this same enum, restricted to the isMoveEffect() subset, and carry a trigger
-  (see §4); STATUS / CODED / SUMMON map to APPLY_STATUS / CODED_MOVE_ACTION /
-  SUMMON_CHARACTER.
+ABILITY EFFECT TYPES
+  Every type owns its editor label, description, required parameters, defaults,
+  and whether it may appear on a move or Domain. Triggered runtime members are in
+  the explicit ACTIVATION_REQUIRED set. Move rows add a MoveEffectTrigger (§4);
+  Domain rows add Domain trigger/audience/delivery metadata (§20).
 
-  Stat modifiers (construction-time):
-    STAT_ADD            Add to stat                       (STAT, INTEGER)
-    STAT_MULTIPLY       Multiply stat (after additive)    (STAT, DECIMAL)
-    STAT_DIVIDE         Divide stat (after additive)      (STAT, DECIMAL)
-    STAT_SET_VALUE      Set stat to an exact value        (STAT, INTEGER)
-    STAT_SET_MIN        Set stat to 0 (display N/A)       (STAT)
-    STAT_ALLOCATION_MINIMUM  Set editor allocation floor  (STAT, INTEGER)
-    STAT_ALLOCATION_MAXIMUM  Set editor allocation ceiling (STAT, INTEGER)
-    STAT_BONUS_POINTS   Change point-buy budget (editor)  (INTEGER)
-
-  Marker templates:
-    POISON_IMMUNITY     Mark the character as poison-immune
-    SOUL_AWARE_ATTACKS  Mark the character's attacks as soul-aware
+  Construction-time stats and markers:
+    STAT_ADD / STAT_MULTIPLY / STAT_DIVIDE / STAT_SET_VALUE / STAT_SET_MIN
+    STAT_ALLOCATION_MINIMUM / STAT_ALLOCATION_MAXIMUM / STAT_BONUS_POINTS
+    POISON_IMMUNITY / SOUL_AWARE_ATTACKS
 
   Compiled mechanics:
-    CODED               Enable an allow-listed compiled feature on an ability  (CODED_FEATURE)
-    CODED_MOVE_ACTION   A move effect row dispatched to a CodedAbilityRuntime
-                        (codedAbilityKey + codedAction; see §15). Activation-required.
+    CODED               Enable an allow-listed compiled ability feature.
+    CODED_MOVE_ACTION   Dispatch a move row to a CodedAbilityRuntime (§15).
 
-  CE cost modifiers (move-scoped):
-    CE_COST_TO_MINIMUM  Force matching moves to min CE cost      (MOVE_SCOPE)
-    CE_COST_MULTIPLY    Multiply CE cost of matching moves        (MOVE_SCOPE, DECIMAL)
-    CE_COST_ALTER       Scale then add/subtract CE cost           (MOVE_SCOPE, DECIMAL, INTEGER)
-    CE_COST_WAIVE_BY_STAT_TOTAL  Waive low authored base costs by raw BST
-                                                              (MOVE_SCOPE, INTEGER divisor)
+  Move-scoped CE and accuracy:
+    CE_COST_TO_MINIMUM / CE_COST_MULTIPLY / CE_COST_ALTER
+    CE_COST_WAIVE_BY_STAT_TOTAL
+    MOVE_ACCURACY_ADD / MOVE_ACCURACY_MULTIPLY
+    OPPONENT_ACCURACY_ADD / OPPONENT_ACCURACY_MULTIPLY
+    NEVER_MISS / NEVER_HIT  Competing accuracy tiers; Never Miss wins a tie.
 
-  Accuracy modifiers (move-scoped):
-    MOVE_ACCURACY_ADD         ± accuracy on own moves           (MOVE_SCOPE, INTEGER)
-    MOVE_ACCURACY_MULTIPLY    × accuracy on own moves           (MOVE_SCOPE, DECIMAL)
-    OPPONENT_ACCURACY_ADD     ± accuracy on enemy's moves       (MOVE_SCOPE, INTEGER)
-    OPPONENT_ACCURACY_MULTIPLY × accuracy on enemy's moves      (MOVE_SCOPE, DECIMAL)
-    NEVER_MISS          Accuracy-priority tier for matching attacks; wins against an
-                        equal-or-lower NEVER_HIT tier            (MOVE_SCOPE, INTEGER tier)
-    NEVER_HIT           Accuracy-defense tier; blocks only lower-tier NEVER_MISS
-                        attacks                                 (MOVE_SCOPE, INTEGER tier)
+  Move-scoped damage and block calculation:
+    DAMAGE_MULTIPLY              Multiply final outgoing damage.
+    MOVE_BASE_POWER_MULTIPLY     Multiply configured Base Power before Power.
+    MOVE_BASE_POWER_SCALE_BY_STAT  Scale Base Power on a piecewise stat curve.
+    INCOMING_DAMAGE_MULTIPLY     Multiply matching incoming damage.
+    BLOCK_EFFECTIVENESS_MULTIPLY Multiply this BLOCK's percentage or flat amount
+                                 against the current hit; BLOCK_CALCULATION only.
 
-  Damage modifiers (move-scoped):
-    DAMAGE_MULTIPLY           × damage dealt                   (MOVE_SCOPE, DECIMAL)
-    MOVE_BASE_POWER_MULTIPLY  × configured base power (pre-Power, pre-Defense) (MOVE_SCOPE, DECIMAL)
-    INCOMING_DAMAGE_MULTIPLY  × incoming damage taken               (MOVE_SCOPE, DECIMAL)
+  Grants and persistent combat rules:
+    GRANT_MOVE / UNLOCK_MOVE / GRANT_ABILITY / UNLOCK_TECHNIQUE
+    BF_CHANCE_ADD / MODIFY_DEFENSE / DEFENSE_FROM_DURABILITY / MODIFY_AP_BAR
+    SET_JUJUTSU_ART_SLOTS / AUTO_STATUS_APPLY / LOCK_MOVE_TAG
+    COST_CE_PER_ROUND / MAX_ACTIVE_SUMMONS / SUMMON_CE_UPKEEP_PER_ACTIVE_TICK
+    BATTLE_STAT_ODDS_MULTIPLY   Multiply odds without directly multiplying chance.
+    BATTLE_STAT_MODIFIER       Permanently add, multiply, or SET a battle stat.
 
-  Grants / technique:
-    GRANT_MOVE         Add move to AVAILABLE, bypassing requirements (MOVE_ID)
-    UNLOCK_MOVE        Add move to AVAILABLE (still must be learned) (MOVE_ID)
-    GRANT_ABILITY      Add ability to AVAILABLE                 (ABILITY_ID)
-    UNLOCK_TECHNIQUE   Grant an innate cursed technique         (TECHNIQUE)
+  Triggered HP, CE, damage, and status:
+    HEAL_HP / RESTORE_CE       Flat or percent-of-maximum, selected by VALUE_MODE.
+    DRAIN_CE                   Flat or percent; immediate or over time.
+    DEAL_DIRECT_DAMAGE         Flat or max-HP percent; bypasses accuracy/Defense.
+    INSTANT_KILL               Reduce to 0 HP unless fatal protection applies.
+    APPLY_STATUS / REMOVE_STATUS / CLEAR_STATUSES
 
-  Other persistent passives:
-    BF_CHANCE_ADD                    ± Black Flash chance (enter 5 for +5pp) (DECIMAL)
-    MODIFY_DEFENSE                   × effective Defense                    (DECIMAL)
-    DEFENSE_FROM_DURABILITY          Defense = scaled Durability × value    (DECIMAL)
-    MODIFY_AP_BAR                    ± flat AP bar size                     (INTEGER)
-    SET_JUJUTSU_ART_SLOTS            Override Jujutsu Art slot count        (INTEGER)
-    AUTO_STATUS_APPLY                Apply a status automatically           (STATUS_TYPE, TARGET, TIMING, DURATION, MAGNITUDE)
-    LOCK_MOVE_TAG                    Prevent this character using one tag   (MOVE_SCOPE)
-    COST_CE_PER_ROUND                Drain CE at round start                (INTEGER)
-    MAX_ACTIVE_SUMMONS               Cap on active+pending shikigami        (INTEGER)
-    SUMMON_CE_UPKEEP_PER_ACTIVE_TICK Extra CE drain per active summon tick  (DECIMAL)
-    BATTLE_STAT_MODIFIER              Permanent change/multiplier/set to a
-                                      derived battle stat (BATTLE_STAT, STAT_OPERATION, DECIMAL)
+  Triggered timed stats:
+    TIMED_STAT_MODIFIER        Add, multiply, or set a core/battle stat for a
+                               duration, using flat or percentage VALUE_MODE.
+    TEMP_STAT_SET_VALUE        Timed exact base-stat value.
+  Percentage additions stack additively: +20% then +20% = +40%. For a battle
+  stat, the most recently applied live SET wins and pins the exact value,
+  overriding additions, multipliers, and percentages until it expires.
 
-  Triggered runtime — resources (target SELF / ENEMY / BOTH):
-    HEAL_HP            Restore flat HP                           (TARGET, INTEGER)
-    HEAL_HP_PERCENT    Restore % of max HP                       (TARGET, DECIMAL)
-    RESTORE_CE         Restore flat CE                           (TARGET, INTEGER)
-    RESTORE_CE_PERCENT Restore % of max CE                       (TARGET, DECIMAL)
-    DRAIN_CE           Remove flat CE                            (TARGET, INTEGER)
-    DRAIN_CE_PERCENT   Remove % of max CE                        (TARGET, DECIMAL)
-    DEAL_DIRECT_DAMAGE Fixed damage, bypasses accuracy/defense   (TARGET, INTEGER)
-    DEAL_MAX_HP_DAMAGE % of target max HP as direct damage       (TARGET, DECIMAL)
-    INSTANT_KILL       Reduce to 0 HP (unless fatal protection)  (TARGET)
+  Triggered defenses, accuracy, locks, and targeting:
+    IGNORE_DAMAGE / DAMAGE_SHIELD / SURVIVE_FATAL_DAMAGE
+    APPLY_NEVER_MISS / APPLY_NEVER_HIT / GUARANTEE_NEXT_BLACK_FLASH
+    CANCEL_NEXT_MOVE / STUN_CURRENT_ACTION
+    TEMP_LOCK_MOVE_TAG / TEMP_LOCK_TECHNIQUE
+    TAUNT / EXCHANGE_ATTACK_TARGETS
 
-  Triggered runtime — status control:
-    APPLY_STATUS       Apply any status                          (STATUS_TYPE, TARGET, DURATION, MAGNITUDE)
-    REMOVE_STATUS      Remove every instance of one status       (STATUS_TYPE, TARGET)
-    CLEAR_STATUSES     Remove every active status                (TARGET)
+  Bounded resources:
+    DEFINE_BOUNDED_RESOURCE   Create a named, player-visible value with a starting
+                              amount and capacity.
+    TRANSACT_BOUNDED_RESOURCE Atomically spend and/or gain named resources.
+    CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
+                              At ON_START consume all of one resource and multiply
+                              configured Base Power by the amount consumed.
 
-  Triggered runtime — timed (TEMP_*) stat/battle effects:
-    TEMP_STAT_ADD      Timed ± to a base stat                    (STAT, TARGET, INTEGER, DURATION)
-    TEMP_STAT_MULTIPLY Timed × a base stat                       (STAT, TARGET, DECIMAL, DURATION)
-    TEMP_STAT_SET_VALUE Timed set of a base stat                 (STAT, TARGET, INTEGER, DURATION)
-    BATTLE_STAT_ADD    Timed ± to a battle stat                  (BATTLE_STAT, TARGET, DECIMAL, DURATION)
-    BATTLE_STAT_MULTIPLY Timed × a battle stat                   (BATTLE_STAT, TARGET, DECIMAL, DURATION)
-    TEMP_STAT_PERCENT  Timed ± % of a scaled base stat           (STAT, TARGET, DECIMAL, DURATION)
-    BATTLE_STAT_PERCENT Timed ± % of a scaled battle stat        (BATTLE_STAT, TARGET, DECIMAL, DURATION)
+  Summons, forms, and Domains:
+    MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE  Prevent use while the selected
+                                                owned summon remains active.
+    SUMMON_CHARACTER / DESUMMON_OWNED_SHIKIGAMI / DESUMMON_TARGET_SHIKIGAMI
+    TRANSFORM_CHARACTER      Swap to an authored form while preserving battle identity.
+    ESTABLISH_DOMAIN         Establish the selected Domain definition (§20).
 
-  Flat vs percentage stat modifiers:
-    • Flat (STAT_ADD / TEMP_STAT_ADD / BATTLE_STAT_ADD / *_INCREASE-DECREASE
-      statuses) add or subtract points. These are the rare raw-stat changes used
-      by passive abilities and the occasional active ability.
-    • Percentage (TEMP_STAT_PERCENT / BATTLE_STAT_PERCENT) add or subtract a
-      fraction of the SCALED value and are the default for move buffs/nerfs
-      (utility, on-hit, on-defense). Percentage effects STACK ADDITIVELY:
-      +20% then +20% = +40% (not +44%). Stored as a fraction in doubleValue
-      (0.20 = +20%, −0.20 = −20%).
-
-  Triggered runtime — one-shot defensive/offensive guarantees (USES-based):
-    IGNORE_DAMAGE           Negate damaging instances (USES=1 once, −1 every hit) (TARGET, USES, DURATION)
-    DAMAGE_SHIELD           Absorb up to a flat total of incoming damage          (TARGET, INTEGER, DURATION)
-    SURVIVE_FATAL_DAMAGE    Leave target at 1 HP when damage would defeat them    (TARGET, USES, DURATION)
-    GUARANTEE_NEXT_HIT      Target's next eligible attack hits                    (TARGET, USES, DURATION)
-    GUARANTEE_NEXT_DODGE    Target dodges the next attack against them            (TARGET, USES, DURATION)
-    GUARANTEE_NEXT_BLACK_FLASH  Target's next BF-eligible hit becomes a Black Flash (TARGET, USES, DURATION)
-    CANCEL_NEXT_MOVE        Stun the target's next move when it begins            (TARGET, USES, DURATION)
-    TEMP_LOCK_MOVE_TAG      Prevent target planning moves with one tag            (TARGET, MOVE_SCOPE, DURATION)
-
-  Summon / shikigami control (move effect or triggered):
-    SUMMON_CHARACTER                              Summon a shikigami onto the owner's team (CHARACTER_ID)
-    DESUMMON_OWNED_SHIKIGAMI                      Voluntarily dismiss every direct owned summon
-    DESUMMON_TARGET_SHIKIGAMI                     Voluntarily dismiss the targeted summon (TARGET)
-    MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE    Hide this move unless the named shikigami is active (CHARACTER_ID)
-
-  Effect parameters (AbilityEffectParameter): STAT, INTEGER, DECIMAL, VALUE_MODE,
-    STAT_TYPE, STAT_OPERATION, MOVE_SCOPE, MOVE_ID, ABILITY_ID, TECHNIQUE,
-    STATUS_TYPE, TARGET, TIMING, DURATION, MAGNITUDE, USES, BATTLE_STAT,
-    CODED_FEATURE, CHARACTER_ID, plus resource/coded-action fields.
   Effect target (AbilityEffectTarget): SELF, ENEMY, BOTH.
-  Effect timing (AbilityEffectTiming): FIGHT_START, ROUND_START, ON_HIT.
-    A ROUND_START AUTO_STATUS_APPLY must last exactly 1 round / 0 ticks so it
-    refreshes without stacking.
-
-  Per-stat processing order (AbilityApplicator):
-    STAT_SET_MIN / STAT_SET_VALUE (overrides) → STAT_ADD (additive) →
-    STAT_MULTIPLY / STAT_DIVIDE (multiplicative, product) → TEMP_STAT_PERCENT
-    (additive percentage, applied to the fully scaled value) → noNeg clamp (≥0).
-  Battle-stat processing (BattleCombatant.modifyBattleStat):
-    result = (baseValue + flat additions) × multiplicative product × (1 + summed
-    percentage); the percentage term stacks additively and never drops below 0.
-  Move-scoped effects filter by tag: appliesTo(effect, move) is true when the
-  effect's moveTag is blank OR move.hasTag(moveTag).
+  Automatic timing (AbilityEffectTiming): FIGHT_START, ROUND_START, ON_HIT.
+  A ROUND_START AUTO_STATUS_APPLY must last exactly 1 round / 0 ticks so it
+  refreshes without stacking. Move-scoped rows match a blank scope or
+  move.hasTag(moveTag); hit-only tags are available through Move's aggregate query.
 
 ================================================================================
   15. CODED ABILITIES  (coded/*.java, CodedAbilityRegistry.java)
@@ -1082,10 +1213,10 @@ Shipped coded abilities (keys / features / actions):
     KEY = "NEW_SHADOW_STYLE".
     Features:
       SIMPLE_DOMAIN_BINDING_VOW  Using any other move dispels an active Simple Domain.
-    Effect action: ACTIVATE_SIMPLE_DOMAIN — a coded self-effect on the Simple
-                   Domain move that activates its binding-vow state. The move's
-                   reactive POTENCY 1 PARRY and linked melee counter are composed
-                   through its Defensive+Attack hybrid fields.
+    ACTIVATE_SIMPLE_DOMAIN remains a compatibility coded action. Current authored
+    Simple Domain moves use ESTABLISH_DOMAIN instead; Domain 000000 carries the
+    owner-action collapse rule directly. New Shadow Style Simple Domain also owns
+    a Potency 1 PARRY and launches Sword Quick Draw after a melee parry.
 
   TEN_SHADOWS                            (TenShadowsAbility)
     KEY = "TEN_SHADOWS". Marker features only — exposes no move effect action.
@@ -1108,6 +1239,8 @@ Shipped coded abilities (keys / features / actions):
     Effect action: COMMAND — a coded on-hit effect whose codedTarget is one of
                    DONT_MOVE, BLAST_AWAY, SLEEP, PLUMMET, GET_TWISTED, RETURN,
                    EXPLODE, DIE. RETURN may only target a manifested summon.
+    DONT_MOVE applies six AP ticks of STAGGER and pins Evasion to exactly 0 for the
+    same duration on a successful command; resistance applies neither effect.
 
   SHIKIGAMI                              (ShikigamiMoveRuntime)
     KEY = "SHIKIGAMI". Stateless move-action runtime carried by shikigami.
@@ -1142,8 +1275,9 @@ Ability features exposed to editors (CodedAbilityRegistry.abilityFeatures):
   16. STATUS EFFECTS  (StatusEffectType.java)
 ================================================================================
 
-Temporary effects applied to characters by moves (onHitEffects / selfEffects)
-or ability effects (AUTO_STATUS_APPLY, APPLY_STATUS, TEMP_STAT_*). Stat effects
+Temporary effects applied through unified move/Domain rows or ability effects such
+as AUTO_STATUS_APPLY, APPLY_STATUS, and TIMED_STAT_MODIFIER. Legacy attachment
+lists migrate into those rows. Stat effects
 have a non-negative magnitude and an explicit direction in the type name
 (*_INCREASE adds, *_DECREASE subtracts).
 
@@ -1163,12 +1297,12 @@ Every runtime battle stat has both directions (BattleStatKey-backed):
   MAX_HP, MAX_CURSED_ENERGY (MAX_CE), MAX_AP, ACCURACY, EVASION, POWER, DEFENSE
     → *_INCREASE / *_DECREASE
 
-Non-stat control status:
+Non-stat control statuses:
   STAGGER
     Must use rounds = 0 and ticks > 0; its magnitude is unused (stored as 0).
     On the tick it is applied and on every remaining active AP tick, it stuns
     the affected character's active, not-yet-fired action segments. This is a
-    character status, not the STUN move tag, so HEAVY does not resist it.
+    character status, not STUN_CURRENT_ACTION, so HEAVY does not resist it.
 
   SLEEP
     Must use rounds > 0 with 0 ticks. When an affected combatant reaches an
@@ -1199,6 +1333,19 @@ Non-stat control status:
   FATIGUED
     Adds two AP ticks to both the AP cost and firing point of each planned move.
 
+  CURSED_SPEECH_WARD
+    Covers the holder's ears in cursed energy. Incoming Cursed Speech commands
+    automatically fail while it is active. An authored ward may also carry CE
+    upkeep drained each resolution tick. Reapplication refreshes rather than stacks.
+
+  CURSED_ENERGY_PARASITE
+    When the holder actually pays CE for a move, after the drain and before the
+    move fires, the most recent applier deals max-HP damage based on the amount:
+      1–19 CE → 2%     20–39 CE → 4%     40+ CE → 6%
+    Damage is rounded with a minimum request of 1 and wakes SLEEP. A zero-cost or
+    fully waived move does not trigger it. Reapplication refreshes one instance
+    and replaces its recorded source; the applying effect owns the duration.
+
   POISON
     Multiplies all ten base character stats by 0.8 and deals exactly 0.06% max-HP
     damage per active tick, preserving fractional damage between ticks. Must use
@@ -1206,7 +1353,7 @@ Non-stat control status:
     Reapplication refreshes its duration instead of stacking. POISON_IMMUNITY
     prevents application.
 
-Total: 17 stat pairs plus 8 specialized statuses = 42 constants.
+Total: 17 stat pairs plus 10 specialized statuses = 44 constants.
 
 Legacy aliases (StatusEffectType.fromName resolves these; "signed" names can mean
 either direction depending on the stored magnitude's sign):
@@ -1228,21 +1375,39 @@ stat points (normalizeStoredMagnitude).
 Immutable records emitted by CombatResolver and consumed by the View layer (the
 Observer bridge — the core never calls the view directly). These are the
 canonical names for what happened on a given tick (tick = 0 for system/round
-events). Each event carries source, target, move, intValue, tick, an optional
-hit-component index, an optional CodedAbilityState snapshot, and a message.
+events). Events carry the relevant source/target/move/value/tick and may also carry
+a related target, hit-component index, coded-resource snapshot, form identity, or
+Domain instance/definition/collapse metadata.
 
   Move execution:
-    MOVE_FIRED          move unleashed — attack resolved
+    MOVE_STARTED        segment reached startTick; start effects/resources resolve
+    MOVE_FIRED          move unleashed — attack/effects resolved
     MOVE_MISSED         hit roll failed
-    MOVE_BLOCKED        block fully negated the damage (PERCENTAGE_BLOCK at 100%)
+    MOVE_BLOCKED        block fully negated damage after all effectiveness rules
     MOVE_BLOCK_REDUCED  block reduced but did not fully negate damage
     MOVE_DODGED         defender's DODGE defense avoided the attack entirely
-    MOVE_PARRIED        defender's PARRY negated the attack (attacker may stagger)
+    MOVE_PARRIED        PARRY negated the hit (may stagger or reflect)
     MOVE_STUNNED        a stun effect, active STAGGER status, CE depletion, or
                          ability cancellation removed this action segment
+
+  Targeting / defense:
     TARGET_RETARGETED   a single-target move's invalid target was retargeted at fire
+    TARGETS_EXCHANGED   a target-exchange window transposed an attack recipient
+    DEFENSE_GRANTED     an ally-targeted active-defense window was conferred
+
+  Summoning / forms:
     MOVE_SUMMON         a move effect row enqueued a shikigami summon
                          (pre-materialization)
+    CHARACTER_TRANSFORMED / CHARACTER_REVERTED  authored form changed/restored
+
+  Generic effects:
+    EFFECT_FAILED       a composed effect was admitted but could not complete
+    RESOURCE_CHANGED    a named bounded resource changed
+
+  Domains:
+    DOMAIN_DECLARED / DOMAIN_ESTABLISHED / DOMAIN_COUNTER_ESTABLISHED
+    DOMAIN_CLASH_STARTED / DOMAIN_CLASH_ENDED / DOMAIN_BARRIER_DAMAGED
+    DOMAIN_SURE_HIT_APPLIED / DOMAIN_SURE_HIT_NEGATED / DOMAIN_COLLAPSED
 
   Damage:
     DAMAGE_DEALT        HP was deducted from a combatant
@@ -1267,6 +1432,7 @@ hit-component index, an optional CodedAbilityState snapshot, and a message.
     COMBATANT_REMOVED   a combatant left the battle (e.g. desummoned)
 
   BFS:
+    BFS_ENTERED         combatant entered Black Flash State
     BFS_EXPIRED         Black Flash State ended (round maintenance)
 
   Abilities:
@@ -1274,20 +1440,30 @@ hit-component index, an optional CodedAbilityState snapshot, and a message.
     RATIO_TRIGGERED     a Ratio mark fired on a connected hit
 
   Round / battle:
+    ROUND_START         round-start processing began
     ROUND_END           end of the round (used by the view)
     BATTLE_OVER         fight ended; winner determined
 
 ================================================================================
-  18. AI  (AIStrategy.java, GreedyAIStrategy.java)
+  18. AI  (AIStrategy.java, ArchetypeAIStrategy.java)
 ================================================================================
 
 AI STRATEGY
-  Interface that selects a BattlePlan for the enemy combatant each round.
-  selectPlan(ai, opponent, RandomSource) receives both combatants and the shared
-  RandomSource (centralized, reproducible randomness). Implementing this interface
-  is the only step needed to add a new AI difficulty or behaviour.
+  Interface that selects BattlePlans using the shared RandomSource so seeded
+  battles remain reproducible. Team planning receives the full active roster for
+  targeting, defense, summons, and multi-target decisions.
 
-GREEDY AI STRATEGY  (the only shipped implementation; default)
+ARCHETYPE AI STRATEGY  (default dispatcher)
+  Routes a fighter to a technique/kit-aware planner when one exists, otherwise to
+  the generic planners. Shipped strategies include Greedy, Aggressive Sorcerer,
+  Passive Sorcerer, Shikigami, Ten Shadows, Cursed Speech, Ratio, Blood
+  Manipulation, and Hanami. SmartAIScoring supplies shared move/target scoring.
+
+  Domain-aware planning removes unavailable Domain declarations, values ordinary
+  Domain openings, answers a hostile Domain with anti-Domain options, and lowers
+  the value of an opening dominated by enemy counters.
+
+GREEDY AI STRATEGY  (generic fallback)
   A greedy, lightly-randomised round planner — NOT a power sort. A single loop
   keeps committing moves until none is affordable (AP and CE) or placeable.
 
@@ -1320,34 +1496,34 @@ GREEDY AI STRATEGY  (the only shipped implementation; default)
     place once can never fit later this round; it is added to a per-round "stuck"
     set and never retried.
 
+HANAMI AI STRATEGY
+  Uses Flower Offering and Disaster Plants deliberately: a charged Life-Force
+  Beam is fired immediately; at zero charges it tries to place the cheapest
+  generator before the beam when both fit. Ordinary attacks are capped at two per
+  round. It favors Cursed Bud against CE-bearing targets without a parasite,
+  RESTRAINED against faster targets, and Flower Field more heavily against groups.
+  Its defense selection uses the highest-value available defense and aligns it to
+  the most relevant threat.
+
 ================================================================================
   19. EDITORS  (graphics .../screens/editors/*.java)
 ================================================================================
 
-All four editors are LibGDX Scene2D screens extending EditorScreenBase<D> with
-shared CRUD chrome (master-detail layout, save/delete, id resequencing). They
-are NOT CLI tools. Authoring mode is enabled with -Djjktbf.authoring=true.
+The six authoring screens are Move, Character, Ability, Technique, Cursed Tool,
+and Domain editors. They are LibGDX Scene2D screens with shared CRUD chrome, not
+CLI tools. Authoring mode is enabled with -Djjktbf.authoring=true.
 
 Re-sequencing: deleting an entity resequences all ids and remaps references in
 characters, abilities, coded targets, and technique trees.
 
 MOVE EDITOR  (MoveEditorScreen)
-  Creates/edits moves; saves data/moves/all_moves.json. Form sections: identity,
-  tags (TagPicker — STUN/GUARD_BREAK/HEAVY tags mirror to the dedicated boolean
-  flags; INTANGIBLE is tag-only), cost (AP/CE), tag-conditioned
-  Attack/Defense/Utility cards, technique
-  requirement (with a live "technique found" hint), stat prerequisites, and
-  free-move / must-be-granted checkboxes. The Attack card has an AOE sub-section
-  (shown when AOE-tagged): an AOE Type dropdown (Multiple Targets / All Enemies /
-  All Others) and, for Multiple, a Target Count field. Move effects (self /
-  on-hit / on-block / on-parry / on-dodge) are authored as rows via a modal that
-  toggles between Status / Coded / Summon flavours — summoning a shikigami is now
-  an effect row, not a MISC toggle. Validation runs MoveData.toMove() (the same
-  path the engine uses) and requires exactly one of ATTACK/UTILITY/DEFENSIVE;
-  an ATTACK needs a damage-type tag; a DEFENSIVE needs a block type or coded
-  self-effect. Field ranges: AP cost 1..999, unleash point 1..999, power/CE
-  0..99999, accuracy 0..100%, block reduction 0..100%, block duration -1..99999,
-  prerequisites 0..300.
+  Saves data/moves/all_moves.json. Parent move tags and per-component hit tags are
+  edited separately. Attack authoring includes ordered hit components, AOE shape,
+  and pair targeting. Defense authoring includes FIXED/REACTION timing, use cap,
+  attack-type/range/element coverage, ally targeting, and Conditional Block
+  Effectiveness rows. Unified effects expose every valid trigger, including
+  ON_START and BLOCK_CALCULATION, plus effect types such as ESTABLISH_DOMAIN.
+  Validation runs MoveData.toMove(), the same conversion used by the engine.
 
 CHARACTER EDITOR  (CharacterEditorScreen)
   Creates/edits characters; saves data/characters/all_characters.json. Sections:
@@ -1358,6 +1534,8 @@ CHARACTER EDITOR  (CharacterEditorScreen)
   Combat Arts / Jujutsu Arts slot counts), a MoveAssignmentPanel
   (slot-gated, technique/prerequisite-filtered, drag-and-drop), an ability
   assignment panel, and a SkillTreeCanvas per accessible technique.
+  availableDomainIds stores Domain definitions unlocked directly or by a
+  technique-tree DOMAIN node.
 
   title        Optional free-text display epithet (e.g. "SHIKIGAMI",
                "The Honored One"). Display-only — carries no combat rules. Blank
@@ -1392,166 +1570,223 @@ TECHNIQUE EDITOR  (TechniqueEditorScreen)
   data/techniques/all_techniques.json. A SkillTreeCanvas authoring surface:
   drag nodes, right-click to attach/edit prerequisites. Save rejects duplicate
   names, rewrites technique-name references in moves (requiredTechniqueId),
-  abilities (sourceValue / UNLOCK_TECHNIQUE), and characters
-  (innateTechniqueName) on rename, and writes mastery/stat prerequisites back
-  onto the technique's moves and the mastery threshold onto its abilities.
-  Delete is blocked while any move or ability references the technique.
+  abilities (sourceValue / UNLOCK_TECHNIQUE), characters (innateTechniqueName),
+  and ordinary Domains (requiredTechniqueName) on rename, and writes mastery/stat
+  prerequisites back onto the technique's content. Delete is blocked while a
+  move, ability, or Domain references the technique.
 
-  Skill tree prerequisites (SkillTreePrerequisiteData): NODE (nodeId, attached),
-  MASTERY (minimum), STAT (stat, minimum).
+  Skill tree content may be MOVE, ABILITY, or DOMAIN. Prerequisites
+  (SkillTreePrerequisiteData): NODE (nodeId, attached), MASTERY (minimum),
+  STAT (stat, minimum).
+
+CURSED TOOL EDITOR  (CursedToolEditorScreen)
+  Saves data/tools/all_tools.json. A tool provides a WeaponType and may grant
+  authored moves or abilities while equipped.
+
+DOMAIN EDITOR  (DomainEditorScreen)
+  Saves data/domains/all_domains.json. Authors ordinary or anti-Domain topology,
+  membership policies, duration/upkeep, barriers and clash pressure, counter
+  behavior, and the five ordered effect channels described in §20. For an ordinary
+  Domain, save creates or synchronizes its prerequisite-bearing DOMAIN node in the
+  required technique's tree; mastery/stat prerequisites are edited on that node.
 
 ================================================================================
-  20. CONTENT CATALOG  (data/*.json — current shipped content)
+  20. DOMAINS  (model/domain/*.java, data/domains/all_domains.json)
 ================================================================================
 
-This section summarises the content currently shipped in data/; counts and names
-reflect HEAD at the time of writing. See the JSON files for full detail.
+DOMAIN
+  A battle-wide authored field established by an ESTABLISH_DOMAIN move effect.
+  An ORDINARY DOMAIN belongs to a required innate technique and may provide
+  sure-hit, field, caster, barrier, and procedure programs. An ANTI-DOMAIN uses
+  the same data model but supplies a counter rather than an ordinary sure-hit.
 
-  MOVES — 140 moves (data/moves/all_moves.json), ids 000000–000139.
-    Free moves (17):       000000 Basic Strike, 000001 Basic Block, the eight
-                           Ten Shadows summons 000030/000031/000035–000040,
-                           000049 Desummon, 000085 Gorilla Mode, 000088 Return to
-                           Panda Core, and cursed-spirit moves 000110/000124/
-                           000125/000132.
-    Must-be-granted (26):  000026 Simple Domain, 000049–000064 shikigami
-                           commands, 000081–000088 shikigami/cursed-corpse moves,
-                           and 000132 Reconstitute.
-    CURSED_SPIRIT (30):    000110–000123 offensive, 000124–000131 defensive,
-                           and 000132–000139 utility. All have hasCeCost=true,
-                           positive CE bounds, and an explicit CURSED_ENERGY tag.
-                           Reconstitute is granted by Cursed Spirit Physiology;
-                           the remaining entries are optional class content.
-    STUN effects (11):     000005 Sweeping Kick, 000027 Batto Sword Drawing,
-                           000046 Nue Lightning Strike, 000048 Serpent Snare,
-                           000050 Winged Toad Snare, 000058 Lightning Discharge,
-                           000067 Winged Tongue Snare, 000072 Plummet,
-                           000078 Grapple, 000080 Upper Cut,
-                           000082 Reinforced Upper Cut.
-    GUARD_BREAK-tagged (5):000004 Body Blow, 000051 Elephant Drop,
-                           000056 Rending Pounce, 000062 Devouring Lunge,
-                           000065 Crushing Stomp.
-    HEAVY-tagged (7):      000007 Overhand Punch, 000012 Cursed Energy Blast,
-                           000017 Braced Guard, 000018 Reinforced Braced Guard,
-                           000051 Elephant Drop, 000062 Devouring Lunge,
-                           000065 Crushing Stomp.
-    KATANA-tagged (8):     000023 Sword Slash, 000024 Sword Throw,
-                           000027 Batto Sword Drawing, 000030 Weapon Parry,
-                           000035 Katana Combination, 000036 Cursed Sword Slash,
-                           000037 Cursed Tool Deflection, 000093 Overhead Ratio
-                           Cleave.
-    INTANGIBLE-tagged (8): the eight Cursed Speech commands 000069–000076.
-    AOE-tagged (12):       ALL_ENEMIES — 000051 Elephant Drop, 000065 Crushing
-                           Stomp, 000066 Water Deluge, 000068 Aerial Swarm;
-                           MULTIPLE (up to 3) — the eight Cursed Speech commands.
-    INNATE_TECHNIQUE (27): Miracles 000022; Ratio 000025/000026; Ten Shadows
-                           000033–000052 (20); Cursed Speech 000069–000076 (8).
-    NON_INNATE_TECHNIQUE:  000028 Simple Domain.
-    Summon (SUMMON_CHARACTER, 8): 000033/000034 and 000039–000044 — each
-                           references a SHIKIGAMI character id (000007–000014).
-    Multi-hit (8):         000032 Divergent Fist, 000035 Katana Combination,
-                           000045 Dog Ambush, 000050 Winged Toad Snare,
-                           000064 Predator Rush, 000067 Winged Tongue Snare,
-                           000079 Triple Kick, 000081 Reinforced Triple Kick.
-    Cursed Speech cmds (8):000069 Don't Move, 000070 Blast Away, 000071 Sleep,
-                           000072 Plummet, 000073 Get Twisted, 000074 Return,
-                           000075 Explode, 000076 Die (CURSED_SPEECH/COMMAND;
-                           codedTargets DONT_MOVE/BLAST_AWAY/SLEEP/PLUMMET/
-                           GET_TWISTED/RETURN/EXPLODE/DIE).
-    Boogie Woogie (10):    000092 Ranged Reversal, 000093 Blindside Exchange,
-                           000094 Disorienting Swap, 000095 Cursed Rock
-                           Substitution, 000096 Boogie Woogie Counter, 000097 Best
-                           Friend Exchange, 000098/000099 Cross Swap, 000100 Rapid
-                           Exchange, 000101 False Clap. Pair-targeted exchanges
-                           use ordered self/ally/enemy endpoints; 000096 launches
-                           existing Body Blow (000004) after a successful dodge.
-    Notable: 000028 Simple Domain is a NON_INNATE_TECHNIQUE defensive move with a
-             coded self-effect NEW_SHADOW_STYLE/ACTIVATE_SIMPLE_DOMAIN that fully
-             blocks RANGED PHYSICAL attacks and counters MELEE with Batto Sword
-             Drawing (000027). 000053 Desummon is a SHIKIGAMI/DESUMMON_SELF move
-             carried by every shikigami (voluntary; cooldown to next round).
+DECLARATION AND OWNERSHIP
+  An ordinary Domain requires its definition to be unlocked, its required
+  technique to be usable, and that technique not to be temporarily locked.
+  Anti-Domains bypass those technique checks. One combatant may maintain one
+  ordinary Domain and one anti-Domain at once; declaring another of the same kind
+  replaces the old one. Every declaration on one tick establishes atomically
+  before any ON_ESTABLISH program runs, so same-tick declarations interact fairly.
 
-  ABILITIES — 65 abilities (data/abilities/all_abilities.json), ids 000000–000064.
-    sourceType: TECHNIQUE (15), SHIKIGAMI (9), ABILITY (11 sub-abilities),
-                CHARACTER (13), CURSED_SPIRIT (14), CURSED_CORPSE (1),
-                CURSED_TOOL (1), MOVE (1). 53 PASSIVE, 12 ACTIVE.
-    Abilities with editable CODED effect rows (key/feature):
-      MIRACLES          000001 Miracle Reservoir, 000002 Fateful Reprieve,
-                        000003 Fortune Reclaimed
-      RATIO             000004 Ratio Reinforcement
-      NEW_SHADOW_STYLE  000006 Simple Domain Binding Vow
-      TEN_SHADOWS       000013 Ten Shadows Technique, 000019 Totality,
-                        000032 Well's Unknown Abyss
-      CURSED_SPEECH     000030 Cursed Speech, 000031 Refined Commands
-    Other notable:
-      000014 Parallel Manifestation  MAX_ACTIVE_SUMMONS 1→2 (CTM 30)→3 (CTM 60)
-      000020 Shadows Unravel         DESUMMON_OWNED_SHIKIGAMI at 0 CE
-      000015 Partially Realised Heavenly Restriction (grants 000016–000018)
-      000016 Jujutsu Inaptitude      caps CE stats + Jujutsu Skill at 10
-      000017 Heavenly Body           DEFENSE_FROM_DURABILITY (Durability-only Defense)
-      000005 New Shadow Style        UNLOCK_MOVE 000027 + 000028 (CHARACTER)
-      000007 Earnest Swordswoman     MOVE_BASE_POWER_MULTIPLY on KATANA (CHARACTER)
-      000044 Cursed Tools Expert     DAMAGE_MULTIPLY + MOVE_ACCURACY_MULTIPLY
-                                     ×1.1 on all weapon-tagged moves (CHARACTER)
-      000045 My Best Friend          Todo/Yuji battle-start Combat Ability bond
-      000046 Instinctive Boogie Woogie  8% reactive dodge against targeted MELEE
-      000008 Vessel of Sukuna        grants 000009–000011 (CHARACTER)
-      000000 Iron Constitution       STAT_ADD durability +15 (CHARACTER)
-      000033 Blessed by the Sparks of Black doubles BLACK_FLASH_CHANCE odds
-      000021–000029                  per-shikigami SHIKIGAMI-sourced abilities that
-                                     grant each shikigami its attack moves
-      000051 Cursed Spirit Physiology and 000052 Exorcism Requires Cursed Energy
-                                     are automatically assigned to every cursed
-                                     spirit. Optional class traits are 000053–000064.
-    masteryThreshold > 0: 000019 Totality (50), 000031 Refined Commands (60),
-                          000032 Well's Unknown Abyss (50).
+TOPOLOGY
+  CLOSED       Has an inside and an exterior barrier.
+  OPEN         Projects into the base battlefield and can pressure a CLOSED
+               Domain's exterior during a clash.
+  INCOMPLETE   A partial field, used by the shipped Simple Domain anti-Domain.
 
-  CURSED TOOLS (data/tools/all_tools.json) — named weapons a character equips
+MEMBERSHIP POLICIES
+  Capture (who enters on establishment):
+    NONE / ALL_ACTIVE / ALL_ENEMIES / SELECTED_TARGETS / OWNER_AND_SELECTED
+  Recognition (which members authored effects can recognize):
+    ALL_MEMBERS / CURSED_ENERGY_USERS / ENEMIES_ONLY
+  Entrants (how later summons/combatants join):
+    SNAPSHOT / FOLLOW_SUMMONER / ALL_NEW_COMBATANTS
+  Protection (members exempt from hostile Domain programs):
+    NONE / OWNER / OWNER_AND_ALLIES / OWNER_AND_SELECTED
+
+DURATION, UPKEEP, AND BARRIERS
+  A Domain has round/tick duration, fractional CE upkeep per active tick, internal
+  barrier integrity, and external barrier integrity. Fractional upkeep debt is
+  carried until a whole CE point is due; failure to pay collapses the Domain.
+  Internal integrity is attacked by clash pressure. An OPEN Domain also applies
+  its externalPressurePerTick to a clashing CLOSED Domain's exterior. CLOSED vs
+  CLOSED does not passively damage either exterior.
+
+DOMAIN PROGRAMS
+  Five ordered effect channels reuse the generic AbilityEffectType vocabulary:
+    sureHitEffects / fieldEffects / casterEffects / barrierEffects /
+    procedureEffects
+  Each row has a condition tree, optional activation chance, interval, and:
+    Trigger:   ON_ESTABLISH / ON_MEMBER_ENTER / EACH_TICK / ON_ROUND_START /
+               ON_ROUND_END / ON_COLLAPSE
+    Audience:  OWNER / ENTERING_MEMBER / ENEMY_MEMBERS / ALLY_MEMBERS /
+               ALL_MEMBERS / UNPROTECTED_MEMBERS / BARRIER / EXTERIOR_ENEMIES
+    Delivery:  EFFECT / ATTACK / INFORMATION / RULE
+  BARRIER rows can repair integrity with HEAL_HP or damage another barrier with
+  DEAL_DIRECT_DAMAGE / INSTANT_KILL. Effects leased from a Domain are removed
+  when it collapses; ON_COLLAPSE programs run first unless the battle itself ended.
+
+DOMAIN CLASH
+  Overlapping hostile ordinary Domains clash. Both sure-hits are suppressed while
+  the clash exists, and each Domain applies clashPressurePerTick to the other's
+  internal barrier. The clash ends when overlap or hostility ends, or one Domain
+  collapses.
+
+  The battle screen shows active fields in [DOMAIN] / [ANTI-DOMAIN] strips with
+  remaining duration; a participating ordinary Domain is marked <<CLASH>>.
+
+ANTI-DOMAIN COUNTERS
+  Counter potency must be at least the hostile Domain's clashPressurePerTick.
+    SURE_HIT_NULLIFICATION          blocks every delivery class.
+    SURE_HIT_INTERCEPTION           blocks ATTACK only.
+    TECHNIQUE_CONTACT_NULLIFICATION blocks EFFECT, ATTACK, and INFORMATION, but
+                                    cannot answer RULE.
+  A successful negation consumes one finite counter use. Reaching zero collapses
+  the anti-Domain; -1 means unlimited uses.
+
+COLLAPSE AND TECHNIQUE BURNOUT
+  Canonical reasons: DURATION_EXPIRED, OWNER_DEFEATED, OWNER_REMOVED,
+  UPKEEP_FAILED, INTERNAL_BARRIER_BROKEN, EXTERNAL_BARRIER_BROKEN,
+  COUNTER_EXHAUSTED, OWNER_ACTED, REPLACED, VOLUNTARY, BATTLE_ENDED.
+  Unless battle end suppresses cleanup effects, an ordinary Domain's collapse
+  applies TEMP_LOCK_TECHNIQUE to its required technique for the authored burnout
+  duration. Anti-Domains cannot define burnout.
+
+SHIPPED SIMPLE DOMAIN
+  Domain 000000 Simple Domain is an INCOMPLETE anti-Domain. It protects its owner,
+  has 10 internal integrity, no upkeep, one counter use with Potency 50
+  TECHNIQUE_CONTACT_NULLIFICATION, and collapses when its owner acts.
+  Move 000149 Simple Domain only establishes this field. Move 000026 New Shadow
+  Style Simple Domain establishes the same field while also providing a Potency-1
+  parry that answers a successfully parried melee attacker with 000025 Sword Quick Draw.
+
+================================================================================
+  21. CONTENT CATALOG  (data/*.json — current shipped content)
+================================================================================
+
+This compact snapshot reflects committed HEAD after the 2026-08-29 mechanics
+updates. IDs are included where they define references; the JSON files remain the
+authoritative source for mutable tuning and complete loadouts.
+
+  MOVES — 151 (data/moves/all_moves.json), ids 000000–000150.
+    11 are slot-free and 26 must be granted/unlocked rather than assigned directly.
+    Cursed-spirit class content occupies 000110–000138; 000131 Reconstitute is
+    granted by Cursed Spirit Physiology, heals 15% Max HP, and may be used twice
+    per round. 000136 Molt clears every status at the cost of 10% Max HP and may
+    be used once per round.
+
+    The eight Ten Shadows summon moves 000030/000031/000035–000040 consume normal
+    Jujutsu Art slots; they are not slot-free summons.
+
+    Cursed Speech commands are 000065–000072: Don't Move, Blast Away, Sleep,
+    Plummet, Get Twisted, Return, Explode, and Die. 000139 Run Away commands up to
+    three allies and confers an 85% RANGED dodge for four AP ticks.
+
+    Disaster Plants occupies 000140–000148 and 000150. 000150 Root Trip first
+    applies four ticks of RESTRAINED on a 72%-accuracy setup hit, then four ticks
+    later launches an unavoidable 70-power RANGED GUARD_BREAK hit if the setup
+    connected. 000149 is the standalone Simple Domain move (§20).
+
+    000143 Wooden Bulwark blocks 65% for every ally and 000148 Root Barrier flat-
+    blocks 30; FIRE hits halve either block's effectiveness through
+    BLOCK_CALCULATION. 000144 Cursed Bud applies CURSED_ENERGY_PARASITE for two
+    rounds to up to two enemies. 000145 Flower Field is hostile utility AOE that
+    locks every enemy's ATTACK moves for eight ticks, or four at/below 50% HP.
+
+  ABILITIES — 62 (data/abilities/all_abilities.json), ids 000000–000061:
+    51 PASSIVE and 11 ACTIVE. Sources: TECHNIQUE 17, CHARACTER 13, ABILITY 11,
+    SHIKIGAMI 9, CURSED_SPIRIT 9, and one each from CURSED_CORPSE, CURSED_TOOL,
+    and MOVE.
+
+    Editable CODED bindings remain on Miracles (000001–000003), Ratio (000004),
+    Simple Domain Binding Vow (000006), Ten Shadows (000013/000019/000032), and
+    Cursed Speech (000030/000031).
+
+    Optional cursed-spirit traits are fully generic effects:
+      000053 Amorphous Anatomy   ×0.90 incoming PHYSICAL damage.
+      000054 Volatile Cursed Core ×1.12 CURSED_ENERGY damage but ×1.08 damage taken.
+      000055 Bottomless Malice   ×1.25 Max CE and +0.25 CE regeneration per tick.
+      000056 Natural Calamity    ×1.15 AOE damage.
+      000057 Grudge-Fed Flesh    heal 2% Max HP after dealing 25+ damage once.
+      000058 Oppressive Aura     −10 Accuracy to every enemy each round.
+      000059 Dense Cursed Core   ×1.15 Max HP, ×1.10 Defense, ×0.90 Speed.
+
+    Hanami's assigned traits demonstrate the generic composition system:
+      000056 Natural Calamity   ×1.15 damage on AOE moves.
+      000057 Grudge-Fed Flesh  heal 2% Max HP after dealing at least 25 damage in
+                               one instance.
+      000059 Dense Cursed Core ×1.15 Max HP, ×1.10 Defense, ×0.90 Speed.
+      000060 Hidden Presence   −10 Accuracy to incoming RANGED attacks.
+      000061 Flower Offering   define a visible resource starting at 0/3.
+    000146 Life Force Absorption gains one Flower Offering charge ON_FIRE.
+    000147 Life-Force Beam requires at least one, consumes all charges ON_START,
+    and multiplies its 60 Base Power by the consumed amount (60/120/180). The
+    snapshot remains spent if a later interruption cancels the segment.
+
+  CURSED TOOLS — 3 (data/tools/all_tools.json): 000000 Naginata (POLEARM),
+  000001 Hand Sword (KATANA), and 000002 Playful Cloud (STAFF). A named tool
+  is a weapon a character equips
   (CharacterData.equippedCursedToolIds; base weapons live in
   equippedWeaponTypes). Equipping a tool unlocks its WeaponType for the weapon
   gate, waives that type's jujutsu stat prerequisites, and makes those moves cost
   no cursed energy; optional granted moves/abilities are active while equipped.
   Edited in the CURSED TOOL EDITOR.
 
-  CHARACTERS — 20 (data/characters/all_characters.json): 10 SORCERERS + 8
-  SHIKIGAMI + 2 CURSED_CORPSES.
+  CHARACTERS — 22 (data/characters/all_characters.json): 11 SORCERERS + 8
+  SHIKIGAMI + 2 CURSED_CORPSES + 1 CURSED_SPIRIT.
     Sorcerers:
-      000000 Haruta Shigemo                    innate: Miracles
-      000001 Shigechi Urata                    innate: Ratio
-      000002 Miwa Kasumi                       (none; New Shadow Style + Simple Domain)
-      000003 Yuji Itadori (Vs. Mahito)         (none; Divergent Fist, Vessel of Sukuna)
-      000004 Megumi Fushiguro (Fearsome Womb)  innate: Ten Shadows
-      000005 Maki Zenin (Pre-Awakened)         (none; Heavenly Restriction)
-      000006 Megumi Fushiguro (Kyoto Goodwill Event)
-                                              innate: Ten Shadows (Totality + Well's
-                                              Unknown Abyss)
-      000015 Toge Inumaki                      innate: Cursed Speech
-      000016 Yuji Itadori (Kyoto Goodwill Event)
-                                                (none; reinforcement + Black Flash)
-      000019 Aoi Todo                         innate: Boogie Woogie
+      000000 Yuji Itadori (Vs. Mahito)
+      000001 Megumi Fushiguro (Fearsome Womb)       innate: Ten Shadows
+      000002 Maki Zenin (Pre-Awakened)
+      000003 Toge Inumaki                           innate: Cursed Speech
+      000005 Nanami Kento (Working Hours)           innate: Ratio
+      000006 Aoi Todo                               innate: Boogie Woogie
+      000007 Megumi Fushiguro (Kyoto Goodwill Event) innate: Ten Shadows
+      000008 Miwa Kasumi
+      000009 Noritoshi Kamo (Kyoto Goodwill Event)  innate: Blood Manipulation
+      000010 Yuji Itadori (Kyoto Goodwill Event)
+      000011 Haruta Shigemo                         innate: Miracles
+    Cursed spirit:
+      000012 Hanami                                 innate: Disaster Plants
     Shikigami (type SHIKIGAMI, summoned; not directly selectable):
-      000007 Divine Dog White, 000008 Divine Dog Black, 000009 Nue,
-      000010 Toad Gamma, 000011 Great Serpent Orochi, 000012 Divine Dog Totality,
-      000013 Max Elephant, 000014 Toad/Nue Fusion.
+      000013 Divine Dog White, 000014 Divine Dog Black, 000015 Nue,
+      000016 Toad Gamma, 000017 Great Serpent Orochi, 000018 Divine Dog Totality,
+      000019 Max Elephant, 000020 Toad/Nue Fusion.
       Each is referenced by exactly one Summon move (see above) and carries the
       Desummon move plus its own attack moves. Characters without an innate
       technique have cursedTechniqueMastery = 0.
     Cursed corpses:
-      000017 Panda (Kyoto Goodwill Event), 000018 Panda (Gorilla Core; hidden).
+      000004 Panda (Kyoto Goodwill Event), 000021 Panda (Gorilla Core; hidden).
 
-  TECHNIQUES — 5 (data/techniques/all_techniques.json), ids 000000–000004.
-    000000 Miracles       tree: move Miracle Creation; abilities Miracle
-                          Reservoir, Fateful Reprieve, Fortune Reclaimed.
-    000001 Ratio          tree: ability Ratio Reinforcement; moves Ratio Mark,
-                          Ratio Strike.
-    000002 Ten Shadows    tree: abilities Ten Shadows Technique, Parallel
-                          Manifestation, Totality, Shadows Unravel, Well's Unknown
-                          Abyss; moves 000033–000052 (summons + command attacks).
-    000003 Cursed Speech  tree: abilities Cursed Speech, Refined Commands;
-                           command moves 000069–000076.
-    000004 Boogie Woogie  tree: moves 000092–000101 and ability Instinctive
-                           Boogie Woogie, completing at CTM 80.
-    NOTE: "Simple Domain" is a MOVE (000028), not a technique. "New Shadow Style"
-    is a CHARACTER-sourced ability (000005), not a technique.
+  TECHNIQUES — 7 (data/techniques/all_techniques.json), ids 000000–000006:
+    000000 Miracles              000001 Ratio
+    000002 Ten Shadows           000003 Cursed Speech
+    000004 Boogie Woogie         000005 Blood Manipulation
+    000006 Disaster Plants
+  Simple Domain is a DOMAIN definition established by moves, not an innate
+  technique. New Shadow Style remains a CHARACTER-sourced ability (000005).
+
+  DOMAINS — 1 (data/domains/all_domains.json): 000000 Simple Domain (§20).
 
 ================================================================================
   RELATED DOCUMENTS

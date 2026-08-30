@@ -14,6 +14,7 @@ import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattleState;
+import com.jjktbf.model.combat.BattleTeam;
 import com.jjktbf.model.combat.BattleTeamId;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.TeamBattlePlan;
@@ -62,15 +63,47 @@ public final class TeamPlanningPanel {
         }
     }
 
-    private record Page(String name, PlanningPanel panel) { }
+    /** One fighter card in the six-member field/reserve party tray. */
+    public record PartyMember(
+        String actorId,
+        String name,
+        int currentHp,
+        int maxHp,
+        boolean active,
+        boolean reserve,
+        boolean defeated,
+        int rosterOrder
+    ) { }
+
+    private static final class Page {
+        private final String name;
+        private final PlanningPanel panel;
+        private final boolean switchEligible;
+        private String switchTargetId;
+        private String switchTargetName;
+
+        private Page(String name, PlanningPanel panel, boolean switchEligible) {
+            this.name = name;
+            this.panel = panel;
+            this.switchEligible = switchEligible;
+        }
+
+        private String name() { return name; }
+        private PlanningPanel panel() { return panel; }
+    }
 
     private final BattleTeamId teamId;
     private final int gridLength;
     private final BattleUiAssets ui;
     private final List<Page> pages = new ArrayList<>();
+    private final List<PartyMember> party = new ArrayList<>();
     private final Rectangle previousBounds = new Rectangle();
     private final Rectangle nextBounds = new Rectangle();
     private final Rectangle pageLabelBounds = new Rectangle();
+    private final Rectangle switchBounds = new Rectangle();
+    private final Rectangle partyPanelBounds = new Rectangle();
+    private final Rectangle cancelSwitchBounds = new Rectangle();
+    private final List<Rectangle> partyCardBounds = new ArrayList<>();
     private BattleUiLayout.Planner layout = new BattleUiLayout.Planner();
     private int activePage;
     private float screenWidth;
@@ -80,6 +113,7 @@ public final class TeamPlanningPanel {
     private boolean unifiedWindowsLayout;
     private boolean submitted;
     private boolean readOnly;
+    private boolean switchPanelOpen;
     private Runnable onConfirm = () -> { };
     private Consumer<SoundCue> soundPlayer = cue -> { };
     private float viewportScale = 1f;
@@ -101,6 +135,21 @@ public final class TeamPlanningPanel {
         this.teamId = controlled.get(0).getTeamId();
         this.gridLength = gridLength;
         this.ui = ui;
+        BattleTeam team = state.teamOf(this.teamId);
+        if (team != null) {
+            for (BattleCombatant fighter : team.all()) {
+                if (!fighter.isFighter()) continue;
+                party.add(new PartyMember(
+                    fighter.getInstanceId().value(),
+                    fighter.getCharacter().getName(),
+                    fighter.getCurrentHp(),
+                    fighter.getMaxHp(),
+                    fighter.isActive(),
+                    fighter.isReserve(),
+                    fighter.isDefeated(),
+                    fighter.getRosterOrder()));
+            }
+        }
         for (BattleCombatant actor : controlled) {
             PlanningPanel panel = new PlanningPanel(
                 gridLength,
@@ -111,7 +160,8 @@ public final class TeamPlanningPanel {
                 screenHeight);
             panel.setBattleState(state);
             panel.setAllyTargets(state.activeAlliesOf(actor));
-            addPage(actor.getCharacter().getName(), panel);
+            addPage(actor.getCharacter().getName(), panel,
+                actor.isFighter() && party.stream().anyMatch(PartyMember::reserve));
         }
         resize(screenWidth, screenHeight);
     }
@@ -124,12 +174,25 @@ public final class TeamPlanningPanel {
         float screenWidth,
         float screenHeight
     ) {
+        this(teamId, gridLength, specs, List.of(), ui, screenWidth, screenHeight);
+    }
+
+    public TeamPlanningPanel(
+        BattleTeamId teamId,
+        int gridLength,
+        List<PageSpec> specs,
+        List<PartyMember> party,
+        BattleUiAssets ui,
+        float screenWidth,
+        float screenHeight
+    ) {
         if (specs == null || specs.isEmpty()) {
             throw new IllegalArgumentException("At least one planning page is required");
         }
         this.teamId = teamId;
         this.gridLength = gridLength;
         this.ui = ui;
+        if (party != null) this.party.addAll(party);
         for (PageSpec spec : specs) {
             PlanningPanel panel = new PlanningPanel(
                 gridLength,
@@ -147,17 +210,20 @@ public final class TeamPlanningPanel {
             panel.setAllyOptions(spec.allies());
             panel.setAbilityStates(spec.abilityStates());
             restorePlan(panel, spec);
-            addPage(spec.name(), panel);
+            addPage(spec.name(), panel,
+                this.party.stream().anyMatch(member -> member.actorId().equals(spec.actorId())
+                    && member.active())
+                    && this.party.stream().anyMatch(PartyMember::reserve));
         }
         resize(screenWidth, screenHeight);
     }
 
-    private void addPage(String name, PlanningPanel panel) {
+    private void addPage(String name, PlanningPanel panel, boolean switchEligible) {
         panel.setActorName(name);
         panel.setAllowManualUnlock(true);
         panel.setOnConfirm(this::pageLocked);
         panel.setSoundPlayer(soundPlayer);
-        pages.add(new Page(name, panel));
+        pages.add(new Page(name, panel, switchEligible));
     }
 
     private static void restorePlan(PlanningPanel panel, PageSpec spec) {
@@ -188,7 +254,7 @@ public final class TeamPlanningPanel {
     }
 
     private void pageLocked() {
-        if (submitted || pages.stream().anyMatch(page -> !page.panel().isConfirmed())) return;
+        if (submitted || pages.stream().anyMatch(page -> !pageReady(page))) return;
         submitted = true;
         for (Page page : pages) page.panel().setAllowManualUnlock(false);
         onConfirm.run();
@@ -197,13 +263,29 @@ public final class TeamPlanningPanel {
     public TeamBattlePlan getTeamPlan() {
         TeamBattlePlan teamPlan = new TeamBattlePlan(teamId, gridLength);
         for (Page page : pages) {
-            teamPlan.put(new CombatantId(page.panel().getActorId()), page.panel().getPlan());
+            CombatantId actor = new CombatantId(page.panel().getActorId());
+            if (page.switchTargetId != null) {
+                teamPlan.switchTo(actor, new CombatantId(page.switchTargetId));
+            } else {
+                teamPlan.put(actor, page.panel().getPlan());
+            }
         }
         return teamPlan;
     }
 
     public List<PlanPlacement> getPlacements() {
-        return pages.stream().flatMap(page -> page.panel().getPlacements().stream()).toList();
+        return pages.stream()
+            .filter(page -> page.switchTargetId == null)
+            .flatMap(page -> page.panel().getPlacements().stream())
+            .toList();
+    }
+
+    public List<com.jjktbf.multiplayer.protocol.SwitchSelection> getSwitches() {
+        return pages.stream()
+            .filter(page -> page.switchTargetId != null)
+            .map(page -> new com.jjktbf.multiplayer.protocol.SwitchSelection(
+                page.panel().getActorId(), page.switchTargetId))
+            .toList();
     }
 
     public void lock() {
@@ -216,7 +298,10 @@ public final class TeamPlanningPanel {
 
     public void setReadOnly(boolean readOnly) {
         this.readOnly = readOnly;
-        for (Page page : pages) page.panel().setReadOnly(readOnly);
+        if (readOnly) switchPanelOpen = false;
+        for (Page page : pages) {
+            page.panel().setReadOnly(readOnly || page.switchTargetId != null);
+        }
     }
 
     public boolean isReadOnly() {
@@ -230,7 +315,8 @@ public final class TeamPlanningPanel {
     public void unlock() {
         for (Page page : pages) {
             page.panel().setAllowManualUnlock(true);
-            page.panel().unlock();
+            if (page.switchTargetId == null) page.panel().unlock();
+            page.panel().setReadOnly(page.switchTargetId != null);
         }
         submitted = false;
     }
@@ -240,6 +326,7 @@ public final class TeamPlanningPanel {
         screenHeight = height;
         for (Page page : pages) page.panel().resize(width, height);
         layoutNavigation(width, height);
+        layoutSwitchControls();
     }
 
     public void setLayout(BattleUiLayout battleLayout) {
@@ -253,6 +340,7 @@ public final class TeamPlanningPanel {
             page.panel().setTeamNavigationHeader(windowsTextGeometry && pages.size() > 1);
         }
         layoutNavigation(screenWidth, screenHeight);
+        layoutSwitchControls();
     }
 
     /** Applies the fixed-canvas transform to navigation and every planning page. */
@@ -287,42 +375,163 @@ public final class TeamPlanningPanel {
         pageLabelBounds.set(252f, headerY, 126f, 32f);
     }
 
+    private void layoutSwitchControls() {
+        Rectangle lock = active().layoutSnapshot().lock();
+        float gap = windowsTextGeometry ? 18f : 10f;
+        float width = Math.max(windowsTextGeometry ? 180f : 112f,
+            Math.min(lock.width, windowsTextGeometry ? 260f : 150f));
+        switchBounds.set(lock.x - width - gap, lock.y, width, lock.height);
+
+        float logicalWidth = unifiedWindowsLayout ? WindowsBattleCanvas.WIDTH : screenWidth;
+        float logicalHeight = unifiedWindowsLayout ? WindowsBattleCanvas.HEIGHT : screenHeight;
+        float panelWidth = Math.min(900f, Math.max(420f, logicalWidth - 48f));
+        float panelHeight = Math.min(520f, Math.max(300f, logicalHeight * 0.58f));
+        partyPanelBounds.set(
+            (logicalWidth - panelWidth) / 2f,
+            (logicalHeight - panelHeight) / 2f,
+            panelWidth,
+            panelHeight);
+        cancelSwitchBounds.set(
+            partyPanelBounds.x + partyPanelBounds.width - 172f,
+            partyPanelBounds.y + 18f,
+            150f,
+            42f);
+        partyCardBounds.clear();
+        float cardGap = 14f;
+        float sidePad = 22f;
+        float topPad = 74f;
+        float bottomPad = 78f;
+        float cardWidth = (partyPanelBounds.width - sidePad * 2f - cardGap * 2f) / 3f;
+        float cardHeight = (partyPanelBounds.height - topPad - bottomPad - cardGap) / 2f;
+        for (int slot = 0; slot < party.size(); slot++) {
+            int column = slot % 3;
+            int row = slot / 3;
+            partyCardBounds.add(new Rectangle(
+                partyPanelBounds.x + sidePad + column * (cardWidth + cardGap),
+                partyPanelBounds.y + partyPanelBounds.height - topPad
+                    - (row + 1) * cardHeight - row * cardGap,
+                cardWidth,
+                cardHeight));
+        }
+    }
+
     private float scaled(float value) {
         return value * textGeometryScale;
     }
 
     public void draw(Batch batch, BitmapFont font, BitmapFont titleFont, BitmapFont statFont) {
         active().draw(batch, font, titleFont, statFont);
-        if (pages.size() <= 1) return;
         batch.begin();
-        batch.setColor(new Color(0.38f, 0.41f, 0.46f, 1f));
-        batch.draw(ui.pixel, previousBounds.x, previousBounds.y,
-            previousBounds.width, previousBounds.height);
-        batch.draw(ui.pixel, nextBounds.x, nextBounds.y, nextBounds.width, nextBounds.height);
-        batch.setColor(Color.WHITE);
-        font.setColor(Color.WHITE);
-        if (!windowsTextGeometry) {
-            font.draw(batch, "<", previousBounds.x + 10f, previousBounds.y + 21f);
-            font.draw(batch, ">", nextBounds.x + 10f, nextBounds.y + 21f);
-            font.draw(batch, pages.get(activePage).name() + "  " + (activePage + 1)
-                + "/" + pages.size(), nextBounds.x + nextBounds.width + 10f,
-                nextBounds.y + 21f);
-            batch.end();
-            return;
-        }
-        drawCentered(batch, font, "<", previousBounds);
-        drawCentered(batch, font, ">", nextBounds);
-        drawCentered(batch, font, (activePage + 1) + "/" + pages.size(), pageLabelBounds);
-        if (readOnly) {
-            batch.setColor(0.32f, 0.32f, 0.34f, 0.62f);
-            batch.draw(ui.pixel,
-                previousBounds.x,
-                previousBounds.y,
-                pageLabelBounds.x + pageLabelBounds.width - previousBounds.x,
-                previousBounds.height);
+        if (pages.size() > 1) {
+            batch.setColor(new Color(0.38f, 0.41f, 0.46f, 1f));
+            batch.draw(ui.pixel, previousBounds.x, previousBounds.y,
+                previousBounds.width, previousBounds.height);
+            batch.draw(ui.pixel, nextBounds.x, nextBounds.y, nextBounds.width, nextBounds.height);
             batch.setColor(Color.WHITE);
+            font.setColor(Color.WHITE);
+            if (!windowsTextGeometry) {
+                font.draw(batch, "<", previousBounds.x + 10f, previousBounds.y + 21f);
+                font.draw(batch, ">", nextBounds.x + 10f, nextBounds.y + 21f);
+                font.draw(batch, pages.get(activePage).name() + "  " + (activePage + 1)
+                    + "/" + pages.size(), nextBounds.x + nextBounds.width + 10f,
+                    nextBounds.y + 21f);
+            } else {
+                drawCentered(batch, font, "<", previousBounds);
+                drawCentered(batch, font, ">", nextBounds);
+                drawCentered(batch, font, (activePage + 1) + "/" + pages.size(), pageLabelBounds);
+                if (readOnly) {
+                    batch.setColor(0.32f, 0.32f, 0.34f, 0.62f);
+                    batch.draw(ui.pixel,
+                        previousBounds.x,
+                        previousBounds.y,
+                        pageLabelBounds.x + pageLabelBounds.width - previousBounds.x,
+                        previousBounds.height);
+                    batch.setColor(Color.WHITE);
+                }
+            }
         }
+        drawSwitchButton(batch, font);
+        if (switchPanelOpen) drawPartyPanel(batch, font, titleFont);
         batch.end();
+    }
+
+    private void drawSwitchButton(Batch batch, BitmapFont font) {
+        Page page = pages.get(activePage);
+        if (!page.switchEligible) return;
+        boolean enabled = !readOnly && !submitted;
+        batch.setColor(enabled
+            ? new Color(0.82f, 0.22f, 0.18f, 1f)
+            : new Color(0.30f, 0.31f, 0.34f, 1f));
+        batch.draw(ui.pixel, switchBounds.x, switchBounds.y, switchBounds.width, switchBounds.height);
+        batch.setColor(Color.WHITE);
+        String label = page.switchTargetName == null
+            ? "SWITCH" : "SWITCH: " + ellipsize(font, page.switchTargetName,
+                Math.max(1f, switchBounds.width - 18f));
+        drawCentered(batch, font, label, switchBounds);
+    }
+
+    private void drawPartyPanel(Batch batch, BitmapFont font, BitmapFont titleFont) {
+        float logicalWidth = unifiedWindowsLayout ? WindowsBattleCanvas.WIDTH : screenWidth;
+        float logicalHeight = unifiedWindowsLayout ? WindowsBattleCanvas.HEIGHT : screenHeight;
+        batch.setColor(0.02f, 0.03f, 0.06f, 0.78f);
+        batch.draw(ui.pixel, 0f, 0f, logicalWidth, logicalHeight);
+        batch.setColor(Color.WHITE);
+        ui.palette.draw(batch, partyPanelBounds.x, partyPanelBounds.y,
+            partyPanelBounds.width, partyPanelBounds.height);
+        titleFont.setColor(BattleUiAssets.YELLOW);
+        titleFont.draw(batch, "CHOOSE A RESERVE",
+            partyPanelBounds.x + 22f,
+            partyPanelBounds.y + partyPanelBounds.height - 24f);
+        font.setColor(new Color(0.72f, 0.80f, 0.95f, 1f));
+        font.draw(batch, "Switching uses this fighter's entire round.",
+            partyPanelBounds.x + 22f,
+            partyPanelBounds.y + partyPanelBounds.height - 51f);
+
+        for (int index = 0; index < Math.min(party.size(), partyCardBounds.size()); index++) {
+            PartyMember member = party.get(index);
+            Rectangle bounds = partyCardBounds.get(index);
+            boolean selectedElsewhere = reserveSelectedElsewhere(member.actorId());
+            boolean selectable = member.reserve() && !member.defeated() && !selectedElsewhere;
+            batch.setColor(selectable
+                ? new Color(0.96f, 0.95f, 0.89f, 1f)
+                : new Color(0.48f, 0.49f, 0.53f, 1f));
+            ui.card.draw(batch, bounds.x, bounds.y, bounds.width, bounds.height);
+            batch.setColor(Color.WHITE);
+
+            font.setColor(BattleUiAssets.TEXT);
+            font.draw(batch, ellipsize(font, member.name(), bounds.width - 24f),
+                bounds.x + 12f, bounds.y + bounds.height - 18f);
+            String status = member.defeated() ? "FAINTED"
+                : member.active() ? "ON FIELD"
+                : selectedElsewhere ? "ALREADY PICKED" : "RESERVE";
+            font.setColor(selectable ? BattleUiAssets.CURSED_ENERGY : BattleUiAssets.MUTED);
+            font.draw(batch, status, bounds.x + 12f, bounds.y + bounds.height - 45f);
+
+            float hpWidth = Math.max(1f, bounds.width - 24f);
+            float hpFraction = member.maxHp() <= 0 ? 0f
+                : Math.max(0f, Math.min(1f, member.currentHp() / (float) member.maxHp()));
+            batch.setColor(new Color(0.18f, 0.20f, 0.24f, 1f));
+            batch.draw(ui.pixel, bounds.x + 12f, bounds.y + 22f, hpWidth, 12f);
+            batch.setColor(hpFraction > 0.5f
+                ? new Color(0.25f, 0.76f, 0.35f, 1f)
+                : hpFraction > 0.2f
+                    ? new Color(0.96f, 0.70f, 0.18f, 1f)
+                    : new Color(0.88f, 0.20f, 0.18f, 1f));
+            batch.draw(ui.pixel, bounds.x + 12f, bounds.y + 22f,
+                hpWidth * hpFraction, 12f);
+            batch.setColor(Color.WHITE);
+            font.setColor(BattleUiAssets.TEXT);
+            font.draw(batch, "HP " + member.currentHp() + "/" + member.maxHp(),
+                bounds.x + 12f, bounds.y + 50f);
+        }
+
+        batch.setColor(new Color(0.35f, 0.38f, 0.44f, 1f));
+        batch.draw(ui.pixel, cancelSwitchBounds.x, cancelSwitchBounds.y,
+            cancelSwitchBounds.width, cancelSwitchBounds.height);
+        batch.setColor(Color.WHITE);
+        drawCentered(batch, font,
+            pages.get(activePage).switchTargetId == null ? "CANCEL" : "KEEP BATTLING",
+            cancelSwitchBounds);
     }
 
     private static void drawCentered(Batch batch, BitmapFont font, String value, Rectangle bounds) {
@@ -351,12 +560,27 @@ public final class TeamPlanningPanel {
         boolean genericTitleVisible
     ) { }
 
+    record SwitchRegions(
+        Rectangle button,
+        Rectangle panel,
+        List<Rectangle> cards,
+        boolean open
+    ) { }
+
     HeaderRegions headerRegions() {
         return new HeaderRegions(
             new Rectangle(previousBounds),
             new Rectangle(nextBounds),
             new Rectangle(pageLabelBounds),
             active().isHeaderTitleVisible());
+    }
+
+    SwitchRegions switchRegions() {
+        return new SwitchRegions(
+            new Rectangle(switchBounds),
+            new Rectangle(partyPanelBounds),
+            partyCardBounds.stream().map(Rectangle::new).toList(),
+            switchPanelOpen);
     }
 
     public InputAdapter inputProcessor() {
@@ -370,20 +594,72 @@ public final class TeamPlanningPanel {
     public String activeActorId() { return active().getActorId(); }
 
     public void previousPage() {
-        if (pages.size() > 1) activePage = (activePage - 1 + pages.size()) % pages.size();
+        if (pages.size() > 1) {
+            activePage = (activePage - 1 + pages.size()) % pages.size();
+            switchPanelOpen = false;
+            layoutSwitchControls();
+        }
     }
 
     public void nextPage() {
-        if (pages.size() > 1) activePage = (activePage + 1) % pages.size();
+        if (pages.size() > 1) {
+            activePage = (activePage + 1) % pages.size();
+            switchPanelOpen = false;
+            layoutSwitchControls();
+        }
     }
 
     private PlanningPanel active() {
         return pages.get(activePage).panel();
     }
 
+    private static boolean pageReady(Page page) {
+        return page.switchTargetId != null || page.panel().isConfirmed();
+    }
+
+    private boolean reserveSelectedElsewhere(String actorId) {
+        for (int index = 0; index < pages.size(); index++) {
+            if (index != activePage && actorId.equals(pages.get(index).switchTargetId)) return true;
+        }
+        return false;
+    }
+
+    private void selectReserve(PartyMember member) {
+        Page page = pages.get(activePage);
+        page.switchTargetId = member.actorId();
+        page.switchTargetName = member.name();
+        page.panel().lock();
+        page.panel().setReadOnly(true);
+        switchPanelOpen = false;
+        soundPlayer.accept(SoundCue.UI_PLAN_LOCK);
+        pageLocked();
+    }
+
+    private void cancelSwitch() {
+        Page page = pages.get(activePage);
+        page.switchTargetId = null;
+        page.switchTargetName = null;
+        page.panel().setReadOnly(false);
+        page.panel().unlock();
+        switchPanelOpen = false;
+    }
+
     private final class TeamPlanningInputProcessor extends InputAdapter {
         @Override public boolean keyDown(int keycode) {
             if (readOnly) return false;
+            if (switchPanelOpen) {
+                if (keycode == Input.Keys.ESCAPE || keycode == Input.Keys.BACK) {
+                    switchPanelOpen = false;
+                    return true;
+                }
+                return true;
+            }
+            if (keycode == Input.Keys.S && !submitted
+                && pages.get(activePage).switchEligible) {
+                switchPanelOpen = true;
+                soundPlayer.accept(SoundCue.UI_CONFIRM);
+                return true;
+            }
             if (keycode == Input.Keys.LEFT) {
                 previousPage();
                 return true;
@@ -403,6 +679,34 @@ public final class TeamPlanningPanel {
                 plannerX = (x - viewportOffsetX) / viewportScale;
                 plannerY = (physicalViewportHeight - y - viewportOffsetY) / viewportScale;
             }
+            if (button == Input.Buttons.LEFT && switchPanelOpen) {
+                if (cancelSwitchBounds.contains(plannerX, plannerY)) {
+                    if (pages.get(activePage).switchTargetId == null) {
+                        switchPanelOpen = false;
+                    } else {
+                        cancelSwitch();
+                    }
+                    soundPlayer.accept(SoundCue.UI_BACK);
+                    return true;
+                }
+                for (int index = 0; index < Math.min(party.size(), partyCardBounds.size()); index++) {
+                    PartyMember member = party.get(index);
+                    if (partyCardBounds.get(index).contains(plannerX, plannerY)
+                        && member.reserve() && !member.defeated()
+                        && !reserveSelectedElsewhere(member.actorId())) {
+                        selectReserve(member);
+                        return true;
+                    }
+                }
+                return true;
+            }
+            if (button == Input.Buttons.LEFT && !submitted
+                && pages.get(activePage).switchEligible
+                && switchBounds.contains(plannerX, plannerY)) {
+                switchPanelOpen = true;
+                soundPlayer.accept(SoundCue.UI_CONFIRM);
+                return true;
+            }
             if (button == Input.Buttons.LEFT && pages.size() > 1) {
                 if (previousBounds.contains(plannerX, plannerY)) {
                     previousPage();
@@ -419,22 +723,22 @@ public final class TeamPlanningPanel {
         }
 
         @Override public boolean touchDragged(int x, int y, int pointer) {
-            if (readOnly) return false;
+            if (readOnly || switchPanelOpen) return false;
             return active().inputProcessor().touchDragged(x, y, pointer);
         }
 
         @Override public boolean touchUp(int x, int y, int pointer, int button) {
-            if (readOnly) return false;
+            if (readOnly || switchPanelOpen) return false;
             return active().inputProcessor().touchUp(x, y, pointer, button);
         }
 
         @Override public boolean mouseMoved(int x, int y) {
-            if (readOnly) return false;
+            if (readOnly || switchPanelOpen) return false;
             return active().inputProcessor().mouseMoved(x, y);
         }
 
         @Override public boolean scrolled(float amountX, float amountY) {
-            if (readOnly) return false;
+            if (readOnly || switchPanelOpen) return false;
             return active().inputProcessor().scrolled(amountX, amountY);
         }
     }

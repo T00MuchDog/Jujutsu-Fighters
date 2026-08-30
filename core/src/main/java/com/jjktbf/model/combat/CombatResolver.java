@@ -130,7 +130,8 @@ public class CombatResolver {
         if (state == null || owner == null || abilityId == null
             || state.getCurrentPhase() != BattleState.Phase.PLANNING
             || state.isBattleOver()
-            || state.teamOf(owner) == null) {
+            || state.teamOf(owner) == null
+            || !owner.isActive()) {
             return List.of();
         }
         List<CombatEvent> events = new ArrayList<>(abilityActivations.process(
@@ -146,6 +147,7 @@ public class CombatResolver {
         // those mutations before any BATTLE_START ability can change the same values.
         appendAutomaticStatusEvents(state, events);
         if (finishBattleIfNeeded(state, events, 0)) return events;
+        appendReplacementEvents(state.fillReserveVacancies(), events);
         if (processPendingBattleStarts(state, events)) return events;
         events.addAll(state.domainBattlefield().processRoundStart(
             state, abilityActivations::executeDomainEffect));
@@ -246,6 +248,12 @@ public class CombatResolver {
     public List<CombatEvent> beginResolution(BattleState state) {
         List<CombatEvent> events = new ArrayList<>(processRoundStart(state));
         if (state.isBattleOver()) {
+            cursor.get().roundCostsProcessed = false;
+            return events;
+        }
+
+        appendSwitchEvents(state.applyQueuedSwitches(), events);
+        if (processPendingBattleStarts(state, events)) {
             cursor.get().roundCostsProcessed = false;
             return events;
         }
@@ -1201,6 +1209,11 @@ public class CombatResolver {
                     }
                 }
 
+                if (resolved != null && !resolved.isActive()
+                    && state.usesReserveRules()
+                    && state.isVacantFighterSlotTarget(selected)) {
+                    return TargetSet.empty();
+                }
                 if (resolved == null || !resolved.isActive() || resolved.isAlliedWith(attacker)) {
                     // Retarget deterministically to the first living enemy.
                     BattleCombatant retarget = state.firstActiveEnemyOf(attacker);
@@ -1233,10 +1246,12 @@ public class CombatResolver {
                         selected.add(candidate);
                     }
                 }
-                for (BattleCombatant enemy : enemies) {
-                    if (selected.size() >= requestedCount) break;
-                    if (!selected.contains(enemy) && CursedSpeechAbility.canTarget(move, enemy)) {
-                        selected.add(enemy);
+                if (!state.usesReserveRules()) {
+                    for (BattleCombatant enemy : enemies) {
+                        if (selected.size() >= requestedCount) break;
+                        if (!selected.contains(enemy) && CursedSpeechAbility.canTarget(move, enemy)) {
+                            selected.add(enemy);
+                        }
                     }
                 }
                 return TargetSet.multiple(selected);
@@ -2850,7 +2865,14 @@ public class CombatResolver {
                 }
             }
 
-            if (!battleEnded) state.endRound();
+            if (!battleEnded) {
+                if (finishBattleIfNeeded(state, events, 0)) {
+                    battleEnded = true;
+                } else {
+                    appendReplacementEvents(state.fillReserveVacancies(), events);
+                    state.endRound();
+                }
+            }
         } finally {
             for (BattleCombatant combatant : combatants) {
                 int hpBeforeClamp = combatant.getCurrentHp();
@@ -2937,6 +2959,40 @@ public class CombatResolver {
                             : c.isSummon() ? " is dismissed!" : " is removed!"))
                     .build());
             }
+        }
+    }
+
+    private static void appendSwitchEvents(
+        List<BattleState.FighterSwitch> switches,
+        List<CombatEvent> events
+    ) {
+        for (BattleState.FighterSwitch change : switches) {
+            BattleCombatant outgoing = change.outgoing();
+            BattleCombatant incoming = change.incoming();
+            events.add(CombatEvent.of(CombatEvent.Type.COMBATANT_SWITCHED)
+                .source(outgoing)
+                .target(incoming)
+                .intValue(change.slot() + 1)
+                .tick(0)
+                .message(outgoing.getCharacter().getName() + " switches out for "
+                    + incoming.getCharacter().getName() + "!")
+                .build());
+        }
+    }
+
+    private static void appendReplacementEvents(
+        List<BattleState.FighterSwitch> replacements,
+        List<CombatEvent> events
+    ) {
+        for (BattleState.FighterSwitch change : replacements) {
+            BattleCombatant incoming = change.incoming();
+            events.add(CombatEvent.of(CombatEvent.Type.COMBATANT_REPLACED)
+                .source(change.outgoing())
+                .target(incoming)
+                .intValue(change.slot() + 1)
+                .tick(0)
+                .message(incoming.getCharacter().getName() + " enters from reserve!")
+                .build());
         }
     }
 

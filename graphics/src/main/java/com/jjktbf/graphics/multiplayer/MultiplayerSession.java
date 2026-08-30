@@ -6,6 +6,7 @@ import com.jjktbf.multiplayer.protocol.MatchSetup;
 import com.jjktbf.multiplayer.protocol.MatchState;
 import com.jjktbf.multiplayer.protocol.MatchStatus;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
+import com.jjktbf.multiplayer.protocol.SwitchSelection;
 import com.jjktbf.multiplayer.protocol.SocketMessage;
 
 import java.util.List;
@@ -163,6 +164,14 @@ public final class MultiplayerSession {
         String commandId,
         List<PlanPlacement> placements
     ) {
+        return beginPlanCommand(commandId, placements, List.of());
+    }
+
+    public synchronized CommandStart beginPlanCommand(
+        String commandId,
+        List<PlanPlacement> placements,
+        List<SwitchSelection> switches
+    ) {
         if (matchSetup == null || latestState == null) {
             return new CommandStart(CommandStartStatus.NO_MATCH, null);
         }
@@ -179,7 +188,8 @@ public final class MultiplayerSession {
             Objects.requireNonNull(commandId, "commandId"),
             matchSetup.matchId(),
             latestState.stateVersion(),
-            placements == null ? List.of() : List.copyOf(placements)
+            placements == null ? List.of() : List.copyOf(placements),
+            switches == null ? List.of() : List.copyOf(switches)
         );
         pendingCommand = command;
         return new CommandStart(CommandStartStatus.READY, command);

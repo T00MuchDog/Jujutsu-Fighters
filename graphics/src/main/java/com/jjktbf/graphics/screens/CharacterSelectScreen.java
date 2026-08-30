@@ -124,7 +124,7 @@ public class CharacterSelectScreen implements Screen {
 
     /**
      * Roster format for the battle being set up. ONE_V_ONE picks one fighter
-     * per side (the legacy flow); TWO_V_TWO picks two. Set on entry via
+     * per side (the legacy flow); larger formats fill their full ordered roster. Set on entry via
      * {@link #prepare(BattleFormat)}.
      */
     private com.jjktbf.model.combat.BattleFormat format =
@@ -190,6 +190,7 @@ public class CharacterSelectScreen implements Screen {
         public boolean mouseMoved(int screenX, int screenY) {
             movePointerX = screenX;
             movePointerY = Gdx.graphics.getHeight() - screenY;
+            hoverRowAt(movePointerX, movePointerY);
             return learnedDrawerExpanded && learnedDrawerBounds.contains(movePointerX, movePointerY)
                 || moveSetPanelBounds.contains(movePointerX, movePointerY);
         }
@@ -441,19 +442,27 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private void selectRowAt(float x, float y) {
-        if (!(windowsLayout ? rosterViewportBounds : listBounds).contains(x, y)) return;
+        int index = rosterRowAt(x, y);
+        if (index < 0) return;
+        if (index != cursorIndex) {
+            setCursor(index);
+            resetMoveScroll();
+        }
+        confirmSelection();
+    }
+
+    private void hoverRowAt(float x, float y) {
+        int index = rosterRowAt(x, y);
+        if (index < 0 || index == cursorIndex) return;
+        setCursor(index);
+    }
+
+    private int rosterRowAt(float x, float y) {
+        if (!(windowsLayout ? rosterViewportBounds : listBounds).contains(x, y)) return -1;
         float firstRowTop = listBounds.y + listBounds.height
             - (windowsLayout ? 69f : 46f);
         int index = (int) ((firstRowTop + rosterScrollOffset - y) / rowHeight());
-        if (index >= 0 && index < rosterRowCount()) {
-            if (index == cursorIndex) {
-                confirmSelection();
-            } else {
-                setCursor(index);
-                resetMoveScroll();
-                game.audio().play(SoundCue.UI_NAVIGATE);
-            }
-        }
+        return index >= 0 && index < rosterRowCount() ? index : -1;
     }
 
     /** Roster rows shown in the list: the pinned Random row plus every fighter. */
@@ -658,13 +667,13 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private void startConfiguredBattle() {
-        if (format == com.jjktbf.model.combat.BattleFormat.TWO_V_TWO) {
+        if (format.fightersPerSide() > 1) {
             game.startTeamBattle(
                 new java.util.ArrayList<>(playerPicks),
                 new java.util.ArrayList<>(playerMoveSets),
                 new java.util.ArrayList<>(cpuPicks),
                 new java.util.ArrayList<>(cpuMoveSets),
-                moveRepo, abilityRepo, techniqueRepo, controlMode, statMode);
+                moveRepo, abilityRepo, techniqueRepo, controlMode, statMode, format);
         } else {
             // ONE_V_ONE (or any single-fighter format): use the legacy entry point.
             game.startBattle(
@@ -775,8 +784,43 @@ public class CharacterSelectScreen implements Screen {
             ? picksSummary("PLAYER", playerPicks) + "  |  " + statMode + "  |  ENTER: START"
             : "UP/DOWN: SELECT  |  ENTER: CONFIRM  |  LEARNED MOVES: CUSTOMIZE  |  "
                 + statMode;
+        if (format.hasReserves()) {
+            state = "ROSTER ORDER: FIRST 3 ACTIVE / LAST 3 RESERVE  |  " + statMode;
+        }
         assets.fontSmall.draw(batch, state, headerBounds.x + 20f,
             headerBounds.y + (windowsLayout ? 25.5f : 17f));
+        if (format.hasReserves()) drawTeamCompositionPanel();
+    }
+
+    /** Compact six-slot party tray: field fighters above, reserves below. */
+    private void drawTeamCompositionPanel() {
+        List<CharacterData> picks = currentPicks();
+        float panelX = headerBounds.x + headerBounds.width * 0.47f;
+        float panelWidth = headerBounds.x + headerBounds.width - 12f - panelX;
+        float gap = windowsLayout ? 7f : 5f;
+        float slotWidth = (panelWidth - gap * 2f) / 3f;
+        float slotHeight = (headerBounds.height - gap * 3f) / 2f;
+        for (int slot = 0; slot < format.fightersPerSide(); slot++) {
+            int column = slot % 3;
+            int row = slot / 3;
+            float x = panelX + column * (slotWidth + gap);
+            float y = headerBounds.y + headerBounds.height - gap
+                - (row + 1) * slotHeight - row * gap;
+            boolean activeSlot = slot < format.activeFightersPerSide();
+            batch.setColor(activeSlot
+                ? new Color(0.44f, 0.78f, 0.96f, 1f)
+                : new Color(1f, 0.78f, 0.28f, 1f));
+            assets.battleUi.card.draw(batch, x, y, slotWidth, slotHeight);
+            batch.setColor(Color.WHITE);
+            String position = (activeSlot ? "A" : "R")
+                + (activeSlot ? slot + 1 : slot - format.activeFightersPerSide() + 1);
+            String name = slot < picks.size() ? picks.get(slot).name : "EMPTY";
+            BitmapFont font = windowsLayout ? assets.fontSmall : assets.fontSmall;
+            font.setColor(activeSlot ? new Color(0.12f, 0.30f, 0.55f, 1f)
+                : new Color(0.48f, 0.27f, 0.04f, 1f));
+            String label = position + "  " + fitOrEllipsize(font, name, slotWidth - 12f);
+            font.draw(batch, label, x + 6f, y + slotHeight * 0.64f);
+        }
     }
 
     private static String picksSummary(String label, java.util.List<CharacterData> picks) {

@@ -39,7 +39,8 @@ public final class BattleAudioRouter {
             case CE_RESTORED -> positiveCue(event.getIntValue(), SoundCue.BATTLE_CE_RESTORE);
             case CE_DEPLETED -> event.getMove() == null
                 ? Optional.empty() : Optional.of(SoundCue.BATTLE_STUN);
-            case STATUS_APPLIED, BFS_ENTERED, COMBATANT_SUMMONED ->
+            case STATUS_APPLIED, BFS_ENTERED, COMBATANT_SUMMONED,
+                 COMBATANT_SWITCHED, COMBATANT_REPLACED ->
                 Optional.of(SoundCue.BATTLE_STATUS_APPLY);
             case STATUS_EXPIRED, BFS_EXPIRED -> Optional.of(SoundCue.BATTLE_STATUS_EXPIRE);
             case COMBATANT_DEFEATED, COMBATANT_REMOVED -> Optional.empty();
@@ -77,7 +78,8 @@ public final class BattleAudioRouter {
             case CE_RESTORED -> positiveCue(event.value(), SoundCue.BATTLE_CE_RESTORE);
             case CE_DEPLETED -> event.moveId() == null
                 ? Optional.empty() : Optional.of(SoundCue.BATTLE_STUN);
-            case STATUS_APPLIED, BFS_ENTERED, COMBATANT_SUMMONED ->
+            case STATUS_APPLIED, BFS_ENTERED, COMBATANT_SUMMONED,
+                 COMBATANT_SWITCHED, COMBATANT_REPLACED ->
                 Optional.of(SoundCue.BATTLE_STATUS_APPLY);
             case STATUS_EXPIRED, BFS_EXPIRED -> Optional.of(SoundCue.BATTLE_STATUS_EXPIRE);
             case COMBATANT_DEFEATED, COMBATANT_REMOVED -> Optional.empty();

@@ -15,6 +15,7 @@ import com.jjktbf.multiplayer.protocol.ActionSegmentStatus;
 import com.jjktbf.multiplayer.protocol.PlanBoard;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
 import com.jjktbf.multiplayer.protocol.PlanState;
+import com.jjktbf.multiplayer.protocol.SwitchSelection;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -202,6 +203,66 @@ class TeamPlanningPanelTest {
         assertTrue(panel.isReadOnly());
         assertTrue(panel.activePlanningPanel().isReadOnly());
         assertEquals(0, panel.activePageIndex());
+    }
+
+    @Test
+    void dedicatedSwitchPanelCreatesSwitchIntentAndDropsThatActorsPlacements() {
+        Move first = move("FIRST");
+        Move second = move("SECOND");
+        TeamPlanningPanel panel = new TeamPlanningPanel(
+            BattleTeamId.PLAYER,
+            300,
+            List.of(
+                spec("actor-1", "First", first, null),
+                spec("actor-2", "Second", second, null)),
+            List.of(
+                new TeamPlanningPanel.PartyMember(
+                    "actor-1", "First", 100, 100, true, false, false, 0),
+                new TeamPlanningPanel.PartyMember(
+                    "actor-2", "Second", 100, 100, true, false, false, 1),
+                new TeamPlanningPanel.PartyMember(
+                    "reserve-1", "Reserve", 80, 100, false, true, false, 3)),
+            null,
+            WIDTH,
+            HEIGHT);
+        panel.activePlanningPanel().restorePlacement(first, 1, 0, "enemy-1");
+
+        assertTrue(panel.inputProcessor().keyDown(Input.Keys.S));
+        TeamPlanningPanel.SwitchRegions regions = panel.switchRegions();
+        assertTrue(regions.open());
+        com.badlogic.gdx.math.Rectangle reserve = regions.cards().get(2);
+        assertTrue(panel.inputProcessor().touchDown(
+            Math.round(reserve.x + reserve.width / 2f),
+            Math.round(HEIGHT - reserve.y - reserve.height / 2f),
+            0,
+            Input.Buttons.LEFT));
+
+        assertEquals(List.of(new SwitchSelection("actor-1", "reserve-1")),
+            panel.getSwitches());
+        assertTrue(panel.getTeamPlan().isSwitch(new CombatantId("actor-1")));
+        assertTrue(panel.getPlacements().stream()
+            .noneMatch(placement -> "actor-1".equals(placement.actorId())));
+    }
+
+    @Test
+    void submittedTeamPlanCannotReopenSwitchSelection() {
+        Move first = move("FIRST");
+        TeamPlanningPanel panel = new TeamPlanningPanel(
+            BattleTeamId.PLAYER,
+            300,
+            List.of(spec("actor-1", "First", first, null)),
+            List.of(
+                new TeamPlanningPanel.PartyMember(
+                    "actor-1", "First", 100, 100, true, false, false, 0),
+                new TeamPlanningPanel.PartyMember(
+                    "reserve-1", "Reserve", 100, 100, false, true, false, 3)),
+            null,
+            WIDTH,
+            HEIGHT);
+        panel.lock();
+
+        assertFalse(panel.inputProcessor().keyDown(Input.Keys.S));
+        assertFalse(panel.switchRegions().open());
     }
 
     private static TeamPlanningPanel panel(Move first, Move second) {

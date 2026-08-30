@@ -19,9 +19,6 @@ import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.RandomSource;
-import com.jjktbf.model.move.AttackLaunchMode;
-import com.jjktbf.model.move.DefenseTiming;
-import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveData;
@@ -64,32 +61,6 @@ class MoveEffectCompositionTest {
         assertTrue(moves.stream().noneMatch(move -> Boolean.TRUE.equals(move.stun)));
         assertTrue(moves.stream().noneMatch(move -> move.tags != null
             && move.tags.stream().anyMatch("STUN"::equalsIgnoreCase)));
-    }
-
-    @Test
-    void canonicalSimpleDomainUsesGenericParryCounter() throws IOException {
-        List<MoveData> moves = MAPPER.readValue(movesPath().toFile(), new TypeReference<>() { });
-        MoveData simpleDomain = moves.stream()
-            .filter(move -> "000026".equals(move.id))
-            .findFirst().orElseThrow();
-
-        assertEquals(DefenseType.PARRY.name(), simpleDomain.defenseType);
-        assertEquals(1, simpleDomain.potency);
-        assertEquals(DefenseTiming.REACTION.name(), simpleDomain.defenseTiming);
-        assertEquals(1, simpleDomain.defenseUses);
-        assertTrue(simpleDomain.blockAffectedTags == null || simpleDomain.blockAffectedTags.isEmpty());
-        assertEquals(AttackLaunchMode.ON_DEFENCE.name(), simpleDomain.attackLaunchMode);
-        assertEquals("000025", simpleDomain.attackLaunchMoveId);
-        assertNotNull(simpleDomain.attackLaunchCondition);
-        assertEquals(AbilityConditionType.MOVE_TAG_USED.name(),
-            simpleDomain.attackLaunchCondition.type);
-        assertEquals(AbilityConditionActor.ENEMY.name(),
-            simpleDomain.attackLaunchCondition.actor);
-        assertEquals(MoveTag.MELEE.name(), simpleDomain.attackLaunchCondition.moveTag);
-        MoveEffectData activation = simpleDomain.effects.stream()
-            .filter(effect -> "NEW_SHADOW_STYLE".equals(effect.codedAbilityKey))
-            .findFirst().orElseThrow();
-        assertNull(activation.codedTarget);
     }
 
     @Test

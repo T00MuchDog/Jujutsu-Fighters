@@ -8,6 +8,7 @@ import com.jjktbf.multiplayer.protocol.MatchState;
 import com.jjktbf.multiplayer.protocol.MatchStatus;
 import com.jjktbf.multiplayer.protocol.MessageType;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
+import com.jjktbf.multiplayer.protocol.SwitchSelection;
 import com.jjktbf.multiplayer.protocol.SocketMessage;
 
 import java.time.Duration;
@@ -196,13 +197,20 @@ public final class MultiplayerMatchService implements AutoCloseable {
 
     /** Sends intent only; the session state changes solely on a server snapshot. */
     public PlanSubmission submitPlan(List<PlanPlacement> placements) {
+        return submitPlan(placements, List.of());
+    }
+
+    public PlanSubmission submitPlan(
+        List<PlanPlacement> placements,
+        List<SwitchSelection> switches
+    ) {
         synchronized (commandLock) {
             if (closed.get()) {
                 return notSent(SubmissionStatus.SERVICE_CLOSED);
             }
             String commandId = UUID.randomUUID().toString();
             MultiplayerSession.CommandStart start = session.beginPlanCommand(
-                commandId, placements);
+                commandId, placements, switches);
             return send(start, commandId);
         }
     }

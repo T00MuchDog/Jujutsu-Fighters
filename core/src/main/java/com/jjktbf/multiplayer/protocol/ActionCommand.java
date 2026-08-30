@@ -30,12 +30,22 @@ public record ActionCommand(
         long expectedStateVersion,
         List<PlanPlacement> placements
     ) {
+        return submitPlan(commandId, matchId, expectedStateVersion, placements, List.of());
+    }
+
+    public static ActionCommand submitPlan(
+        String commandId,
+        String matchId,
+        long expectedStateVersion,
+        List<PlanPlacement> placements,
+        List<SwitchSelection> switches
+    ) {
         return new ActionCommand(
             commandId,
             matchId,
             expectedStateVersion,
             CommandType.SUBMIT_PLAN,
-            new SubmitPlanPayload(placements)
+            new SubmitPlanPayload(placements, switches)
         );
     }
 

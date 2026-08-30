@@ -24,6 +24,11 @@ public final class BattleTeam {
     private final BattleTeamId id;
     private final List<BattleCombatant> combatants = new ArrayList<>();
     private final Map<CombatantId, BattleCombatant> byInstance = new LinkedHashMap<>();
+    private final List<BattleCombatant> fighterSlots = new ArrayList<>();
+    private boolean fighterSlotsConfigured;
+    private int activeFighterLimit;
+
+    record FighterSlotChange(int slot, BattleCombatant outgoing, BattleCombatant incoming) { }
 
     public BattleTeam(BattleTeamId id) {
         this.id = Objects.requireNonNull(id, "team id");
@@ -50,13 +55,63 @@ public final class BattleTeam {
         return out;
     }
 
-    /** Combatants whose lifecycle is ACTIVE (able to act / be targeted), stable order. */
+    /** Fielded fighters in slot order, followed by active summons in creation order. */
     public List<BattleCombatant> active() {
         List<BattleCombatant> out = new ArrayList<>();
+        if (fighterSlotsConfigured) {
+            for (BattleCombatant fighter : fighterSlots) {
+                if (fighter != null && fighter.isActive()) out.add(fighter);
+            }
+            for (BattleCombatant combatant : combatants) {
+                if (combatant.isSummon() && combatant.isActive()) out.add(combatant);
+            }
+            return out;
+        }
         for (BattleCombatant c : combatants) {
             if (c.isActive()) out.add(c);
         }
         return out;
+    }
+
+    /** Living fighters waiting off the field, in roster order. */
+    public List<BattleCombatant> reserves() {
+        List<BattleCombatant> out = new ArrayList<>();
+        for (BattleCombatant combatant : combatants) {
+            if (combatant.isFighter() && combatant.isReserve() && !combatant.isDefeated()) {
+                out.add(combatant);
+            }
+        }
+        return out;
+    }
+
+    public List<BattleCombatant> activeFighters() {
+        if (!fighterSlotsConfigured) {
+            return combatants.stream()
+                .filter(combatant -> combatant.isFighter() && combatant.isActive())
+                .toList();
+        }
+        return fighterSlots.stream()
+            .filter(Objects::nonNull)
+            .filter(BattleCombatant::isActive)
+            .toList();
+    }
+
+    public int activeFighterLimit() {
+        return fighterSlotsConfigured ? activeFighterLimit : livingFighters().size();
+    }
+
+    public int fighterSlotOf(BattleCombatant combatant) {
+        if (combatant == null || !fighterSlotsConfigured) return -1;
+        for (int slot = 0; slot < fighterSlots.size(); slot++) {
+            if (fighterSlots.get(slot) == combatant) return slot;
+        }
+        return -1;
+    }
+
+    public BattleCombatant fighterAt(int slot) {
+        if (!fighterSlotsConfigured || slot < 0 || slot >= fighterSlots.size()) return null;
+        BattleCombatant fighter = fighterSlots.get(slot);
+        return fighter != null && fighter.isActive() ? fighter : null;
     }
 
     /** Living (HP > 0) fighters, stable order. */
@@ -118,5 +173,65 @@ public final class BattleTeam {
         }
         combatants.add(combatant);
         byInstance.put(combatant.getInstanceId(), combatant);
+        if (fighterSlotsConfigured && combatant.isFighter()) {
+            if (fighterSlots.size() < activeFighterLimit) {
+                fighterSlots.add(combatant);
+            } else if (combatant.isActive()) {
+                combatant.moveToReserve();
+            }
+        }
+    }
+
+    void configureActiveFighters(int limit) {
+        long fighterCount = combatants.stream().filter(BattleCombatant::isFighter).count();
+        if (limit < 1 || limit > fighterCount) {
+            throw new IllegalArgumentException(
+                "Active fighter limit must be between 1 and the roster size");
+        }
+        activeFighterLimit = limit;
+        fighterSlotsConfigured = true;
+        fighterSlots.clear();
+        int deployed = 0;
+        for (BattleCombatant combatant : combatants) {
+            if (!combatant.isFighter()) continue;
+            if (deployed < limit) {
+                if (combatant.isReserve()) combatant.deployFromReserve();
+                fighterSlots.add(combatant);
+                deployed++;
+            } else if (combatant.isActive()) {
+                combatant.moveToReserve();
+            }
+        }
+    }
+
+    FighterSlotChange switchFighter(BattleCombatant outgoing, BattleCombatant incoming) {
+        int slot = fighterSlotOf(outgoing);
+        if (slot < 0 || !outgoing.isActive() || !outgoing.isFighter()) {
+            throw new IllegalArgumentException("Switch actor must occupy an active fighter slot");
+        }
+        if (!contains(incoming) || !incoming.isReserve() || !incoming.isFighter()
+            || incoming.isDefeated()) {
+            throw new IllegalArgumentException("Switch target must be a living reserve fighter");
+        }
+        outgoing.moveToReserve();
+        incoming.deployFromReserve();
+        fighterSlots.set(slot, incoming);
+        return new FighterSlotChange(slot, outgoing, incoming);
+    }
+
+    List<FighterSlotChange> fillVacantFighterSlots() {
+        if (!fighterSlotsConfigured || reserves().isEmpty()) return List.of();
+        List<FighterSlotChange> changes = new ArrayList<>();
+        for (int slot = 0; slot < fighterSlots.size(); slot++) {
+            BattleCombatant outgoing = fighterSlots.get(slot);
+            if (outgoing != null && outgoing.isActive()) continue;
+            List<BattleCombatant> available = reserves();
+            if (available.isEmpty()) break;
+            BattleCombatant incoming = available.get(0);
+            incoming.deployFromReserve();
+            fighterSlots.set(slot, incoming);
+            changes.add(new FighterSlotChange(slot, outgoing, incoming));
+        }
+        return List.copyOf(changes);
     }
 }

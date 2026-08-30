@@ -791,7 +791,9 @@ public class JJKGame extends Game {
         BattleStatMode statMode
     ) {
         startTeamBattle(playerTeam, null, cpuTeam, null,
-            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode);
+            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode,
+            playerTeam.size() == BattleFormat.SIX_V_SIX.fightersPerSide()
+                ? BattleFormat.SIX_V_SIX : BattleFormat.TWO_V_TWO);
     }
 
     public void startTeamBattle(
@@ -804,6 +806,24 @@ public class JJKGame extends Game {
         TechniqueRepository techniqueRepo,
         BattleController.ControlMode controlMode,
         BattleStatMode statMode
+    ) {
+        startTeamBattle(playerTeam, playerMoveSets, cpuTeam, cpuMoveSets,
+            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode,
+            playerTeam.size() == BattleFormat.SIX_V_SIX.fightersPerSide()
+                ? BattleFormat.SIX_V_SIX : BattleFormat.TWO_V_TWO);
+    }
+
+    public void startTeamBattle(
+        java.util.List<CharacterData> playerTeam,
+        java.util.List<java.util.List<String>> playerMoveSets,
+        java.util.List<CharacterData> cpuTeam,
+        java.util.List<java.util.List<String>> cpuMoveSets,
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        BattleController.ControlMode controlMode,
+        BattleStatMode statMode,
+        BattleFormat format
     ) {
         requireAuthorControlMode(controlMode);
         battleScreen.prepareLocal();
@@ -840,7 +860,8 @@ public class JJKGame extends Game {
                     .toList();
                 BattleState state = new BattleState(
                     BattleState.teamOfFighters(BattleTeamId.PLAYER, playerFighters),
-                    BattleState.teamOfFighters(BattleTeamId.ENEMY, cpuFighters));
+                    BattleState.teamOfFighters(BattleTeamId.ENEMY, cpuFighters),
+                    format);
                 BattleController controller = new BattleController(
                     battleScreen,
                     characterId -> multiplayerCharacterRepository.findById(characterId)

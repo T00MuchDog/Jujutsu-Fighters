@@ -804,7 +804,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000021",
+    "characterId" : "000020",
     "transformationHpMode" : "FULL",
     "target" : "SELF"
   } ],
@@ -1063,43 +1063,6 @@
   "masteryThreshold" : 0
 }, {
   "id" : "000046",
-  "name" : "Instinctive Boogie Woogie",
-  "flavourText" : "The instant a close-range strike commits to Todo, his clap can place him beyond its path.",
-  "mechanicText" : "When an enemy targets you with a MELEE ATTACK, you have an 8% chance to dodge that incoming attack.",
-  "category" : "ACTIVE",
-  "sourceType" : "TECHNIQUE",
-  "sourceValue" : "Boogie Woogie",
-  "activationConditions" : [ {
-    "condition" : {
-      "type" : "ALL",
-      "children" : [ {
-        "type" : "MOVE_TAG_USED",
-        "actor" : "ENEMY",
-        "moveTag" : "ATTACK"
-      }, {
-        "type" : "MOVE_TAG_USED",
-        "actor" : "ENEMY",
-        "moveTag" : "MELEE"
-      }, {
-        "type" : "EVENT_TARGET",
-        "actor" : "SELF"
-      } ]
-    },
-    "targetEffectIds" : [ "effect-000000" ],
-    "activationChanceEnabled" : true,
-    "activationChance" : 0.08,
-    "matchSameTrigger" : true
-  } ],
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "APPLY_NEVER_HIT",
-    "intValue" : 5,
-    "accuracyDuration" : "NEXT_ATTACK",
-    "target" : "SELF"
-  } ],
-  "masteryThreshold" : 70
-}, {
-  "id" : "000047",
   "name" : "Strength Amplification",
   "flavourText" : "Playful Cloud converts the wielder's physical might directly into striking force, making the three-section staff as dangerous as the hands that wield it.",
   "mechanicText" : "While PLAYFUL CLOUD is equipped, STAFF move BASE POWER scales with current scaled STRENGTH: x0.2 at 10, x1 at 80, and x5 at scaled maximum.",
@@ -1116,7 +1079,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000048",
+  "id" : "000047",
   "name" : "Blood Manipulation Reserves",
   "flavourText" : "A prepared supply of blood to use for external blood manipulation techniques",
   "mechanicText" : "Begin battle with 5 BLOOD SUPPLY.",
@@ -1133,7 +1096,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000049",
+  "id" : "000048",
   "name" : "Blood Coagulation",
   "flavourText" : "Fine control over blood within the body accelerates clotting, staunching blood loss before it can sap the user's strength.",
   "mechanicText" : "Increase VITALITY by 5%.",
@@ -1148,13 +1111,13 @@
   } ],
   "masteryThreshold" : 35
 }, {
-  "id" : "000050",
+  "id" : "000049",
   "name" : "Compression",
   "flavourText" : "Convergence compresses prepared blood into dense ammunition capable of sustaining high-pressure techniques.",
   "mechanicText" : "Unlock COMPRESSION by learning *move:000107*. Store COMPRESSION up to your capacity.",
   "category" : "PASSIVE",
   "sourceType" : "MOVE",
-  "sourceValue" : "000107",
+  "sourceValue" : "000097",
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "DEFINE_BOUNDED_RESOURCE",
@@ -1186,7 +1149,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000051",
+  "id" : "000050",
   "name" : "Cursed Spirit Physiology",
   "flavourText" : "A curse is a body made from cursed energy itself, sustained by reserves far beyond those of ordinary flesh.",
   "mechanicText" : "Multiply MAX CE by 5, regenerate 1 CE per TICK, waive low CE COSTS according to raw BST, and grant *move:000132*.",
@@ -1211,12 +1174,12 @@
   }, {
     "effectId" : "effect-000003",
     "type" : "GRANT_MOVE",
-    "moveId" : "000131"
+    "moveId" : "000120"
   } ],
   "masteryThreshold" : 0,
   "automaticallyAssigned" : true
 }, {
-  "id" : "000052",
+  "id" : "000051",
   "name" : "Exorcism Requires Cursed Energy",
   "flavourText" : "Ordinary force can tear apart a curse, but only cursed power can erase the energy holding its form together.",
   "mechanicText" : "Fatal uncursed PHYSICAL hits leave the user at 1 HP. CURSED ENERGY, TECHNIQUES, CURSED TOOLS, cursed beings, and non-hit damage can EXORCISE normally.",
@@ -1246,7 +1209,7 @@
   "masteryThreshold" : 0,
   "automaticallyAssigned" : true
 }, {
-  "id" : "000053",
+  "id" : "000052",
   "name" : "Amorphous Anatomy",
   "flavourText" : "A body without fixed organs disperses blunt force through shifting cursed flesh.",
   "mechanicText" : "Reduce incoming PHYSICAL damage by 10%.",
@@ -1260,7 +1223,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000054",
+  "id" : "000053",
   "name" : "Volatile Cursed Core",
   "flavourText" : "Unstable energy leaks from every seam, magnifying both the curse's violence and the damage that can rupture it.",
   "mechanicText" : "Increase CURSED ENERGY damage dealt by 12% and all DAMAGE TAKEN by 8%.",
@@ -1280,7 +1243,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000055",
+  "id" : "000054",
   "name" : "Bottomless Malice",
   "flavourText" : "The hatred that formed the curse gathers into a reservoir that seems to deepen whenever it is measured.",
   "mechanicText" : "Increase MAX CE by 25% and CE REGENERATION by 0.25 per TICK.",
@@ -1301,7 +1264,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000056",
+  "id" : "000055",
   "name" : "Natural Calamity",
   "flavourText" : "The curse embodies disaster on a scale that spreads suffering beyond any single victim.",
   "mechanicText" : "Increase AOE damage dealt by 15%.",
@@ -1315,7 +1278,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000057",
+  "id" : "000056",
   "name" : "Grudge-Fed Flesh",
   "flavourText" : "Every wound the curse inflicts feeds fresh resentment back into its damaged form.",
   "mechanicText" : "After dealing at least 25 DAMAGE in one instance, restore 2% MAX HP.",
@@ -1339,7 +1302,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000058",
+  "id" : "000057",
   "name" : "Oppressive Aura",
   "flavourText" : "The curse floods the battlefield with killing intent that weakens enemies will.",
   "mechanicText" : "At ROUND START, reduce every enemy's ACCURACY by 10 for 1 ROUND.",
@@ -1356,7 +1319,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000059",
+  "id" : "000058",
   "name" : "Dense Cursed Core",
   "flavourText" : "A compact knot of cursed energy makes the spirit slower, heavier, and exceptionally difficult to disperse.",
   "mechanicText" : "Increase MAX HP by 15% and DEFENSE by 10%, but reduce SPEED by 10%.",
@@ -1382,7 +1345,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000060",
+  "id" : "000059",
   "name" : "Hidden Presence",
   "flavourText" : "Hanami's presence slips away from ordinary senses even while the forest closes around its prey.",
   "mechanicText" : "Enemy RANGED attacks lose 10 ACCURACY against the user.",
@@ -1397,7 +1360,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000061",
+  "id" : "000060",
   "name" : "Flower Offering",
   "flavourText" : "The flower on Hanami's shoulder stores stolen life force until it can be released as a single devastating blast.",
   "mechanicText" : "Create FLOWER OFFERING with 0/3 charges. LIFE FORCE ABSORPTION adds charges; the LIFE-FORCE BEAM consumes all charges for 60 BASE POWER each.",

@@ -1645,8 +1645,9 @@ public class BattleCombatant {
 
     public boolean isFighter()                     { return role == CombatantRole.FIGHTER; }
     public boolean isSummon()                      { return role == CombatantRole.SUMMON; }
-    /** True while the combatant is still present in combat (not removed/defeated). */
+    /** True while the combatant occupies the field and may act or be targeted. */
     public boolean isActive()                      { return lifecycle == CombatantLifecycle.ACTIVE; }
+    public boolean isReserve()                     { return lifecycle == CombatantLifecycle.RESERVE; }
     /** True once HP has hit 0 but before removal bookkeeping completes. */
     public boolean isLifecycleDefeated()           { return lifecycle == CombatantLifecycle.DEFEATED; }
     public boolean isRemoved()                     { return lifecycle == CombatantLifecycle.REMOVED; }
@@ -1693,9 +1694,28 @@ public class BattleCombatant {
     }
 
     void markLifecycleDefeated() {
-        if (lifecycle == CombatantLifecycle.ACTIVE) {
+        if (lifecycle == CombatantLifecycle.ACTIVE
+            || lifecycle == CombatantLifecycle.RESERVE) {
             lifecycle = CombatantLifecycle.DEFEATED;
         }
+    }
+
+    void moveToReserve() {
+        if (!isFighter() || lifecycle != CombatantLifecycle.ACTIVE) {
+            throw new IllegalStateException("Only an active fighter can move to reserve");
+        }
+        lifecycle = CombatantLifecycle.RESERVE;
+        plan = null;
+        timeline = null;
+    }
+
+    void deployFromReserve() {
+        if (!isFighter() || lifecycle != CombatantLifecycle.RESERVE || isDefeated()) {
+            throw new IllegalStateException("Only a living reserve fighter can deploy");
+        }
+        lifecycle = CombatantLifecycle.ACTIVE;
+        plan = null;
+        timeline = null;
     }
 
     void markRemoved() {

@@ -1002,7 +1002,7 @@
   }, {
     "id" : "node-000010",
     "contentType" : "MOVE",
-    "contentId" : "000139",
+    "contentId" : "000128",
     "x" : 418.0,
     "y" : 516.0,
     "prerequisites" : [ {
@@ -1032,158 +1032,19 @@
   } ]
 }, {
   "id" : "000004",
-  "name" : "Boogie Woogie",
-  "description" : "A cursed technique activated by clapping that exchanges the positions and attack paths of cursed-energy-bearing targets, turning simple transposition into relentless misdirection.",
-  "skillTree" : [ {
-    "id" : "node-000000",
-    "contentType" : "MOVE",
-    "contentId" : "000092",
-    "x" : 68.0,
-    "y" : 275.0,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 0
-    } ]
-  }, {
-    "id" : "node-000001",
-    "contentType" : "MOVE",
-    "contentId" : "000093",
-    "x" : 242.99988,
-    "y" : 486.00003,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 10
-    } ]
-  }, {
-    "id" : "node-000002",
-    "contentType" : "MOVE",
-    "contentId" : "000095",
-    "x" : 456.0,
-    "y" : 361.99994,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 20
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000000",
-      "attached" : true
-    } ]
-  }, {
-    "id" : "node-000003",
-    "contentType" : "MOVE",
-    "contentId" : "000094",
-    "x" : 454.99963,
-    "y" : 223.00005,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 30
-    } ]
-  }, {
-    "id" : "node-000004",
-    "contentType" : "MOVE",
-    "contentId" : "000096",
-    "x" : 691.0001,
-    "y" : 491.0,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 40
-    } ]
-  }, {
-    "id" : "node-000005",
-    "contentType" : "MOVE",
-    "contentId" : "000097",
-    "x" : 766.0001,
-    "y" : 289.99997,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 50
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000002",
-      "attached" : true
-    } ]
-  }, {
-    "id" : "node-000006",
-    "contentType" : "MOVE",
-    "contentId" : "000098",
-    "x" : 1009.0002,
-    "y" : 408.00003,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 60
-    } ]
-  }, {
-    "id" : "node-000007",
-    "contentType" : "MOVE",
-    "contentId" : "000099",
-    "x" : 1343.9998,
-    "y" : 291.9999,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 65
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000006",
-      "attached" : true
-    } ]
-  }, {
-    "id" : "node-000008",
-    "contentType" : "ABILITY",
-    "contentId" : "000046",
-    "x" : 1679.9999,
-    "y" : 491.99997,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 70
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000004",
-      "attached" : true
-    } ]
-  }, {
-    "id" : "node-000009",
-    "contentType" : "MOVE",
-    "contentId" : "000100",
-    "x" : 1009.99976,
-    "y" : 163.00003,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 80
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000005",
-      "attached" : true
-    } ]
-  }, {
-    "id" : "node-000010",
-    "contentType" : "MOVE",
-    "contentId" : "000101",
-    "x" : 451.0,
-    "y" : 82.000046,
-    "prerequisites" : [ {
-      "type" : "MASTERY",
-      "minimum" : 40
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000003",
-      "attached" : true
-    } ]
-  } ]
-}, {
-  "id" : "000005",
   "name" : "Blood Manipulation",
   "description" : "An inherited Kamo clan technique that controls blood within the body, blood outside the body, and compressed blood for high-pressure ranged strikes.",
   "skillTree" : [ {
     "id" : "node-000000",
     "contentType" : "ABILITY",
-    "contentId" : "000048",
+    "contentId" : "000047",
     "x" : 40.0,
     "y" : 325.0,
     "prerequisites" : [ ]
   }, {
     "id" : "node-000001",
     "contentType" : "MOVE",
-    "contentId" : "000103",
+    "contentId" : "000093",
     "x" : 360.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1209,7 +1070,7 @@
   }, {
     "id" : "node-000002",
     "contentType" : "MOVE",
-    "contentId" : "000104",
+    "contentId" : "000094",
     "x" : 360.0,
     "y" : 75.0,
     "prerequisites" : [ {
@@ -1231,7 +1092,7 @@
   }, {
     "id" : "node-000003",
     "contentType" : "MOVE",
-    "contentId" : "000105",
+    "contentId" : "000095",
     "x" : 1050.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1257,7 +1118,7 @@
   }, {
     "id" : "node-000004",
     "contentType" : "MOVE",
-    "contentId" : "000106",
+    "contentId" : "000096",
     "x" : 700.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1279,7 +1140,7 @@
   }, {
     "id" : "node-000005",
     "contentType" : "MOVE",
-    "contentId" : "000107",
+    "contentId" : "000097",
     "x" : 360.0,
     "y" : 575.0,
     "prerequisites" : [ {
@@ -1305,7 +1166,7 @@
   }, {
     "id" : "node-000006",
     "contentType" : "MOVE",
-    "contentId" : "000108",
+    "contentId" : "000098",
     "x" : 700.0,
     "y" : 575.0,
     "prerequisites" : [ {
@@ -1331,7 +1192,7 @@
   }, {
     "id" : "node-000007",
     "contentType" : "ABILITY",
-    "contentId" : "000049",
+    "contentId" : "000048",
     "x" : 700.0,
     "y" : 75.0,
     "prerequisites" : [ {
@@ -1344,13 +1205,13 @@
     } ]
   } ]
 }, {
-  "id" : "000006",
+  "id" : "000005",
   "name" : "Disaster Plants",
   "description" : "Hanami's innate technique creates and commands cursed plants, from binding roots and defensive timber to pacifying flowers, parasitic buds, and stored life force.",
   "skillTree" : [ {
     "id" : "node-000000",
     "contentType" : "MOVE",
-    "contentId" : "000140",
+    "contentId" : "000129",
     "x" : 40.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1360,7 +1221,7 @@
   }, {
     "id" : "node-000001",
     "contentType" : "MOVE",
-    "contentId" : "000141",
+    "contentId" : "000130",
     "x" : 360.0,
     "y" : 125.0,
     "prerequisites" : [ {
@@ -1374,7 +1235,7 @@
   }, {
     "id" : "node-000002",
     "contentType" : "MOVE",
-    "contentId" : "000142",
+    "contentId" : "000131",
     "x" : 360.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1388,7 +1249,7 @@
   }, {
     "id" : "node-000003",
     "contentType" : "MOVE",
-    "contentId" : "000144",
+    "contentId" : "000133",
     "x" : 360.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1406,7 +1267,7 @@
   }, {
     "id" : "node-000004",
     "contentType" : "MOVE",
-    "contentId" : "000143",
+    "contentId" : "000132",
     "x" : 700.0,
     "y" : 325.0,
     "prerequisites" : [ {
@@ -1420,7 +1281,7 @@
   }, {
     "id" : "node-000005",
     "contentType" : "MOVE",
-    "contentId" : "000145",
+    "contentId" : "000134",
     "x" : 700.0,
     "y" : 125.0,
     "prerequisites" : [ {
@@ -1434,7 +1295,7 @@
   }, {
     "id" : "node-000006",
     "contentType" : "ABILITY",
-    "contentId" : "000061",
+    "contentId" : "000060",
     "x" : 700.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1448,7 +1309,7 @@
   }, {
     "id" : "node-000007",
     "contentType" : "MOVE",
-    "contentId" : "000146",
+    "contentId" : "000135",
     "x" : 1040.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1462,7 +1323,7 @@
   }, {
     "id" : "node-000008",
     "contentType" : "MOVE",
-    "contentId" : "000147",
+    "contentId" : "000136",
     "x" : 1380.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1476,7 +1337,7 @@
   }, {
     "id" : "node-000009",
     "contentType" : "ABILITY",
-    "contentId" : "000060",
+    "contentId" : "000059",
     "x" : 1040.0,
     "y" : 125.0,
     "prerequisites" : [ {
@@ -1490,7 +1351,7 @@
   }, {
     "id" : "node-000010",
     "contentType" : "MOVE",
-    "contentId" : "000148",
+    "contentId" : "000137",
     "x" : 40.0,
     "y" : 40.0,
     "prerequisites" : [ {
@@ -1500,7 +1361,7 @@
   }, {
     "id" : "node-000011",
     "contentType" : "MOVE",
-    "contentId" : "000150",
+    "contentId" : "000139",
     "x" : 40.0,
     "y" : 190.0,
     "prerequisites" : [ {

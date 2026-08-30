@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Rectangle;
 import com.jjktbf.graphics.AssetLoader;
@@ -633,6 +634,9 @@ public class BattleScreen implements Screen, BattleView {
 
     @Override
     public void render(float delta) {
+        // Scene2D screens use a letterboxed viewport. Restore the full live
+        // window before applying the battle canvas transform.
+        HdpiUtils.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         float realDelta = Math.max(0f, delta);
         skipActiveFlashRemaining = Math.max(0f, skipActiveFlashRemaining - realDelta);
         float presentationDelta = realDelta * playbackSpeedMultiplier();

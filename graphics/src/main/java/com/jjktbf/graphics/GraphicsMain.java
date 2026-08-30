@@ -7,7 +7,11 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Window;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowAdapter;
+import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.jjktbf.AppPaths;
+import com.jjktbf.graphics.display.DisplaySettingsStore;
+import com.jjktbf.graphics.display.WindowsDisplayEnvironment;
+import com.jjktbf.graphics.display.WindowsResolution;
 import com.jjktbf.graphics.launch.DesktopLaunchOptions;
 import com.jjktbf.graphics.launch.DesktopPlatform;
 import org.lwjgl.glfw.GLFWNativeWin32;
@@ -16,6 +20,7 @@ import org.lwjgl.system.Library;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.SharedLibrary;
 
+import java.io.IOException;
 import java.nio.IntBuffer;
 
 import static org.lwjgl.system.APIUtil.apiGetFunctionAddress;
@@ -73,8 +78,10 @@ public class GraphicsMain {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 
         config.setTitle(AppPaths.APP_NAME);
-        // Launch in fullscreen. The mechanism differs by OS because the
-        // *native* fullscreen experience differs:
+        // Layout and input stay in GLFW logical window coordinates. LibGDX maps
+        // OpenGL viewports/scissors to the physical framebuffer exactly once.
+        config.setHdpiMode(HdpiMode.Logical);
+        // Configure the host display policy. The mechanism differs by OS:
         //   - macOS: the "green traffic-light" fullscreen is a distinct native
         //     API (NSWindow -toggleFullScreen:). GLFW's exclusive fullscreen
         //     does NOT produce it — it just stretches a borderless window over
@@ -82,19 +89,40 @@ public class GraphicsMain {
         //     and invoke the native toggle once the window exists. This is
         //     exactly what pressing the green button does: the app gets its
         //     own Space.
-        //   - Windows: use a monitor-sized borderless window so focus changes do
-        //     not trigger an exclusive display-mode transition.
+        //   - Windows: use a centered borderless window at the selected rendering
+        //     resolution so focus changes do not trigger an exclusive-mode transition.
         //   - Linux: use standard exclusive fullscreen.
         boolean mac = launchOptions.hostPlatform() == DesktopPlatform.MAC;
         boolean windows = launchOptions.hostPlatform() == DesktopPlatform.WINDOWS;
         boolean macNativeFullscreen = mac && !launchOptions.windowed();
+        DisplaySettingsStore displaySettingsStore = windows
+            ? new DisplaySettingsStore() : null;
+        WindowsResolution selectedResolution = null;
+        Graphics.Monitor windowsMonitor = null;
+        Graphics.DisplayMode windowsDisplayMode = null;
+        if (windows) {
+            windowsMonitor = Lwjgl3ApplicationConfiguration.getPrimaryMonitor();
+            windowsDisplayMode = Lwjgl3ApplicationConfiguration.getDisplayMode(windowsMonitor);
+            WindowsDisplayEnvironment display = WindowsDisplayEnvironment.detect(
+                windowsMonitor, windowsDisplayMode);
+            selectedResolution = resolveWindowsResolution(
+                displaySettingsStore, display, launchOptions);
+            System.out.println("Windows display: " + display.pixelWidth() + "x"
+                + display.pixelHeight() + " at " + display.scalePercent()
+                + "% scaling; UI resolution "
+                + (selectedResolution == null
+                    ? launchOptions.windowWidth() + "x" + launchOptions.windowHeight()
+                    : selectedResolution.id()));
+        }
         if (launchOptions.windowed()) {
             config.setWindowedMode(launchOptions.windowWidth(), launchOptions.windowHeight());
         } else if (windows) {
-            Graphics.Monitor monitor = Lwjgl3ApplicationConfiguration.getPrimaryMonitor();
-            Graphics.DisplayMode mode = Lwjgl3ApplicationConfiguration.getDisplayMode(monitor);
-            config.setWindowedMode(mode.width, mode.height);
-            config.setWindowPosition(monitor.virtualX, monitor.virtualY);
+            config.setWindowedMode(selectedResolution.width(), selectedResolution.height());
+            config.setWindowPosition(
+                windowsMonitor.virtualX
+                    + (windowsDisplayMode.width - selectedResolution.width()) / 2,
+                windowsMonitor.virtualY
+                    + (windowsDisplayMode.height - selectedResolution.height()) / 2);
             config.setDecorated(false);
         } else if (!mac) {
             config.setFullscreenMode(Lwjgl3ApplicationConfiguration.getDisplayMode());
@@ -115,7 +143,8 @@ public class GraphicsMain {
         config.setForegroundFPS(60);
         config.useVsync(true);
 
-        JJKGame game = new JJKGame(launchOptions);
+        JJKGame game = new JJKGame(
+            launchOptions, displaySettingsStore, selectedResolution);
         if (macNativeFullscreen) {
             // toggleFullScreen: must be called on the UI/render thread AFTER
             // the GLFW window exists. Hooking the end of create() and posting
@@ -127,6 +156,35 @@ public class GraphicsMain {
 
         // The launching JVM still requires -XstartOnFirstThread on macOS.
         new Lwjgl3Application(game, config);
+    }
+
+    private static WindowsResolution resolveWindowsResolution(
+        DisplaySettingsStore store,
+        WindowsDisplayEnvironment display,
+        DesktopLaunchOptions launchOptions
+    ) {
+        if (launchOptions.windowed()) {
+            return WindowsResolution.exact(
+                launchOptions.windowWidth(), launchOptions.windowHeight()).orElse(null);
+        }
+
+        WindowsResolution resolution = null;
+        try {
+            resolution = store.load().orElse(null);
+        } catch (IOException failure) {
+            System.err.println("Warning: could not load display settings: "
+                + failure.getMessage());
+        }
+        if (resolution == null || !resolution.fits(display.pixelWidth(), display.pixelHeight())) {
+            resolution = WindowsResolution.bestFor(display.pixelWidth(), display.pixelHeight());
+            try {
+                store.save(resolution);
+            } catch (IOException failure) {
+                System.err.println("Warning: could not save automatic display settings: "
+                    + failure.getMessage());
+            }
+        }
+        return resolution;
     }
 
     private static void disableWindowsWindowTransitions(long glfwWindowHandle) {

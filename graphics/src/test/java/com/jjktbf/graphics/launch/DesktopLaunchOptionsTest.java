@@ -22,6 +22,8 @@ class DesktopLaunchOptionsTest {
         assertEquals(UiProfile.MAC, mac.uiProfile());
         assertEquals(UiProfile.WINDOWS, windows.uiProfile());
         assertFalse(mac.windowed());
+        assertEquals(1366, windows.windowWidth());
+        assertEquals(768, windows.windowHeight());
     }
 
     @Test

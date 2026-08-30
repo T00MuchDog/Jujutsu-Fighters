@@ -38,24 +38,24 @@ class WindowsBattleCanvasTest {
     }
 
     @Test
-    void tallViewportAnchorsExecutionToTopAndPlannerToBottomIndependently() {
+    void tallViewportCentersTheWholeCompositionWithOneUniformTransform() {
         WindowsBattleCanvas canvas = WindowsBattleCanvas.fit(2560f, 1600f);
         Rectangle logical = new Rectangle(
             0f, 0f, 2560f, WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT);
 
-        assertEquals(0f, canvas.offsetY(WindowsBattleCanvas.Anchor.BOTTOM), 0.0001f);
-        assertEquals(160f, canvas.offsetY(WindowsBattleCanvas.Anchor.TOP), 0.0001f);
-        assertEquals(0f,
+        assertEquals(80f, canvas.offsetY(WindowsBattleCanvas.Anchor.BOTTOM), 0.0001f);
+        assertEquals(80f, canvas.offsetY(WindowsBattleCanvas.Anchor.TOP), 0.0001f);
+        assertEquals(80f,
             canvas.physicalBounds(logical, WindowsBattleCanvas.Anchor.BOTTOM).y, 0.0001f);
-        assertEquals(160f,
+        assertEquals(80f,
             canvas.physicalBounds(logical, WindowsBattleCanvas.Anchor.TOP).y, 0.0001f);
         assertEquals(250f, canvas.logicalX(250f), 0.0001f);
-        assertEquals(300f,
+        assertEquals(380f,
             canvas.logicalY(460f, WindowsBattleCanvas.Anchor.TOP), 0.0001f);
     }
 
     @Test
-    void tallViewportKeepsSharedActionButtonWithBottomPlanner() {
+    void tallViewportKeepsSharedActionButtonInTheCenteredCanvas() {
         WindowsBattleCanvas canvas = WindowsBattleCanvas.fit(2560f, 1600f);
         Rectangle action = new Rectangle(
             WindowsBattleCanvas.ACTION_X,
@@ -68,9 +68,9 @@ class WindowsBattleCanvasTest {
         Rectangle topAnchored = canvas.physicalBounds(
             action, WindowsBattleCanvas.Anchor.TOP);
 
-        assertEquals(326.96f, bottomAnchored.y, 0.0001f);
-        assertEquals(486.96f, topAnchored.y, 0.0001f);
-        assertEquals(460f,
+        assertEquals(406.96f, bottomAnchored.y, 0.0001f);
+        assertEquals(406.96f, topAnchored.y, 0.0001f);
+        assertEquals(380f,
             canvas.logicalY(460f, WindowsBattleCanvas.Anchor.BOTTOM), 0.0001f);
     }
 }

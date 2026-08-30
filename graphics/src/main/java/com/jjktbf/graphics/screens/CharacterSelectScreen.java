@@ -11,11 +11,15 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.utils.ScissorStack;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import com.jjktbf.controller.BattleController;
 import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.ui.StatusBar;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.battle.BattleUiAssets;
 import com.jjktbf.graphics.ui.editor.ScrollAxes;
 import com.jjktbf.graphics.ui.battle.ActionSegmentView;
@@ -141,6 +145,10 @@ public class CharacterSelectScreen implements Screen {
     private final AssetLoader assets;
     private final boolean windowsLayout;
     private final SpriteBatch batch;
+    private final Viewport viewport;
+    private final Vector2 pointerCoordinates = new Vector2();
+    private final Rectangle scissorBounds = new Rectangle();
+    private boolean scissorPushed;
     private final CharacterRepository charRepo;
     private final MoveRepository moveRepo;
     private final AbilityRepository abilityRepo;
@@ -170,26 +178,27 @@ public class CharacterSelectScreen implements Screen {
 
         @Override
         public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-            return handleMoveSetTouchDown(
-                screenX, Gdx.graphics.getHeight() - screenY, button);
+            Vector2 world = worldPointer(screenX, screenY);
+            return handleMoveSetTouchDown(world.x, world.y, button);
         }
 
         @Override
         public boolean touchDragged(int screenX, int screenY, int pointer) {
-            return handleMoveSetTouchDragged(
-                screenX, Gdx.graphics.getHeight() - screenY);
+            Vector2 world = worldPointer(screenX, screenY);
+            return handleMoveSetTouchDragged(world.x, world.y);
         }
 
         @Override
         public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-            return handleMoveSetTouchUp(
-                screenX, Gdx.graphics.getHeight() - screenY, button);
+            Vector2 world = worldPointer(screenX, screenY);
+            return handleMoveSetTouchUp(world.x, world.y, button);
         }
 
         @Override
         public boolean mouseMoved(int screenX, int screenY) {
-            movePointerX = screenX;
-            movePointerY = Gdx.graphics.getHeight() - screenY;
+            Vector2 world = worldPointer(screenX, screenY);
+            movePointerX = world.x;
+            movePointerY = world.y;
             hoverRowAt(movePointerX, movePointerY);
             return learnedDrawerExpanded && learnedDrawerBounds.contains(movePointerX, movePointerY)
                 || moveSetPanelBounds.contains(movePointerX, movePointerY);
@@ -253,6 +262,7 @@ public class CharacterSelectScreen implements Screen {
         onSelectionExit = game::showMainMenu;
         windowsLayout = game.activeUiProfile() == UiProfile.WINDOWS;
         batch = new SpriteBatch();
+        viewport = UiScaleSystem.newViewport(game.activeUiProfile());
         charRepo = new CharacterRepository(CHAR_DATA_DIR);
         moveRepo = new MoveRepository(MOVE_DATA_DIR);
         abilityRepo = new AbilityRepository(ABILITY_DATA_DIR);
@@ -380,15 +390,18 @@ public class CharacterSelectScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        viewport.apply();
+        batch.setProjectionMatrix(viewport.getCamera().combined);
         clearScreen();
-        layout(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        layout(viewport.getWorldWidth(), viewport.getWorldHeight());
         handleInput();
         draw();
     }
 
     @Override public void resize(int width, int height) {
-        batch.getProjectionMatrix().setToOrtho2D(0, 0, width, height);
-        layout(width, height);
+        viewport.update(width, height, true);
+        batch.setProjectionMatrix(viewport.getCamera().combined);
+        layout(viewport.getWorldWidth(), viewport.getWorldHeight());
     }
     @Override public void pause() {}
     @Override public void resume() {}
@@ -429,7 +442,8 @@ public class CharacterSelectScreen implements Screen {
             game.audio().play(SoundCue.UI_NAVIGATE);
         }
         if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !moveUiConsumedPointer) {
-            selectRowAt(Gdx.input.getX(), Gdx.graphics.getHeight() - Gdx.input.getY());
+            Vector2 world = worldPointer(Gdx.input.getX(), Gdx.input.getY());
+            selectRowAt(world.x, world.y);
         }
         moveUiConsumedPointer = false;
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) confirmSelection();
@@ -1147,7 +1161,7 @@ public class CharacterSelectScreen implements Screen {
         float bottom,
         boolean compactLayout
     ) {
-        int screenWidth = Gdx.graphics.getWidth();
+        int screenWidth = Math.round(viewport.getWorldWidth());
         boolean compactPortrait = compactLayout || screenWidth < 2000;
         float frameX;
         float spriteX;
@@ -1218,7 +1232,7 @@ public class CharacterSelectScreen implements Screen {
         boolean compactLayout
     ) {
         int[] values = displayStatValues(character);
-        int screenWidth = Gdx.graphics.getWidth();
+        int screenWidth = Math.round(viewport.getWorldWidth());
         if (compactLayout) {
             drawWindowsCompactStats(character, values, x, top, bottom, screenWidth);
             return;
@@ -1382,7 +1396,7 @@ public class CharacterSelectScreen implements Screen {
         float bottom,
         boolean compactLayout
     ) {
-        int screenWidth = Gdx.graphics.getWidth();
+        int screenWidth = Math.round(viewport.getWorldWidth());
         float columnWidth;
         float rightColumnOffset;
         float dividerOffset;
@@ -2195,8 +2209,9 @@ public class CharacterSelectScreen implements Screen {
 
     private boolean scrollLearnedDrawer(float amount) {
         if (!learnedDrawerExpanded) return false;
-        float x = Gdx.input.getX();
-        float y = Gdx.graphics.getHeight() - Gdx.input.getY();
+        Vector2 world = worldPointer(Gdx.input.getX(), Gdx.input.getY());
+        float x = world.x;
+        float y = world.y;
         if (!learnedDrawerBounds.contains(x, y)) return false;
         if (amount != 0f && learnedDrawerScrollMax > 0f) {
             float step = Math.max(36f, learnedDrawerCardHeight() * 0.35f);
@@ -2208,8 +2223,9 @@ public class CharacterSelectScreen implements Screen {
 
     private boolean scrollMoveSet(float amount) {
         if (amount == 0f || moveSetScrollMax <= 0f) return false;
-        float x = Gdx.input.getX();
-        float y = Gdx.graphics.getHeight() - Gdx.input.getY();
+        Vector2 world = worldPointer(Gdx.input.getX(), Gdx.input.getY());
+        float x = world.x;
+        float y = world.y;
         if (!moveSetPanelBounds.contains(x, y)) return false;
         moveSetScrollOffset = clamp(
             moveSetScrollOffset + amount * (moveSetSegmentWidth() + moveSetSegmentGap()) * 0.6f,
@@ -2271,22 +2287,21 @@ public class CharacterSelectScreen implements Screen {
 
     private void beginClip(Rectangle bounds) {
         batch.flush();
-        float scaleX = Gdx.graphics.getBackBufferWidth() / (float) Gdx.graphics.getWidth();
-        float scaleY = Gdx.graphics.getBackBufferHeight() / (float) Gdx.graphics.getHeight();
-        Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
-        Gdx.gl.glScissor(Math.round(bounds.x * scaleX), Math.round(bounds.y * scaleY),
-            Math.round(bounds.width * scaleX), Math.round(bounds.height * scaleY));
+        viewport.calculateScissors(batch.getTransformMatrix(), bounds, scissorBounds);
+        scissorPushed = ScissorStack.pushScissors(scissorBounds);
     }
 
     private void endClip() {
         batch.flush();
-        Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+        if (scissorPushed) ScissorStack.popScissors();
+        scissorPushed = false;
     }
 
     private boolean scrollRoster(float amount) {
         if (!windowsLayout || amount == 0f || rosterScrollMax <= 0f) return false;
-        float pointerX = Gdx.input.getX();
-        float pointerY = Gdx.graphics.getHeight() - Gdx.input.getY();
+        Vector2 world = worldPointer(Gdx.input.getX(), Gdx.input.getY());
+        float pointerX = world.x;
+        float pointerY = world.y;
         if (!rosterViewportBounds.contains(pointerX, pointerY)) return false;
 
         rosterScrollOffset = clamp(
@@ -2294,6 +2309,10 @@ public class CharacterSelectScreen implements Screen {
             0f,
             rosterScrollMax);
         return true;
+    }
+
+    private Vector2 worldPointer(float screenX, float screenY) {
+        return viewport.unproject(pointerCoordinates.set(screenX, screenY));
     }
 
     private void revealRosterCursor() {

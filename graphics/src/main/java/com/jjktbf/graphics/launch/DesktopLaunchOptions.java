@@ -63,8 +63,8 @@ public record DesktopLaunchOptions(
             }
         }
 
-        int defaultWidth = 1280;
-        int defaultHeight = 720;
+        int defaultWidth = platform == DesktopPlatform.WINDOWS ? 1366 : 1280;
+        int defaultHeight = platform == DesktopPlatform.WINDOWS ? 768 : 720;
         int resolvedWidth = width == null ? defaultWidth : width;
         int resolvedHeight = height == null ? defaultHeight : height;
         validateDimension("width", resolvedWidth, 640, 7680);

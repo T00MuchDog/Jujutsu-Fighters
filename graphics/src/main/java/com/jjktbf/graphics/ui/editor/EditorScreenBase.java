@@ -27,11 +27,11 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Align;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.ui.HoverScrollStage;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.pixel.HoverList;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 
@@ -171,7 +171,8 @@ public abstract class EditorScreenBase<D> implements Screen {
         this.skin   = assets.editorSkin;
         this.uiProfile = game.activeUiProfile();
         this.windowsLayout = uiProfile == UiProfile.WINDOWS;
-        this.stage  = new HoverScrollStage(new ScreenViewport());
+        this.stage  = new HoverScrollStage(UiScaleSystem.newViewport(game.activeUiProfile()));
+        stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
         this.root = new Table();
         this.root.setFillParent(true);
@@ -349,7 +350,7 @@ public abstract class EditorScreenBase<D> implements Screen {
         masterStack.add(stickySectionHeaders);
         left.add(masterStack).grow();
 
-        masterColumn = body.add(left).width(Gdx.graphics.getWidth() * LIST_W_FRAC).growY();
+        masterColumn = body.add(left).width(stage.getWidth() * LIST_W_FRAC).growY();
 
         // Right: scrollable detail form container. The pane itself is a navy
         // palette; each form section renders as a parchment card on top of it,
@@ -572,7 +573,7 @@ public abstract class EditorScreenBase<D> implements Screen {
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
         if (masterColumn != null) {
-            masterColumn.width(width * LIST_W_FRAC);
+            masterColumn.width(stage.getWidth() * LIST_W_FRAC);
             root.invalidateHierarchy();
         }
     }

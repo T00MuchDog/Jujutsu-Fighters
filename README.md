@@ -154,9 +154,12 @@ The launcher selects one UI profile at startup. macOS defaults to `MAC` and
 Windows defaults to `WINDOWS`. The game, battle state, rules, networking, and
 all other gameplay code remain shared.
 
-Both profile files intentionally begin with the existing Mac-tuned geometry.
-The Windows profile is independent and carries `2560 x 1440` target-resolution
-metadata ready for a later redesign; normal rendering still uses the live window.
+The Windows profile uses a fixed `2560 x 1440` reference canvas. Windows screens
+are uniformly fitted to the live window without reflowing their authored layout.
+The launcher detects the native monitor mode and Windows display scale, then picks
+and persists the largest supported resolution that fits (`1366 x 768`,
+`1920 x 1080`, or `2560 x 1440`). It does not apply the Windows DPI scale a second
+time because libGDX already maps logical coordinates to the physical framebuffer.
 
 macOS (Author game, default `MAC` profile):
  

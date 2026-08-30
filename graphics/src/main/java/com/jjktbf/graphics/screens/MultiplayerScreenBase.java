@@ -13,10 +13,10 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.ui.HoverScrollStage;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.multiplayer.ApiClientException;
@@ -47,7 +47,8 @@ abstract class MultiplayerScreenBase implements Screen {
         this.game = game;
         this.assets = assets;
         this.windowsLayout = game.activeUiProfile() == UiProfile.WINDOWS;
-        this.stage = new HoverScrollStage(new ScreenViewport());
+        this.stage = new HoverScrollStage(UiScaleSystem.newViewport(game.activeUiProfile()));
+        stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.root = new Table();
         root.setFillParent(true);
         root.pad(22f);
@@ -91,7 +92,7 @@ abstract class MultiplayerScreenBase implements Screen {
     @Override
     public final void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
-        onResized(width, height);
+        onResized(Math.round(stage.getWidth()), Math.round(stage.getHeight()));
     }
 
     @Override

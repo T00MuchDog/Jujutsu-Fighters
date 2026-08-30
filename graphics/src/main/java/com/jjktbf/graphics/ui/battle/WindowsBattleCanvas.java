@@ -1,12 +1,13 @@
 package com.jjktbf.graphics.ui.battle;
 
 import com.badlogic.gdx.math.Rectangle;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 
 /** Maps the fixed Windows battle composition to the live desktop viewport. */
 public final class WindowsBattleCanvas {
 
-    public static final float WIDTH = 2560f;
-    public static final float HEIGHT = 1440f;
+    public static final float WIDTH = UiScaleSystem.WINDOWS_REFERENCE_WIDTH;
+    public static final float HEIGHT = UiScaleSystem.WINDOWS_REFERENCE_HEIGHT;
     public static final float PLANNING_HEIGHT_REDUCTION = 47.04f;
     public static final float BOTTOM_SECTION_HEIGHT = 537.96f;
     public static final float LEFT_COLUMN_WIDTH = 581f;
@@ -31,10 +32,12 @@ public final class WindowsBattleCanvas {
     private WindowsBattleCanvas(float viewportWidth, float viewportHeight) {
         this.viewportWidth = Math.max(1f, viewportWidth);
         this.viewportHeight = Math.max(1f, viewportHeight);
-        this.scale = Math.min(this.viewportWidth / WIDTH, this.viewportHeight / HEIGHT);
-        this.offsetX = (this.viewportWidth - WIDTH * scale) / 2f;
-        this.bottomOffsetY = 0f;
-        this.topOffsetY = this.viewportHeight - HEIGHT * scale;
+        UiScaleSystem.Fit fit = UiScaleSystem.fitWindows(
+            this.viewportWidth, this.viewportHeight);
+        this.scale = fit.scale();
+        this.offsetX = fit.offsetX();
+        this.bottomOffsetY = fit.offsetY();
+        this.topOffsetY = fit.offsetY();
     }
 
     public static WindowsBattleCanvas fit(float viewportWidth, float viewportHeight) {

@@ -752,7 +752,7 @@ public class PlanningPanel {
     private void layoutUnifiedWindows() {
         compactLayout = false;
         shortViewportLayout = false;
-        sectionBounds.set(0f, 0f, 2560f, UNIFIED_SECTION_HEIGHT);
+        sectionBounds.set(0f, 0f, WindowsBattleCanvas.WIDTH, UNIFIED_SECTION_HEIGHT);
         headerBounds.set(0f, 0f, 0f, 0f);
         float actionX = actionButtonShifted
             ? WindowsBattleCanvas.PLAYBACK_ACTION_X : WindowsBattleCanvas.ACTION_X;
@@ -1064,7 +1064,8 @@ public class PlanningPanel {
         ui.palette.draw(batch,
             sectionBounds.x, sectionBounds.y, sectionBounds.width, sectionBounds.height);
         batch.setColor(UNIFIED_DIVIDER);
-        batch.draw(ui.pixel, 0f, UNIFIED_SECTION_HEIGHT - 2f, 2560f, 2f);
+        batch.draw(ui.pixel, 0f, UNIFIED_SECTION_HEIGHT - 2f,
+            WindowsBattleCanvas.WIDTH, 2f);
         batch.setColor(Color.WHITE);
 
         drawStat(batch, font, apStatBounds.x, apStatBounds.y, apStatBounds.width,

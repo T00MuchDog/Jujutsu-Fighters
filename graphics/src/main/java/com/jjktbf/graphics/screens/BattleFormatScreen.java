@@ -15,11 +15,11 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.ui.HoverScrollStage;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.combat.BattleConfiguration;
 import com.jjktbf.model.combat.BattleFormat;
@@ -62,7 +62,8 @@ public final class BattleFormatScreen implements Screen {
         this.assets = assets;
         this.onBack = game::showMainMenu;
         windowsLayout = game.activeUiProfile() == UiProfile.WINDOWS;
-        stage = new HoverScrollStage(new ScreenViewport());
+        stage = new HoverScrollStage(UiScaleSystem.newViewport(game.activeUiProfile()));
+        stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
         root = new Table();
         root.setFillParent(true);
@@ -152,7 +153,7 @@ public final class BattleFormatScreen implements Screen {
             }
         });
 
-        layout(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        layout(Math.round(stage.getWidth()), Math.round(stage.getHeight()));
     }
 
     /** Sets the local battle route to run after a format is chosen. */
@@ -294,7 +295,7 @@ public final class BattleFormatScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
-        layout(width, height);
+        layout(Math.round(stage.getWidth()), Math.round(stage.getHeight()));
     }
 
     @Override public void pause() {}

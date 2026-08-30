@@ -86,13 +86,13 @@ class BloodManipulationAIStrategyTest {
 
         BattlePlan plan = strategy.buildPlan(state, kamo, new SeededRandomSource(1L));
 
-        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000107")),
+        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000097")),
             "banks idle blood into compression while the board is quiet");
         assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().hasTag("ATTACK")),
             "still threatens");
         assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().isActiveDefense()),
             "cautious Kamo keeps a defense layer");
-        assertFalse(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000104")),
+        assertFalse(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000094")),
             "no Flowing Red Scale in a healthy duel");
     }
 
@@ -107,7 +107,7 @@ class BloodManipulationAIStrategyTest {
         // Convergence converts one blood (ammunition is preserved, not spent), so
         // after it blood=1/compression=1: no blood attack may follow, and the
         // loaded compression is held for a kill or the surge window.
-        Set<String> freeAttacks = Set.of("000000", "000102");
+        Set<String> freeAttacks = Set.of("000000", "000092");
         assertTrue(plan.allSegments().stream()
                 .filter(s -> s.getMove().hasTag("ATTACK"))
                 .allMatch(s -> freeAttacks.contains(s.getMove().getId())),
@@ -118,14 +118,14 @@ class BloodManipulationAIStrategyTest {
 
     @Test
     void surgeWindowSpendsBloodAndShedsDefenseLayers() {
-        BattleCombatant kamo = kamo(move("000106"), move("000001")); // Slicing Exorcism + Basic Block
+        BattleCombatant kamo = kamo(move("000096"), move("000001")); // Slicing Exorcism + Basic Block
         kamo.transactBoundedResources("BLOOD_SUPPLY", 4, null, 0); // blood 5 -> 1
         kamo.addRuntimeAbilityEffect(flowingRedScaleSpeedRow(), 1, BattleState.Phase.RESOLUTION);
         BattleState state = state(kamo, AIFixtures.lowCeSorcererEnemy("e"));
 
         BattlePlan plan = strategy.buildPlan(state, kamo, new SeededRandomSource(1L));
 
-        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000106")),
+        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000096")),
             "inside the surge window the last blood is fair game");
         long defenses = plan.allSegments().stream()
             .filter(s -> s.getMove().isActiveDefense()).count();
@@ -141,7 +141,7 @@ class BloodManipulationAIStrategyTest {
 
         BattlePlan plan = strategy.buildPlan(state, kamo, new SeededRandomSource(1L));
 
-        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000104")),
+        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000094")),
             "enemy in execution range: open Flowing Red Scale");
     }
 
@@ -157,13 +157,13 @@ class BloodManipulationAIStrategyTest {
 
         BattlePlan plan = strategy.buildPlan(state, kamo, new SeededRandomSource(1L));
 
-        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000108")),
+        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000098")),
             "a loaded lethal Piercing Blood is committed");
         ActionSegment first = plan.allSegments().stream()
             .filter(s -> s.getMove().hasTag("ATTACK"))
             .min(Comparator.comparingInt(ActionSegment::getStartTick))
             .orElseThrow();
-        assertEquals("000108", first.getMove().getId(),
+        assertEquals("000098", first.getMove().getId(),
             "the kill does not wait for other attacks");
     }
 
@@ -179,7 +179,7 @@ class BloodManipulationAIStrategyTest {
             state, state.playerTeam().active(), new SeededRandomSource(1L));
         BattlePlan plan = teamPlan.get(kamo.getInstanceId());
 
-        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000107")),
+        assertTrue(plan.allSegments().stream().anyMatch(s -> s.getMove().getId().equals("000097")),
             "the Blood Manipulation brain banks compression through the dispatcher");
     }
 
@@ -189,8 +189,8 @@ class BloodManipulationAIStrategyTest {
     private Move[] kit() {
         return new Move[] {
             move("000000"), move("000001"), move("000013"), move("000019"),
-            move("000027"), move("000028"), move("000102"), move("000103"),
-            move("000104"), move("000105"), move("000106"), move("000107"), move("000108")
+            move("000027"), move("000028"), move("000092"), move("000093"),
+            move("000094"), move("000095"), move("000096"), move("000097"), move("000098")
         };
     }
 

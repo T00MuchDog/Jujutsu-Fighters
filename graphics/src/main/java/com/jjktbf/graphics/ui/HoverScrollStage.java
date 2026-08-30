@@ -7,7 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.utils.Pools;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
  * {@link Stage} that routes mouse-wheel/trackpad scroll to whatever actor the cursor
@@ -28,8 +28,16 @@ public class HoverScrollStage extends Stage {
         super();
     }
 
-    public HoverScrollStage(ScreenViewport viewport) {
+    public HoverScrollStage(Viewport viewport) {
         super(viewport);
+    }
+
+    @Override
+    public void draw() {
+        // OpenGL viewport state is global, so restore this stage's letterboxed
+        // viewport when switching from a hand-rendered screen.
+        getViewport().apply();
+        super.draw();
     }
 
     @Override

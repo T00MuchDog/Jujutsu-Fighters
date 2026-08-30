@@ -24,15 +24,17 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.FocusListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Timer;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.jjktbf.AppPaths;
 import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.audio.AudioChannel;
 import com.jjktbf.graphics.audio.AudioSettings;
 import com.jjktbf.graphics.audio.SoundCue;
+import com.jjktbf.graphics.display.WindowsResolution;
 import com.jjktbf.graphics.ui.ContentSizedDialog;
+import com.jjktbf.graphics.ui.DynamicSelectBox;
 import com.jjktbf.graphics.ui.HoverScrollStage;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.editor.HoverTextField;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 
@@ -106,7 +108,7 @@ public class MainMenuScreen implements Screen {
     public MainMenuScreen(JJKGame game, AssetLoader assets) {
         this.game   = game;
         this.assets = assets;
-        this.stage  = new HoverScrollStage(new ScreenViewport());
+        this.stage  = new HoverScrollStage(UiScaleSystem.newViewport(game.activeUiProfile()));
         this.windowsLayout = game.activeUiProfile() == UiProfile.WINDOWS;
         this.authoringMenu = AppPaths.isAuthoringMode();
 
@@ -117,8 +119,9 @@ public class MainMenuScreen implements Screen {
             stage.addActor(root);
         }
 
+        stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         buildMenu();
-        layoutMenu(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        layoutMenu(Math.round(stage.getWidth()), Math.round(stage.getHeight()));
     }
 
     private void buildMenu() {
@@ -370,6 +373,7 @@ public class MainMenuScreen implements Screen {
         AudioSettings settings = game.audio().settings();
         Table content = dialog.getContentTable();
         content.pad(10f, 16f, 14f, 16f);
+        if (game.supportsResolutionSelection()) addResolutionRow(content);
         addVolumeRow(content, "MUSIC", Math.round(settings.musicVolume() * 100f), value -> {
             AudioSettings current = game.audio().settings();
             game.audio().previewSettings(
@@ -387,6 +391,34 @@ public class MainMenuScreen implements Screen {
 
         settingsDialog = dialog;
         dialog.show(stage);
+    }
+
+    private void addResolutionRow(Table content) {
+        Label nameLabel = new Label("RESOLUTION", assets.editorSkin);
+        DynamicSelectBox<WindowsResolution> resolutions = new DynamicSelectBox<>(
+            assets.editorSkin, game.activeUiProfile());
+        resolutions.setItems(game.availableWindowsResolutions());
+        WindowsResolution current = game.currentWindowsResolution();
+        resolutions.setSelected(current);
+
+        boolean[] syncing = {false};
+        resolutions.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                if (syncing[0]) return;
+                WindowsResolution requested = resolutions.getSelected();
+                WindowsResolution previous = game.currentWindowsResolution();
+                if (requested == previous || game.applyWindowsResolution(requested)) return;
+                syncing[0] = true;
+                resolutions.setSelected(previous);
+                syncing[0] = false;
+            }
+        });
+
+        content.add(nameLabel).colspan(4).left().padTop(6f).padBottom(2f);
+        content.row();
+        content.add(resolutions).colspan(4).growX()
+            .height(windowsLayout ? 66f : 44f).padBottom(8f);
+        content.row();
     }
 
     private void addVolumeRow(
@@ -641,7 +673,7 @@ public class MainMenuScreen implements Screen {
     @Override public void resize(int width, int height) {
         if (windowsLayout && (width <= 0 || height <= 0)) return;
         stage.getViewport().update(width, height, true);
-        layoutMenu(width, height);
+        layoutMenu(Math.round(stage.getWidth()), Math.round(stage.getHeight()));
     }
     @Override public void pause()  {}
     @Override public void resume() {}

@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import com.jjktbf.AppPaths;
 import com.jjktbf.controller.BattleController;
 import com.jjktbf.model.combat.BattleCombatant;
@@ -17,6 +18,8 @@ import com.jjktbf.model.combat.BattleStatMode;
 import com.jjktbf.model.combat.BattleTeamId;
 import com.jjktbf.graphics.audio.GameAudio;
 import com.jjktbf.graphics.audio.MusicTrack;
+import com.jjktbf.graphics.display.DisplaySettingsStore;
+import com.jjktbf.graphics.display.WindowsResolution;
 import com.jjktbf.graphics.launch.DesktopLaunchOptions;
 import com.jjktbf.graphics.launch.DesktopPlatform;
 import com.jjktbf.graphics.multiplayer.ChallengeService;
@@ -42,6 +45,7 @@ import com.jjktbf.graphics.screens.editors.CursedToolEditorScreen;
 import com.jjktbf.graphics.screens.editors.DomainEditorScreen;
 import com.jjktbf.graphics.screens.editors.MoveEditorScreen;
 import com.jjktbf.graphics.screens.editors.TechniqueEditorScreen;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.BattleUiLayoutStore;
 import com.jjktbf.graphics.ui.profile.UiProfile;
@@ -74,6 +78,8 @@ public class JJKGame extends Game {
     public static final String DEFAULT_MULTIPLAYER_CHARACTER_ID = "000000";
 
     private final DesktopLaunchOptions launchOptions;
+    private final DisplaySettingsStore displaySettingsStore;
+    private WindowsResolution windowsResolution;
     private BattleUiLayout battleUiLayout;
 
     // Optional one-shot action run at the very end of create(), once assets and
@@ -110,6 +116,7 @@ public class JJKGame extends Game {
     // that saves are going to the source data/ files. Player builds never set
     // the flag, so this is a no-op (isAuthoringMode() is false) for releases.
     private SpriteBatch overlayBatch;
+    private Viewport overlayViewport;
     private final GlyphLayout overlayLayout = new GlyphLayout();
     private static final Color AUTHORING_BADGE_COLOR = new Color(
         0xFF / 255f, 0xE3 / 255f, 0x2E / 255f, 1f); // #FFE32E, the hover yellow
@@ -162,11 +169,21 @@ public class JJKGame extends Game {
             UiProfile.MAC,
             false,
             1280,
-            720));
+            720), null, null);
     }
 
     public JJKGame(DesktopLaunchOptions launchOptions) {
+        this(launchOptions, null, null);
+    }
+
+    public JJKGame(
+        DesktopLaunchOptions launchOptions,
+        DisplaySettingsStore displaySettingsStore,
+        WindowsResolution windowsResolution
+    ) {
         this.launchOptions = java.util.Objects.requireNonNull(launchOptions, "launchOptions");
+        this.displaySettingsStore = displaySettingsStore;
+        this.windowsResolution = windowsResolution;
     }
 
     // -------------------------------------------------------------------------
@@ -188,6 +205,8 @@ public class JJKGame extends Game {
         audio = new GameAudio();
         if (AppPaths.isAuthoringMode()) {
             overlayBatch = new SpriteBatch();
+            overlayViewport = UiScaleSystem.newViewport(activeUiProfile());
+            overlayViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         }
 
         try {
@@ -264,8 +283,10 @@ public class JJKGame extends Game {
     public void render() {
         super.render();
         if (overlayBatch == null) return;
-        int w = Gdx.graphics.getWidth();
-        int h = Gdx.graphics.getHeight();
+        overlayViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        overlayViewport.apply();
+        float w = overlayViewport.getWorldWidth();
+        float h = overlayViewport.getWorldHeight();
         float margin = 12f;
         BitmapFont font = assets.fontSmall;
         String label = "AUTHORING";
@@ -493,6 +514,42 @@ public class JJKGame extends Game {
 
     public UiProfile activeUiProfile() {
         return launchOptions.uiProfile();
+    }
+
+    public boolean supportsResolutionSelection() {
+        return launchOptions.hostPlatform() == DesktopPlatform.WINDOWS
+            && windowsResolution != null;
+    }
+
+    public WindowsResolution currentWindowsResolution() {
+        return windowsResolution;
+    }
+
+    public WindowsResolution[] availableWindowsResolutions() {
+        if (!supportsResolutionSelection()) return new WindowsResolution[0];
+        com.badlogic.gdx.Graphics.DisplayMode displayMode = Gdx.graphics.getDisplayMode();
+        return java.util.Arrays.stream(WindowsResolution.values())
+            .filter(resolution -> resolution == windowsResolution
+                || resolution.fits(displayMode.width, displayMode.height))
+            .toArray(WindowsResolution[]::new);
+    }
+
+    /** Applies and persists a supported Windows window/rendering resolution. */
+    public boolean applyWindowsResolution(WindowsResolution resolution) {
+        if (!supportsResolutionSelection() || resolution == null) return false;
+        com.badlogic.gdx.Graphics.DisplayMode displayMode = Gdx.graphics.getDisplayMode();
+        if (!resolution.fits(displayMode.width, displayMode.height)) return false;
+        if (!Gdx.graphics.setWindowedMode(resolution.width(), resolution.height())) return false;
+        windowsResolution = resolution;
+        if (displaySettingsStore != null) {
+            try {
+                displaySettingsStore.save(resolution);
+            } catch (IOException failure) {
+                System.err.println("Warning: could not save display settings: "
+                    + failure.getMessage());
+            }
+        }
+        return true;
     }
 
     private void showScreen(Screen screen, MusicTrack musicTrack) {

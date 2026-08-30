@@ -4,6 +4,7 @@ import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
 import com.jjktbf.model.technique.TechniqueRepository;
 import com.jjktbf.model.technique.TechniqueSkillTree;
+import com.jjktbf.model.text.ContentNameTokens;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -168,6 +169,9 @@ public final class AbilityResolver {
                 if (isSourceAvailable(definition, character, learnedMoveIds,
                     techniqueNames.keySet(), assignedAbilities.values(), techniques)) {
                     changed |= availableAbilityIds.add(definition.id);
+                    if (definition.isAutomaticallyAssigned()) {
+                        changed |= assignedAbilityIds.add(definition.id);
+                    }
                 }
             }
             for (AbilityData definition : availableDefinitions) {
@@ -223,6 +227,7 @@ public final class AbilityResolver {
                 && character.equippedCursedToolIds != null
                 && character.equippedCursedToolIds.contains(definition.sourceValue);
             case "SHIKIGAMI" -> character.effectiveType() == CharacterType.SHIKIGAMI;
+            case "CURSED_SPIRIT" -> character.effectiveType() == CharacterType.CURSED_SPIRIT;
             case "CURSED_CORPSE" -> character.effectiveType() == CharacterType.CURSED_CORPSE;
             default -> false;
         };
@@ -481,7 +486,15 @@ public final class AbilityResolver {
         }
 
         public List<Ability> toDomainAbilities() {
-            return abilities.stream().map(Ability::new).toList();
+            return toDomainAbilities(null);
+        }
+
+        public List<Ability> toDomainAbilities(
+            ContentNameTokens.NameLookup descriptionNames
+        ) {
+            return abilities.stream()
+                .map(ability -> new Ability(ability, descriptionNames))
+                .toList();
         }
     }
 }

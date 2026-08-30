@@ -47,7 +47,9 @@ class CursedEnergyRegenerationTest {
 
     @Test
     void activeAbilityEffectsCanAlterCursedEnergyRegeneration() {
-        var regeneration = AbilityEffectType.BATTLE_STAT_ADD.createDefault();
+        var regeneration = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        regeneration.statType = AbilityEffectType.StatType.BATTLE.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(regeneration);
         regeneration.stringValue = BattleStatKey.CE_REGENERATION.name();
         regeneration.doubleValue = 0.95;
         regeneration.durationRounds = -1;
@@ -75,7 +77,9 @@ class CursedEnergyRegenerationTest {
     @Test
     void moveEffectsCanAlterRegenerationForFollowingTicks() {
         MoveEffectData regeneration =
-            AbilityEffectType.BATTLE_STAT_ADD.createDefaultMoveEffect();
+            AbilityEffectType.TIMED_STAT_MODIFIER.createDefaultMoveEffect();
+        regeneration.statType = AbilityEffectType.StatType.BATTLE.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(regeneration);
         regeneration.effectId = "effect-000000";
         regeneration.trigger = MoveEffectTrigger.ON_FIRE.name();
         regeneration.target = AbilityEffectTarget.SELF.name();

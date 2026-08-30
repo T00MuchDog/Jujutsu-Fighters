@@ -6,10 +6,16 @@ import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.BattleTeamId;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.TeamBattlePlan;
+import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
+import com.jjktbf.model.move.MoveCategory;
+import com.jjktbf.model.move.MoveTag;
+import com.jjktbf.model.move.StatusEffect;
+import com.jjktbf.model.move.StatusEffectType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -193,6 +199,24 @@ class SmartAIScoringTest {
     }
 
     @Test
+    void estimatedDamageIncludesElementalStatusMultipliers() {
+        Move electric = elementalAttack("electric", MoveTag.ELECTRIC);
+        Move melee = elementalAttack("melee", MoveTag.MELEE);
+        BattleCombatant attacker = AIFixtures.sorcerer("attacker", electric, melee);
+        BattleCombatant target = AIFixtures.sorcerer("target");
+
+        int normalElectric = SmartAIScoring.estimatedDamage(electric, attacker, target);
+        target.addStatusEffect(new StatusEffect(StatusEffectType.WET, 1, 0.0));
+        int wetElectric = SmartAIScoring.estimatedDamage(electric, attacker, target);
+        assertTrue(Math.abs(wetElectric - normalElectric * 2) <= 1);
+
+        int normalMelee = SmartAIScoring.estimatedDamage(melee, attacker, target);
+        attacker.addStatusEffect(new StatusEffect(StatusEffectType.BURNED, 1, 0.0));
+        int burnedMelee = SmartAIScoring.estimatedDamage(melee, attacker, target);
+        assertTrue(Math.abs(burnedMelee * 2 - normalMelee) <= 1);
+    }
+
+    @Test
     void guaranteedKillOpeningIsRandomOnlyAmongLethalMoves() {
         Move nonLethal = AIFixtures.meleeAttack("non-lethal", 1, 10);
         Move lethalA = AIFixtures.meleeAttack("lethal-a", 300, 10);
@@ -228,6 +252,18 @@ class SmartAIScoringTest {
             "lethal A should be chosen uniformly at random: " + lethalACount);
         assertTrue(lethalBCount > 60 && lethalBCount < 140,
             "lethal B should be chosen uniformly at random: " + lethalBCount);
+    }
+
+    private static Move elementalAttack(String id, MoveTag elementalTag) {
+        return new Move.Builder(id)
+            .name(id)
+            .category(MoveCategory.PHYSICAL)
+            .tags(Set.of(MoveTag.ATTACK, MoveTag.PHYSICAL))
+            .hitComponents(List.of(new HitComponent(
+                100, Set.of(MoveTag.PHYSICAL, elementalTag), 0, false, true)))
+            .apCost(10)
+            .unleashPoint(1)
+            .build();
     }
 
     @Test

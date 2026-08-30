@@ -4,6 +4,7 @@ import com.jjktbf.model.character.AbilityData;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.move.MoveData;
+import com.jjktbf.model.domain.DomainData;
 import com.jjktbf.model.repo.BaseRepository;
 
 import java.util.ArrayList;
@@ -40,6 +41,18 @@ public final class TechniqueSkillTree {
         List<MoveData> moves,
         List<AbilityData> abilities
     ) {
+        // Callers predating Domain content do not own that repository. Preserve
+        // existing Domain nodes until they can provide an authoritative list.
+        return synchronize(technique, moves, abilities, null);
+    }
+
+    /** Synchronize move, ability, and Domain nodes belonging to one technique. */
+    public static boolean synchronize(
+        InnateTechniqueData technique,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<DomainData> domains
+    ) {
         if (technique == null) return false;
         if (technique.skillTree == null) technique.skillTree = new ArrayList<>();
 
@@ -63,6 +76,16 @@ public final class TechniqueSkillTree {
                 }
             }
         }
+        Map<String, DomainData> expectedDomains = new LinkedHashMap<>();
+        if (domains != null) {
+            for (DomainData domain : domains) {
+                if (domain != null && !domain.antiDomain
+                    && techniqueMatches(technique.name, domain.requiredTechniqueName)
+                    && domain.id != null && !domain.id.isBlank()) {
+                    expectedDomains.put(domain.id, domain);
+                }
+            }
+        }
 
         boolean changed = normalizeExistingNodes(technique);
         Set<String> retainedContent = new HashSet<>();
@@ -72,7 +95,9 @@ public final class TechniqueSkillTree {
                 && ((SkillTreeNodeData.MOVE.equalsIgnoreCase(node.contentType)
                         && expectedMoves.containsKey(node.contentId))
                     || (SkillTreeNodeData.ABILITY.equalsIgnoreCase(node.contentType)
-                        && expectedAbilities.containsKey(node.contentId)));
+                        && expectedAbilities.containsKey(node.contentId))
+                    || (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)
+                        && (domains == null || expectedDomains.containsKey(node.contentId))));
             String contentKey = node == null ? "" : contentKey(node.contentType, node.contentId);
             if (!expected || !retainedContent.add(contentKey)) {
                 changed = true;
@@ -102,6 +127,14 @@ public final class TechniqueSkillTree {
                 technique.skillTree.add(newNode(technique, SkillTreeNodeData.ABILITY,
                     ability.id, prerequisites));
                 retainedContent.add(contentKey(SkillTreeNodeData.ABILITY, ability.id));
+                changed = true;
+            }
+        }
+        for (DomainData domain : expectedDomains.values()) {
+            if (!retainedContent.contains(contentKey(SkillTreeNodeData.DOMAIN, domain.id))) {
+                technique.skillTree.add(newNode(technique, SkillTreeNodeData.DOMAIN,
+                    domain.id, statPrerequisites(domain.prerequisites)));
+                retainedContent.add(contentKey(SkillTreeNodeData.DOMAIN, domain.id));
                 changed = true;
             }
         }
@@ -223,6 +256,8 @@ public final class TechniqueSkillTree {
             // behavior until the character is next edited and writes this list.
             ids = character.availableAbilityIds != null
                 ? character.availableAbilityIds : character.abilityIds;
+        } else if (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) {
+            ids = character.availableDomainIds;
         } else {
             return false;
         }
@@ -284,7 +319,26 @@ public final class TechniqueSkillTree {
                 character.abilityIds = new ArrayList<>(character.abilityIds);
                 character.abilityIds.removeIf(node.contentId::equals);
             }
+        } else if (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) {
+            if (character.availableDomainIds == null) {
+                character.availableDomainIds = new ArrayList<>();
+            }
+            updateSelection(character.availableDomainIds, node.contentId, active);
         }
+    }
+
+    /** True when a Domain's technique-tree node is active and unlocked. */
+    public static boolean allowsDomain(
+        List<InnateTechniqueData> techniques,
+        String requiredTechnique,
+        String domainId,
+        CharacterData character
+    ) {
+        if (techniques == null || requiredTechnique == null || domainId == null) return true;
+        InnateTechniqueData technique = techniqueByName(techniques, requiredTechnique);
+        if (technique == null) return false;
+        SkillTreeNodeData node = nodeForContent(technique, SkillTreeNodeData.DOMAIN, domainId);
+        return node != null && isActive(node, character) && isUnlocked(technique, node, character);
     }
 
     /** Remove active descendants whose node prerequisites are no longer met. */

@@ -26,13 +26,14 @@ import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.SeededRandomSource;
-import com.jjktbf.model.combat.SummonUpkeepScaler;
+import com.jjktbf.model.combat.CeUpkeepScaler;
 import com.jjktbf.model.combat.TeamBattlePlan;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
+import com.jjktbf.model.move.MoveType;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.progression.TechniqueMasteryProgressionData;
@@ -155,9 +156,21 @@ class TenShadowsCoreTest {
         TeamBattlePlan teamPlan = new TeamBattlePlan(BattleTeamId.PLAYER, gridLength);
         teamPlan.put(summoner.getInstanceId(), actorPlan);
 
-        String error = teamPlan.validationError(state);
-        assertNotNull(error);
-        assertTrue(error.contains("Maximum active summons reached"));
+        assertNull(teamPlan.validationError(state),
+            "over-cap summon plans are no longer rejected at planning time");
+
+        summoner.setPlan(actorPlan);
+        summoner.setTimeline(actorPlan.toLegacyTimeline());
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+        List<CombatEvent> events = new CombatResolver(new SeededRandomSource(1L))
+            .resolveRound(state);
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_STUNNED
+                && event.getMove() == summonNue),
+            "the over-cap summon fails at its start tick instead");
+        assertFalse(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_FIRED
+                && event.getMove() == summonNue));
     }
 
     @Test
@@ -339,14 +352,14 @@ class TenShadowsCoreTest {
     @Test
     void summonUpkeepScalerMapsEfficiencyToMultiplierAtTheDesignAnchors() {
         // RAW efficiency is scaled internally; baseline 80 is the neutral 1.0× point.
-        assertEquals(2.0, SummonUpkeepScaler.upkeepMultiplier(10), 0.000001,
+        assertEquals(2.0, CeUpkeepScaler.upkeepMultiplier(10), 0.000001,
             "raw 10 → scaled 10 → 2.0× upkeep");
-        assertEquals(1.0, SummonUpkeepScaler.upkeepMultiplier(80), 0.000001,
+        assertEquals(1.0, CeUpkeepScaler.upkeepMultiplier(80), 0.000001,
             "raw 80 → scaled 80 → 1.0× upkeep (neutral baseline)");
-        assertEquals(0.2, SummonUpkeepScaler.upkeepMultiplier(300), 0.000001,
+        assertEquals(0.2, CeUpkeepScaler.upkeepMultiplier(300), 0.000001,
             "raw 300 → scaled 472 → 0.2× upkeep");
         // Low-branch midpoint: scaled 45 → 2.0 - (45 - 10) / 70 = 1.5×.
-        assertEquals(1.5, SummonUpkeepScaler.upkeepMultiplier(45), 0.000001,
+        assertEquals(1.5, CeUpkeepScaler.upkeepMultiplier(45), 0.000001,
             "raw 45 → scaled 45 → 1.5× upkeep (low-branch midpoint)");
     }
 
@@ -381,6 +394,7 @@ class TenShadowsCoreTest {
     @Test
     void codedDesummonSelfRemovesSummonExactlyOnce() {
         Move desummonMove = utility("DESUMMON", 1)
+            .moveType(MoveType.SHIKIGAMI)
             .selfEffects(List.of(StatusEffect.coded(
                 ShikigamiMoveRuntime.KEY, ShikigamiMoveRuntime.DESUMMON_SELF)))
             .build();

@@ -100,7 +100,7 @@ public class TimelineBar {
     public void layoutSegments(List<ActionSegmentView> views) {
         for (ActionSegmentView v : views) {
             int start = v.getSegment().getStartTick();
-            int ap = v.getSegment().getMove().getApCost();
+            int ap = v.getSegment().getApCost();
             v.setPosition(segmentLeft(start), bounds.y + 4f);
             v.setWidth(segmentWidth(ap));
         }

@@ -1,7 +1,6 @@
 package com.jjktbf.graphics.multiplayer;
 
 import com.jjktbf.model.combat.BattlePlan;
-import com.jjktbf.model.move.AoeType;
 import com.jjktbf.multiplayer.protocol.MoveState;
 import com.jjktbf.multiplayer.protocol.PlanBoard;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
@@ -15,7 +14,6 @@ public final class MultiplayerPlanDraft {
     public enum AddStatus {
         ADDED,
         INVALID_MOVE,
-        MOVE_RESTRICTED,
         MOVE_CAP_REACHED,
         INSUFFICIENT_AP,
         INSUFFICIENT_CE,
@@ -102,9 +100,6 @@ public final class MultiplayerPlanDraft {
         if (!valid(move)) {
             return new AddResult(AddStatus.INVALID_MOVE, null);
         }
-        if (!move.available()) {
-            return new AddResult(AddStatus.MOVE_RESTRICTED, null);
-        }
         if (!hasRemainingUses(move)) {
             return new AddResult(AddStatus.MOVE_CAP_REACHED, null);
         }
@@ -115,7 +110,7 @@ public final class MultiplayerPlanDraft {
             return new AddResult(AddStatus.INSUFFICIENT_CE, null);
         }
         List<String> selectedTargets = distinctTargets(targetIds);
-        if (!validTargetSelection(move, targetIds, selectedTargets)) {
+        if (!validTargetSelection(move, actorId, targetIds, selectedTargets)) {
             return new AddResult(AddStatus.INVALID_TARGET_SELECTION, null);
         }
 
@@ -140,10 +135,10 @@ public final class MultiplayerPlanDraft {
 
     public boolean canAdd(MoveState move, List<String> targetIds) {
         List<String> selectedTargets = distinctTargets(targetIds);
-        if (!valid(move) || !move.available() || !hasRemainingUses(move)
+        if (!valid(move) || !hasRemainingUses(move)
             || apUsed + move.apCost() > apBudget
             || ceUsed + move.effectiveCeCost() > ceBudget
-            || !validTargetSelection(move, targetIds, selectedTargets)) {
+            || !validTargetSelection(move, null, targetIds, selectedTargets)) {
             return false;
         }
         int lastStart = lastStartTick(move);
@@ -242,21 +237,17 @@ public final class MultiplayerPlanDraft {
 
     private static boolean validTargetSelection(
         MoveState move,
+        String actorId,
         List<String> requestedTargets,
         List<String> selectedTargets
     ) {
         int requestedCount = requestedTargets == null ? 0 : requestedTargets.size();
         if (requestedCount != selectedTargets.size()) return false;
-        boolean hostile = move.tags().contains("ATTACK");
-        if (!hostile) return selectedTargets.isEmpty();
-        AoeType aoeType = TargetListSupport.moveStateAoeType(move);
-        if (aoeType != AoeType.MULTIPLE) {
-            return aoeType != null || move.tags().contains("AOE")
-                ? selectedTargets.isEmpty()
-                : selectedTargets.size() == 1;
-        }
-        int cap = TargetListSupport.moveStateAoeTargetCount(move);
-        return !selectedTargets.isEmpty() && selectedTargets.size() <= cap;
+        if (actorId != null && selectedTargets.contains(actorId)) return false;
+        TargetListSupport.TargetRequirements requirements =
+            TargetListSupport.moveStateTargetRequirements(move);
+        return selectedTargets.size() >= requirements.minimumCount()
+            && selectedTargets.size() <= requirements.maximumCount();
     }
 
     private static List<String> distinctTargets(List<String> targetIds) {

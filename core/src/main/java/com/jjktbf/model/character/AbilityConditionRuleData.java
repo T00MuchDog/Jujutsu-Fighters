@@ -166,9 +166,10 @@ public class AbilityConditionRuleData {
                     return prefix + " cannot use an activation chance for CE cost alterations.";
                 }
             }
-            if (targetsGeneric && containsPreResolutionHook(rule.condition)) {
+            if (targetsGeneric && containsPreResolutionHook(rule.condition)
+                && !supportsGenericFatalSurvival(rule.condition, targets, effectIndexes, rows)) {
                 return prefix
-                    + " uses a pre-resolution condition that can only target coded effects.";
+                    + " uses a pre-resolution condition that can only target coded effects or fatal survival.";
             }
             if (targetsCoded && containsType(
                 rule.condition, AbilityConditionType.MANUAL_ACTIVATION)) {
@@ -219,7 +220,29 @@ public class AbilityConditionRuleData {
     private static boolean containsPreResolutionHook(AbilityConditionData condition) {
         return containsType(condition, AbilityConditionType.ATTACK_CONNECTED)
             || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG)
-            || containsType(condition, AbilityConditionType.FATAL_DAMAGE);
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_HAS_TAG)
+            || containsType(condition, AbilityConditionType.FATAL_DAMAGE)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_LACKS_CURSED_ENERGY);
+    }
+
+    private static boolean supportsGenericFatalSurvival(
+        AbilityConditionData condition,
+        Set<String> targets,
+        Map<String, Integer> effectIndexes,
+        List<AbilityEffectData> effects
+    ) {
+        if (containsType(condition, AbilityConditionType.ATTACK_CONNECTED)
+            || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_HAS_TAG)) {
+            return false;
+        }
+        boolean fatalOpportunity = containsType(condition, AbilityConditionType.FATAL_DAMAGE)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_LACKS_CURSED_ENERGY);
+        return fatalOpportunity && targets.stream()
+            .map(effectIndexes::get)
+            .map(effects::get)
+            .allMatch(effect -> AbilityEffectType.SURVIVE_FATAL_DAMAGE.name()
+                .equalsIgnoreCase(effect.type));
     }
 
     private static boolean containsType(
@@ -239,12 +262,14 @@ public class AbilityConditionRuleData {
         String key = normalized(effect.codedAbilityKey);
         String feature = normalized(effect.codedFeature);
         String label = key + "/" + feature;
-        if (containsType(condition, AbilityConditionType.FATAL_DAMAGE)
+        if ((containsType(condition, AbilityConditionType.FATAL_DAMAGE)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_LACKS_CURSED_ENERGY))
             && !("MIRACLES".equals(key) && "FATEFUL_REPRIEVE".equals(feature))) {
             return "Fatal damage incoming is not a runtime opportunity for " + label + ".";
         }
         if ((containsType(condition, AbilityConditionType.ATTACK_CONNECTED)
-            || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG))
+            || containsType(condition, AbilityConditionType.CONNECTED_HIT_HAS_TAG)
+            || containsType(condition, AbilityConditionType.INCOMING_HIT_HAS_TAG))
             && !("RATIO".equals(key) && "REINFORCEMENT_RATIO".equals(feature))) {
             return "Connected-hit conditions are not runtime opportunities for " + label + ".";
         }

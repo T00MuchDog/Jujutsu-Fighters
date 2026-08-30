@@ -10,6 +10,7 @@ import com.jjktbf.model.character.CombatStats;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CodedAbilities;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
+import com.jjktbf.model.character.coded.CodedAbilityState;
 // Explicit import to avoid ambiguity with java.lang.Character
 import com.jjktbf.model.character.Character;
 import com.jjktbf.model.move.Move;
@@ -17,10 +18,16 @@ import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectType;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.IntPredicate;
 
 /**
@@ -88,6 +95,7 @@ public class BattleCombatant {
     private AbilityApplicator.AbilityFlags abilityFlags;
     private List<Ability> abilities;
     private CodedAbilities codedAbilities;
+    private final Map<String, BoundedResource> boundedResources = new LinkedHashMap<>();
 
     /** Inactive authored forms retain their profile and independent HP for this battle. */
     private final Map<String, FormState> inactiveFormStates = new HashMap<>();
@@ -106,9 +114,16 @@ public class BattleCombatant {
     private int lastAbilityCostRound;
     private int poolClampDeferrals;
     private double summonCeUpkeepDebt;
+    private double statusCeUpkeepDebt;
     private double cursedEnergyRegenerationProgress;
+    private final EnumMap<StatusEffectType, Double> statusDamageProgress =
+        new EnumMap<>(StatusEffectType.class);
 
     private final List<StatusEffect> activeEffects;
+    /** Applying combatant retained for status reactions and battle-log attribution. */
+    private final Map<StatusEffect, BattleCombatant> statusSources = new IdentityHashMap<>();
+    /** Runtime source lease retained independently from combatant attribution. */
+    private final Map<StatusEffect, String> statusLeases = new IdentityHashMap<>();
 
     /**
      * Status effects that expired during the most recent {@link #tickStatusEffects()}.
@@ -144,6 +159,34 @@ public class BattleCombatant {
 
     // --- Round's two-board battle plan (offensive + defensive) ---
     private BattlePlan plan;
+
+    private static final class BoundedResource {
+        private final String key;
+        private String label;
+        private int current;
+        private int maximum;
+
+        private BoundedResource(String key, String label, int current, int maximum) {
+            this.key = key;
+            this.label = label;
+            this.current = current;
+            this.maximum = maximum;
+        }
+
+        private CodedAbilityState state() {
+            return new CodedAbilityState(key, label, current, maximum);
+        }
+    }
+
+    /** Result of one all-or-nothing bounded-resource transaction. */
+    public record BoundedResourceTransaction(
+        boolean success,
+        List<CodedAbilityState> changedStates
+    ) {
+        private static BoundedResourceTransaction failed() {
+            return new BoundedResourceTransaction(false, List.of());
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Construction
@@ -196,13 +239,14 @@ public class BattleCombatant {
         applyProfile(createProfile(character, abilities, baseStats));
 
         // HP and CE derived from effective (ability-modified) stats
-        this.currentHp               = effectiveCombatStats.getMaxHp();
-        this.currentCe               = effectiveCombatStats.getMaxCursedEnergy();
+        this.activeEffects           = new ArrayList<>();
+        this.currentHp               = getMaxHp();
+        this.currentCe               = getMaxCursedEnergy();
         this.lastAbilityCostRound    = 0;
         this.poolClampDeferrals      = 0;
         this.summonCeUpkeepDebt      = 0.0;
+        this.statusCeUpkeepDebt      = 0.0;
         this.cursedEnergyRegenerationProgress = 0.0;
-        this.activeEffects           = new ArrayList<>();
         this.inBlackFlashState       = false;
         this.consecutiveBfsHits   = 0;
         this.bfsExpiresAfterRound = -1;
@@ -267,6 +311,13 @@ public class BattleCombatant {
             abilityTriggerHistory.put(key, new ArrayList<>(value)));
         abilityFightStartProcessed = profile.abilityFightStartProcessed;
         lastAbilityRoundStartRound = profile.lastAbilityRoundStartRound;
+        for (AbilityEffectData definition : abilityFlags.boundedResourceDefinitions) {
+            defineBoundedResource(
+                definition.resourceKey,
+                definition.resourceLabel,
+                definition.resourceCapacity == null ? 1 : definition.resourceCapacity,
+                definition.resourceStartValue == null ? 0 : definition.resourceStartValue);
+        }
     }
 
     /**
@@ -592,6 +643,23 @@ public class BattleCombatant {
         return summonCeUpkeepDebt;
     }
 
+    /**
+     * Add one resolution tick of status CE upkeep and return the newly payable
+     * whole CE amount. Fractional rates (e.g. 1.5 per tick) carry their
+     * remainder across ticks, exactly like summon upkeep.
+     */
+    public int accrueStatusCeUpkeep(double amount) {
+        if (!Double.isFinite(amount) || amount <= 0.0) return 0;
+        statusCeUpkeepDebt += amount;
+        int due = (int) Math.floor(statusCeUpkeepDebt + 1.0e-9);
+        statusCeUpkeepDebt -= due;
+        return due;
+    }
+
+    public double getStatusCeUpkeepDebt() {
+        return statusCeUpkeepDebt;
+    }
+
     /** Return this fighter's current fractional CE regeneration rate. */
     public double getCursedEnergyRegenerationPerTick() {
         if (!isFighter()) return 0.0;
@@ -686,27 +754,63 @@ public class BattleCombatant {
     // -------------------------------------------------------------------------
 
     public boolean addStatusEffect(StatusEffect effect) {
-        if (effect == null || rejectsStatus(effect)) return false;
-        activeEffects.add(effect);
-        clampPoolsToMaximums();
-        return true;
+        return applyStatusEffect(effect, null, null, null);
     }
 
-    public boolean addStatusEffect(StatusEffect effect, BattleState.Phase phase) {
+    /** Apply a status while retaining the combatant that created it. */
+    public boolean addStatusEffect(StatusEffect effect, BattleCombatant source) {
+        return applyStatusEffect(effect, null, source, null);
+    }
+
+    private boolean applyStatusEffect(
+        StatusEffect effect,
+        BattleState.Phase phase,
+        BattleCombatant source,
+        String sourceLease
+    ) {
         if (effect == null || rejectsStatus(effect)) return false;
         int rounds = effect.getDurationRounds();
         int ticks = effect.getDurationTicks();
-        if (rounds > 0) {
+        if (phase != null && rounds > 0) {
             boolean appliedAtRoundEnd = phase == BattleState.Phase.ROUND_END;
             boolean waitsForNextPlanning = phase == BattleState.Phase.RESOLUTION
                 && ticks == 0 && affectsNextPlanning(effect.getType());
             if (appliedAtRoundEnd || waitsForNextPlanning) rounds++;
         }
-        activeEffects.add(new StatusEffect(
-            effect.getType(), rounds, ticks, effect.getMagnitude(),
-            effect.getPerTickRemovalChance()));
+        if (effect.getType().refreshesOnReapply()) {
+            removeStatusForRefresh(effect.getType());
+        }
+        StatusEffect applied = rounds == effect.getDurationRounds()
+            ? effect : effect.withDuration(rounds, ticks);
+        activeEffects.add(applied);
+        if (source != null) statusSources.put(applied, source);
+        if (sourceLease != null && !sourceLease.isBlank()) {
+            statusLeases.put(applied, sourceLease.trim());
+        }
         clampPoolsToMaximums();
         return true;
+    }
+
+    public boolean addStatusEffect(StatusEffect effect, BattleState.Phase phase) {
+        return applyStatusEffect(effect, phase, null, null);
+    }
+
+    public boolean addStatusEffect(
+        StatusEffect effect,
+        BattleState.Phase phase,
+        BattleCombatant source
+    ) {
+        return applyStatusEffect(effect, phase, source, null);
+    }
+
+    /** Apply a status owned by a removable runtime source lease. */
+    public boolean addStatusEffect(
+        StatusEffect effect,
+        BattleState.Phase phase,
+        BattleCombatant source,
+        String sourceLease
+    ) {
+        return applyStatusEffect(effect, phase, source, sourceLease);
     }
 
     /** Convert a validated AUTO_STATUS_APPLY descriptor into a live status. */
@@ -715,6 +819,23 @@ public class BattleCombatant {
     }
 
     public boolean addAutomaticStatusEffect(AbilityEffectData effect, BattleState.Phase phase) {
+        return addAutomaticStatusEffect(effect, phase, null);
+    }
+
+    public boolean addAutomaticStatusEffect(
+        AbilityEffectData effect,
+        BattleState.Phase phase,
+        BattleCombatant source
+    ) {
+        return addAutomaticStatusEffect(effect, phase, source, null);
+    }
+
+    public boolean addAutomaticStatusEffect(
+        AbilityEffectData effect,
+        BattleState.Phase phase,
+        BattleCombatant source,
+        String sourceLease
+    ) {
         if (effect == null || effect.stringValue == null) return false;
         try {
             double storedMagnitude = effect.magnitude != null ? effect.magnitude : 0.0;
@@ -726,9 +847,10 @@ public class BattleCombatant {
                 effect.stringValue, storedMagnitude);
             double perTickRemovalChance = effect.perTickRemovalChance != null
                 ? effect.perTickRemovalChance : type.defaultPerTickRemovalChance();
+            double ceUpkeepPerTick = effect.ceUpkeepPerTick != null ? effect.ceUpkeepPerTick : 0.0;
             StatusEffect status = new StatusEffect(
-                type, rounds, ticks, magnitude, perTickRemovalChance);
-            return phase == null ? addStatusEffect(status) : addStatusEffect(status, phase);
+                type, rounds, ticks, magnitude, perTickRemovalChance, ceUpkeepPerTick);
+            return addStatusEffect(status, phase, source, sourceLease);
         } catch (IllegalArgumentException ex) {
             System.err.println("[WARN] Invalid automatic status: " + effect.stringValue);
             return false;
@@ -743,7 +865,9 @@ public class BattleCombatant {
         return type.baseStat() == com.jjktbf.model.character.StatKey.SPEED
             || type.baseStat() == com.jjktbf.model.character.StatKey.COMBAT_ABILITY
             || type.baseStat() == com.jjktbf.model.character.StatKey.CURSED_ENERGY_EFFICIENCY
-            || type.battleStat() == BattleStatKey.MAX_AP;
+            || type.battleStat() == BattleStatKey.MAX_AP
+            || type.affectsAllBaseStats()
+            || type == StatusEffectType.FATIGUED;
     }
 
     public boolean hasEffect(StatusEffectType type) {
@@ -752,6 +876,15 @@ public class BattleCombatant {
 
     public List<StatusEffect> getActiveEffects() {
         return activeEffects;
+    }
+
+    /** Most recently applied source for a live status type, if one was recorded. */
+    public Optional<BattleCombatant> statusSource(StatusEffectType type) {
+        for (int i = activeEffects.size() - 1; i >= 0; i--) {
+            StatusEffect effect = activeEffects.get(i);
+            if (effect.getType() == type) return Optional.ofNullable(statusSources.get(effect));
+        }
+        return Optional.empty();
     }
 
     /**
@@ -775,9 +908,7 @@ public class BattleCombatant {
             } else if (e.getDurationRounds() > 0) {
                 int rounds = e.getDurationRounds() - 1;
                 if (rounds > 0 || e.getDurationTicks() > 0) {
-                    remaining.add(new StatusEffect(
-                        e.getType(), rounds, e.getDurationTicks(), e.getMagnitude(),
-                        e.getPerTickRemovalChance()));
+                    retainStatusWithDuration(remaining, e, rounds, e.getDurationTicks());
                 } else {
                     expired.add(e);
                 }
@@ -788,6 +919,9 @@ public class BattleCombatant {
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
+        statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
+        statusLeases.keySet().removeIf(effect -> !activeEffects.contains(effect));
+        resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -799,15 +933,16 @@ public class BattleCombatant {
             if (effect.getDurationRounds() != 0) {
                 remaining.add(effect);
             } else if (effect.getDurationTicks() > 1) {
-                remaining.add(new StatusEffect(
-                    effect.getType(), 0, effect.getDurationTicks() - 1, effect.getMagnitude(),
-                    effect.getPerTickRemovalChance()));
+                retainStatusWithDuration(remaining, effect, 0, effect.getDurationTicks() - 1);
             } else {
                 expired.add(effect);
             }
         }
         activeEffects.clear();
         activeEffects.addAll(remaining);
+        statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
+        statusLeases.keySet().removeIf(effect -> !activeEffects.contains(effect));
+        resetStatusDamageProgressIfCured();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -829,26 +964,89 @@ public class BattleCombatant {
 
     public void removeEffect(StatusEffectType type) {
         activeEffects.removeIf(e -> e.getType() == type);
+        statusSources.keySet().removeIf(effect -> effect.getType() == type);
+        statusLeases.keySet().removeIf(effect -> effect.getType() == type);
+        resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
     }
 
     public int removeStatusEffects(StatusEffectType type) {
         int before = activeEffects.size();
         activeEffects.removeIf(effect -> effect.getType() == type);
+        statusSources.keySet().removeIf(effect -> effect.getType() == type);
+        statusLeases.keySet().removeIf(effect -> effect.getType() == type);
+        resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return before - activeEffects.size();
+    }
+
+    private void removeStatusForRefresh(StatusEffectType type) {
+        activeEffects.removeIf(effect -> effect.getType() == type);
+        statusSources.keySet().removeIf(effect -> effect.getType() == type);
+        statusLeases.keySet().removeIf(effect -> effect.getType() == type);
     }
 
     public int clearStatusEffects() {
         int removed = activeEffects.size();
         activeEffects.clear();
+        statusSources.clear();
+        statusLeases.clear();
+        resetStatusDamageProgressIfCured();
         clampPoolsToMaximums();
         return removed;
+    }
+
+    private void retainStatusWithDuration(
+        List<StatusEffect> remaining,
+        StatusEffect previous,
+        int rounds,
+        int ticks
+    ) {
+        StatusEffect updated = previous.withDuration(rounds, ticks);
+        remaining.add(updated);
+        BattleCombatant source = statusSources.get(previous);
+        if (source != null) statusSources.put(updated, source);
+        String sourceLease = statusLeases.get(previous);
+        if (sourceLease != null) statusLeases.put(updated, sourceLease);
+    }
+
+    /** Accrue Burned's fractional max-HP damage and return newly payable whole damage. */
+    public int accrueBurnedDamageForTick(double maxHpFraction) {
+        return accrueStatusDamageForTick(StatusEffectType.BURNED, maxHpFraction);
+    }
+
+    /** Accrue Poison's fractional max-HP damage and return newly payable whole damage. */
+    public int accruePoisonDamageForTick(double maxHpFraction) {
+        return accrueStatusDamageForTick(StatusEffectType.POISON, maxHpFraction);
+    }
+
+    public int accrueStatusDamageForTick(StatusEffectType type, double maxHpFraction) {
+        if (type == null || !hasEffect(type)
+            || !Double.isFinite(maxHpFraction) || maxHpFraction <= 0.0) {
+            if (type != null) statusDamageProgress.remove(type);
+            return 0;
+        }
+        double progress = statusDamageProgress.getOrDefault(type, 0.0)
+            + getMaxHp() * maxHpFraction;
+        int due = (int) Math.min(Integer.MAX_VALUE,
+            Math.floor(progress + 1.0e-9));
+        progress -= due;
+        if (progress > 0.0) statusDamageProgress.put(type, progress);
+        else statusDamageProgress.remove(type);
+        return due;
+    }
+
+    private void resetStatusDamageProgressIfCured() {
+        statusDamageProgress.keySet().removeIf(type -> !hasEffect(type));
     }
 
     // -------------------------------------------------------------------------
     // Runtime ability effects
     // -------------------------------------------------------------------------
+
+    /** A timed CE drain together with the combatant that applied it. */
+    public record OverTimeCeDrain(BattleCombatant source, AbilityEffectData effect) {
+    }
 
     public void addRuntimeAbilityEffect(AbilityEffectData effect) {
         addRuntimeAbilityEffect(effect, 0, BattleState.Phase.PLANNING);
@@ -865,12 +1063,11 @@ public class BattleCombatant {
     /**
      * Attach a runtime ability effect with an optional {@code refreshGroup}.
      *
-     * <p>When {@code refreshGroup} is non-null, any existing runtime effect sharing
+     * <p>When {@code refreshGroup} is nonblank, any existing runtime effect sharing
      * that group is removed first, so re-applying the same buff <b>refreshes</b>
      * (resets its duration) instead of stacking. A {@code null} group keeps the
      * default additive-stack behaviour used by data-driven abilities. The group is
-     * a runtime-only tag — it is not persisted on {@link AbilityEffectData} and so
-     * has no effect on JSON data or editor tooling.
+     * an authorable tag carried by {@link AbilityEffectData}.
      */
     public void addRuntimeAbilityEffect(
         AbilityEffectData effect,
@@ -878,11 +1075,38 @@ public class BattleCombatant {
         BattleState.Phase phase,
         String refreshGroup
     ) {
+        addRuntimeAbilityEffect(effect, currentRound, phase, refreshGroup, null);
+    }
+
+    /** Attach a runtime effect and preserve its source for future periodic events. */
+    public void addRuntimeAbilityEffect(
+        AbilityEffectData effect,
+        int currentRound,
+        BattleState.Phase phase,
+        String refreshGroup,
+        BattleCombatant source
+    ) {
+        addRuntimeAbilityEffect(effect, currentRound, phase, refreshGroup, source, -1);
+    }
+
+    /** Attach a runtime effect at a resolution tick. */
+    public void addRuntimeAbilityEffect(
+        AbilityEffectData effect,
+        int currentRound,
+        BattleState.Phase phase,
+        String refreshGroup,
+        BattleCombatant source,
+        int applicationTick
+    ) {
         if (effect == null || effect.type == null) return;
-        if (refreshGroup != null) {
-            runtimeAbilityEffects.removeIf(existing -> refreshGroup.equals(existing.refreshGroup));
+        String normalizedRefreshGroup = refreshGroup == null || refreshGroup.isBlank()
+            ? null : refreshGroup.trim();
+        if (normalizedRefreshGroup != null) {
+            runtimeAbilityEffects.removeIf(existing ->
+                normalizedRefreshGroup.equals(existing.refreshGroup));
         }
-        runtimeAbilityEffects.add(new RuntimeAbilityEffect(effect, currentRound, phase, refreshGroup));
+        runtimeAbilityEffects.add(new RuntimeAbilityEffect(
+            effect, currentRound, phase, normalizedRefreshGroup, source, applicationTick));
         clampPoolsToMaximums();
     }
 
@@ -900,7 +1124,14 @@ public class BattleCombatant {
 
     /** Expire runtime and status modifiers atomically at an AP-tick boundary. */
     public void tickTimelineEffects() {
-        tickRuntimeAbilityEffectsOneTickWithoutClamping();
+        tickRuntimeAbilityEffectsOneTickWithoutClamping(-1, -1);
+        tickStatusEffectsOneTickWithoutClamping();
+        clampPoolsToMaximums();
+    }
+
+    /** Expire runtime and status modifiers at this battle round and AP-tick boundary. */
+    void tickTimelineEffects(int currentRound, int tick) {
+        tickRuntimeAbilityEffectsOneTickWithoutClamping(currentRound, tick);
         tickStatusEffectsOneTickWithoutClamping();
         clampPoolsToMaximums();
     }
@@ -916,8 +1147,10 @@ public class BattleCombatant {
         }
     }
 
-    private void tickRuntimeAbilityEffectsOneTickWithoutClamping() {
+    private void tickRuntimeAbilityEffectsOneTickWithoutClamping(int currentRound, int tick) {
         for (RuntimeAbilityEffect effect : new ArrayList<>(runtimeAbilityEffects)) {
+            // A drain applied during this tick begins counting at the next boundary.
+            if (effect.wasAppliedAt(currentRound, tick)) continue;
             if (effect.remainingRounds != 0 || effect.remainingTicks <= 0) continue;
             effect.remainingTicks--;
             if (effect.remainingTicks == 0) runtimeAbilityEffects.remove(effect);
@@ -937,12 +1170,78 @@ public class BattleCombatant {
         return Math.max(Math.max(statusTicks, runtimeTicks), codedTicks);
     }
 
-    public boolean consumeGuaranteedHit() {
-        return consumeFirst(AbilityEffectType.GUARANTEE_NEXT_HIT);
+    /** Active periodic CE drains owned by this combatant. */
+    public List<OverTimeCeDrain> getOverTimeCeDrains() {
+        return runtimeAbilityEffects.stream()
+            .filter(runtime -> AbilityEffectType.DRAIN_CE.name().equalsIgnoreCase(
+                runtime.effect.type))
+            .filter(runtime -> AbilityEffectType.selectedCeDrainMode(runtime.effect)
+                == AbilityEffectType.CeDrainMode.OVER_TIME)
+            .map(runtime -> new OverTimeCeDrain(
+                runtime.source == null ? this : runtime.source, runtime.effect))
+            .toList();
     }
 
-    public boolean consumeGuaranteedDodge() {
-        return consumeFirst(AbilityEffectType.GUARANTEE_NEXT_DODGE);
+    /**
+     * Whether this combatant holds an active runtime effect matching {@code match}.
+     * A non-consuming planning-time read (unlike the {@code consume*} queries), so
+     * callers can test for active buffs — a timed stat modifier window or a scoped
+     * Never Miss claim, for example — without spending them.
+     */
+    public boolean hasActiveRuntimeEffect(java.util.function.Predicate<AbilityEffectData> match) {
+        return match != null && runtimeAbilityEffects.stream()
+            .filter(effect -> effect.remainingUses != 0)
+            .anyMatch(effect -> match.test(effect.effect));
+    }
+
+    /** Remove every persistent status/runtime modifier owned by one source lease. */
+    public int removeEffectsByLease(String sourceLease) {
+        if (sourceLease == null || sourceLease.isBlank()) return 0;
+        String normalized = sourceLease.trim();
+        int removed = runtimeAbilityEffects.size();
+        runtimeAbilityEffects.removeIf(effect -> normalized.equals(effect.sourceLease));
+        removed -= runtimeAbilityEffects.size();
+        List<StatusEffect> leasedStatuses = activeEffects.stream()
+            .filter(effect -> normalized.equals(statusLeases.get(effect)))
+            .toList();
+        activeEffects.removeAll(leasedStatuses);
+        leasedStatuses.forEach(statusSources::remove);
+        leasedStatuses.forEach(statusLeases::remove);
+        removed += leasedStatuses.size();
+        resetStatusDamageProgressIfCured();
+        clampPoolsToMaximums();
+        return removed;
+    }
+
+    /** A temporary Never Miss claim reserved for one complete attack execution. */
+    public record AccuracyClaim(int tier, boolean guaranteesNormalAccuracy) {
+        private static final AccuracyClaim NONE = new AccuracyClaim(0, false);
+    }
+
+    public AccuracyClaim consumeNeverMiss(Move move) {
+        RuntimeAbilityEffect selected = runtimeAbilityEffects.stream()
+            .filter(effect -> AbilityEffectType.APPLY_NEVER_MISS.name()
+                .equalsIgnoreCase(effect.effect.type))
+            .filter(effect -> effect.remainingUses != 0)
+            .filter(effect -> matchesMoveScope(effect.effect, move))
+            .max(java.util.Comparator.comparingInt(effect ->
+                effect.effect.intValue == null ? 0 : effect.effect.intValue))
+            .orElse(null);
+        if (selected == null) return AccuracyClaim.NONE;
+        int tier = selected.effect.intValue == null ? 0 : selected.effect.intValue;
+        if (AbilityEffectType.accuracyDuration(selected.effect)
+            == AbilityEffectType.AccuracyDuration.NEXT_ATTACK) {
+            consume(selected);
+        }
+        return new AccuracyClaim(tier, true);
+    }
+
+    public int consumeNeverMissTier() {
+        return consumeNeverMiss(null).tier();
+    }
+
+    public int consumeNeverHitTier() {
+        return consumeAccuracyTier(AbilityEffectType.APPLY_NEVER_HIT);
     }
 
     public boolean consumeGuaranteedBlackFlash() {
@@ -996,12 +1295,29 @@ public class BattleCombatant {
             .filter(effect -> effect.getType().battleStat() == key)
             .mapToDouble(effect -> effect.getType().signedMagnitude(effect.getMagnitude()))
             .sum();
-        double multiplier = 1.0;
+        double multiplier = activeEffects.stream()
+            .filter(effect -> effect.getType().isStatMultiplier())
+            .filter(effect -> effect.getType().battleStat() == key)
+            .mapToDouble(effect -> effect.getType().statMultiplier())
+            .reduce(1.0, (left, right) -> left * right);
         double percent = 0.0;
         double oddsMultiplier = 1.0;
+        // A battle-stat set pins the stat to an exact value, overriding every
+        // other modifier on it while active; the most recently applied set wins.
+        Double setValue = null;
         for (AbilityEffectData effect : getAbilityFlags().passiveBattleStatEffects) {
             if (matchesBattleStat(effect, AbilityEffectType.BATTLE_STAT_ODDS_MULTIPLY, key)) {
                 oddsMultiplier *= effect.doubleValue != null ? effect.doubleValue : 1.0;
+            } else if (matchesBattleStat(effect, AbilityEffectType.BATTLE_STAT_MODIFIER, key)) {
+                if (AbilityEffectType.statOperation(effect)
+                    == AbilityEffectType.StatOperation.MULTIPLY) {
+                    multiplier *= effect.doubleValue != null ? effect.doubleValue : 1.0;
+                } else if (AbilityEffectType.statOperation(effect)
+                    == AbilityEffectType.StatOperation.SET) {
+                    setValue = effect.doubleValue != null ? effect.doubleValue : 0.0;
+                } else {
+                    additions += effect.doubleValue != null ? effect.doubleValue : 0.0;
+                }
             }
         }
         for (RuntimeAbilityEffect runtime : runtimeAbilityEffects) {
@@ -1009,25 +1325,32 @@ public class BattleCombatant {
             AbilityEffectType type;
             try { type = AbilityEffectType.fromName(effect.type); }
             catch (IllegalArgumentException ex) { continue; }
-            if (type != AbilityEffectType.BATTLE_STAT_ADD
-                && type != AbilityEffectType.BATTLE_STAT_MULTIPLY
-                && type != AbilityEffectType.BATTLE_STAT_PERCENT) continue;
+            if (type != AbilityEffectType.TIMED_STAT_MODIFIER
+                || AbilityEffectType.statType(effect) != AbilityEffectType.StatType.BATTLE) {
+                continue;
+            }
             BattleStatKey effectKey;
             try { effectKey = BattleStatKey.fromString(effect.stringValue); }
             catch (IllegalArgumentException ex) { continue; }
             if (effectKey != key) continue;
-            if (type == AbilityEffectType.BATTLE_STAT_ADD) {
-                additions += effect.doubleValue != null ? effect.doubleValue : 0.0;
-            } else if (type == AbilityEffectType.BATTLE_STAT_MULTIPLY) {
+            if (AbilityEffectType.statOperation(effect)
+                == AbilityEffectType.StatOperation.SET) {
+                setValue = effect.doubleValue != null ? effect.doubleValue : 0.0;
+            } else if (AbilityEffectType.statOperation(effect)
+                == AbilityEffectType.StatOperation.MULTIPLY) {
                 multiplier *= effect.doubleValue != null ? effect.doubleValue : 1.0;
-            } else {
+            } else if (AbilityEffectType.valueMode(effect)
+                == AbilityEffectType.ValueMode.PERCENT) {
                 percent += effect.doubleValue != null ? effect.doubleValue : 0.0;
+            } else {
+                additions += effect.doubleValue != null ? effect.doubleValue : 0.0;
             }
         }
         // Percentage effects stack additively and apply to the fully scaled value.
         double percentFactor = 1.0 + percent;
         if (percentFactor < 0.0) percentFactor = 0.0;
         double value = (baseValue + additions) * multiplier * percentFactor;
+        if (setValue != null) return setValue;
         if (oddsMultiplier == 1.0) return value;
         double probability = Math.max(0.0, Math.min(1.0, value));
         if (probability == 0.0 || probability == 1.0) return probability;
@@ -1057,10 +1380,28 @@ public class BattleCombatant {
             flags,
             statMode);
         cost = Math.max(0, (int) Math.round(modifyBattleStat(BattleStatKey.CE_COST, cost)));
+        if (flags.waivesCeCostByStatTotal(
+            move, character.getBaseStats().baseStatTotal())) {
+            return 0;
+        }
         // An equipped cursed tool channels its own cursed energy: moves of its
         // weapon type cost the wielder nothing. Applied last so the free-CE
         // rule is absolute.
         return isCoveredByCursedTool(move) ? 0 : cost;
+    }
+
+    /** AP ticks added to every move by current action-timing statuses. */
+    public int getActionTickDelay() {
+        return hasEffect(StatusEffectType.FATIGUED) ? 2 : 0;
+    }
+
+    public int getEffectiveMoveApCost(Move move) {
+        return Math.addExact(Objects.requireNonNull(move, "move").getApCost(), getActionTickDelay());
+    }
+
+    public int getEffectiveMoveUnleashPoint(Move move) {
+        return Math.addExact(
+            Objects.requireNonNull(move, "move").getUnleashPoint(), getActionTickDelay());
     }
 
     private boolean isCoveredByCursedTool(com.jjktbf.model.move.Move move) {
@@ -1111,6 +1452,27 @@ public class BattleCombatant {
         return true;
     }
 
+    private int consumeAccuracyTier(AbilityEffectType type) {
+        RuntimeAbilityEffect selected = runtimeAbilityEffects.stream()
+            .filter(effect -> type.name().equalsIgnoreCase(effect.effect.type))
+            .filter(effect -> effect.remainingUses != 0)
+            .max(java.util.Comparator.comparingInt(effect ->
+                effect.effect.intValue == null ? 0 : effect.effect.intValue))
+            .orElse(null);
+        if (selected == null) return 0;
+        int tier = selected.effect.intValue == null ? 0 : selected.effect.intValue;
+        if (AbilityEffectType.accuracyDuration(selected.effect)
+            == AbilityEffectType.AccuracyDuration.NEXT_ATTACK) {
+            consume(selected);
+        }
+        return tier;
+    }
+
+    private static boolean matchesMoveScope(AbilityEffectData effect, Move move) {
+        return effect.moveTag == null || effect.moveTag.isBlank()
+            || move != null && move.hasTag(effect.moveTag);
+    }
+
     private RuntimeAbilityEffect firstUsable(AbilityEffectType type) {
         return runtimeAbilityEffects.stream()
             .filter(effect -> type.name().equalsIgnoreCase(effect.effect.type))
@@ -1159,34 +1521,62 @@ public class BattleCombatant {
         private final int notBeforeExpiryRound;
         /** Runtime-only tag; re-applying with the same group refreshes instead of stacking. */
         private final String refreshGroup;
+        private final String sourceLease;
+        private final BattleCombatant source;
+        private final int applicationRound;
+        private final int applicationTick;
 
         private RuntimeAbilityEffect(
             AbilityEffectData source,
             int currentRound,
             BattleState.Phase phase,
-            String refreshGroup
+            String refreshGroup,
+            BattleCombatant effectSource,
+            int applicationTick
         ) {
             effect = source.copy();
             remainingRounds = source.durationRounds == null ? -1 : source.durationRounds;
             remainingTicks = source.durationTicks == null ? 0 : source.durationTicks;
             StatusEffect.validateDuration(remainingRounds, remainingTicks);
-            remainingUses = source.uses == null ? -1 : source.uses;
+            AbilityEffectType type;
+            try { type = AbilityEffectType.fromName(source.type); }
+            catch (IllegalArgumentException exception) { type = null; }
+            remainingUses = type == AbilityEffectType.APPLY_NEVER_MISS
+                    || type == AbilityEffectType.APPLY_NEVER_HIT
+                ? AbilityEffectType.accuracyDuration(source)
+                    == AbilityEffectType.AccuracyDuration.NEXT_ATTACK
+                        ? (source.uses == null ? 1 : Math.max(1, source.uses))
+                        : -1
+                : source.uses == null ? -1 : source.uses;
             remainingCapacity = source.intValue == null ? 0 : Math.max(0, source.intValue);
             boolean mustReachNextPlanning = phase == BattleState.Phase.ROUND_END
                 || (remainingTicks == 0 && affectsPlanning(source)
                     && phase == BattleState.Phase.RESOLUTION);
             notBeforeExpiryRound = currentRound + (mustReachNextPlanning ? 1 : 0);
             this.refreshGroup = refreshGroup;
+            this.sourceLease = source.runtimeLease == null || source.runtimeLease.isBlank()
+                ? null : source.runtimeLease.trim();
+            this.source = effectSource;
+            this.applicationRound = currentRound;
+            this.applicationTick = applicationTick;
+        }
+
+        private boolean wasAppliedAt(int currentRound, int tick) {
+            return applicationTick >= 0 && applicationRound == currentRound
+                && applicationTick == tick
+                && AbilityEffectType.DRAIN_CE.name().equalsIgnoreCase(effect.type)
+                && AbilityEffectType.selectedCeDrainMode(effect)
+                    == AbilityEffectType.CeDrainMode.OVER_TIME;
         }
 
         private static boolean affectsPlanning(AbilityEffectData effect) {
             AbilityEffectType type;
             try { type = AbilityEffectType.fromName(effect.type); }
             catch (IllegalArgumentException ex) { return false; }
-            if (type == AbilityEffectType.TEMP_LOCK_MOVE_TAG) return true;
-            if (type == AbilityEffectType.BATTLE_STAT_ADD
-                || type == AbilityEffectType.BATTLE_STAT_MULTIPLY
-                || type == AbilityEffectType.BATTLE_STAT_PERCENT) {
+            if (type == AbilityEffectType.TEMP_LOCK_MOVE_TAG
+                || type == AbilityEffectType.TEMP_LOCK_TECHNIQUE) return true;
+            if (type == AbilityEffectType.TIMED_STAT_MODIFIER
+                && AbilityEffectType.statType(effect) == AbilityEffectType.StatType.BATTLE) {
                 try {
                     BattleStatKey key = BattleStatKey.fromString(effect.stringValue);
                     return key == BattleStatKey.MAX_AP || key == BattleStatKey.CE_COST;
@@ -1194,8 +1584,8 @@ public class BattleCombatant {
                     return false;
                 }
             }
-            if (type == AbilityEffectType.TEMP_STAT_ADD
-                || type == AbilityEffectType.TEMP_STAT_MULTIPLY
+            if ((type == AbilityEffectType.TIMED_STAT_MODIFIER
+                    && AbilityEffectType.statType(effect) == AbilityEffectType.StatType.CORE)
                 || type == AbilityEffectType.TEMP_STAT_SET_VALUE) {
                 try {
                     com.jjktbf.model.character.StatKey key =
@@ -1255,8 +1645,9 @@ public class BattleCombatant {
 
     public boolean isFighter()                     { return role == CombatantRole.FIGHTER; }
     public boolean isSummon()                      { return role == CombatantRole.SUMMON; }
-    /** True while the combatant is still present in combat (not removed/defeated). */
+    /** True while the combatant occupies the field and may act or be targeted. */
     public boolean isActive()                      { return lifecycle == CombatantLifecycle.ACTIVE; }
+    public boolean isReserve()                     { return lifecycle == CombatantLifecycle.RESERVE; }
     /** True once HP has hit 0 but before removal bookkeeping completes. */
     public boolean isLifecycleDefeated()           { return lifecycle == CombatantLifecycle.DEFEATED; }
     public boolean isRemoved()                     { return lifecycle == CombatantLifecycle.REMOVED; }
@@ -1303,9 +1694,28 @@ public class BattleCombatant {
     }
 
     void markLifecycleDefeated() {
-        if (lifecycle == CombatantLifecycle.ACTIVE) {
+        if (lifecycle == CombatantLifecycle.ACTIVE
+            || lifecycle == CombatantLifecycle.RESERVE) {
             lifecycle = CombatantLifecycle.DEFEATED;
         }
+    }
+
+    void moveToReserve() {
+        if (!isFighter() || lifecycle != CombatantLifecycle.ACTIVE) {
+            throw new IllegalStateException("Only an active fighter can move to reserve");
+        }
+        lifecycle = CombatantLifecycle.RESERVE;
+        plan = null;
+        timeline = null;
+    }
+
+    void deployFromReserve() {
+        if (!isFighter() || lifecycle != CombatantLifecycle.RESERVE || isDefeated()) {
+            throw new IllegalStateException("Only a living reserve fighter can deploy");
+        }
+        lifecycle = CombatantLifecycle.ACTIVE;
+        plan = null;
+        timeline = null;
     }
 
     void markRemoved() {
@@ -1332,6 +1742,17 @@ public class BattleCombatant {
         return false;
     }
 
+    /** True while one temporary effect locks this exact technique name. */
+    public boolean isTechniqueLocked(String techniqueName) {
+        if (techniqueName == null || techniqueName.isBlank()) return false;
+        return runtimeAbilityEffects.stream().anyMatch(runtime ->
+            runtime.remainingUses != 0
+                && AbilityEffectType.TEMP_LOCK_TECHNIQUE.name()
+                    .equalsIgnoreCase(runtime.effect.type)
+                && runtime.effect.stringValue != null
+                && techniqueName.equalsIgnoreCase(runtime.effect.stringValue));
+    }
+
     /**
      * Whether a planned timeline placement may still execute in the combatant's
      * current form. A plan is drafted against the form the combatant wore when
@@ -1355,6 +1776,26 @@ public class BattleCombatant {
         Map<com.jjktbf.model.character.StatKey, Double> statusAmounts =
             new java.util.EnumMap<>(com.jjktbf.model.character.StatKey.class);
         for (StatusEffect effect : activeEffects) {
+            if (effect.getType().affectsAllBaseStats()) {
+                for (com.jjktbf.model.character.StatKey stat
+                    : com.jjktbf.model.character.StatKey.values()) {
+                    AbilityEffectData multiplier = new AbilityEffectData();
+                    multiplier.type = AbilityEffectType.STAT_MULTIPLY.name();
+                    multiplier.stat = stat.fieldName;
+                    multiplier.doubleValue = effect.getType().statMultiplier();
+                    modifiers.add(multiplier);
+                }
+                continue;
+            }
+            if (effect.getType().isStatMultiplier() && effect.getType().baseStat() != null) {
+                AbilityEffectData multiplier = new AbilityEffectData();
+                multiplier.type = AbilityEffectType.STAT_MULTIPLY.name();
+                multiplier.stat = effect.getType().baseStat().fieldName;
+                multiplier.doubleValue = effect.getType().statMultiplier();
+                modifiers.add(multiplier);
+                continue;
+            }
+            if (!effect.getType().isStatModifier()) continue;
             com.jjktbf.model.character.StatKey stat = effect.getType().baseStat();
             if (stat == null) continue;
             statusAmounts.merge(stat,
@@ -1422,6 +1863,117 @@ public class BattleCombatant {
     public int getBfsExpiresAfterRound()                  { return bfsExpiresAfterRound; }
     public List<Ability> getAbilities()                   { return abilities; }
     public CodedAbilities getCodedAbilities()              { return codedAbilities; }
+
+    /** Define or resize a generic player-visible resource without resetting an existing value. */
+    public CodedAbilityState defineBoundedResource(
+        String key,
+        String label,
+        int capacity,
+        int startValue
+    ) {
+        String normalized = normalizeResourceKey(key);
+        if (normalized == null || capacity < 1) {
+            throw new IllegalArgumentException("A resource key and positive capacity are required.");
+        }
+        if (CodedAbilityRegistry.supportsStateKey(normalized)) {
+            throw new IllegalArgumentException(
+                "A bounded resource cannot reuse coded state key " + normalized + ".");
+        }
+        BoundedResource existing = boundedResources.get(normalized);
+        if (existing == null) {
+            existing = new BoundedResource(
+                normalized,
+                label == null || label.isBlank() ? normalized : label.trim(),
+                Math.max(0, Math.min(capacity, startValue)),
+                capacity);
+            boundedResources.put(normalized, existing);
+        } else {
+            existing.label = label == null || label.isBlank() ? existing.label : label.trim();
+            existing.maximum = capacity;
+            existing.current = Math.min(existing.current, capacity);
+        }
+        return existing.state();
+    }
+
+    /** Current generic or compiled ability state, addressed case-insensitively. */
+    public Optional<CodedAbilityState> abilityState(String key) {
+        String normalized = normalizeResourceKey(key);
+        BoundedResource resource = normalized == null ? null : boundedResources.get(normalized);
+        return resource == null ? codedAbilities.state(key) : Optional.of(resource.state());
+    }
+
+    /** All player-visible ability and generic resource states. */
+    public List<CodedAbilityState> abilityStates() {
+        List<CodedAbilityState> states = new ArrayList<>(codedAbilities.states());
+        boundedResources.values().stream().map(BoundedResource::state).forEach(states::add);
+        return List.copyOf(states);
+    }
+
+    public OptionalInt boundedResourceValue(String key) {
+        String normalized = normalizeResourceKey(key);
+        BoundedResource resource = normalized == null ? null : boundedResources.get(normalized);
+        return resource == null ? OptionalInt.empty() : OptionalInt.of(resource.current);
+    }
+
+    public boolean canTransactBoundedResources(
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        return validateBoundedResourceTransaction(
+            sourceKey, sourceAmount, targetKey, targetAmount) != null;
+    }
+
+    /** Consume and gain resource values atomically; no value changes on failure. */
+    public BoundedResourceTransaction transactBoundedResources(
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        ResourceTransactionValues values = validateBoundedResourceTransaction(
+            sourceKey, sourceAmount, targetKey, targetAmount);
+        if (values == null) return BoundedResourceTransaction.failed();
+
+        if (values.source != null) values.source.current -= sourceAmount;
+        if (values.target != null) values.target.current += targetAmount;
+        List<CodedAbilityState> changed = new ArrayList<>();
+        if (values.source != null) changed.add(values.source.state());
+        if (values.target != null && values.target != values.source) {
+            changed.add(values.target.state());
+        }
+        return new BoundedResourceTransaction(true, List.copyOf(changed));
+    }
+
+    private record ResourceTransactionValues(BoundedResource source, BoundedResource target) { }
+
+    private ResourceTransactionValues validateBoundedResourceTransaction(
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        if (sourceAmount < 0 || targetAmount < 0
+            || (long) sourceAmount + targetAmount == 0L) return null;
+        BoundedResource source = sourceAmount == 0
+            ? null : boundedResources.get(normalizeResourceKey(sourceKey));
+        BoundedResource target = targetAmount == 0
+            ? null : boundedResources.get(normalizeResourceKey(targetKey));
+        if ((sourceAmount > 0 && source == null) || (targetAmount > 0 && target == null)) return null;
+        if (source != null && source.current < sourceAmount) return null;
+        if (source == target) {
+            long finalValue = (long) source.current - sourceAmount + targetAmount;
+            return finalValue >= 0L && finalValue <= source.maximum
+                ? new ResourceTransactionValues(source, target) : null;
+        }
+        if (target != null && (long) target.current + targetAmount > target.maximum) return null;
+        return new ResourceTransactionValues(source, target);
+    }
+
+    private static String normalizeResourceKey(String key) {
+        return key == null || key.isBlank() ? null : key.trim().toUpperCase(Locale.ROOT);
+    }
 
     /**
      * Compute this combatant's current defense value (dynamic — depends on current CE).

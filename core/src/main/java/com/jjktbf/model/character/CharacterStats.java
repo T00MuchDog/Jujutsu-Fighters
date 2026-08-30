@@ -128,6 +128,13 @@ public class CharacterStats {
     public int getCombatAbility()          { return combatAbility; }
     public int getCursedTechniqueMastery() { return cursedTechniqueMastery; }
 
+    /** Sum of all ten authored base stats. */
+    public int baseStatTotal() {
+        return vitality + strength + durability + speed
+            + cursedEnergyReserves + cursedEnergyEfficiency + cursedEnergyOutput
+            + jujutsuSkill + combatAbility + cursedTechniqueMastery;
+    }
+
     /**
      * Returns a copy with a temporary cursed-energy-output adjustment. This uses
      * the unclamped constructor so battle-only effects do not alter other stats.

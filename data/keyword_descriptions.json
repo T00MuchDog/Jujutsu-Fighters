@@ -28,6 +28,10 @@
     "description": "Offensive actions marked with the Attack move tag."
   },
   {
+    "term": "AOE",
+    "description": "An area-of-effect move that resolves against multiple combatants."
+  },
+  {
     "term": "AVAILABLE",
     "description": "Content that can be learned or assigned but is not active yet."
   },
@@ -48,8 +52,20 @@
     "description": "A defensive window that reduces matching attacks when its Potency is high enough."
   },
   {
+    "term": "BST",
+    "description": "Base Stat Total, the sum of all ten raw authored character stats before scaling or ability modifiers."
+  },
+  {
     "term": "CE",
     "description": "Cursed Energy, the resource spent by CE-bearing moves."
+  },
+  {
+    "term": "CE COSTS",
+    "description": "The Cursed Energy spent when moves begin, after scaling, bounds, and ability modifiers."
+  },
+  {
+    "term": "CE REGENERATION",
+    "description": "The fractional Cursed Energy restored automatically per resolution tick."
   },
   {
     "term": "CURSED ENERGY",
@@ -57,11 +73,27 @@
   },
   {
     "term": "CURSED SPEECH",
-    "description": "An innate technique that compels listeners with spoken commands, with success scaling from Cursed Technique Mastery and recoil borne by the user."
+    "description": "An innate technique that compels listeners with spoken commands, resisted using current CE and with recoil borne by the user."
+  },
+  {
+    "term": "CURSED SPEECH WARD",
+    "description": "A self-status gained by covering the ears in cursed energy. While active, incoming CURSED SPEECH commands automatically fail against the holder."
   },
   {
     "term": "CURSED_ENERGY",
     "description": "A move tag for raw cursed-energy actions governed by CE Output, Reserves, and Efficiency."
+  },
+  {
+    "term": "CURSED SPIRIT",
+    "description": "A cursed-being character class with automatic physiology and exorcism rules."
+  },
+  {
+    "term": "CURSED TOOLS",
+    "description": "Named cursed weapons whose matching attacks can exorcise cursed spirits."
+  },
+  {
+    "term": "DAMAGE TAKEN",
+    "description": "A battle-stat multiplier applied to incoming damage."
   },
   {
     "term": "DEFENSE",
@@ -74,6 +106,10 @@
   {
     "term": "DODGE",
     "description": "A chance-based defensive window that avoids matching attacks entirely."
+  },
+  {
+    "term": "EXORCISE",
+    "description": "Defeat a cursed spirit with cursed power rather than leaving it at 1 HP after fatal ordinary physical damage."
   },
   {
     "term": "GUARD BREAK",
@@ -108,12 +144,20 @@
     "description": "A move tag marking a close-range attack."
   },
   {
+    "term": "MAX CE",
+    "description": "The maximum Cursed Energy a combatant can hold."
+  },
+  {
+    "term": "MAX HP",
+    "description": "The maximum Health Points a combatant can hold."
+  },
+  {
     "term": "MIRACLE",
     "description": "A stored Miracles resource that can avert fatal damage."
   },
   {
     "term": "MIRACLES",
-    "description": "An innate technique whose stored Miracles capacity increases from five to eight with Cursed Technique Mastery."
+    "description": "An innate technique that stores Miracles up to its capacity."
   },
   {
     "term": "NON-INNATE TECHNIQUE",
@@ -149,7 +193,7 @@
   },
   {
     "term": "RATIO STACK",
-    "description": "A stored Ratio mark consumed by the next connected attack for a CTM-scaled 68%-80% chance to trigger Ratio."
+    "description": "A stored Ratio mark consumed by the next connected attack for a chance to trigger Ratio."
   },
   {
     "term": "REINFORCEMENT",
@@ -160,8 +204,16 @@
     "description": "Damage suffered by a Cursed Speech user after attempting a command."
   },
   {
+    "term": "RESTRAINED",
+    "description": "A status that halves Speed. At each tick, the target can break free based on Strength; otherwise, it has a 5% chance to have its current action Stunned."
+  },
+  {
     "term": "ROUND",
     "description": "One complete planning and resolution cycle."
+  },
+  {
+    "term": "ROUND START",
+    "description": "The trigger processed before a round's planning phase begins."
   },
   {
     "term": "ROUNDS",
@@ -174,6 +226,10 @@
   {
     "term": "STUN",
     "description": "An immediate effect that cancels the target's active non-Heavy action segment."
+  },
+  {
+    "term": "TICK",
+    "description": "One resolution step on the AP timeline."
   },
   {
     "term": "KATANA",
@@ -369,7 +425,7 @@
   },
   {
     "term": "Simple Domain",
-    "description": "A New Shadow Style stance that intercepts the next Melee or Ranged attack."
+    "description": "A non-innate barrier technique that opens a Simple Domain, nullifying the next hostile technique contact."
   },
   {
     "term": "Sidestep",
@@ -389,7 +445,7 @@
   },
   {
     "term": "Miracle Reservoir",
-    "description": "A Miracles ability that starts with up to six Miracles and scales maximum capacity from five to eight with CTM."
+    "description": "A Miracles ability that starts with Miracles and stores them up to its capacity."
   },
   {
     "term": "Fateful Reprieve",
@@ -401,11 +457,15 @@
   },
   {
     "term": "Ratio Reinforcement",
-    "description": "A Ratio ability that scales stack capacity and gives reinforcement hits a CTM-scaled chance to find the 7:3 point."
+    "description": "A Ratio ability that sets stack capacity and gives reinforcement hits a chance to find the 7:3 point."
   },
   {
     "term": "New Shadow Style",
-    "description": "A learned school that grants access to Batto Sword Drawing and Simple Domain."
+    "description": "A learned school that grants access to Batto Sword Drawing and New Shadow Style Simple Domain."
+  },
+  {
+    "term": "New Shadow Style Simple Domain",
+    "description": "A New Shadow Style stance that automatically parries the next attack at Potency 1, then answers a Melee parry with Sword Quick Draw."
   },
   {
     "term": "Simple Domain Binding Vow",
@@ -417,7 +477,7 @@
   },
   {
     "term": "POISON",
-    "description": "A round-duration status template whose magnitude represents damage per round."
+    "description": "A status that multiplies all base stats by 0.8 and deals 0.06% max-HP damage each active tick."
   },
   {
     "term": "RCT",
@@ -450,5 +510,13 @@
   {
     "term": "Visualise the Soul",
     "description": "A character ability that marks physical melee attacks as soul-aware."
+  },
+  {
+    "term": "CURSED ENERGY PARASITE",
+    "description": "A cleanseable one-round status. When its holder voluntarily pays CE for a move, it deals 2% max HP for 1-19 CE, 4% for 20-39 CE, or 6% for 40 or more CE. Reapplication refreshes rather than stacks."
+  },
+  {
+    "term": "FLOWER OFFERING",
+    "description": "Hanami's stored life-force resource. It holds up to three charges, and the Life-Force Beam consumes every charge at move start for 60 Base Power per charge."
   }
 ]

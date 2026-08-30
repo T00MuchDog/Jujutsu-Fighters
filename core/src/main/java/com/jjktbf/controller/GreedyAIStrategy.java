@@ -60,7 +60,7 @@ public class GreedyAIStrategy implements AIStrategy {
         // fighter's AP tier; the AI must use the same length as the human's plan.
         int gridLength = Timeline.gridLengthForStrongestAp(
             Math.max(ai.getMaxApBar(), opponent.getMaxApBar()));
-        BattlePlan plan = new BattlePlan(ai.getMaxApBar(), ai.getCurrentCe(), gridLength);
+        BattlePlan plan = BattlePlan.forCombatant(ai, gridLength);
         List<Move> knownMoves = ai.getCharacter().getKnownMoves();
 
         // Moves that failed placement this round — never retried (see class doc).
@@ -191,7 +191,7 @@ public class GreedyAIStrategy implements AIStrategy {
         ActionSegment anchor = offense.get(rng.nextInt(offense.size()));
         int targetFireTick = anchor.getFireTick();
         // startTick so that startTick + unleashPoint - 1 == targetFireTick.
-        int start = Math.max(1, targetFireTick - move.getUnleashPoint() + 1);
+        int start = Math.max(1, targetFireTick - plan.effectiveUnleashPoint(move) + 1);
         ActionSegment segment = plan.place(move, start, ceCost);
         return segment != null;
     }

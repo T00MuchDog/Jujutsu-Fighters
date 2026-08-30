@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -35,12 +36,16 @@ class TechniqueMasteryRuntimeTest {
 
     @Test
     void genericEffectsAndEveryConditionNumberUseIntegerAuthoredUnits() {
-        AbilityEffectData percent = AbilityEffectType.HEAL_HP_PERCENT.createDefault();
+        AbilityEffectData percent = AbilityEffectType.HEAL_HP.createDefault();
+        percent.valueMode = AbilityEffectType.ValueMode.PERCENT.name();
+        AbilityEffectType.HEAL_HP.prepare(percent);
         percent.masteryProgression = Map.of(
             TechniqueMasteryProgressions.DOUBLE_VALUE, formula("ctm / 2"));
         assertEquals(0.4, TechniqueMasteryResolver.resolve(percent, 80).doubleValue);
 
-        AbilityEffectData decimalPoints = AbilityEffectType.BATTLE_STAT_ADD.createDefault();
+        AbilityEffectData decimalPoints = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        decimalPoints.statType = AbilityEffectType.StatType.BATTLE.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(decimalPoints);
         decimalPoints.masteryProgression = Map.of(
             TechniqueMasteryProgressions.DOUBLE_VALUE, formula("ctm / 10"));
         assertEquals(8.0, TechniqueMasteryResolver.resolve(decimalPoints, 80).doubleValue);
@@ -99,6 +104,22 @@ class TechniqueMasteryRuntimeTest {
             TechniqueMasteryProgressions.INT_VALUE, formula("ctm"));
         ability.effects = List.of(effect);
         assertThrows(IllegalArgumentException.class, () -> new Ability(ability));
+    }
+
+    @Test
+    void moveSourcedAbilitiesCanScaleWithTechniqueMastery() {
+        AbilityData ability = new AbilityData();
+        ability.id = "MOVE_ABILITY";
+        ability.name = "Move Ability";
+        ability.category = "PASSIVE";
+        ability.sourceType = "MOVE";
+        ability.sourceValue = "TECHNIQUE_MOVE";
+        AbilityEffectData effect = AbilityEffectType.DEFINE_BOUNDED_RESOURCE.createDefault();
+        effect.masteryProgression = Map.of(
+            TechniqueMasteryProgressions.RESOURCE_CAPACITY, formula("1 + ctm / 50"));
+        ability.effects = List.of(effect);
+
+        assertDoesNotThrow(() -> new Ability(ability));
     }
 
     @Test

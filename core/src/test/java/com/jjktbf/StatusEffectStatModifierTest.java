@@ -78,7 +78,9 @@ class StatusEffectStatModifierTest {
     @Test
     void baseStatusAdditionsApplyBeforeRuntimeMultipliers() {
         BattleCombatant combatant = combatant();
-        AbilityEffectData multiplier = AbilityEffectType.TEMP_STAT_MULTIPLY.createDefault();
+        AbilityEffectData multiplier = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        multiplier.statOperation = AbilityEffectType.StatOperation.MULTIPLY.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(multiplier);
         multiplier.stat = StatKey.STRENGTH.fieldName;
         multiplier.doubleValue = 2.0;
         combatant.addRuntimeAbilityEffect(multiplier);
@@ -206,7 +208,9 @@ class StatusEffectStatModifierTest {
         BattleCombatant combatant = combatant();
         int baseMaxHp = combatant.getMaxHp();
 
-        AbilityEffectData maxHpIncrease = AbilityEffectType.BATTLE_STAT_ADD.createDefault();
+        AbilityEffectData maxHpIncrease = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        maxHpIncrease.statType = AbilityEffectType.StatType.BATTLE.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(maxHpIncrease);
         maxHpIncrease.stringValue = BattleStatKey.MAX_HP.name();
         maxHpIncrease.doubleValue = 50.0;
         maxHpIncrease.durationRounds = 1;
@@ -355,6 +359,7 @@ class StatusEffectStatModifierTest {
 
     private static long effectsFor(StatKey stat, boolean increase) {
         return List.of(StatusEffectType.values()).stream()
+            .filter(StatusEffectType::isStatModifier)
             .filter(type -> type.baseStat() == stat)
             .filter(type -> (type.signedMagnitude(1.0) > 0) == increase)
             .count();
@@ -362,6 +367,7 @@ class StatusEffectStatModifierTest {
 
     private static long effectsFor(BattleStatKey stat, boolean increase) {
         return List.of(StatusEffectType.values()).stream()
+            .filter(StatusEffectType::isStatModifier)
             .filter(type -> type.battleStat() == stat)
             .filter(type -> (type.signedMagnitude(1.0) > 0) == increase)
             .count();

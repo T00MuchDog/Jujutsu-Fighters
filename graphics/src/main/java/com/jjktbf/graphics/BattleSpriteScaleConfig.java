@@ -52,8 +52,17 @@ public final class BattleSpriteScaleConfig {
             "assets/sprites/shikigami/ToadNueFusion_frontsprite.png",
             Scale.X_0_8),
         Map.entry(
+            "assets/sprites/characters/pandaGorilla_frontsprite.png",
+            Scale.X_1_5),
+        Map.entry(
             "assets/sprites/characters/pandaGorilla_backsprite.png",
-            Scale.X_1_5)
+            Scale.X_1_5),
+        Map.entry(
+            "assets/sprites/characters/hanami_frontsprite.png",
+            Scale.X_1_2),
+        Map.entry(
+            "assets/sprites/characters/aoiTodo_frontsprite.png",
+            Scale.X_1_2)
     );
 
     private BattleSpriteScaleConfig() {}

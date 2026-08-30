@@ -8,6 +8,8 @@ import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.BlockStyle;
+import com.jjktbf.model.move.BlockAttackType;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveEffectData;
@@ -121,7 +123,36 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void saveCopyKeepsLegacyAttacksUnmigrated() {
+    void componentlessAttackHybridKeepsAuthoredMoveLevelTypeTags() {
+        // A defence hybrid whose hit is a launched counter-move carries no hit
+        // components of its own; its type tags describe the move itself, not
+        // the launched hit, and must survive tag edits and saves.
+        MoveData draft = new MoveData();
+        draft.id = "DELEGATED_COUNTER";
+        draft.tags = new ArrayList<>(List.of(
+            MoveTag.ATTACK.name(), MoveTag.DEFENSIVE.name(), MoveTag.UTILITY.name(),
+            MoveTag.CURSED_ENERGY.name(), MoveTag.NON_INNATE_TECHNIQUE.name()));
+        draft.hitComponents = new ArrayList<>();
+        draft.apCost = 5;
+        draft.unleashPoint = 1;
+
+        // Tag-picker callback path: the picked set lands on the draft, then
+        // the component sync runs.
+        draft.tags.add(MoveTag.PHYSICAL.name());
+        MoveEditorScreen.applyMoveDamageTagsToComponents(
+            draft, Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY));
+
+        assertTrue(draft.tags.contains(MoveTag.PHYSICAL.name()));
+        assertTrue(draft.tags.contains(MoveTag.NON_INNATE_TECHNIQUE.name()));
+        assertTrue(draft.tags.contains(MoveTag.CURSED_ENERGY.name()));
+
+        MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
+        assertTrue(saved.tags.contains(MoveTag.NON_INNATE_TECHNIQUE.name()));
+        assertTrue(saved.tags.contains(MoveTag.CURSED_ENERGY.name()));
+    }
+
+    @Test
+    void saveCopyMigratesLegacySingleHitAttacks() {
         MoveData draft = new MoveData();
         draft.tags = new ArrayList<>(List.of(
             MoveTag.ATTACK.name(), MoveTag.PHYSICAL.name()));
@@ -131,7 +162,9 @@ class MoveEditorScreenTest {
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
 
         assertEquals(45, saved.basePower);
-        assertNull(saved.hitComponents);
+        assertEquals(1, saved.hitComponents.size());
+        assertEquals(45, saved.hitComponents.get(0).basePower);
+        assertEquals(List.of(MoveTag.PHYSICAL.name()), saved.hitComponents.get(0).tags);
     }
 
     @Test
@@ -185,7 +218,8 @@ class MoveEditorScreenTest {
         assertEquals(75, saved.basePower);
         assertEquals(0.8, saved.baseAccuracy);
         assertTrue(saved.neverMiss);
-        assertEquals(1, saved.onHitEffects.size());
+        assertNull(saved.onHitEffects);
+        assertEquals(1, saved.hitComponents.get(0).onHitEffects.size());
     }
 
     @Test
@@ -203,7 +237,8 @@ class MoveEditorScreenTest {
         assertEquals(DefenseType.BLOCK.name(), saved.defenseType);
         assertEquals(BlockStyle.FLAT.name(), saved.blockStyle);
         assertEquals(4, saved.blockDuration);
-        assertEquals(List.of(MoveTag.PHYSICAL.name()), saved.blockAffectedTags);
+        assertEquals(List.of(BlockAttackType.PHYSICAL.name()), saved.blockAttackTypes);
+        assertNull(saved.blockAffectedTags);
         assertEquals(20, saved.blockFlatReduction);
         assertEquals(1, saved.selfEffects.size());
 
@@ -226,9 +261,13 @@ class MoveEditorScreenTest {
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
 
         assertEquals(1, saved.moveCap);
+        assertEquals(List.of(
+            BlockAttackType.PHYSICAL.name(),
+            BlockAttackType.PHYSICAL_CURSED_ENERGY.name(),
+            BlockAttackType.CURSED_ENERGY.name()), saved.blockAttackTypes);
+        assertNull(saved.blockAffectedTags);
         assertEquals(List.of(MoveTag.PHYSICAL.name(), MoveTag.CURSED_ENERGY.name()),
-            saved.blockAffectedTags);
-        assertNotSame(draft.blockAffectedTags, saved.blockAffectedTags);
+            draft.blockAffectedTags);
     }
 
     @Test
@@ -288,6 +327,17 @@ class MoveEditorScreenTest {
 
         assertEquals("SELF", savedAttack.defenseTargeting);
         assertEquals(2, savedAttack.defenseTargetCount);
+    }
+
+    @Test
+    void saveCopyPreservesGenericTargeting() {
+        MoveData draft = new MoveData();
+        draft.tags = new ArrayList<>(List.of(MoveTag.UTILITY.name()));
+        draft.targeting = Targeting.ALLY_AND_ENEMY.name();
+
+        MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
+
+        assertEquals("ALLY_AND_ENEMY", saved.targeting);
     }
 
     @Test
@@ -351,7 +401,8 @@ class MoveEditorScreenTest {
         assertEquals(1, saved.selfEffects.size());
 
         assertEquals(75, saved.basePower);
-        assertEquals(1, saved.onHitEffects.size());
+        assertNull(saved.onHitEffects);
+        assertEquals(1, saved.hitComponents.get(0).onHitEffects.size());
     }
 
     @Test
@@ -437,12 +488,13 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void aoeAndFriendlyFireAreAttackTargetingTags() {
+    void aoeAppliesToEveryCategoryAndFriendlyFireRequiresAoe() {
+        // AOE fans out any move category's enemy rows — a utility move like a
+        // multi-target debuff authors it without the ATTACK tag.
         MoveData utility = new MoveData();
         utility.tags = new ArrayList<>(List.of(
             MoveTag.UTILITY.name(), MoveTag.AOE.name()));
-        assertEquals("Melee, Ranged, AOE, and Friendly Fire tags require Attack.",
-            MoveEditorScreen.categoryTagValidationError(utility));
+        assertNull(MoveEditorScreen.categoryTagValidationError(utility));
 
         MoveData attack = new MoveData();
         attack.tags = new ArrayList<>(List.of(
@@ -594,7 +646,6 @@ class MoveEditorScreenTest {
         MoveData.StatusEffectData coded = new MoveData.StatusEffectData();
         coded.codedAbilityKey = "NEW_SHADOW_STYLE";
         coded.codedAction = "ACTIVATE_SIMPLE_DOMAIN";
-        coded.codedTarget = "000027";
         defense.selfEffects = new ArrayList<>(List.of(coded));
 
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(defense);
@@ -613,7 +664,8 @@ class MoveEditorScreenTest {
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(move);
 
         assertEquals("SHIKIGAMI", MoveEditorScreen.moveRecordGroup(move));
-        assertTrue(Boolean.TRUE.equals(saved.shikigamiMove));
+        assertEquals(List.of(MoveType.SHIKIGAMI.name()), saved.moveTypes);
+        assertNull(saved.shikigamiMove);
 
         move.shikigamiMove = null;
         assertEquals("SORCERER", MoveEditorScreen.moveRecordGroup(move));
@@ -623,26 +675,108 @@ class MoveEditorScreenTest {
     void canonicalMoveTypesControlEditorGroupingAndSurviveSaveCopy() {
         MoveData move = new MoveData();
         move.tags = new ArrayList<>(List.of(MoveTag.UTILITY.name()));
-        move.moveType = MoveType.CURSED_SPIRIT.name();
+        move.moveTypes = new ArrayList<>(List.of(
+            MoveType.CURSED_SPIRIT.name(), MoveType.SHIKIGAMI.name()));
 
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(move);
 
         assertEquals("CURSED SPIRIT", MoveEditorScreen.moveRecordGroup(move));
-        assertEquals(MoveType.CURSED_SPIRIT.name(), saved.moveType);
+        assertEquals(List.of("CURSED SPIRIT", "SHIKIGAMI"),
+            MoveEditorScreen.moveRecordGroups(move));
+        assertEquals(List.of(
+            MoveType.CURSED_SPIRIT.name(), MoveType.SHIKIGAMI.name()), saved.moveTypes);
+        assertNull(saved.moveType);
 
-        move.moveType = MoveType.SHIKIGAMI.name();
+        move.moveTypes = new ArrayList<>(List.of(MoveType.SHIKIGAMI.name()));
         assertEquals("SHIKIGAMI", MoveEditorScreen.moveRecordGroup(move));
     }
 
     @Test
-    void cursedTechniqueMovesAreGroupedByTechniqueUnlessTheyBelongToShikigami() {
+    void moveTypeSelectionSupportsMultipleTypesButNotZeroTypes() {
+        MoveData move = new MoveData();
+
+        assertTrue(MoveEditorScreen.setMoveTypeSelected(
+            move, MoveType.CURSED_SPIRIT, true));
+        assertEquals(java.util.Set.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT),
+            move.effectiveMoveTypes());
+        assertTrue(MoveEditorScreen.setMoveTypeSelected(move, MoveType.SORCERER, false));
+        assertFalse(MoveEditorScreen.setMoveTypeSelected(
+            move, MoveType.CURSED_SPIRIT, false));
+        assertEquals(java.util.Set.of(MoveType.CURSED_SPIRIT), move.effectiveMoveTypes());
+    }
+
+    @Test
+    void sorcererAndCursedSpiritMoveAppearsInBothRecordGroups() {
+        MoveData taunt = new MoveData();
+        taunt.name = "Taunt";
+        taunt.moveTypes = List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name());
+
+        assertEquals(List.of("SORCERER", "CURSED SPIRIT"),
+            MoveEditorScreen.moveRecordGroups(taunt));
+    }
+
+    @Test
+    void cursedTechniqueMovesAreAlwaysGroupedByTechnique() {
         MoveData move = new MoveData();
         move.requiredTechniqueId = "Ratio";
 
         assertEquals("CURSED TECHNIQUES/Ratio", MoveEditorScreen.moveRecordGroup(move));
 
+        // Stale class fields on a technique move are ignored: the move files
+        // under its technique alone, whatever class it was authored with.
         move.shikigamiMove = true;
-        assertEquals("SHIKIGAMI", MoveEditorScreen.moveRecordGroup(move));
+        assertEquals("CURSED TECHNIQUES/Ratio", MoveEditorScreen.moveRecordGroup(move));
+
+        move.shikigamiMove = null;
+        move.moveTypes = List.of(MoveType.SORCERER.name(), MoveType.SHIKIGAMI.name());
+        assertEquals(List.of("CURSED TECHNIQUES/Ratio"),
+            MoveEditorScreen.moveRecordGroups(move));
+    }
+
+    @Test
+    void techniqueMoveDraftsCarryNoCharacterClass() {
+        MoveData move = new MoveData();
+        move.tags = new ArrayList<>(List.of(MoveTag.UTILITY.name()));
+        move.moveTypes = new ArrayList<>(List.of(MoveType.SORCERER.name()));
+        MoveEditorScreen.applyRequiredTechnique(move, "Disaster Plants");
+
+        assertTrue(move.isTechniqueMove());
+        assertNull(move.moveTypes);
+        assertTrue(move.effectiveMoveTypes().isEmpty());
+        assertFalse(MoveEditorScreen.setMoveTypeSelected(move, MoveType.CURSED_SPIRIT, true));
+
+        MoveData saved = MoveEditorScreen.normalizedCopyForSave(move);
+        assertNull(saved.moveTypes);
+        assertNull(saved.moveType);
+        assertNull(saved.shikigamiMove);
+
+        // Clearing the technique gives the move back a default class so it
+        // stays learnable by matching characters.
+        MoveEditorScreen.applyRequiredTechnique(move, "  ");
+        assertNull(move.requiredTechniqueId);
+        assertFalse(move.isTechniqueMove());
+        assertEquals(List.of(MoveType.SORCERER.name()), move.moveTypes);
+    }
+
+    @Test
+    void cursedSpiritTechniqueMovesAreGroupedByTechnique() {
+        MoveData move = new MoveData();
+        move.moveTypes = List.of(MoveType.CURSED_SPIRIT.name());
+        move.requiredTechniqueId = "Disaster Plants";
+
+        assertEquals(List.of("CURSED TECHNIQUES/Disaster Plants"),
+            MoveEditorScreen.moveRecordGroups(move));
+
+        move.requiredTechniqueId = null;
+        assertEquals(List.of("CURSED SPIRIT"),
+            MoveEditorScreen.moveRecordGroups(move));
+
+        move.requiredTechniqueId = "Disaster Plants";
+        move.moveTypes = List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name());
+        assertEquals(List.of("CURSED TECHNIQUES/Disaster Plants"),
+            MoveEditorScreen.moveRecordGroups(move));
     }
 
     @Test
@@ -699,18 +833,14 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void moveResequencingRemapsCodedReactionMoveReferences() {
+    void moveResequencingRemapsAttackLaunchMoveReferences() {
         MoveData domain = new MoveData();
-        MoveData.StatusEffectData reaction = new MoveData.StatusEffectData();
-        reaction.codedAbilityKey = "NEW_SHADOW_STYLE";
-        reaction.codedAction = "ACTIVATE_SIMPLE_DOMAIN";
-        reaction.codedTarget = "000027";
-        domain.selfEffects = new ArrayList<>(List.of(reaction));
+        domain.attackLaunchMoveId = "000027";
 
-        MoveEditorScreen.remapCodedMoveTargets(
+        MoveEditorScreen.remapAttackLaunchMoveTargets(
             List.of(domain), Map.of("000027", "000026"));
 
-        assertEquals("000026", reaction.codedTarget);
+        assertEquals("000026", domain.attackLaunchMoveId);
     }
 
     @Test
@@ -751,7 +881,7 @@ class MoveEditorScreenTest {
         effect.condition = AbilityConditionData.all(List.of(used));
         move.effects = new ArrayList<>(List.of(effect));
 
-        MoveEditorScreen.remapCodedMoveTargets(
+        MoveEditorScreen.remapMoveEffectConditions(
             List.of(move), Map.of("000027", "000026"));
 
         assertEquals("000026", effect.condition.children.get(0).moveId);
@@ -776,6 +906,24 @@ class MoveEditorScreenTest {
         dodge.defenseType = DefenseType.BLOCK.name();
         MoveData savedBlock = MoveEditorScreen.normalizedCopyForSave(dodge);
         assertEquals(0, savedBlock.getNeverHitTier());
+    }
+
+    @Test
+    void resourceEffectsAppearOnlyOnSupportedMoveTriggers() {
+        assertEquals(List.of(
+                AbilityEffectType.TRANSACT_BOUNDED_RESOURCE,
+                AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER),
+            MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_START));
+        assertTrue(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_FIRE)
+            .contains(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_FIRE)
+            .contains(AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_HIT)
+            .contains(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_HIT)
+            .contains(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY));
+        assertEquals(List.of(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY),
+            MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.BLOCK_CALCULATION));
     }
 
     private static MoveData moveWithAllSectionDetails() {

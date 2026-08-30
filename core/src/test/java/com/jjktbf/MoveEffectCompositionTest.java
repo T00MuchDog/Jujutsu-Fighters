@@ -9,6 +9,7 @@ import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.SorcererCharacter;
+import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.RatioAbility;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.AbilityActivationEngine;
@@ -80,6 +81,8 @@ class MoveEffectCompositionTest {
         coded.codedAbilityKey = "NEW_SHADOW_STYLE";
         coded.codedAction = "ACTIVATE_SIMPLE_DOMAIN";
         coded.codedTarget = "000027";
+        CodedAbilityRegistry.prepareMoveEffect(coded);
+        assertNull(coded.codedTarget);
         coded.target = AbilityEffectTarget.SELF.name();
         coded.trigger = MoveEffectTrigger.ON_FIRE.name();
         simpleDomain.effects = new java.util.ArrayList<>(List.of(coded));

@@ -31,7 +31,8 @@ import java.util.Set;
  *
  * Technique restriction:
  *  - If requiredTechniqueId is non-null, only characters who possess that specific
- *    innate technique can learn or use this move.
+ *    innate technique can learn or use this move. Technique moves carry no
+ *    character class: any class may learn them while they possess the technique.
  */
 public class Move {
 
@@ -45,8 +46,12 @@ public class Move {
     /** Display name. */
     private final String name;
 
-    /** Character class of move used by learning eligibility. */
-    private final MoveType moveType;
+    /**
+     * Character classes of move used by learning eligibility. Empty for
+     * technique moves: they are class-agnostic and learnable by any character
+     * that possesses the technique.
+     */
+    private final Set<MoveType> moveTypes;
 
     /** Flavour description shown to the player. */
     private final String description;
@@ -80,13 +85,6 @@ public class Move {
 
     /** Legacy compatibility flag. Canonical Never Miss tiers live in {@link #effects}. */
     private final boolean neverMiss;
-
-    /**
-     * If true, a successful hit ignores the defender's blocking defensive moves
-     * ({@link DefenseType#BLOCK}). Dodges and parries are unaffected; only blocks
-     * are bypassed. Backs the GUARD_BREAK move tag; not derived from {@link #category}.
-     */
-    private final boolean guardBreak;
 
     /**
      * Move potency tier (1–5). For attack moves, gates which defensive moves can
@@ -141,14 +139,14 @@ public class Move {
      */
     private final int blockDuration;
 
-    /**
-     * The full set of damage tags this block or parry can stop (null/empty = all).
-     * The defense fires against an incoming attack iff it COVERS every damage tag the
-     * attack uses — i.e. the attack's category tags are a subset of this list.
-     * See {@link #coveredByBlockTags(List)}. Applies to {@link DefenseType#BLOCK}
-     * and {@link DefenseType#PARRY}.
-     */
-    private final List<String> blockAffectedTags;
+    /** Exact attack categories this block or parry accepts. Empty means all three. */
+    private final Set<BlockAttackType> blockAttackTypes;
+
+    /** Accepted MELEE/RANGED hit tags. Empty means every range, including untagged hits. */
+    private final Set<MoveTag> blockRanges;
+
+    /** Blockable elements. Every elemental tag on a hit must be present; empty means all. */
+    private final Set<MoveTag> blockElementalTags;
 
     /** Percentage of damage reduced (0-100). 100 = full block. Used by {@link BlockStyle#PERCENTAGE}. */
     private final int blockDamageReduction;
@@ -200,6 +198,9 @@ public class Move {
      * least 2 when used.
      */
     private final int defenseTargetCount;
+
+    /** Ordered explicit endpoint shape for moves that act on a combatant pair. */
+    private final Targeting targeting;
 
     // On-hit status effects live per {@link HitComponent} (applied when that
     // specific component connects). There is no move-level onHitEffects field.
@@ -317,7 +318,12 @@ public class Move {
     private Move(Builder b) {
         this.id                  = b.id;
         this.name                = b.name;
-        this.moveType            = b.moveType;
+        // Technique moves carry no character class regardless of what was
+        // authored alongside the technique requirement.
+        this.moveTypes           = java.util.Collections.unmodifiableSet(
+            b.requiredTechniqueId == null
+                ? EnumSet.copyOf(b.moveTypes)
+                : EnumSet.noneOf(MoveType.class));
         this.description         = b.description;
         this.category            = b.category;
         this.tags                = immutableTags(b.tags, b.category);
@@ -326,7 +332,6 @@ public class Move {
         this.totalBasePower      = totalBasePower(hitComponents);
         this.baseAccuracy        = b.baseAccuracy;
         this.neverMiss           = b.neverMiss;
-        this.guardBreak          = b.guardBreak;
         this.heavy               = b.heavy;
         this.potency             = b.potency;
         this.apCost              = b.apCost;
@@ -338,8 +343,10 @@ public class Move {
         this.defenseType          = b.defenseType;
         this.blockStyle           = b.blockStyle != null ? b.blockStyle : BlockStyle.PERCENTAGE;
         this.blockDuration        = b.blockDuration;
-        this.blockAffectedTags    = b.blockAffectedTags != null
-            ? Collections.unmodifiableList(b.blockAffectedTags) : null;
+        this.blockAttackTypes     = immutableBlockAttackTypes(b.blockAttackTypes);
+        this.blockRanges          = immutableBlockTags(b.blockRanges, MoveTag.RANGE_TAGS);
+        this.blockElementalTags   = immutableBlockTags(
+            b.blockElementalTags, MoveTag.ELEMENTAL_TAGS);
         this.blockDamageReduction = b.blockDamageReduction;
         this.blockFlatReduction   = b.blockFlatReduction;
         this.dodgeChance          = b.dodgeChance;
@@ -349,6 +356,8 @@ public class Move {
         this.defenseUses          = b.defenseUses;
         this.defenseTargeting     = resolveDefenseTargeting(b);
         this.defenseTargetCount   = b.defenseTargetCount;
+        this.targeting        = b.targeting != null
+            ? b.targeting : Targeting.DEFAULT;
         this.selfEffects         = Collections.unmodifiableList(b.selfEffects);
         this.onBlockEffects      = Collections.unmodifiableList(b.onBlockEffects);
         this.onParryEffects      = Collections.unmodifiableList(b.onParryEffects);
@@ -381,6 +390,23 @@ public class Move {
         EnumSet<MoveTag> copy = EnumSet.noneOf(MoveTag.class);
         if (source != null) copy.addAll(source);
         else if (category != null) copy.addAll(category.getTags());
+        copy.removeAll(MoveTag.HIT_ONLY_TAGS);
+        return Collections.unmodifiableSet(copy);
+    }
+
+    private static Set<BlockAttackType> immutableBlockAttackTypes(
+        Set<BlockAttackType> source
+    ) {
+        if (source == null || source.isEmpty()) return Set.of();
+        return Collections.unmodifiableSet(EnumSet.copyOf(source));
+    }
+
+    private static Set<MoveTag> immutableBlockTags(Set<MoveTag> source, Set<MoveTag> allowed) {
+        if (source == null || source.isEmpty()) return Set.of();
+        EnumSet<MoveTag> copy = EnumSet.copyOf(source);
+        if (!allowed.containsAll(copy)) {
+            throw new IllegalArgumentException("Invalid block coverage tags: " + source);
+        }
         return Collections.unmodifiableSet(copy);
     }
 
@@ -413,7 +439,11 @@ public class Move {
 
     private static List<HitComponent> buildHitComponents(Builder builder) {
         if (builder.hitComponentsExplicit) {
-            return List.copyOf(builder.hitComponents);
+            Set<MoveTag> inherited = builder.legacyHitTags();
+            if (inherited.isEmpty()) return List.copyOf(builder.hitComponents);
+            return builder.hitComponents.stream()
+                .map(component -> withAdditionalTags(component, inherited))
+                .toList();
         }
         if (builder.category == MoveCategory.UTILITY) {
             return List.of();
@@ -424,15 +454,29 @@ public class Move {
             // damage-nature tags. A pure defence has no attack at all.
             if (!builder.synthesizesLegacyComponent()) return List.of();
             return List.of(new HitComponent(
-                builder.basePower, builder.legacyHybridDamageTags(), 0, false, true,
+                builder.basePower, builder.legacyComponentTags(
+                    builder.legacyHybridDamageTags()), 0, false, true,
                 builder.baseAccuracy, builder.onHitEffects));
         }
         // Legacy single-component path: seed the synthesized fallback component
         // with the builder-level on-hit effects and accuracy so existing
         // basePower-based authoring keeps working.
         return List.of(new HitComponent(
-            builder.basePower, builder.category.getTags(), 0, false, true,
+            builder.basePower, builder.legacyComponentTags(builder.category.getTags()),
+            0, false, true,
             builder.baseAccuracy, builder.onHitEffects));
+    }
+
+    private static HitComponent withAdditionalTags(
+        HitComponent component,
+        Set<MoveTag> additional
+    ) {
+        EnumSet<MoveTag> tags = EnumSet.copyOf(component.getTags());
+        tags.addAll(additional);
+        return new HitComponent(
+            component.getBasePower(), tags, component.getDelayTicks(),
+            component.requiresPreviousConnection(), component.isAvoidable(),
+            component.getBaseAccuracy(), component.getOnHitEffects());
     }
 
     private static int totalBasePower(List<HitComponent> components) {
@@ -450,7 +494,9 @@ public class Move {
 
     public String getId()                         { return id; }
     public String getName()                       { return name; }
-    public MoveType getMoveType()                 { return moveType; }
+    /** Primary type retained for callers that only need grouping or legacy behavior. */
+    public MoveType getMoveType()                 { return moveTypes.iterator().next(); }
+    public Set<MoveType> getMoveTypes()            { return moveTypes; }
     public String getDescription()                { return description; }
     public MoveCategory getCategory()             { return category; }
     public Set<MoveTag> getTags()                 { return tags; }
@@ -472,7 +518,10 @@ public class Move {
     public int getNeverHitTier(int mastery) {
         return accuracyPriorityTier(AbilityEffectType.NEVER_HIT, mastery);
     }
-    public boolean isGuardBreak()                 { return guardBreak; }
+    /** True when at least one hit component breaks guards. */
+    public boolean isGuardBreak()                 {
+        return hitComponents.stream().anyMatch(HitComponent::isGuardBreak);
+    }
     public boolean isHeavy()                      { return heavy; }
     public int getPotency()                       { return potency; }
     /**
@@ -495,7 +544,27 @@ public class Move {
     public DefenseType getDefenseType()           { return defenseType; }
     public BlockStyle getBlockStyle()             { return blockStyle; }
     public int getBlockDuration()                 { return blockDuration; }
-    public List<String> getBlockAffectedTags()    { return blockAffectedTags; }
+    public Set<BlockAttackType> getBlockAttackTypes() { return blockAttackTypes; }
+    public Set<MoveTag> getBlockRanges()          { return blockRanges; }
+    public Set<MoveTag> getBlockElementalTags()   { return blockElementalTags; }
+    /** Legacy mixed representation retained for source compatibility. */
+    @Deprecated
+    public List<String> getBlockAffectedTags() {
+        if (blockAttackTypes.isEmpty() && blockRanges.isEmpty()
+            && blockElementalTags.isEmpty()) return null;
+        java.util.LinkedHashSet<String> tags = new java.util.LinkedHashSet<>();
+        if (blockAttackTypes.contains(BlockAttackType.PHYSICAL)
+            || blockAttackTypes.contains(BlockAttackType.PHYSICAL_CURSED_ENERGY)) {
+            tags.add(MoveTag.PHYSICAL.name());
+        }
+        if (blockAttackTypes.contains(BlockAttackType.CURSED_ENERGY)
+            || blockAttackTypes.contains(BlockAttackType.PHYSICAL_CURSED_ENERGY)) {
+            tags.add(MoveTag.CURSED_ENERGY.name());
+        }
+        blockRanges.stream().map(MoveTag::name).forEach(tags::add);
+        blockElementalTags.stream().map(MoveTag::name).forEach(tags::add);
+        return List.copyOf(tags);
+    }
     public int getBlockDamageReduction()          { return blockDamageReduction; }
     public int getBlockFlatReduction()            { return blockFlatReduction; }
     public int getDodgeChance()                   { return dodgeChance; }
@@ -510,6 +579,8 @@ public class Move {
     public DefenseTargeting getDefenseTargeting() { return defenseTargeting; }
     /** Ally count for {@link DefenseTargeting#MULTIPLE_ALLIES}; ignored otherwise. */
     public int getDefenseTargetCount()            { return defenseTargetCount; }
+    /** Pair endpoint selection shape; {@link Targeting#DEFAULT} by default. */
+    public Targeting getTargeting() { return targeting; }
     /**
      * On-hit status effects aggregated across all hit components (in authored
      * order). On-hit effects live per {@link HitComponent}; this convenience
@@ -558,6 +629,8 @@ public class Move {
     }
     public java.util.Map<String, Integer> getPrerequisites() { return prerequisites; }
     public String getRequiredTechniqueId()        { return requiredTechniqueId; }
+    /** True when this move belongs to a cursed technique and carries no class. */
+    public boolean isTechniqueMove()              { return requiredTechniqueId != null; }
     public String getRequiredCursedToolId()       { return requiredCursedToolId; }
     public boolean isFreeMove()                    { return isFreeMove; }
     public boolean mustBeGranted()                 { return mustBeGranted; }
@@ -630,7 +703,10 @@ public class Move {
             return tags.contains(MoveTag.ATTACK)
                 || !hitComponents.isEmpty();
         }
-        if ("GUARD_BREAK".equals(normalized)) return guardBreak;
+        if ("GUARD_BREAK".equals(normalized)) return isGuardBreak();
+        if ("INTANGIBLE".equals(normalized)) return isIntangible();
+        if ("MELEE".equals(normalized)) return isMelee();
+        if ("RANGED".equals(normalized)) return isRanged();
         if ("HEAVY".equals(normalized)) return heavy;
         if ("CURSED_ENERGY".equals(normalized)) {
             return tags.contains(MoveTag.CURSED_ENERGY)
@@ -645,32 +721,29 @@ public class Move {
         }
         try {
             MoveTag tag = MoveTag.valueOf(normalized);
-            return tags.contains(tag) || category.getTags().contains(tag);
+            return tags.contains(tag) || category.getTags().contains(tag)
+                || MoveTag.HIT_ONLY_TAGS.contains(tag)
+                    && hitComponents.stream().anyMatch(component -> component.hasTag(tag));
         } catch (IllegalArgumentException e) {
             return false;
         }
     }
 
     /**
-     * Whether this move carries the {@link MoveTag#MELEE} range subcategory.
+     * Whether any hit carries the {@link MoveTag#MELEE} range subcategory.
      *
-     * <p>Range (melee/ranged) is a first-class, queryable property of a move —
-     * an attack subcategory orthogonal to {@link MoveCategory}. Defensive moves
-     * like deflections, abilities, and other systems query this to react to the
-     * incoming attack's range, exactly like they query the damage category. It
-     * is derived from the raw tag set (never stored as a redundant flag), so the
-     * tag set remains the single source of truth.
+     * <p>Range is authored per hit. This aggregate query supports planning, AI,
+     * and summaries that need to know whether the move has any melee hit.
      */
     public boolean isMelee() {
-        return tags.contains(MoveTag.MELEE);
+        return hitComponents.stream().anyMatch(HitComponent::isMelee);
     }
 
     /**
-     * Whether this move carries the {@link MoveTag#RANGED} range subcategory.
-     * See {@link #isMelee()} — RANGED is the complementary range subcategory.
+     * Whether any hit carries the {@link MoveTag#RANGED} range subcategory.
      */
     public boolean isRanged() {
-        return tags.contains(MoveTag.RANGED);
+        return hitComponents.stream().anyMatch(HitComponent::isRanged);
     }
 
     /**
@@ -695,11 +768,10 @@ public class Move {
     }
 
     /**
-     * Whether this move's attacks bypass parries and all block reduction.
-     * Intangible is represented only by its move tag.
+     * Whether at least one hit bypasses parries and all block reduction.
      */
     public boolean isIntangible() {
-        return tags.contains(MoveTag.INTANGIBLE);
+        return hitComponents.stream().anyMatch(HitComponent::isIntangible);
     }
 
     /**
@@ -726,84 +798,95 @@ public class Move {
                 || "BOTH".equalsIgnoreCase(effect.target));
     }
 
+    /** Whether this block or parry covers the first hit of an incoming move. */
+    public boolean blocksAttack(Move incoming) {
+        if (incoming == null || incoming.hitComponents.isEmpty()) return false;
+        return blocksAttack(incoming, incoming.hitComponents.get(0));
+    }
+
     /**
-     * Block-tag coverage check.
-     *
-     * <p>A block with {@code blockAffectedTags} fires against this incoming move
-     * iff it covers every dimension the attack actually uses. There are two
-     * orthogonal dimensions:
-     *
-     * <ul>
-     *   <li><b>Damage dimension</b> — enforced iff the block declares at least
-     *       one damage-nature tag ({@link MoveTag#TYPE_TAGS}). The block must
-     *       <em>cover every damage tag the attack uses</em> — i.e. this move's
-     *       {@link MoveCategory#getTags() category tags} are a <em>subset</em>
-     *       of the block's declared damage tags. A block that declares only
-     *       range tags (or none at all) imposes <b>no</b> damage-type
-     *       restriction and stops attacks of any damage nature.</li>
-     *   <li><b>Range dimension</b> — enforced iff the block declares at least
-     *       one range tag ({@link MoveTag#RANGE_TAGS}). The incoming attack
-     *       must carry every range tag the block names — i.e. a {@code [MELEE]}
-     *       block requires {@link #isMelee()} on the attack. Range is queried
-     *       through the {@link #isMelee()} / {@link #isRanged()} accessors
-     *       because it is a first-class move subcategory, not a tag-poke.</li>
-     * </ul>
-     *
-     * <p>Damage subset direction (unchanged): a block declares the full set of
-     * damage types it can stop; an attack slips through if it uses even one tag
-     * the block does not cover.
-     * <ul>
-     *   <li>Block = {@code [PHYSICAL]} vs attack {@code PHYSICAL+CURSED_ENERGY}
-     *       → not covered (CE slips through).</li>
-     *   <li>Block = {@code [PHYSICAL, CURSED_ENERGY]} vs a pure {@code PHYSICAL}
-     *       attack → covered (the block's coverage is a superset of the attack).</li>
-     * </ul>
-     *
-     * <p>Range-only example: a {@code [MELEE]} deflection block stops any
-     * melee attack (physical, cursed energy, or technique) but lets a
-     * {@code RANGED} attack — or an untagged attack — straight through.
-     *
-     * @param blockTags  the block's affected-tags list (null/empty = covers all)
-     * @return true if this attack is fully covered by the block's tag set
+     * Whether this block or parry covers one incoming hit. Attack category is an
+     * exact one-of-three match; every authored range and elemental tag on the hit
+     * must be accepted by its corresponding defense dimension.
      */
+    public boolean blocksAttack(Move incoming, HitComponent component) {
+        if (incoming == null) return false;
+        HitComponent incomingComponent = component != null ? component
+            : incoming.hitComponents.isEmpty() ? null : incoming.hitComponents.get(0);
+        if (incomingComponent == null) return false;
+        return incoming.coveredByBlockProfile(
+            blockAttackTypes, blockRanges, blockElementalTags, incomingComponent);
+    }
+
+    /** Legacy mixed-list coverage adapter. */
+    @Deprecated
     public boolean coveredByBlockTags(List<String> blockTags) {
         HitComponent component = hitComponents.isEmpty() ? null : hitComponents.get(0);
         return coveredByBlockTags(blockTags, component);
     }
 
-    /** Component-aware block coverage; range continues to come from the parent move. */
+    /** Legacy mixed-list coverage adapter. */
+    @Deprecated
     public boolean coveredByBlockTags(List<String> blockTags, HitComponent component) {
-        if (blockTags == null || blockTags.isEmpty()) return true;
-        // Normalise the block's tags once for cheap contains() checks.
-        java.util.Set<String> covered = new java.util.HashSet<>();
-        for (String t : blockTags) covered.add(t.trim().toUpperCase());
-
-        // Range dimension (only present on attacks; range is a first-class
-        // move subcategory, queried via isMelee()/isRanged() rather than read
-        // out of any MoveCategory). The block must name every range tag it
-        // cares about AND the attack must satisfy each via its accessor.
-        if (covered.contains(MoveTag.MELEE.name()) && !isMelee()) return false;
-        if (covered.contains(MoveTag.RANGED.name()) && !isRanged()) return false;
-
-        // Damage dimension — enforced only when the block actually declares a
-        // damage-nature tag. A range-only block (e.g. a [MELEE] deflection)
-        // declares no damage tag, so it skips this check entirely and stops
-        // attacks of any damage nature that satisfy the range dimension above.
-        boolean blockDeclaresDamageTag = false;
-        for (MoveTag typeTag : MoveTag.TYPE_TAGS) {
-            if (covered.contains(typeTag.name())) {
-                blockDeclaresDamageTag = true;
-                break;
-            }
-        }
-        if (!blockDeclaresDamageTag) return true;
-
-        Set<MoveTag> damageTags = component == null ? category.getTags() : component.getTags();
-        for (MoveTag attackTag : damageTags) {
-            if (!covered.contains(attackTag.name())) return false;
-        }
-        return true;
+        if (component == null) return blockTags == null || blockTags.isEmpty();
+        LegacyBlockProfile profile = legacyBlockProfile(blockTags);
+        return coveredByBlockProfile(
+            profile.attackTypes(), profile.ranges(), profile.elements(), component);
     }
+
+    private boolean coveredByBlockProfile(
+        Set<BlockAttackType> acceptedTypes,
+        Set<MoveTag> acceptedRanges,
+        Set<MoveTag> acceptedElements,
+        HitComponent component
+    ) {
+        if (!acceptedTypes.isEmpty()
+            && !acceptedTypes.contains(BlockAttackType.from(component))) return false;
+
+        EnumSet<MoveTag> incomingRanges = EnumSet.noneOf(MoveTag.class);
+        incomingRanges.addAll(component.getTags());
+        incomingRanges.retainAll(MoveTag.RANGE_TAGS);
+        if (!acceptedRanges.isEmpty()
+            && (incomingRanges.isEmpty() || !acceptedRanges.containsAll(incomingRanges))) {
+            return false;
+        }
+
+        EnumSet<MoveTag> incomingElements = EnumSet.noneOf(MoveTag.class);
+        incomingElements.addAll(component.getTags());
+        incomingElements.retainAll(MoveTag.ELEMENTAL_TAGS);
+        return acceptedElements.isEmpty() || acceptedElements.containsAll(incomingElements);
+    }
+
+    private static LegacyBlockProfile legacyBlockProfile(List<String> storedTags) {
+        if (storedTags == null || storedTags.isEmpty()) {
+            return new LegacyBlockProfile(Set.of(), Set.of(), Set.of());
+        }
+        EnumSet<MoveTag> parsed = EnumSet.noneOf(MoveTag.class);
+        for (String stored : storedTags) {
+            if (stored == null || stored.isBlank()) continue;
+            try { parsed.add(MoveTag.valueOf(stored.trim().toUpperCase())); }
+            catch (IllegalArgumentException ignored) { }
+        }
+        boolean physical = parsed.contains(MoveTag.PHYSICAL);
+        boolean cursedEnergy = parsed.contains(MoveTag.CURSED_ENERGY)
+            || parsed.contains(MoveTag.INNATE_TECHNIQUE)
+            || parsed.contains(MoveTag.NON_INNATE_TECHNIQUE);
+        EnumSet<BlockAttackType> types = EnumSet.noneOf(BlockAttackType.class);
+        if (physical) types.add(BlockAttackType.PHYSICAL);
+        if (cursedEnergy) types.add(BlockAttackType.CURSED_ENERGY);
+        if (physical && cursedEnergy) types.add(BlockAttackType.PHYSICAL_CURSED_ENERGY);
+        EnumSet<MoveTag> ranges = EnumSet.copyOf(parsed);
+        ranges.retainAll(MoveTag.RANGE_TAGS);
+        EnumSet<MoveTag> elements = EnumSet.copyOf(parsed);
+        elements.retainAll(MoveTag.ELEMENTAL_TAGS);
+        return new LegacyBlockProfile(types, ranges, elements);
+    }
+
+    private record LegacyBlockProfile(
+        Set<BlockAttackType> attackTypes,
+        Set<MoveTag> ranges,
+        Set<MoveTag> elements
+    ) { }
 
     public boolean isDefensive() {
         return category == MoveCategory.DEFENSIVE;
@@ -841,23 +924,45 @@ public class Move {
      * matching range. Non-dodge moves return false.
      */
     public boolean dodgeAppliesTo(Move incoming) {
+        HitComponent component = incoming == null || incoming.getHitComponents().isEmpty()
+            ? null : incoming.getHitComponents().get(0);
+        return dodgeAppliesTo(incoming, component);
+    }
+
+    /** Whether this dodge reacts to the current incoming hit's range. */
+    public boolean dodgeAppliesTo(Move incoming, HitComponent component) {
         if (defenseType != DefenseType.DODGE || incoming == null) return false;
         String scope = dodgeScope == null ? "BOTH" : dodgeScope.trim().toUpperCase();
         return switch (scope) {
-            case "MELEE"  -> incoming.isMelee();
-            case "RANGED" -> incoming.isRanged();
+            case "MELEE"  -> component == null ? incoming.isMelee() : component.isMelee();
+            case "RANGED" -> component == null ? incoming.isRanged() : component.isRanged();
             default       -> true; // BOTH
         };
     }
 
     /**
      * Whether a successful parry of the given incoming attack should stagger the
-     * attacker: the move must be a PARRY, the incoming attack must NOT carry
-     * GUARD_BREAK, and {@code parryStaggerTicks} must be positive.
+     * attacker: the move must be a PARRY, the incoming attack must carry neither
+     * GUARD_BREAK nor RANGED, and {@code parryStaggerTicks} must be positive.
      */
     public boolean parryStaggersAttacker(Move incoming) {
+        HitComponent component = incoming == null || incoming.getHitComponents().isEmpty()
+            ? null : incoming.getHitComponents().get(0);
+        return parryStaggersAttacker(incoming, component);
+    }
+
+    /**
+     * Component-aware guard-break and range check for parry stagger. A RANGED
+     * attack never staggers its user when parried — its wielder is out of
+     * reach; a perfect read reflects it instead (see DamageCalculator).
+     */
+    public boolean parryStaggersAttacker(Move incoming, HitComponent component) {
         if (defenseType != DefenseType.PARRY) return false;
-        if (incoming != null && incoming.isGuardBreak()) return false;
+        if (component != null ? component.isGuardBreak()
+            : incoming != null && incoming.isGuardBreak()) return false;
+        boolean ranged = component != null ? component.isRanged()
+            : incoming != null && incoming.isRanged();
+        if (ranged) return false;
         return parryStaggerTicks > 0;
     }
 
@@ -875,13 +980,21 @@ public class Move {
     }
 
     public double applyBlockTo(double incomingDamage) {
+        return applyBlockTo(incomingDamage, 1.0);
+    }
+
+    /** Apply the authored block amount after conditional effectiveness modifiers. */
+    public double applyBlockTo(double incomingDamage, double effectivenessMultiplier) {
         if (defenseType != DefenseType.BLOCK) return incomingDamage;
+        double multiplier = Double.isFinite(effectivenessMultiplier)
+            ? Math.max(0.0, effectivenessMultiplier) : Double.MAX_VALUE;
         return switch (blockStyle) {
             case PERCENTAGE -> {
-                if (blockDamageReduction >= 100) yield 0; // full block
-                yield Math.max(1.0, incomingDamage * (100 - blockDamageReduction) / 100.0);
+                double reduction = Math.min(100.0, blockDamageReduction * multiplier);
+                if (reduction >= 100.0) yield 0;
+                yield Math.max(1.0, incomingDamage * (100.0 - reduction) / 100.0);
             }
-            case FLAT -> Math.max(1.0, incomingDamage - blockFlatReduction);
+            case FLAT -> Math.max(1.0, incomingDamage - blockFlatReduction * multiplier);
         };
     }
 
@@ -898,7 +1011,7 @@ public class Move {
     public static class Builder {
         private String id;
         private String name                  = "";
-        private MoveType moveType            = MoveType.SORCERER;
+        private Set<MoveType> moveTypes      = EnumSet.of(MoveType.SORCERER);
         private String description           = "";
         private MoveCategory category        = MoveCategory.PHYSICAL;
         private Set<MoveTag> tags;
@@ -920,7 +1033,9 @@ public class Move {
         private DefenseType defenseType        = DefenseType.NONE;
         private BlockStyle blockStyle          = BlockStyle.PERCENTAGE;
         private int blockDuration              = 0;
-        private List<String> blockAffectedTags = null;
+        private Set<BlockAttackType> blockAttackTypes = Set.of();
+        private Set<MoveTag> blockRanges = Set.of();
+        private Set<MoveTag> blockElementalTags = Set.of();
         private int blockDamageReduction       = 100;
         private int blockFlatReduction         = 0;
         private int dodgeChance                = 0;
@@ -930,6 +1045,7 @@ public class Move {
         private int defenseUses                = 0;
         private DefenseTargeting defenseTargeting = DefenseTargeting.SELF;
         private int defenseTargetCount          = 2;
+        private Targeting targeting = Targeting.DEFAULT;
         /**
          * On-hit effects for the legacy single-component authoring path. When a
          * move is built with {@link #basePower} (no explicit {@link #hitComponents}),
@@ -963,7 +1079,15 @@ public class Move {
 
         public Builder name(String v)                      { this.name = v; return this; }
         public Builder moveType(MoveType v)                {
-            this.moveType = v == null ? MoveType.SORCERER : v;
+            this.moveTypes = EnumSet.of(v == null ? MoveType.SORCERER : v);
+            return this;
+        }
+        public Builder moveTypes(Set<MoveType> v)          {
+            // Null keeps the sorcerer default; an explicitly empty set is the
+            // technique-move representation (no character class).
+            this.moveTypes = v == null ? EnumSet.of(MoveType.SORCERER)
+                : v.isEmpty() ? EnumSet.noneOf(MoveType.class)
+                : EnumSet.copyOf(v);
             return this;
         }
         public Builder description(String v)               { this.description = v; return this; }
@@ -990,7 +1114,26 @@ public class Move {
         public Builder defenseType(DefenseType v)          { this.defenseType = v; return this; }
         public Builder blockStyle(BlockStyle v)            { this.blockStyle = v; return this; }
         public Builder blockDuration(int v)                { this.blockDuration = v; return this; }
-        public Builder blockAffectedTags(List<String> v)   { this.blockAffectedTags = v; return this; }
+        public Builder blockAttackTypes(Set<BlockAttackType> v) {
+            this.blockAttackTypes = v == null ? Set.of() : Set.copyOf(v);
+            return this;
+        }
+        public Builder blockRanges(Set<MoveTag> v) {
+            this.blockRanges = v == null ? Set.of() : Set.copyOf(v);
+            return this;
+        }
+        public Builder blockElementalTags(Set<MoveTag> v) {
+            this.blockElementalTags = v == null ? Set.of() : Set.copyOf(v);
+            return this;
+        }
+        /** Legacy mixed-list builder adapter. */
+        @Deprecated
+        public Builder blockAffectedTags(List<String> v) {
+            LegacyBlockProfile profile = legacyBlockProfile(v);
+            return blockAttackTypes(profile.attackTypes())
+                .blockRanges(profile.ranges())
+                .blockElementalTags(profile.elements());
+        }
         public Builder blockDamageReduction(int v)         { this.blockDamageReduction = v; return this; }
         public Builder blockFlatReduction(int v)           { this.blockFlatReduction = v; return this; }
         public Builder dodgeChance(int v)                  { this.dodgeChance = v; return this; }
@@ -1002,6 +1145,11 @@ public class Move {
         public Builder defenseTargeting(DefenseTargeting v) { this.defenseTargeting = v; return this; }
         /** Set the ally count for {@link DefenseTargeting#MULTIPLE_ALLIES}. Must be ≥ 2 when used. */
         public Builder defenseTargetCount(int v)           { this.defenseTargetCount = v; return this; }
+        /** Set the ordered explicit endpoints selected for this move. */
+        public Builder targeting(Targeting v) {
+            this.targeting = v == null ? Targeting.DEFAULT : v;
+            return this;
+        }
         /**
          * On-hit effects for the legacy single-component path only (seeds the
          * synthesized fallback component). For multi-hit moves, author effects
@@ -1021,7 +1169,10 @@ public class Move {
             return this;
         }
         public Builder prerequisites(java.util.Map<String, Integer> v) { this.prerequisites = v; return this; }
-        public Builder requiredTechniqueId(String v)       { this.requiredTechniqueId = v; return this; }
+        public Builder requiredTechniqueId(String v)       {
+            this.requiredTechniqueId = v == null || v.isBlank() ? null : v.trim();
+            return this;
+        }
         public Builder requiredCursedToolId(String v)      { this.requiredCursedToolId = v; return this; }
         public Builder freeMove(boolean v)                 { this.isFreeMove = v; return this; }
         public Builder mustBeGranted(boolean v)            { this.mustBeGranted = v; return this; }
@@ -1056,8 +1207,18 @@ public class Move {
                 throw new IllegalStateException("unleashPoint must be in [1, apCost]");
             if (moveCap < 0)
                 throw new IllegalStateException("moveCap must be non-negative");
+            if (requiredTechniqueId == null && moveTypes.isEmpty())
+                throw new IllegalStateException(
+                    "Move requires at least one move type unless it belongs to a technique (name='"
+                        + name + "')");
 
             Set<MoveTag> effectiveTags = tags != null ? tags : category.getTags();
+            if (moveTypes.contains(MoveType.CURSED_SPIRIT)
+                && (tags == null || !tags.contains(MoveTag.CURSED_ENERGY))) {
+                throw new IllegalStateException(
+                    "Cursed Spirit moves must explicitly include CURSED_ENERGY (name='"
+                        + name + "')");
+            }
             if (effectiveTags.contains(MoveTag.FRIENDLY_FIRE)
                 && !effectiveTags.contains(MoveTag.AOE)) {
                 throw new IllegalStateException("FRIENDLY_FIRE requires AOE");
@@ -1099,6 +1260,7 @@ public class Move {
 
             validateAttackLaunch();
             validateHitComponents();
+            validateTargeting();
             validateMoveEffects();
 
             // Potency lives on attack and defensive moves (gates which defences
@@ -1164,6 +1326,11 @@ public class Move {
                 }
                 MoveEffectTrigger trigger = effect.resolvedTrigger();
                 AbilityEffectType effectType = AbilityEffectType.fromName(effect.type);
+                if (effectType == AbilityEffectType.EXCHANGE_ATTACK_TARGETS
+                    && targeting == Targeting.DEFAULT) {
+                    throw new IllegalStateException(
+                        "Exchange attack targets requires pair targeting (name='" + name + "')");
+                }
                 if (trigger == MoveEffectTrigger.ACCURACY_CHECK
                     && effectType == AbilityEffectType.NEVER_MISS && hitCount == 0) {
                     throw new IllegalStateException(
@@ -1183,6 +1350,11 @@ public class Move {
                     throw new IllegalStateException(
                         "On-block effects require a block move (name='" + name + "')");
                 }
+                if (trigger == MoveEffectTrigger.BLOCK_CALCULATION
+                    && defenseType != DefenseType.BLOCK) {
+                    throw new IllegalStateException(
+                        "Block modifiers require a block move (name='" + name + "')");
+                }
                 if (trigger == MoveEffectTrigger.ON_PARRY && defenseType != DefenseType.PARRY) {
                     throw new IllegalStateException(
                         "On-parry effects require a parry move (name='" + name + "')");
@@ -1191,6 +1363,22 @@ public class Move {
                     throw new IllegalStateException(
                         "On-dodge effects require a dodge move (name='" + name + "')");
                 }
+            }
+        }
+
+        private void validateTargeting() {
+            if (targeting != Targeting.DEFAULT
+                && category != MoveCategory.UTILITY
+                && category != MoveCategory.DEFENSIVE) {
+                throw new IllegalStateException(
+                    "Pair targeting is only supported on utility and defensive moves (name='"
+                        + name + "')");
+            }
+            if (targeting != Targeting.DEFAULT
+                && category == MoveCategory.DEFENSIVE
+                && effectiveTags().contains(MoveTag.ATTACK)) {
+                throw new IllegalStateException(
+                    "Pair-targeted defensive moves cannot launch attacks (name='" + name + "')");
             }
         }
 
@@ -1222,6 +1410,22 @@ public class Move {
                 if (MoveTag.TYPE_TAGS.contains(tag)) damageTags.add(tag);
             }
             return damageTags;
+        }
+
+        /** Hit-only tags accepted from legacy move-level authoring. */
+        private EnumSet<MoveTag> legacyHitTags() {
+            EnumSet<MoveTag> hitTags = EnumSet.noneOf(MoveTag.class);
+            for (MoveTag tag : effectiveTags()) {
+                if (MoveTag.HIT_ONLY_TAGS.contains(tag)) hitTags.add(tag);
+            }
+            if (guardBreak) hitTags.add(MoveTag.GUARD_BREAK);
+            return hitTags;
+        }
+
+        private EnumSet<MoveTag> legacyComponentTags(Set<MoveTag> typeTags) {
+            EnumSet<MoveTag> componentTags = EnumSet.copyOf(typeTags);
+            componentTags.addAll(legacyHitTags());
+            return componentTags;
         }
 
         /**
@@ -1285,9 +1489,9 @@ public class Move {
             EnumSet<MoveTag> componentTags = EnumSet.noneOf(MoveTag.class);
             for (int index = 0; index < hitComponents.size(); index++) {
                 HitComponent component = hitComponents.get(index);
-                if (component == null || component.getBasePower() <= 0) {
+                if (component == null || component.getBasePower() < 0) {
                     throw new IllegalStateException(
-                        "Hit components must have positive Base Power (name='" + name + "')");
+                        "Hit components must have nonnegative Base Power (name='" + name + "')");
                 }
                 if (index == 0 && component.requiresPreviousConnection()) {
                     throw new IllegalStateException(
@@ -1300,7 +1504,7 @@ public class Move {
                         "A dependent hit cannot occur before its prerequisite (name='"
                         + name + "')");
                 }
-                componentTags.addAll(component.getTags());
+                componentTags.addAll(component.getTypeTags());
             }
             // A hybrid's category is DEFENSIVE (no damage tags of its own), so
             // its components are checked against the move's damage-nature tags.

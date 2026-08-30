@@ -68,13 +68,13 @@ class TenShadowsAIStrategyTest {
         List<Move> high = TenShadowsAIStrategy.pickSummons(state, megumi, plan,
             List.of(whiteDog, blackDog, nue, toad, serpent), TenShadowsAIStrategy.DangerTier.HIGH, 1);
         assertEquals(1, high.size());
-        assertEquals("000009", high.get(0).getSummonCharacterId(),
+        assertEquals("000015", high.get(0).getSummonCharacterId(),
             "high danger picks Nue (strongest in this menu)");
 
         List<Move> low = TenShadowsAIStrategy.pickSummons(state, megumi, plan,
             List.of(whiteDog, blackDog, nue, toad, serpent), TenShadowsAIStrategy.DangerTier.LOW, 1);
         assertEquals(1, low.size());
-        assertTrue(Set.of("000007", "000008").contains(low.get(0).getSummonCharacterId()),
+        assertTrue(Set.of("000013", "000014").contains(low.get(0).getSummonCharacterId()),
             "low danger picks a cheap Divine Dog");
     }
 

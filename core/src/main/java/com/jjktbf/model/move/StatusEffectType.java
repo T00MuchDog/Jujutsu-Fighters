@@ -63,29 +63,73 @@ public enum StatusEffectType {
     /** Prevents actions while active and ends on damage, natural recovery, or round expiry. */
     SLEEP("Sleep", 0, 0.05),
 
-    /** Round-duration poison template. Magnitude is flat damage per round. */
-    POISON("Poison", 1);
+    /** Halves Speed and rolls Strength-based escape plus a separate action stun each tick. */
+    RESTRAINED("Restrained", StatKey.SPEED, 0.5),
+
+    /** Reduces Speed by 20% and enables elemental reactions from electric and ice hits. */
+    WET("Wet", StatKey.SPEED, 0.8),
+
+    /** Halves Defense and prevents non-fire actions, with a 10% breakout roll each tick. */
+    FROZEN("Frozen", BattleStatKey.DEFENSE, 0.5, 0.10),
+
+    /** Halves outgoing melee damage and deals 0.03% max-HP damage each active tick. */
+    BURNED("Burned", 0),
+
+    /** Adds two AP ticks to both the cost and firing point of every planned move. */
+    FATIGUED("Fatigued", 0),
+
+    /**
+     * Covers the holder's ears in cursed energy. Incoming Cursed Speech commands
+     * automatically fail against the holder, and the status may carry a CE upkeep
+     * drained each resolution tick while it remains active.
+     */
+    CURSED_SPEECH_WARD("Cursed Speech Ward", 0),
+
+    /** Damages the holder whenever they voluntarily pay cursed energy for a move. */
+    CURSED_ENERGY_PARASITE("Cursed Energy Parasite", 0),
+
+    /** Multiplies every base stat by 0.8 and deals max-HP damage each active tick. */
+    POISON("Poison", 0.8);
 
     private final String displayName;
     private final StatKey baseStat;
     private final BattleStatKey battleStat;
     private final int direction;
     private final double defaultPerTickRemovalChance;
+    private final Double statMultiplier;
 
     StatusEffectType(String displayName, StatKey baseStat, int direction) {
-        this(displayName, baseStat, null, direction, 0.0);
+        this(displayName, baseStat, null, direction, 0.0, null);
     }
 
     StatusEffectType(String displayName, BattleStatKey battleStat, int direction) {
-        this(displayName, null, battleStat, direction, 0.0);
+        this(displayName, null, battleStat, direction, 0.0, null);
     }
 
     StatusEffectType(String displayName, int direction) {
-        this(displayName, null, null, direction, 0.0);
+        this(displayName, null, null, direction, 0.0, null);
     }
 
     StatusEffectType(String displayName, int direction, double defaultPerTickRemovalChance) {
-        this(displayName, null, null, direction, defaultPerTickRemovalChance);
+        this(displayName, null, null, direction, defaultPerTickRemovalChance, null);
+    }
+
+    StatusEffectType(String displayName, double statMultiplier) {
+        this(displayName, null, null, 0, 0.0, statMultiplier);
+    }
+
+    StatusEffectType(String displayName, StatKey baseStat, double statMultiplier) {
+        this(displayName, baseStat, null, 0, 0.0, statMultiplier);
+    }
+
+    StatusEffectType(
+        String displayName,
+        BattleStatKey battleStat,
+        double statMultiplier,
+        double defaultPerTickRemovalChance
+    ) {
+        this(displayName, null, battleStat, 0,
+            defaultPerTickRemovalChance, statMultiplier);
     }
 
     StatusEffectType(
@@ -93,13 +137,15 @@ public enum StatusEffectType {
         StatKey baseStat,
         BattleStatKey battleStat,
         int direction,
-        double defaultPerTickRemovalChance
+        double defaultPerTickRemovalChance,
+        Double statMultiplier
     ) {
         this.displayName = displayName;
         this.baseStat = baseStat;
         this.battleStat = battleStat;
         this.direction = direction;
         this.defaultPerTickRemovalChance = defaultPerTickRemovalChance;
+        this.statMultiplier = statMultiplier;
     }
 
     public String displayName() {
@@ -116,12 +162,27 @@ public enum StatusEffectType {
 
     /** True when this status modifies a base or derived combat stat. */
     public boolean isStatModifier() {
-        return baseStat != null || battleStat != null;
+        return statMultiplier == null && (baseStat != null || battleStat != null);
+    }
+
+    /** True when the status multiplies a base or derived battle stat. */
+    public boolean isStatMultiplier() {
+        return statMultiplier != null
+            && (baseStat != null || battleStat != null || affectsAllBaseStats());
+    }
+
+    /** True when one multiplier applies to every base character stat. */
+    public boolean affectsAllBaseStats() {
+        return statMultiplier != null && baseStat == null && battleStat == null;
+    }
+
+    public double statMultiplier() {
+        return statMultiplier == null ? 1.0 : statMultiplier;
     }
 
     /** Whether this status uses the descriptor's magnitude field. */
     public boolean usesMagnitude() {
-        return isStatModifier() || this == POISON;
+        return isStatModifier();
     }
 
     /** Whether this status must be configured exclusively in AP ticks. */
@@ -141,6 +202,13 @@ public enum StatusEffectType {
 
     public double signedMagnitude(double magnitude) {
         return direction * magnitude;
+    }
+
+    /** Whether applying this status again replaces its existing instance. */
+    public boolean refreshesOnReapply() {
+        return this == RESTRAINED || this == WET || this == FROZEN
+            || this == BURNED || this == FATIGUED || this == POISON
+            || this == CURSED_SPEECH_WARD || this == CURSED_ENERGY_PARASITE;
     }
 
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */

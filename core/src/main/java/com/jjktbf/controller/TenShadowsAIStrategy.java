@@ -60,14 +60,14 @@ public class TenShadowsAIStrategy implements AIStrategy {
      * fixed roster, used to pick the right summon for the danger tier.
      */
     private static final Map<String, Integer> SHIKIGAMI_POWER = Map.of(
-        "000007", 375, // Divine Dog White
-        "000008", 395, // Divine Dog Black
-        "000009", 495, // Nue
-        "000010", 295, // Toad Gamma
-        "000011", 475, // Great Serpent Orochi
-        "000012", 660, // Divine Dog Totality
-        "000013", 601, // Max Elephant
-        "000014", 471  // Toad/Nue Fusion (Well's Unknown Abyss)
+        "000013", 375, // Divine Dog White
+        "000014", 395, // Divine Dog Black
+        "000015", 495, // Nue
+        "000016", 295, // Toad Gamma
+        "000017", 475, // Great Serpent Orochi
+        "000018", 660, // Divine Dog Totality
+        "000019", 601, // Max Elephant
+        "000020", 471  // Toad/Nue Fusion (Well's Unknown Abyss)
     );
 
     /** Danger tier derived from an opponent's base-stat total. */
@@ -96,7 +96,7 @@ public class TenShadowsAIStrategy implements AIStrategy {
                                   BattleCombatant opponent, RandomSource rng) {
         int gridLength = Timeline.gridLengthForStrongestAp(
             Math.max(ai.getMaxApBar(), opponent == null ? 0 : opponent.getMaxApBar()));
-        BattlePlan plan = new BattlePlan(ai.getMaxApBar(), ai.getCurrentCe(), gridLength);
+        BattlePlan plan = BattlePlan.forCombatant(ai, gridLength);
         OpponentIntel intel = OpponentIntel.forOpponent(opponent);
 
         List<Move> summons = new ArrayList<>();

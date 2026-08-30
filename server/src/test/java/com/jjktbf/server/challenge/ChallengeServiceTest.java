@@ -119,11 +119,47 @@ class ChallengeServiceTest {
     }
 
     @Test
+    void sixOnSixChallengePreservesOrderedSixFighterRosters() {
+        SessionIdentity host = fixture.createGuest("Six Host");
+        SessionIdentity requester = fixture.createGuest("Six Requester");
+        List<String> hostRoster = fixture.catalog().characterSummaries().stream()
+            .map(summary -> summary.characterId())
+            .toList();
+        List<String> requesterRoster = new java.util.ArrayList<>(hostRoster);
+        java.util.Collections.reverse(requesterRoster);
+
+        ChallengeSummary challenge = fixture.challengeService().createChallenge(
+            host,
+            ChallengeCreateRequest.forBattle(
+                BattleFormat.SIX_V_SIX,
+                BattleStatMode.STANDARD,
+                hostRoster));
+        ChallengeSummary pending = fixture.challengeService().requestJoin(
+            requester,
+            challenge.challengeId(),
+            ChallengeAcceptRequest.forBattle(
+                BattleFormat.SIX_V_SIX,
+                BattleStatMode.STANDARD,
+                requesterRoster));
+        AcceptedMatchSetup accepted = fixture.challengeService().acceptChallenge(
+            host, challenge.challengeId(), ChallengeDecisionRequest.forChallenge(pending));
+
+        assertEquals(BattleFormat.SIX_V_SIX, accepted.format());
+        assertEquals(hostRoster, accepted.playerOne().characterIds());
+        assertEquals(requesterRoster, accepted.playerTwo().characterIds());
+        assertEquals(6, accepted.playerOne().characters().size());
+        assertEquals(6, accepted.playerTwo().characters().size());
+    }
+
+    @Test
     void newFlowSelectsCharactersOnlyAfterHostAccepts() {
         SessionIdentity host = fixture.createGuest("Selection Host");
         SessionIdentity requester = fixture.createGuest("Selection Requester");
         List<String> hostRoster = List.of(firstCharacter, secondCharacter);
         List<String> requesterRoster = List.of(secondCharacter, firstCharacter);
+        List<List<String>> hostMoveSets = List.of(List.of(), List.of("test-move"));
+        List<List<String>> requesterMoveSets = List.of(
+            List.of("test-move"), List.of());
 
         ChallengeSummary challenge = fixture.challengeService().createChallenge(
             host,
@@ -147,18 +183,24 @@ class ChallengeServiceTest {
         AcceptedMatchSetup hostSelected = fixture.challengeService().selectMatchCharacters(
             host,
             accepted.matchId(),
-            new MatchCharacterSelectionRequest(hostRoster));
+            new MatchCharacterSelectionRequest(hostRoster, hostMoveSets));
         assertFalse(hostSelected.charactersSelected());
         assertEquals(hostRoster, hostSelected.playerOne().characterIds());
+        assertEquals(hostMoveSets, hostSelected.playerOne().moveSetIds());
         assertTrue(hostSelected.playerTwo().characterIds().isEmpty());
 
         AcceptedMatchSetup ready = fixture.challengeService().selectMatchCharacters(
             requester,
             accepted.matchId(),
-            new MatchCharacterSelectionRequest(requesterRoster));
+            new MatchCharacterSelectionRequest(requesterRoster, requesterMoveSets));
         assertTrue(ready.charactersSelected());
         assertEquals(hostRoster, ready.playerOne().characterIds());
         assertEquals(requesterRoster, ready.playerTwo().characterIds());
+        assertEquals(hostMoveSets, ready.playerOne().moveSetIds());
+        assertEquals(requesterMoveSets, ready.playerTwo().moveSetIds());
+        assertEquals(List.of(), ready.playerOne().characters().get(0).getMoveSet());
+        assertEquals(List.of("test-move"), ready.playerOne().characters().get(1)
+            .getMoveSet().stream().map(com.jjktbf.model.move.Move::getId).toList());
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.BattleCharacterLookup;
 import com.jjktbf.model.combat.BattleCombatant;
+import com.jjktbf.model.combat.BattleFormat;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.BattleStatMode;
@@ -14,23 +15,31 @@ import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.CombatantId;
-import com.jjktbf.model.combat.MoveTargeting;
+import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.Timeline;
+import com.jjktbf.model.combat.TeamBattlePlan;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
+import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.text.MoveDescriptionVariables;
+import com.jjktbf.model.domain.DomainInstance;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
 import com.jjktbf.multiplayer.protocol.ActionSegmentStatus;
 import com.jjktbf.multiplayer.protocol.BattleEventState;
 import com.jjktbf.multiplayer.protocol.BattleEventType;
 import com.jjktbf.multiplayer.protocol.BattlePhase;
+import com.jjktbf.multiplayer.protocol.BoundedResourceTransactionState;
 import com.jjktbf.multiplayer.protocol.CharacterState;
 import com.jjktbf.multiplayer.protocol.CommandResult;
 import com.jjktbf.multiplayer.protocol.CommandType;
 import com.jjktbf.multiplayer.protocol.ErrorResponse;
+import com.jjktbf.multiplayer.protocol.DomainBattlefieldState;
+import com.jjktbf.multiplayer.protocol.DomainClashState;
+import com.jjktbf.multiplayer.protocol.DomainState;
 import com.jjktbf.multiplayer.protocol.HitComponentState;
 import com.jjktbf.multiplayer.protocol.MatchState;
 import com.jjktbf.multiplayer.protocol.MatchStatus;
@@ -43,6 +52,7 @@ import com.jjktbf.multiplayer.protocol.PlayerState;
 import com.jjktbf.multiplayer.protocol.ProtocolVersion;
 import com.jjktbf.multiplayer.protocol.RoundStartCharacterState;
 import com.jjktbf.multiplayer.protocol.StatusEffectState;
+import com.jjktbf.multiplayer.protocol.SwitchSelection;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -82,7 +92,6 @@ public final class HeadlessBattleSession {
     private static final String INVALID_ACTOR = "INVALID_ACTOR";
     private static final String INVALID_TARGET = "INVALID_TARGET";
     private static final String INVALID_MOVE = "INVALID_MOVE";
-    private static final String MOVE_RESTRICTED = "MOVE_RESTRICTED";
     private static final String MOVE_CAP_REACHED = "MOVE_CAP_REACHED";
     private static final String INVALID_PLACEMENT = "INVALID_PLACEMENT";
     private static final String INSUFFICIENT_AP = "INSUFFICIENT_AP";
@@ -115,6 +124,7 @@ public final class HeadlessBattleSession {
     private long eventSequence;
     private int wireRoundNumber;
     private int wireCurrentTick;
+    private Long planningDeadline;
     private List<BattleEventState> recentEvents;
     private List<RoundStartCharacterState> roundStartCharacterStates;
     private boolean battleStarted;
@@ -288,7 +298,12 @@ public final class HeadlessBattleSession {
             BattleTeamId.ENEMY,
             playerTwoRuntime.combatants
         );
-        this.battleState = new BattleState(playerTeam, enemyTeam);
+        this.battleState = playerOneRuntime.combatants.size()
+                == BattleFormat.SIX_V_SIX.fightersPerSide()
+            && playerTwoRuntime.combatants.size()
+                == BattleFormat.SIX_V_SIX.fightersPerSide()
+            ? new BattleState(playerTeam, enemyTeam, BattleFormat.SIX_V_SIX)
+            : new BattleState(playerTeam, enemyTeam);
         this.summonLookup = summonLookup;
         this.resolver = new CombatResolver(new SeededRandomSource(seed), summonLookup);
         this.status = MatchStatus.WAITING;
@@ -407,6 +422,7 @@ public final class HeadlessBattleSession {
         }
 
         List<PlanPlacement> placements = command.payload().placements();
+        List<SwitchSelection> requestedSwitches = command.payload().switches();
         List<BattleCombatant> activeActors = activeCombatants(participant);
         long maximumPlacements = (long) MAX_PLAN_PLACEMENTS
             * Math.max(1, activeActors.size());
@@ -419,13 +435,46 @@ public final class HeadlessBattleSession {
             );
         }
 
+        if (requestedSwitches == null || requestedSwitches.size() > activeActors.size()) {
+            return reject(commandId, MALFORMED_COMMAND,
+                "Plan contains an invalid number of switches.");
+        }
+
+        Map<CombatantId, CombatantId> canonicalSwitches = new LinkedHashMap<>();
+        Set<CombatantId> selectedReserves = new LinkedHashSet<>();
+        for (SwitchSelection requested : requestedSwitches) {
+            if (requested == null || isBlank(requested.actorId())
+                || isBlank(requested.reserveId())) {
+                return reject(commandId, MALFORMED_COMMAND,
+                    "Each switch must identify an actor and reserve fighter.");
+            }
+            BattleCombatant actor = battleState.combatant(new CombatantId(requested.actorId()));
+            BattleCombatant reserve = battleState.combatant(new CombatantId(requested.reserveId()));
+            if (actor == null || !actor.isActive() || !actor.isFighter()
+                || !participant.teamId.equals(actor.getTeamId())) {
+                return reject(commandId, INVALID_ACTOR,
+                    "Switch actor is not an active fighter controlled by this participant.");
+            }
+            if (reserve == null || !reserve.isReserve() || !reserve.isFighter()
+                || reserve.isDefeated() || !participant.teamId.equals(reserve.getTeamId())) {
+                return reject(commandId, INVALID_ACTOR,
+                    "Switch target is not a living reserve controlled by this participant.");
+            }
+            if (canonicalSwitches.putIfAbsent(
+                    actor.getInstanceId(), reserve.getInstanceId()) != null
+                || !selectedReserves.add(reserve.getInstanceId())) {
+                return reject(commandId, MALFORMED_COMMAND,
+                    "A fighter or reserve cannot appear in more than one switch.");
+            }
+        }
+
         Map<CombatantId, BattlePlan> canonicalPlans = new LinkedHashMap<>();
         Map<CombatantId, List<SegmentRuntime>> canonicalSegments = new LinkedHashMap<>();
         int canonicalGridLength = battleGridLength();
         for (BattleCombatant actor : activeActors) {
             canonicalPlans.put(
                 actor.getInstanceId(),
-                new BattlePlan(actor.getMaxApBar(), actor.getCurrentCe(), canonicalGridLength)
+                BattlePlan.forCombatant(actor, canonicalGridLength)
             );
             canonicalSegments.put(actor.getInstanceId(), new ArrayList<>());
         }
@@ -489,6 +538,15 @@ public final class HeadlessBattleSession {
                     placement.moveId()
                 );
             }
+            if (canonicalSwitches.containsKey(actor.getInstanceId())) {
+                return rejectPlacement(
+                    commandId,
+                    INVALID_ACTOR,
+                    "A switching fighter cannot also place a move.",
+                    index,
+                    placement.moveId()
+                );
+            }
 
             Move move = findKnownMove(actor, placement.moveId()).orElse(null);
             if (move == null) {
@@ -498,21 +556,6 @@ public final class HeadlessBattleSession {
                     "Move is not known by the authoritative actor.",
                     index,
                     placement.moveId()
-                );
-            }
-            String restriction = MoveAvailability.restrictionReason(
-                battleState,
-                actor,
-                move,
-                canonicalPlan.allSegments().stream().map(ActionSegment::getMove).toList()
-            );
-            if (restriction != null) {
-                return rejectPlacement(
-                    commandId,
-                    MOVE_RESTRICTED,
-                    restriction,
-                    index,
-                    move.getId()
                 );
             }
             if (!canonicalPlan.hasRemainingUses(move)) {
@@ -526,36 +569,17 @@ public final class HeadlessBattleSession {
             }
 
             List<CombatantId> targetIds = new ArrayList<>();
-            MoveTargeting targeting = MoveTargeting.forMove(move);
-            int minimumTargets;
-            int maximumTargets;
-            switch (targeting) {
-                case SINGLE_ENEMY -> {
-                    minimumTargets = 1;
-                    maximumTargets = 1;
-                }
-                case MULTIPLE_ENEMIES -> {
-                    minimumTargets = 1;
-                    maximumTargets = move.getAoeTargetCount();
-                }
-                default -> {
-                    minimumTargets = 0;
-                    maximumTargets = 0;
-                }
-            }
             List<String> requestedTargetIds = placement.targetIds();
-            if (requestedTargetIds.size() < minimumTargets
-                || requestedTargetIds.size() > maximumTargets) {
-                String message = switch (targeting) {
-                    case SINGLE_ENEMY -> "Hostile single-target move must identify exactly one target.";
-                    case MULTIPLE_ENEMIES -> "Multiple-target move must identify between 1 and "
-                        + move.getAoeTargetCount() + " targets.";
-                    default -> "This move must not select targets; the server derives its affected set.";
-                };
+            String countError = MoveTargetSelection.targetCountError(
+                move, requestedTargetIds.stream()
+                    .filter(id -> id != null && !id.isBlank())
+                    .map(CombatantId::new)
+                    .toList());
+            if (countError != null || requestedTargetIds.stream().anyMatch(HeadlessBattleSession::isBlank)) {
                 return rejectPlacement(
                     commandId,
                     INVALID_TARGET,
-                    message,
+                    countError != null ? countError : "Placement target IDs cannot be blank.",
                     index,
                     move.getId()
                 );
@@ -580,27 +604,20 @@ public final class HeadlessBattleSession {
                         move.getId()
                     );
                 }
-                BattleCombatant target = battleState.combatant(new CombatantId(requestedTargetId));
-                if (target == null
-                    || !target.isActive()
-                    || target.getTeamId() == null
-                    || participant.teamId.equals(target.getTeamId())
-                    || battleState.teamOf(target) == null
-                    || !CursedSpeechAbility.canTarget(move, target)) {
-                    return rejectPlacement(
-                        commandId,
-                        INVALID_TARGET,
-                        "Placement target is not an active opposing combatant.",
-                        index,
-                        move.getId()
-                    );
-                }
-                targetIds.add(target.getInstanceId());
+                targetIds.add(new CombatantId(requestedTargetId));
+            }
+            String targetError = MoveTargetSelection.validationError(
+                battleState, actor, move, targetIds);
+            if (targetError != null) {
+                return rejectPlacement(
+                    commandId, INVALID_TARGET, targetError, index, move.getId());
             }
 
             int ceCost = actor.computeMoveCeCost(move);
-            long endTick = (long) placement.startTick() + move.getApCost() - 1L;
-            long fireTick = (long) placement.startTick() + move.getUnleashPoint() - 1L;
+            int effectiveApCost = canonicalPlan.effectiveApCost(move);
+            int effectiveUnleashPoint = canonicalPlan.effectiveUnleashPoint(move);
+            long endTick = (long) placement.startTick() + effectiveApCost - 1L;
+            long fireTick = (long) placement.startTick() + effectiveUnleashPoint - 1L;
             long finalImpactTick = fireTick + move.getMaxHitDelayTicks();
             int planGridLength = canonicalPlan.gridLength();
             if (move.getApCost() < 1
@@ -632,7 +649,7 @@ public final class HeadlessBattleSession {
                     move.getId()
                 );
             }
-            if (move.getApCost() > canonicalPlan.remainingApBudget()) {
+            if (effectiveApCost > canonicalPlan.remainingApBudget()) {
                 return rejectPlacement(
                     commandId,
                     INSUFFICIENT_AP,
@@ -679,7 +696,20 @@ public final class HeadlessBattleSession {
         if (participantsBySide.values().stream().noneMatch(runtime -> runtime.planSubmitted)) {
             firstPlanBaseVersion = command.expectedStateVersion();
         }
-        attachPlans(participant, canonicalPlans, canonicalSegments);
+        TeamBattlePlan teamPlan = new TeamBattlePlan(participant.teamId, canonicalGridLength);
+        for (BattleCombatant actor : activeActors) {
+            CombatantId reserve = canonicalSwitches.get(actor.getInstanceId());
+            if (reserve == null) {
+                teamPlan.put(actor.getInstanceId(), canonicalPlans.get(actor.getInstanceId()));
+            } else {
+                teamPlan.switchTo(actor.getInstanceId(), reserve);
+            }
+        }
+        String teamPlanError = teamPlan.validationError(battleState);
+        if (teamPlanError != null) {
+            return reject(commandId, INVALID_PLACEMENT, teamPlanError);
+        }
+        attachPlans(participant, canonicalPlans, canonicalSegments, canonicalSwitches);
         participant.planSubmitted = true;
         acceptedCommandIds.add(command.commandId());
         stateVersion++;
@@ -752,8 +782,65 @@ public final class HeadlessBattleSession {
             endReason,
             stateVersion,
             recentEvents,
+            domainBattlefieldState(),
+            planningDeadline,
             clock.millis()
         );
+    }
+
+    /** Publishes the server-owned deadline for the active planning phase. */
+    public synchronized MatchState setPlanningDeadline(long deadline) {
+        if (currentPhase() != BattlePhase.PLANNING || isTerminal()) {
+            throw new IllegalStateException("A planning deadline requires an active planning phase");
+        }
+        if (deadline <= clock.millis()) {
+            throw new IllegalArgumentException("planning deadline must be in the future");
+        }
+        if (Objects.equals(planningDeadline, deadline)) {
+            return snapshot();
+        }
+        planningDeadline = deadline;
+        stateVersion++;
+        return snapshot();
+    }
+
+    /** Removes a published deadline while planning is paused by connectivity. */
+    public synchronized MatchState clearPlanningDeadline() {
+        if (planningDeadline == null) {
+            return snapshot();
+        }
+        planningDeadline = null;
+        stateVersion++;
+        return snapshot();
+    }
+
+    /** Locks every missing participant to an empty plan and resolves the round. */
+    public synchronized MatchState expirePlanning() {
+        if (currentPhase() != BattlePhase.PLANNING || isTerminal()) {
+            return snapshot();
+        }
+
+        for (ParticipantRuntime participant : participantsBySide.values()) {
+            if (participant.planSubmitted) {
+                continue;
+            }
+            Map<CombatantId, BattlePlan> plans = new LinkedHashMap<>();
+            Map<CombatantId, List<SegmentRuntime>> segments = new LinkedHashMap<>();
+            for (BattleCombatant actor : activeCombatants(participant)) {
+                plans.put(
+                    actor.getInstanceId(),
+                    BattlePlan.forCombatant(actor, battleGridLength())
+                );
+                segments.put(actor.getInstanceId(), List.of());
+            }
+            attachPlans(participant, plans, segments);
+            participant.planSubmitted = true;
+        }
+
+        firstPlanBaseVersion = null;
+        stateVersion++;
+        recentEvents = List.copyOf(resolveSubmittedRound());
+        return snapshot();
     }
 
     /**
@@ -812,6 +899,7 @@ public final class HeadlessBattleSession {
         this.winnerPlayerId = winner == null ? null : winner.participant.playerId();
         this.winnerSide = winner == null ? null : winner.participant.side();
         this.endReason = reason;
+        planningDeadline = null;
         battleState.transitionTo(BattleState.Phase.BATTLE_OVER);
         stateVersion++;
 
@@ -903,9 +991,11 @@ public final class HeadlessBattleSession {
     private List<BattleEventState> resolveSubmittedRound() {
         int resolvedRound = battleState.getRoundNumber();
         wireRoundNumber = resolvedRound;
+        planningDeadline = null;
         resetRoundReadiness();
         battleState.transitionTo(BattleState.Phase.RESOLUTION);
         List<CombatEvent> resolutionEvents = new ArrayList<>(resolver.beginResolution(battleState));
+        syncSegmentTargetsFromExecution();
         while (resolver.hasMoreTicks()) {
             resolutionEvents.addAll(resolver.resolveTick(battleState));
             if (battleState.checkAndResolveBattleOver()) {
@@ -1101,9 +1191,26 @@ public final class HeadlessBattleSession {
         Map<CombatantId, BattlePlan> plans,
         Map<CombatantId, List<SegmentRuntime>> segmentsByActor
     ) {
+        attachPlans(participant, plans, segmentsByActor, Map.of());
+    }
+
+    private void attachPlans(
+        ParticipantRuntime participant,
+        Map<CombatantId, BattlePlan> plans,
+        Map<CombatantId, List<SegmentRuntime>> segmentsByActor,
+        Map<CombatantId, CombatantId> switches
+    ) {
         Map<CombatantId, BattlePlan> attachedPlans = new LinkedHashMap<>();
         Map<CombatantId, List<SegmentRuntime>> attachedSegments = new LinkedHashMap<>();
+        TeamBattlePlan teamPlan = new TeamBattlePlan(participant.teamId, battleGridLength());
         for (BattleCombatant actor : activeCombatants(participant)) {
+            CombatantId reserve = switches.get(actor.getInstanceId());
+            if (reserve != null) {
+                actor.setPlan(null);
+                actor.setTimeline(null);
+                teamPlan.switchTo(actor.getInstanceId(), reserve);
+                continue;
+            }
             BattlePlan plan = Objects.requireNonNull(
                 plans.get(actor.getInstanceId()),
                 "Missing canonical plan for " + actor.getInstanceId()
@@ -1130,7 +1237,9 @@ public final class HeadlessBattleSession {
             }
             attachedPlans.put(actor.getInstanceId(), plan);
             attachedSegments.put(actor.getInstanceId(), List.copyOf(segments));
+            teamPlan.put(actor.getInstanceId(), plan);
         }
+        battleState.queueSwitches(teamPlan);
         participant.plans = Collections.unmodifiableMap(attachedPlans);
         participant.segments = Collections.unmodifiableMap(attachedSegments);
     }
@@ -1160,6 +1269,18 @@ public final class HeadlessBattleSession {
                     segment.status = ActionSegmentStatus.QUEUED;
                     segment.resolvedTick = null;
                 }
+                }
+            }
+        }
+    }
+
+    private void syncSegmentTargetsFromExecution() {
+        for (ParticipantRuntime participant : participantsBySide.values()) {
+            for (List<SegmentRuntime> actorSegments : participant.segments.values()) {
+                for (SegmentRuntime segment : actorSegments) {
+                    if (segment.executionSegment != null) {
+                        segment.targetIds = List.copyOf(segment.executionSegment.getTargets());
+                    }
                 }
             }
         }
@@ -1259,7 +1380,7 @@ public final class HeadlessBattleSession {
             combatant.getConsecutiveBfsHits(),
             bfsExpiry,
             combatant.getActiveEffects().stream().map(this::statusEffectState).toList(),
-            combatant.getCodedAbilities().states(),
+            combatant.abilityStates(),
             combatant.getCharacter().getKnownMoves().stream()
                 .map(move -> moveState(combatant, move))
                 .toList(),
@@ -1289,12 +1410,13 @@ public final class HeadlessBattleSession {
         return new MoveState(
             move.getId(),
             move.getName(),
-            move.getDescription(),
+            MoveDescriptionVariables.resolve(
+                move, TechniqueMasteryResolver.masteryOf(combatant)),
             move.getCategory().name(),
             moveTags(move),
             planBoard(BattlePlan.boardFor(move)),
             move.getBasePower(),
-            move.getBasePower() <= 0 ? List.of() : move.getHitComponents().stream()
+            move.getHitComponents().stream()
                 .map(component -> new HitComponentState(
                     component.getBasePower(),
                     component.getCategory().name(),
@@ -1306,8 +1428,8 @@ public final class HeadlessBattleSession {
                 .toList(),
             move.getBaseAccuracy(),
             move.isNeverMiss(),
-            move.getApCost(),
-            move.getUnleashPoint(),
+            combatant.getEffectiveMoveApCost(move),
+            combatant.getEffectiveMoveUnleashPoint(move),
             move.hasCeCost(),
             move.getBaseCeCost(),
             effectiveCeCost,
@@ -1321,7 +1443,19 @@ public final class HeadlessBattleSession {
             move.getAoeType() == null ? null : move.getAoeType().name(),
             move.getAoeTargetCount(),
             CursedSpeechAbility.commandMode(move),
-            move.getRequiredTechniqueId()
+            move.getRequiredTechniqueId(),
+            move.getDefenseTargeting().name(),
+            move.getDefenseTargetCount(),
+            move.getTargeting().name(),
+            move.getAttackLaunchMode() == null ? null : move.getAttackLaunchMode().name(),
+            move.getAttackLaunchMoveId(),
+            MoveAvailability.guaranteedBoundedResourceTransactions(combatant, move).stream()
+                .map(effect -> new BoundedResourceTransactionState(
+                    effect.sourceResourceKey,
+                    effect.sourceResourceAmount == null ? 0 : effect.sourceResourceAmount,
+                    effect.targetResourceKey,
+                    effect.targetResourceAmount == null ? 0 : effect.targetResourceAmount))
+                .toList()
         );
     }
 
@@ -1380,7 +1514,7 @@ public final class HeadlessBattleSession {
             planned.getStartTick(),
             planned.getEndTick(),
             planned.getFireTick(),
-            planned.getMove().getApCost(),
+            planned.getApCost(),
             planned.getActualCeCost(),
             segment.status,
             segment.resolvedTick,
@@ -1394,8 +1528,10 @@ public final class HeadlessBattleSession {
         for (CombatEvent event : events) {
             BattleCombatant sourceCombatant = event.getSource();
             BattleCombatant targetCombatant = event.getTarget();
+            BattleCombatant relatedTargetCombatant = event.getRelatedTarget();
             ParticipantRuntime source = runtimeFor(sourceCombatant);
             ParticipantRuntime target = runtimeFor(targetCombatant);
+            ParticipantRuntime relatedTarget = runtimeFor(relatedTargetCombatant);
             Move move = event.getMove();
             wireEvents.add(new BattleEventState(
                 nextEventId(),
@@ -1421,7 +1557,19 @@ public final class HeadlessBattleSession {
                 sourceCombatant == null || sourceCombatant.getInstanceId() == null
                     ? null : sourceCombatant.getInstanceId().value(),
                 targetCombatant == null || targetCombatant.getInstanceId() == null
-                    ? null : targetCombatant.getInstanceId().value()
+                    ? null : targetCombatant.getInstanceId().value(),
+                relatedTarget == null ? null : relatedTarget.participant.side(),
+                relatedTargetCombatant == null
+                    ? null : relatedTargetCombatant.getCharacter().getId(),
+                relatedTargetCombatant == null
+                    ? null : relatedTargetCombatant.getCharacter().getName(),
+                relatedTargetCombatant == null || relatedTargetCombatant.getInstanceId() == null
+                    ? null : relatedTargetCombatant.getInstanceId().value(),
+                event.getDomainInstanceId(),
+                event.getRelatedDomainInstanceId(),
+                event.getDomainId(),
+                event.getDomainName(),
+                event.getDomainCollapseReason()
             ));
         }
         return wireEvents;
@@ -1486,15 +1634,51 @@ public final class HeadlessBattleSession {
             case DAMAGE_DEALT, DAMAGE_IGNORED, HP_RESTORED,
                  MAX_HP_CHANGED, MAX_CE_CHANGED, BLACK_FLASH,
                  CE_DRAINED, CE_RESTORED,
-                 CHARACTER_TRANSFORMED, CHARACTER_REVERTED -> event.getIntValue();
+                 CHARACTER_TRANSFORMED, CHARACTER_REVERTED,
+                 DOMAIN_BARRIER_DAMAGED -> event.getIntValue();
             default -> null;
         };
+    }
+
+    private DomainBattlefieldState domainBattlefieldState() {
+        List<DomainState> domains = battleState.domainBattlefield().activeDomains().stream()
+            .map(this::domainState)
+            .toList();
+        List<DomainClashState> clashes = battleState.domainBattlefield().clashes().stream()
+            .map(clash -> new DomainClashState(
+                clash.firstInstanceId(), clash.secondInstanceId()))
+            .toList();
+        return new DomainBattlefieldState(domains, clashes);
+    }
+
+    private DomainState domainState(DomainInstance domain) {
+        return new DomainState(
+            domain.instanceId(),
+            domain.definition().id(),
+            domain.definition().name(),
+            domain.ownerId().value(),
+            domain.definition().antiDomain(),
+            domain.definition().topology().name(),
+            domain.definition().counterType().name(),
+            domain.selectedTargetIds().stream().map(CombatantId::value).toList(),
+            domain.memberIds().stream().map(CombatantId::value).toList(),
+            domain.protectedIds().stream().map(CombatantId::value).toList(),
+            domain.remainingRounds(),
+            domain.remainingTicks(),
+            domain.internalBarrierIntegrity(),
+            domain.externalBarrierIntegrity(),
+            domain.remainingCounterUses()
+        );
     }
 
     private List<String> moveTags(Move move) {
         LinkedHashSet<String> tags = new LinkedHashSet<>();
         move.getTags().stream().map(MoveTag::name).forEach(tags::add);
         move.getCategory().getTags().stream().map(MoveTag::name).forEach(tags::add);
+        move.getHitComponents().stream()
+            .flatMap(component -> component.getTags().stream())
+            .map(MoveTag::name)
+            .forEach(tags::add);
         if (move.hasTag("ATTACK")) tags.add(MoveTag.ATTACK.name());
         if (move.isGuardBreak()) tags.add(MoveTag.GUARD_BREAK.name());
         if (move.isHeavy()) tags.add(MoveTag.HEAVY.name());
@@ -1512,7 +1696,8 @@ public final class HeadlessBattleSession {
     }
 
     private String moveRestrictionReason(BattleCombatant combatant, Move move) {
-        return MoveAvailability.restrictionReason(battleState, combatant, move);
+        return MoveAvailability.restrictionReasonWithoutBoundedResources(
+            battleState, combatant, move);
     }
 
     private boolean canUseSharedPlanningVersion(
@@ -1612,7 +1797,7 @@ public final class HeadlessBattleSession {
             combatant.getMaxHp(),
             combatant.getCurrentCe(),
             combatant.getMaxCursedEnergy(),
-            combatant.getCodedAbilities().states(),
+            combatant.abilityStates(),
             combatant.getInstanceId().value(),
             combatant.getCharacter().getId(),
             combatant.getCharacter().getName()
@@ -1828,7 +2013,7 @@ public final class HeadlessBattleSession {
         private final CombatantId actorId;
         private final ActionSegment plannedSegment;
         private final BattlePlan.Board board;
-        private final List<CombatantId> targetIds;
+        private List<CombatantId> targetIds;
         private ActionSegment executionSegment;
         private ActionSegmentStatus status = ActionSegmentStatus.QUEUED;
         private Integer resolvedTick;

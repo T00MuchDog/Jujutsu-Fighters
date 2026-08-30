@@ -21,17 +21,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PoisonSoulTemplateTest {
 
     @Test
-    void poisonTemplateUsesRoundDurationAndDamageMagnitude() {
-        StatusEffect poison = StatusEffect.poison(2, 7.5);
+    void poisonUsesFixedPotencyAndRoundDuration() {
+        StatusEffect poison = StatusEffect.poison(2);
 
         assertEquals(StatusEffectType.POISON, poison.getType());
         assertEquals(2, poison.getDurationRounds());
         assertEquals(0, poison.getDurationTicks());
-        assertEquals(7.5, poison.getMagnitude());
-        assertTrue(StatusEffectType.POISON.usesMagnitude());
+        assertEquals(0.0, poison.getMagnitude());
+        assertEquals(0.8, StatusEffectType.POISON.statMultiplier());
+        assertTrue(StatusEffectType.POISON.affectsAllBaseStats());
+        assertFalse(StatusEffectType.POISON.usesMagnitude());
         assertTrue(StatusEffectType.POISON.requiresRoundDuration());
         assertThrows(IllegalArgumentException.class,
-            () -> new StatusEffect(StatusEffectType.POISON, 0, 2, 5.0));
+            () -> new StatusEffect(StatusEffectType.POISON, 0, 2, 0.0));
     }
 
     @Test
@@ -54,7 +56,7 @@ class PoisonSoulTemplateTest {
         BattleCombatant combatant = new BattleCombatant(new SorcererCharacter(
             "MARKED", "Marked", new CharacterStats.Builder().build(),
             null, List.of(), List.of(new Ability(data))));
-        assertFalse(combatant.addStatusEffect(StatusEffect.poison(2, 5.0)));
+        assertFalse(combatant.addStatusEffect(StatusEffect.poison(2)));
         assertFalse(combatant.hasEffect(StatusEffectType.POISON));
         assertTrue(combatant.hasSoulAwareAttacks());
     }

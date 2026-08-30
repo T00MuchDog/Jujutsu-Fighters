@@ -4,6 +4,9 @@ import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.AoeType;
+import com.jjktbf.model.move.AttackLaunchMode;
+import com.jjktbf.model.move.Targeting;
+import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assumptions;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -59,14 +63,17 @@ class BattleScreenMoveStateTest {
     void orderedHitComponentsSurviveDisplayReconstruction() {
         Move move = BattleScreen.toDisplayMove(moveState(
             MoveCategory.PHYSICAL_CURSED_ENERGY,
-            List.of("PHYSICAL", "CURSED_ENERGY", "ATTACK", "MELEE"),
+            List.of("PHYSICAL", "CURSED_ENERGY", "ATTACK", "MELEE", "RANGED",
+                "GUARD_BREAK", "INTANGIBLE"),
             PlanBoard.OFFENSIVE,
             999,
             List.of(
                 new HitComponentState(
-                    40, "PHYSICAL", List.of("PHYSICAL"), 0, false, true, 1.0),
+                    40, "PHYSICAL", List.of("PHYSICAL", "MELEE", "GUARD_BREAK"),
+                    0, false, true, 1.0),
                 new HitComponentState(
-                    25, "CURSED_ENERGY", List.of("CURSED_ENERGY"), 4, true, false, 1.0))
+                    25, "CURSED_ENERGY", List.of("CURSED_ENERGY", "RANGED", "INTANGIBLE"),
+                    4, true, false, 1.0))
         ));
 
         assertEquals(65, move.getBasePower());
@@ -77,7 +84,11 @@ class BattleScreenMoveStateTest {
         assertEquals(4, move.getHitComponents().get(1).getDelayTicks());
         assertTrue(move.getHitComponents().get(1).requiresPreviousConnection());
         assertFalse(move.getHitComponents().get(1).isAvoidable());
-        assertTrue(move.getTags().contains(MoveTag.MELEE));
+        assertFalse(move.getTags().contains(MoveTag.MELEE));
+        assertEquals(Set.of(MoveTag.PHYSICAL, MoveTag.MELEE, MoveTag.GUARD_BREAK),
+            move.getHitComponents().get(0).getTags());
+        assertEquals(Set.of(MoveTag.CURSED_ENERGY, MoveTag.RANGED, MoveTag.INTANGIBLE),
+            move.getHitComponents().get(1).getTags());
     }
 
     @Test
@@ -156,6 +167,44 @@ class BattleScreenMoveStateTest {
 
         assertEquals(CursedSpeechAbility.RETURN, CursedSpeechAbility.commandMode(move));
         assertEquals("Cursed Speech", move.getRequiredTechniqueId());
+    }
+
+    @Test
+    void pairAndDefenseTargetingSurviveOnlineDisplayReconstruction() {
+        MoveState pairState = new MoveState(
+            "PAIR", "Pair", "Choose endpoints", MoveCategory.UTILITY.name(),
+            List.of("UTILITY"), PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true,
+            5, 1, false, 0, 0, 0, 0, 0, true, null, null, List.of(),
+            null, 0, null, null, "SELF", 2, "ALLY_AND_ENEMY");
+        MoveState defenseState = new MoveState(
+            "DEFENSE", "Defense", "Protect allies", MoveCategory.DEFENSIVE.name(),
+            List.of("DEFENSIVE"), PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true,
+            5, 1, false, 0, 0, 0, 0, 0, true, null, null, List.of(),
+            null, 0, null, null, "MULTIPLE_ALLIES", 3, "DEFAULT");
+
+        Move pair = BattleScreen.toDisplayMove(pairState);
+        Move defense = BattleScreen.toDisplayMove(defenseState);
+
+        assertEquals(Targeting.ALLY_AND_ENEMY, pair.getTargeting());
+        assertEquals(DefenseTargeting.MULTIPLE_ALLIES, defense.getDefenseTargeting());
+        assertEquals(3, defense.getDefenseTargetCount());
+    }
+
+    @Test
+    void defenceCounterLaunchMetadataSurvivesOnlineDisplayReconstruction() {
+        MoveState state = new MoveState(
+            "000096", "Boogie Woogie Counter", "Dodge and counter.",
+            MoveCategory.DEFENSIVE.name(),
+            List.of("PHYSICAL", "DEFENSIVE", "ATTACK", "INNATE_TECHNIQUE", "MELEE"),
+            PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true,
+            11, 1, true, 15, 15, 3, 75, 0, true, null, null, List.of(),
+            null, 0, null, "Boogie Woogie", "SELF", 2, "DEFAULT",
+            "ON_DEFENCE", "000004");
+
+        Move move = BattleScreen.toDisplayMove(state);
+
+        assertEquals(AttackLaunchMode.ON_DEFENCE, move.getAttackLaunchMode());
+        assertEquals("000004", move.getAttackLaunchMoveId());
     }
 
     @Test

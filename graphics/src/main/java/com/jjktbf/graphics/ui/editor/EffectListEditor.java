@@ -17,6 +17,7 @@ import com.jjktbf.graphics.ui.ContentSizedDialog;
 import com.jjktbf.graphics.ui.DynamicSelectBox;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.AbilityData;
+import com.jjktbf.model.character.AbilityConditionData;
 import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectParameter;
@@ -30,8 +31,11 @@ import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.TransformationHpMode;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
-import com.jjktbf.model.character.coded.NewShadowStyleAbility;
 import com.jjktbf.model.character.coded.RatioAbility;
+import com.jjktbf.model.domain.DomainData;
+import com.jjktbf.model.domain.DomainAudience;
+import com.jjktbf.model.domain.DomainDeliveryClass;
+import com.jjktbf.model.domain.DomainTrigger;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffectType;
@@ -50,11 +54,13 @@ public class EffectListEditor extends Table {
     private static final String SELECT_ABILITY = "[select an ability]";
     private static final String SELECT_TECHNIQUE = "[select a technique]";
     private static final String SELECT_CHARACTER = "[select a shikigami]";
+    private static final String SELECT_DOMAIN = "[select a Domain]";
     private static final String SELECT_FORM = "[select a character form]";
     private static final String NO_MOVES = "[no moves available]";
     private static final String NO_ABILITIES = "[no abilities available]";
     private static final String NO_TECHNIQUES = "[no techniques available]";
     private static final String NO_CHARACTERS = "[no shikigami available]";
+    private static final String NO_DOMAINS = "[no Domains available]";
     private static final String NO_FORMS = "[no character forms available]";
 
     private final Skin skin;
@@ -63,6 +69,7 @@ public class EffectListEditor extends Table {
     private final List<AbilityData> abilities;
     private final List<InnateTechniqueData> techniques;
     private final List<CharacterData> characters;
+    private final List<DomainData> domains;
     private final Runnable onDirty;
     private final Runnable requestRebuild;
     private final Consumer<SoundCue> soundPlayer;
@@ -71,6 +78,7 @@ public class EffectListEditor extends Table {
     private final boolean passiveAbility;
     private final List<AbilityEffectType> availableTypes;
     private final boolean moveEffectEditor;
+    private final boolean domainEffectEditor;
     private final UiProfile uiProfile;
     private final boolean windowsLayout;
 
@@ -88,7 +96,7 @@ public class EffectListEditor extends Table {
         UiProfile uiProfile,
         Skin skin
     ) {
-        this(effects, moves, abilities, techniques, characters, onDirty,
+        this(effects, moves, abilities, techniques, characters, List.of(), onDirty,
             requestRebuild, soundPlayer, masteryEligible, passiveAbility,
             java.util.Arrays.stream(AbilityEffectType.values())
                 .filter(type -> !type.isMoveOnly())
@@ -111,6 +119,51 @@ public class EffectListEditor extends Table {
         UiProfile uiProfile,
         Skin skin
     ) {
+        this(effects, moves, abilities, techniques, characters, List.of(), onDirty,
+            requestRebuild, soundPlayer, masteryEligible, passiveAbility,
+            availableTypes, moveEffectEditor, false, uiProfile, skin);
+    }
+
+    public EffectListEditor(
+        List<AbilityEffectData> effects,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<InnateTechniqueData> techniques,
+        List<CharacterData> characters,
+        List<DomainData> domains,
+        Runnable onDirty,
+        Runnable requestRebuild,
+        Consumer<SoundCue> soundPlayer,
+        boolean masteryEligible,
+        boolean passiveAbility,
+        List<AbilityEffectType> availableTypes,
+        boolean moveEffectEditor,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
+        this(effects, moves, abilities, techniques, characters, domains, onDirty,
+            requestRebuild, soundPlayer, masteryEligible, passiveAbility,
+            availableTypes, moveEffectEditor, false, uiProfile, skin);
+    }
+
+    public EffectListEditor(
+        List<AbilityEffectData> effects,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<InnateTechniqueData> techniques,
+        List<CharacterData> characters,
+        List<DomainData> domains,
+        Runnable onDirty,
+        Runnable requestRebuild,
+        Consumer<SoundCue> soundPlayer,
+        boolean masteryEligible,
+        boolean passiveAbility,
+        List<AbilityEffectType> availableTypes,
+        boolean moveEffectEditor,
+        boolean domainEffectEditor,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
         super(skin);
         this.skin = skin;
         this.effects = effects == null ? new ArrayList<>() : effects;
@@ -118,6 +171,7 @@ public class EffectListEditor extends Table {
         this.abilities = abilities == null ? List.of() : abilities;
         this.techniques = techniques == null ? List.of() : techniques;
         this.characters = characters == null ? List.of() : characters;
+        this.domains = domains == null ? List.of() : domains;
         this.onDirty = onDirty;
         this.requestRebuild = requestRebuild;
         this.soundPlayer = soundPlayer == null ? cue -> { } : soundPlayer;
@@ -126,6 +180,7 @@ public class EffectListEditor extends Table {
         this.availableTypes = availableTypes == null || availableTypes.isEmpty()
             ? List.of(AbilityEffectType.APPLY_STATUS) : List.copyOf(availableTypes);
         this.moveEffectEditor = moveEffectEditor;
+        this.domainEffectEditor = domainEffectEditor;
         this.uiProfile = uiProfile;
         this.windowsLayout = uiProfile == UiProfile.WINDOWS;
 
@@ -188,6 +243,7 @@ public class EffectListEditor extends Table {
             : effects.get(index).copy();
         AbilityEffectType initialType = safeType(working.type);
         initialType.prepare(working);
+        if (domainEffectEditor) prepareDomainMetadata(working);
 
         SelectBox<String> typeBox = new DynamicSelectBox<>(skin, uiProfile);
         typeBox.setItems(effectTypeLabels());
@@ -212,6 +268,7 @@ public class EffectListEditor extends Table {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 AbilityEffectType selected = typeFromLabel(typeBox.getSelected());
                 selected.reset(working);
+                if (domainEffectEditor) prepareDomainMetadata(working);
                 hint.setText(selected.description());
                 error.setText("");
                 rebuildFields[0].run();
@@ -242,6 +299,14 @@ public class EffectListEditor extends Table {
                     error.setText(validationError);
                     soundPlayer.accept(SoundCue.UI_DENIED);
                     return;
+                }
+                if (domainEffectEditor) {
+                    String domainError = domainMetadataValidationError(working);
+                    if (domainError != null) {
+                        error.setText(domainError);
+                        soundPlayer.accept(SoundCue.UI_DENIED);
+                        return;
+                    }
                 }
                 if ((selected == AbilityEffectType.GRANT_MOVE
                     || selected == AbilityEffectType.UNLOCK_MOVE)
@@ -330,15 +395,19 @@ public class EffectListEditor extends Table {
         fields.defaults().pad(4).left().growX();
         boolean tickOnlyStatus = isTickOnlyStatus(effect, type);
         boolean roundOnlyStatus = isRoundOnlyStatus(effect, type);
-        TextField durationField = type.uses(AbilityEffectParameter.DURATION)
+        TextField durationField = type.uses(AbilityEffectParameter.DURATION, effect)
             && !tickOnlyStatus
             ? integerField(effect.durationRounds) : null;
-        TextField durationTicksField = type.uses(AbilityEffectParameter.DURATION)
+        TextField durationTicksField = type.uses(AbilityEffectParameter.DURATION, effect)
             && !roundOnlyStatus ? nonNegativeIntegerField(effect.durationTicks) : null;
         TextField perTickRemovalChanceField = type.uses(
             AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE)
             ? nonNegativeDecimalField(effect.perTickRemovalChance == null
                 ? null : effect.perTickRemovalChance * 100.0) : null;
+
+        if (domainEffectEditor) {
+            addDomainMetadataFields(fields, effect, refreshFields);
+        }
 
         if (type.uses(AbilityEffectParameter.CODED_FEATURE)) {
             List<CodedAbilityRegistry.AbilityFeature> features =
@@ -412,7 +481,129 @@ public class EffectListEditor extends Table {
             addCodedMoveActionFields(fields, effect, refreshFields);
         }
 
-        if (type.uses(AbilityEffectParameter.STAT)) {
+        if (type.uses(AbilityEffectParameter.STAT_TYPE)) {
+            SelectBox<String> statTypeBox = new DynamicSelectBox<>(skin, uiProfile);
+            statTypeBox.setItems(java.util.Arrays.stream(AbilityEffectType.StatType.values())
+                .map(value -> value.label).toArray(String[]::new));
+            statTypeBox.setSelected(AbilityEffectType.selectedStatType(effect).label);
+            statTypeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.StatType selected = java.util.Arrays.stream(
+                            AbilityEffectType.StatType.values())
+                        .filter(value -> value.label.equals(statTypeBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.StatType.CORE);
+                    effect.statType = selected.name();
+                    effect.stat = selected == AbilityEffectType.StatType.CORE
+                        ? StatKey.VITALITY.fieldName : null;
+                    effect.stringValue = selected == AbilityEffectType.StatType.BATTLE
+                        ? BattleStatKey.MAX_AP.name() : null;
+                    effect.intValue = null;
+                    effect.doubleValue = null;
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Stat type", statTypeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.STAT_OPERATION)) {
+            SelectBox<String> operationBox = new DynamicSelectBox<>(skin, uiProfile);
+            operationBox.setItems(java.util.Arrays.stream(AbilityEffectType.StatOperation.values())
+                .map(value -> value.label).toArray(String[]::new));
+            operationBox.setSelected(AbilityEffectType.selectedStatOperation(effect).label);
+            operationBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.StatOperation selected = java.util.Arrays.stream(
+                            AbilityEffectType.StatOperation.values())
+                        .filter(value -> value.label.equals(operationBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.StatOperation.CHANGE);
+                    effect.statOperation = selected.name();
+                    effect.valueMode = selected == AbilityEffectType.StatOperation.CHANGE
+                        ? AbilityEffectType.ValueMode.FLAT.name() : null;
+                    effect.intValue = null;
+                    effect.doubleValue = null;
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Operation", operationBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.CE_DRAIN_MODE)) {
+            SelectBox<String> drainModeBox = new DynamicSelectBox<>(skin, uiProfile);
+            drainModeBox.setItems(java.util.Arrays.stream(AbilityEffectType.CeDrainMode.values())
+                .map(value -> value.label).toArray(String[]::new));
+            drainModeBox.setSelected(AbilityEffectType.selectedCeDrainMode(effect).label);
+            drainModeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.CeDrainMode selected = java.util.Arrays.stream(
+                            AbilityEffectType.CeDrainMode.values())
+                        .filter(value -> value.label.equals(drainModeBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.CeDrainMode.INSTANT);
+                    effect.ceDrainMode = selected.name();
+                    if (selected == AbilityEffectType.CeDrainMode.OVER_TIME) {
+                        if (effect.durationRounds == null) effect.durationRounds = 1;
+                        if (effect.durationTicks == null) effect.durationTicks = 0;
+                    } else {
+                        effect.durationRounds = null;
+                        effect.durationTicks = null;
+                        effect.ceEfficiencyProgression = null;
+                    }
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Drain timing", drainModeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.VALUE_MODE, effect)) {
+            SelectBox<String> valueModeBox = new DynamicSelectBox<>(skin, uiProfile);
+            String percentageLabel = type == AbilityEffectType.TIMED_STAT_MODIFIER
+                ? "Scaled percentage" : "Maximum percentage";
+            valueModeBox.setItems(AbilityEffectType.ValueMode.FLAT.label, percentageLabel);
+            valueModeBox.setSelected(AbilityEffectType.selectedValueMode(effect)
+                == AbilityEffectType.ValueMode.FLAT
+                    ? AbilityEffectType.ValueMode.FLAT.label : percentageLabel);
+            valueModeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.valueMode = AbilityEffectType.ValueMode.FLAT.label.equals(
+                        valueModeBox.getSelected())
+                            ? AbilityEffectType.ValueMode.FLAT.name()
+                            : AbilityEffectType.ValueMode.PERCENT.name();
+                    effect.intValue = null;
+                    effect.doubleValue = null;
+                    type.prepare(effect);
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Value type", valueModeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.ACCURACY_DURATION)) {
+            SelectBox<String> durationModeBox = new DynamicSelectBox<>(skin, uiProfile);
+            durationModeBox.setItems(java.util.Arrays.stream(
+                    AbilityEffectType.AccuracyDuration.values())
+                .map(value -> value.label).toArray(String[]::new));
+            durationModeBox.setSelected(
+                AbilityEffectType.selectedAccuracyDuration(effect).label);
+            durationModeBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    AbilityEffectType.AccuracyDuration selected = java.util.Arrays.stream(
+                            AbilityEffectType.AccuracyDuration.values())
+                        .filter(value -> value.label.equals(durationModeBox.getSelected()))
+                        .findFirst().orElse(AbilityEffectType.AccuracyDuration.NEXT_ATTACK);
+                    effect.accuracyDuration = selected.name();
+                    effect.durationRounds = selected == AbilityEffectType.AccuracyDuration.DURATION
+                        ? 1 : null;
+                    effect.durationTicks = selected == AbilityEffectType.AccuracyDuration.DURATION
+                        ? 0 : null;
+                    refreshFields.run();
+                }
+            });
+            addRow(fields, "Applies for", durationModeBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.STAT, effect)) {
             SelectBox<String> statBox = new DynamicSelectBox<>(skin, uiProfile);
             statBox.setItems(statLabels());
             statBox.setSelected(statLabel(effect.stat));
@@ -425,7 +616,7 @@ public class EffectListEditor extends Table {
             addRow(fields, "Stat", statBox);
         }
 
-        if (type.uses(AbilityEffectParameter.BATTLE_STAT)) {
+        if (type.uses(AbilityEffectParameter.BATTLE_STAT, effect)) {
             SelectBox<String> statBox = new DynamicSelectBox<>(skin, uiProfile);
             statBox.setItems(java.util.Arrays.stream(BattleStatKey.values())
                 .map(stat -> stat.label).toArray(String[]::new));
@@ -454,32 +645,58 @@ public class EffectListEditor extends Table {
             addRow(fields, type == AbilityEffectType.LOCK_MOVE_TAG ? "Move tag" : "Affected moves", scopeBox);
         }
 
-        if (type.uses(AbilityEffectParameter.INTEGER)) {
+        if (type.uses(AbilityEffectParameter.INTEGER, effect)) {
             TextField integer = integerField(effect.intValue);
             integer.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     effect.intValue = parseInteger(integer.getText());
                 }
             });
-            addRow(fields, integerLabel(type), integer);
+            addRow(fields, integerLabel(type, effect), integer);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.INT_VALUE,
+                () -> effect.intValue == null ? 0 : effect.intValue);
+            addCeEfficiencyProgression(fields, effect, TechniqueMasteryProgressions.INT_VALUE,
                 () -> effect.intValue == null ? 0 : effect.intValue);
         }
 
-        if (type.uses(AbilityEffectParameter.DECIMAL)) {
-            boolean percentage = isPercentage(type);
-            Double displayed = percentage && effect.doubleValue != null
-                ? effect.doubleValue * 100.0 : effect.doubleValue;
+        if (type.uses(AbilityEffectParameter.DECIMAL, effect)) {
+            boolean percentage = isPercentage(type, effect);
+            // Explicit branches, not ternaries: a mixed double/Double ternary
+            // unboxes the boxed operand, which is null while the field is
+            // transiently empty (e.g. after backspace clears the text).
+            Double displayed = effect.doubleValue;
+            if (percentage && displayed != null) displayed = displayed * 100.0;
             TextField decimal = decimalField(displayed);
             decimal.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     Double value = parseDouble(decimal.getText());
-                    effect.doubleValue = percentage && value != null ? value / 100.0 : value;
+                    if (percentage && value != null) effect.doubleValue = value / 100.0;
+                    else                             effect.doubleValue = value;
                 }
             });
-            addRow(fields, decimalLabel(type), decimal);
+            addRow(fields, decimalLabel(type, effect), decimal);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.DOUBLE_VALUE,
-                () -> masteryDecimalLiteral(type, effect.doubleValue));
+                () -> masteryDecimalLiteral(type, effect, effect.doubleValue));
+            addCeEfficiencyProgression(fields, effect, TechniqueMasteryProgressions.DOUBLE_VALUE,
+                () -> masteryDecimalLiteral(type, effect, effect.doubleValue));
+        }
+
+        if (type.uses(AbilityEffectParameter.STAT_MULTIPLIER_CURVE)) {
+            TextField minimumMultiplier = nonNegativeDecimalField(effect.minimumStatMultiplier);
+            minimumMultiplier.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.minimumStatMultiplier = parseDouble(minimumMultiplier.getText());
+                }
+            });
+            addRow(fields, "Multiplier at scaled stat 10", minimumMultiplier);
+
+            TextField maximumMultiplier = nonNegativeDecimalField(effect.maximumStatMultiplier);
+            maximumMultiplier.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.maximumStatMultiplier = parseDouble(maximumMultiplier.getText());
+                }
+            });
+            addRow(fields, "Multiplier at scaled stat maximum", maximumMultiplier);
         }
 
         if (type.uses(AbilityEffectParameter.MOVE_ID)) {
@@ -504,6 +721,18 @@ public class EffectListEditor extends Table {
                 }
             });
             addRow(fields, "Ability", abilityBox);
+        }
+
+        if (type.uses(AbilityEffectParameter.DOMAIN_ID)) {
+            SelectBox<String> domainBox = new DynamicSelectBox<>(skin, uiProfile);
+            domainBox.setItems(domainReferenceLabels(effect.domainId));
+            domainBox.setSelected(domainReferenceLabel(effect.domainId));
+            domainBox.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.domainId = referenceIdFromLabel(domainBox.getSelected());
+                }
+            });
+            addRow(fields, "Domain", domainBox);
         }
 
         if (type.uses(AbilityEffectParameter.CHARACTER_ID)) {
@@ -624,13 +853,27 @@ public class EffectListEditor extends Table {
             String ally = moveEffectEditor ? "Move ally" : AbilityEffectTarget.ALLY.name();
             String both = moveEffectEditor ? "User and target" : AbilityEffectTarget.BOTH.name();
             String selfAndAlly = moveEffectEditor ? "User and ally" : AbilityEffectTarget.SELF_AND_ALLY.name();
-            targetBox.setItems(self, enemy, ally, both, selfAndAlly);
+            String pairFirst = "Pair first";
+            String pairSecond = "Pair second";
+            String pairBoth = "Pair both";
+            if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                || type == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER) {
+                targetBox.setItems(self);
+            } else if (moveEffectEditor) {
+                targetBox.setItems(self, enemy, ally, both, selfAndAlly,
+                    pairFirst, pairSecond, pairBoth);
+            } else {
+                targetBox.setItems(self, enemy, ally, both, selfAndAlly);
+            }
             targetBox.setSelected(switch (safeTarget(effect.target)) {
                 case SELF -> self;
                 case ENEMY -> enemy;
                 case ALLY -> ally;
                 case BOTH -> both;
                 case SELF_AND_ALLY -> selfAndAlly;
+                case PAIR_FIRST -> moveEffectEditor ? pairFirst : self;
+                case PAIR_SECOND -> moveEffectEditor ? pairSecond : self;
+                case PAIR_BOTH -> moveEffectEditor ? pairBoth : self;
             });
             effect.target = targetFromLabel(targetBox.getSelected()).name();
             targetBox.addListener(new ChangeListener() {
@@ -664,7 +907,7 @@ public class EffectListEditor extends Table {
             addRow(fields, "Apply when", timingBox);
         }
 
-        if (type.uses(AbilityEffectParameter.DURATION)) {
+        if (type.uses(AbilityEffectParameter.DURATION, effect)) {
             if (tickOnlyStatus) {
                 effect.durationRounds = 0;
                 if (effect.durationTicks == null || effect.durationTicks <= 0) {
@@ -738,6 +981,16 @@ public class EffectListEditor extends Table {
                 () -> percent(effect.perTickRemovalChance));
         }
 
+        if (type.uses(AbilityEffectParameter.CE_UPKEEP_PER_TICK)) {
+            TextField ceUpkeep = nonNegativeDecimalField(effect.ceUpkeepPerTick);
+            ceUpkeep.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.ceUpkeepPerTick = parseDouble(ceUpkeep.getText());
+                }
+            });
+            addRow(fields, "CE upkeep per tick (blank = none)", ceUpkeep);
+        }
+
         if (type.uses(AbilityEffectParameter.USES)) {
             TextField uses = integerField(effect.uses);
             uses.addListener(new ChangeListener() {
@@ -748,6 +1001,72 @@ public class EffectListEditor extends Table {
             addRow(fields, "Uses (-1 = unlimited)", uses);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.USES,
                 () -> effect.uses == null ? 0 : effect.uses);
+        }
+
+        if (type.uses(AbilityEffectParameter.REFRESH_GROUP)) {
+            TextField group = textField(effect.refreshGroup);
+            group.addListener(onChange(() -> {
+                String value = group.getText().trim();
+                effect.refreshGroup = value.isEmpty() ? null : value;
+            }));
+            addRow(fields, "Refresh group (optional)", group);
+        }
+
+        if (type.uses(AbilityEffectParameter.RESOURCE_KEY)) {
+            TextField key = textField(effect.resourceKey);
+            key.addListener(onChange(() -> effect.resourceKey = key.getText().trim()));
+            addRow(fields, "Resource key", key);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_LABEL)) {
+            TextField label = textField(effect.resourceLabel);
+            label.addListener(onChange(() -> effect.resourceLabel = label.getText().trim()));
+            addRow(fields, "Display name", label);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_CAPACITY)) {
+            TextField capacity = nonNegativeIntegerField(effect.resourceCapacity);
+            capacity.addListener(onChange(() ->
+                effect.resourceCapacity = parseInteger(capacity.getText())));
+            addRow(fields, "Capacity", capacity);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.RESOURCE_CAPACITY,
+                () -> effect.resourceCapacity == null ? 0 : effect.resourceCapacity);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_START_VALUE)) {
+            TextField start = nonNegativeIntegerField(effect.resourceStartValue);
+            start.addListener(onChange(() ->
+                effect.resourceStartValue = parseInteger(start.getText())));
+            addRow(fields, "Starting value", start);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.RESOURCE_START_VALUE,
+                () -> effect.resourceStartValue == null ? 0 : effect.resourceStartValue);
+        }
+        if (type.uses(AbilityEffectParameter.SOURCE_RESOURCE)) {
+            TextField key = textField(effect.sourceResourceKey);
+            key.addListener(onChange(() -> effect.sourceResourceKey = key.getText().trim()));
+            addRow(fields, "Resource to spend (optional)", key);
+        }
+        if (type.uses(AbilityEffectParameter.SOURCE_RESOURCE_AMOUNT)) {
+            TextField amount = nonNegativeIntegerField(effect.sourceResourceAmount);
+            amount.addListener(onChange(() ->
+                effect.sourceResourceAmount = parseInteger(amount.getText())));
+            addRow(fields, "Spend amount", amount);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.SOURCE_RESOURCE_AMOUNT,
+                () -> effect.sourceResourceAmount == null ? 0 : effect.sourceResourceAmount);
+        }
+        if (type.uses(AbilityEffectParameter.TARGET_RESOURCE)) {
+            TextField key = textField(effect.targetResourceKey);
+            key.addListener(onChange(() -> effect.targetResourceKey = key.getText().trim()));
+            addRow(fields, "Resource to gain (optional)", key);
+        }
+        if (type.uses(AbilityEffectParameter.TARGET_RESOURCE_AMOUNT)) {
+            TextField amount = nonNegativeIntegerField(effect.targetResourceAmount);
+            amount.addListener(onChange(() ->
+                effect.targetResourceAmount = parseInteger(amount.getText())));
+            addRow(fields, "Gain amount", amount);
+            addMasteryProgression(fields, effect,
+                TechniqueMasteryProgressions.TARGET_RESOURCE_AMOUNT,
+                () -> effect.targetResourceAmount == null ? 0 : effect.targetResourceAmount);
         }
 
         return fields;
@@ -774,6 +1093,27 @@ public class EffectListEditor extends Table {
             onDirty,
             uiProfile,
             skin);
+        fields.add(editor).colspan(2).growX().row();
+    }
+
+    private void addCeEfficiencyProgression(
+        Table fields,
+        AbilityEffectData effect,
+        String field,
+        java.util.function.IntSupplier literal
+    ) {
+        AbilityEffectType type = safeType(effect.type);
+        if (!type.ceEfficiencyProgressionFields(effect).contains(field)) return;
+        MasteryProgressionEditor editor = new MasteryProgressionEditor(
+            field,
+            literal,
+            () -> effect.ceEfficiencyProgression,
+            value -> effect.ceEfficiencyProgression = value,
+            onDirty,
+            uiProfile,
+            skin,
+            "Cursed Energy Efficiency",
+            TechniqueMasteryProgressions.CE_EFFICIENCY_VARIABLE);
         fields.add(editor).colspan(2).growX().row();
     }
 
@@ -831,27 +1171,6 @@ public class EffectListEditor extends Table {
                 }
             });
             addRow(fields, "Command mode", mode);
-        } else if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)) {
-            List<MoveData> candidates = moves.stream()
-                .filter(EffectListEditor::isSimpleDomainReactionMove)
-                .toList();
-            SelectBox<String> reaction = new DynamicSelectBox<>(skin, uiProfile);
-            reaction.setItems(candidates.stream().map(EffectListEditor::moveLabel)
-                .toArray(String[]::new));
-            if (!candidates.isEmpty()) {
-                String selected = candidates.stream()
-                    .filter(move -> java.util.Objects.equals(move.id, effect.codedTarget))
-                    .map(EffectListEditor::moveLabel)
-                    .findFirst().orElse(moveLabel(candidates.get(0)));
-                reaction.setSelected(selected);
-                effect.codedTarget = moveIdFromLabel(selected);
-                reaction.addListener(new ChangeListener() {
-                    @Override public void changed(ChangeEvent event, Actor actor) {
-                        effect.codedTarget = moveIdFromLabel(reaction.getSelected());
-                    }
-                });
-            }
-            addRow(fields, "Reaction move", reaction);
         }
 
         effect.codedParameters = CodedAbilityRegistry.prepareEffectParameters(
@@ -874,9 +1193,13 @@ public class EffectListEditor extends Table {
         }
     }
 
-    private static int masteryDecimalLiteral(AbilityEffectType type, Double value) {
+    private static int masteryDecimalLiteral(
+        AbilityEffectType type,
+        AbilityEffectData effect,
+        Double value
+    ) {
         if (value == null) return 0;
-        return type == AbilityEffectType.BATTLE_STAT_ADD
+        return type.storesDecimalAsPoints(effect)
             ? (int) Math.floor(value)
             : (int) Math.floor(value * 100.0);
     }
@@ -892,10 +1215,22 @@ public class EffectListEditor extends Table {
         table.add(actor).growX().row();
     }
 
+    private static ChangeListener onChange(Runnable action) {
+        return new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                action.run();
+            }
+        };
+    }
+
     private TextField integerField(Integer value) {
         TextField field = new HoverTextField(value == null ? "" : String.valueOf(value), skin);
         field.setTextFieldFilter((textField, character) -> Character.isDigit(character) || character == '-');
         return field;
+    }
+
+    private TextField textField(String value) {
+        return new HoverTextField(value == null ? "" : value, skin);
     }
 
     private TextField nonNegativeIntegerField(Integer value) {
@@ -922,6 +1257,11 @@ public class EffectListEditor extends Table {
         AbilityEffectType type = safeType(effect == null ? null : effect.type);
         if (effect == null) return type.displayName();
         StringBuilder summary = new StringBuilder(type.displayName());
+        if (domainEffectEditor) {
+            summary.append(" | ").append(pretty(effect.domainTrigger))
+                .append(" -> ").append(pretty(effect.domainAudience))
+                .append(" [").append(pretty(effect.domainDeliveryClass)).append(']');
+        }
         if (type.uses(AbilityEffectParameter.CODED_FEATURE)) {
             summary.append(" | ").append(codedFeature(effect).label());
         }
@@ -929,13 +1269,31 @@ public class EffectListEditor extends Table {
             summary.append(" | ").append(codedAction(effect).label());
             if (effect.codedTarget != null) summary.append(" -> ").append(effect.codedTarget);
         }
-        if (type.uses(AbilityEffectParameter.STAT) && effect.stat != null) {
+        if (type.uses(AbilityEffectParameter.STAT_TYPE)) {
+            summary.append(" | ").append(AbilityEffectType.selectedStatType(effect).label)
+                .append(" | ").append(AbilityEffectType.selectedStatOperation(effect).label);
+        }
+        if (type.uses(AbilityEffectParameter.CE_DRAIN_MODE)) {
+            summary.append(" | ").append(AbilityEffectType.selectedCeDrainMode(effect).label);
+            if (effect.ceEfficiencyProgression != null
+                && !effect.ceEfficiencyProgression.isEmpty()) {
+                summary.append(" | CEE scaled");
+            }
+        }
+        if (type.uses(AbilityEffectParameter.VALUE_MODE, effect)) {
+            summary.append(" | ").append(AbilityEffectType.selectedValueMode(effect).label);
+        }
+        if (type.uses(AbilityEffectParameter.ACCURACY_DURATION)) {
+            summary.append(" | ").append(
+                AbilityEffectType.selectedAccuracyDuration(effect).label);
+        }
+        if (type.uses(AbilityEffectParameter.STAT, effect) && effect.stat != null) {
             summary.append(" | ").append(statLabel(effect.stat));
         }
         if (type.uses(AbilityEffectParameter.MOVE_SCOPE)) {
             summary.append(" | ").append(moveScopeLabel(effect.moveTag));
         }
-        if (type.uses(AbilityEffectParameter.INTEGER) && effect.intValue != null) {
+        if (type.uses(AbilityEffectParameter.INTEGER, effect) && effect.intValue != null) {
             summary.append(" | ");
             if (type != AbilityEffectType.MAX_ACTIVE_SUMMONS
                 && !type.isAccuracyPriority() && effect.intValue >= 0) {
@@ -943,11 +1301,10 @@ public class EffectListEditor extends Table {
             }
             summary.append(effect.intValue);
         }
-        if (type.uses(AbilityEffectParameter.DECIMAL) && effect.doubleValue != null) {
-            if (isPercentage(type)) {
+        if (type.uses(AbilityEffectParameter.DECIMAL, effect) && effect.doubleValue != null) {
+            if (isPercentage(type, effect)) {
                 double pct = effect.doubleValue * 100.0;
-                boolean signed = type == AbilityEffectType.TEMP_STAT_PERCENT
-                    || type == AbilityEffectType.BATTLE_STAT_PERCENT;
+                boolean signed = type == AbilityEffectType.TIMED_STAT_MODIFIER;
                 summary.append(" | ");
                 if (signed && pct > 0) summary.append('+');
                 summary.append(formatNumber(pct)).append('%');
@@ -957,11 +1314,20 @@ public class EffectListEditor extends Table {
                 summary.append(" | x").append(formatNumber(effect.doubleValue));
             }
         }
+        if (type.uses(AbilityEffectParameter.STAT_MULTIPLIER_CURVE)
+            && effect.minimumStatMultiplier != null && effect.maximumStatMultiplier != null) {
+            summary.append(" | x").append(formatNumber(effect.minimumStatMultiplier))
+                .append(" @ 10 -> x1 @ 80 -> x")
+                .append(formatNumber(effect.maximumStatMultiplier)).append(" @ max");
+        }
         if (type.uses(AbilityEffectParameter.MOVE_ID) && effect.moveId != null) {
             summary.append(" | ").append(moveReferenceLabel(effect.moveId));
         }
         if (type.uses(AbilityEffectParameter.ABILITY_ID) && effect.abilityId != null) {
             summary.append(" | ").append(abilityReferenceLabel(effect.abilityId));
+        }
+        if (type.uses(AbilityEffectParameter.DOMAIN_ID) && effect.domainId != null) {
+            summary.append(" | ").append(domainReferenceLabel(effect.domainId));
         }
         if (type.uses(AbilityEffectParameter.CHARACTER_ID) && effect.characterId != null) {
             summary.append(" | ").append(type == AbilityEffectType.TRANSFORM_CHARACTER
@@ -995,17 +1361,40 @@ public class EffectListEditor extends Table {
                     effect.perTickRemovalChance * 100.0)).append("%/tick");
             }
         }
-        if (type.uses(AbilityEffectParameter.BATTLE_STAT) && effect.stringValue != null) {
+        if (type.uses(AbilityEffectParameter.BATTLE_STAT, effect) && effect.stringValue != null) {
             summary.append(" | ").append(battleStatLabel(effect.stringValue));
         }
         if (type.uses(AbilityEffectParameter.TARGET) && !type.uses(AbilityEffectParameter.STATUS_TYPE)) {
             summary.append(" -> ").append(effect.target);
         }
-        if (type.uses(AbilityEffectParameter.DURATION)) {
+        if (type.uses(AbilityEffectParameter.DURATION, effect)) {
             summary.append(" | ").append(durationLabel(effect));
         }
         if (type.uses(AbilityEffectParameter.USES)) {
             summary.append(" | ").append(effect.uses).append(" uses");
+        }
+        if (type.uses(AbilityEffectParameter.REFRESH_GROUP)
+            && effect.refreshGroup != null && !effect.refreshGroup.isBlank()) {
+            summary.append(" | refresh ").append(effect.refreshGroup);
+        }
+        if (type.uses(AbilityEffectParameter.RESOURCE_KEY)) {
+            summary.append(" | ").append(effect.resourceLabel)
+                .append(" [").append(effect.resourceKey).append("] ")
+                .append(effect.resourceStartValue).append('/')
+                .append(effect.resourceCapacity);
+        }
+        if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE) {
+            if (effect.sourceResourceAmount != null && effect.sourceResourceAmount > 0) {
+                summary.append(" | -").append(effect.sourceResourceAmount)
+                    .append(' ').append(effect.sourceResourceKey);
+            }
+            if (effect.targetResourceAmount != null && effect.targetResourceAmount > 0) {
+                summary.append(" | +").append(effect.targetResourceAmount)
+                    .append(' ').append(effect.targetResourceKey);
+            }
+        }
+        if (type == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER) {
+            summary.append(" | consume all ").append(effect.sourceResourceKey);
         }
         return summary.toString();
     }
@@ -1112,6 +1501,15 @@ public class EffectListEditor extends Table {
         if ("User and ally".equals(label) || AbilityEffectTarget.SELF_AND_ALLY.name().equals(label)) {
             return AbilityEffectTarget.SELF_AND_ALLY;
         }
+        if ("Pair first".equals(label) || AbilityEffectTarget.PAIR_FIRST.name().equals(label)) {
+            return AbilityEffectTarget.PAIR_FIRST;
+        }
+        if ("Pair second".equals(label) || AbilityEffectTarget.PAIR_SECOND.name().equals(label)) {
+            return AbilityEffectTarget.PAIR_SECOND;
+        }
+        if ("Pair both".equals(label) || AbilityEffectTarget.PAIR_BOTH.name().equals(label)) {
+            return AbilityEffectTarget.PAIR_BOTH;
+        }
         return AbilityEffectTarget.SELF;
     }
 
@@ -1199,11 +1597,6 @@ public class EffectListEditor extends Table {
         return referenceIdFromLabel(label);
     }
 
-    private static boolean isSimpleDomainReactionMove(MoveData move) {
-        try { return NewShadowStyleAbility.isValidReactionMove(move.toMove()); }
-        catch (Exception exception) { return false; }
-    }
-
     private String[] abilityReferenceLabels(String currentId) {
         List<String> labels = new ArrayList<>();
         labels.add(SELECT_ABILITY);
@@ -1227,6 +1620,153 @@ public class EffectListEditor extends Table {
 
     private static String abilityLabel(AbilityData ability) {
         return ability.id + " - " + ability.name;
+    }
+
+    private String[] domainReferenceLabels(String currentId) {
+        List<String> labels = new ArrayList<>();
+        labels.add(SELECT_DOMAIN);
+        for (DomainData domain : domains) labels.add(domainLabel(domain));
+        if (currentId != null && !currentId.isBlank()
+            && domains.stream().noneMatch(domain -> currentId.equals(domain.id))) {
+            labels.add(currentId + " - (missing)");
+        }
+        if (domains.isEmpty()) labels.add(NO_DOMAINS);
+        return labels.toArray(new String[0]);
+    }
+
+    private String domainReferenceLabel(String domainId) {
+        if (domainId == null || domainId.isBlank()) return SELECT_DOMAIN;
+        return domains.stream()
+            .filter(domain -> domainId.equals(domain.id))
+            .findFirst()
+            .map(EffectListEditor::domainLabel)
+            .orElse(domainId + " - (missing)");
+    }
+
+    private static String domainLabel(DomainData domain) {
+        return domain.id + " - " + domain.name;
+    }
+
+    private void addDomainMetadataFields(
+        Table fields,
+        AbilityEffectData effect,
+        Runnable refreshFields
+    ) {
+        SelectBox<String> trigger = enumBox(DomainTrigger.values(), effect.domainTrigger,
+            value -> effect.domainTrigger = value);
+        addRow(fields, "Domain trigger", trigger);
+
+        SelectBox<String> audience = enumBox(DomainAudience.values(), effect.domainAudience,
+            value -> effect.domainAudience = value);
+        addRow(fields, "Domain audience", audience);
+
+        SelectBox<String> delivery = enumBox(
+            DomainDeliveryClass.values(), effect.domainDeliveryClass,
+            value -> effect.domainDeliveryClass = value);
+        addRow(fields, "Delivery class", delivery);
+
+        TextField interval = nonNegativeIntegerField(effect.domainIntervalTicks);
+        interval.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                effect.domainIntervalTicks = parseInteger(interval.getText());
+            }
+        });
+        addRow(fields, "Interval (ticks)", interval);
+
+        CheckBox chanceEnabled = new CheckBox(" Roll activation chance", skin);
+        chanceEnabled.setChecked(Boolean.TRUE.equals(effect.domainActivationChanceEnabled));
+        chanceEnabled.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                effect.domainActivationChanceEnabled = chanceEnabled.isChecked();
+                refreshFields.run();
+            }
+        });
+        addRow(fields, "Chance", chanceEnabled);
+        if (Boolean.TRUE.equals(effect.domainActivationChanceEnabled)) {
+            TextField chance = nonNegativeDecimalField(
+                effect.domainActivationChance == null
+                    ? 100.0 : effect.domainActivationChance * 100.0);
+            chance.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    Double value = parseDouble(chance.getText());
+                    effect.domainActivationChance = value == null ? null : value / 100.0;
+                }
+            });
+            addRow(fields, "Activation chance (%)", chance);
+        }
+
+        CheckBox conditionEnabled = new CheckBox(" Use condition", skin);
+        conditionEnabled.setChecked(effect.domainCondition != null);
+        conditionEnabled.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                effect.domainCondition = conditionEnabled.isChecked()
+                    ? AbilityConditionData.always() : null;
+                refreshFields.run();
+            }
+        });
+        addRow(fields, "Condition", conditionEnabled);
+        if (effect.domainCondition != null) {
+            fields.add(new Label("Domain condition", skin)).padRight(8).top();
+            fields.add(new ConditionTreeEditor(
+                effect.domainCondition, moves, () -> { }, soundPlayer,
+                masteryEligible, uiProfile, skin)).growX().row();
+        }
+    }
+
+    private <E extends Enum<E>> SelectBox<String> enumBox(
+        E[] values,
+        String selected,
+        Consumer<String> onChange
+    ) {
+        SelectBox<String> box = new DynamicSelectBox<>(skin, uiProfile);
+        box.setItems(java.util.Arrays.stream(values)
+            .map(value -> pretty(value.name())).toArray(String[]::new));
+        E fallback = values[0];
+        E current = java.util.Arrays.stream(values)
+            .filter(value -> value.name().equalsIgnoreCase(selected))
+            .findFirst().orElse(fallback);
+        box.setSelected(pretty(current.name()));
+        onChange.accept(current.name());
+        box.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                onChange.accept(enumName(box.getSelected()));
+            }
+        });
+        return box;
+    }
+
+    private static void prepareDomainMetadata(AbilityEffectData effect) {
+        if (effect.domainTrigger == null) effect.domainTrigger = DomainTrigger.ON_ESTABLISH.name();
+        if (effect.domainAudience == null) effect.domainAudience = DomainAudience.ALL_MEMBERS.name();
+        if (effect.domainDeliveryClass == null) {
+            effect.domainDeliveryClass = DomainDeliveryClass.EFFECT.name();
+        }
+        if (effect.domainIntervalTicks == null) effect.domainIntervalTicks = 1;
+        if (effect.domainActivationChanceEnabled == null) {
+            effect.domainActivationChanceEnabled = false;
+        }
+        if (effect.domainActivationChance == null) effect.domainActivationChance = 1.0;
+    }
+
+    private static String domainMetadataValidationError(AbilityEffectData effect) {
+        try {
+            DomainTrigger.valueOf(effect.domainTrigger);
+            DomainAudience.valueOf(effect.domainAudience);
+            DomainDeliveryClass.valueOf(effect.domainDeliveryClass);
+        } catch (RuntimeException exception) {
+            return "Choose valid Domain trigger, audience, and delivery values.";
+        }
+        if (effect.domainIntervalTicks == null || effect.domainIntervalTicks < 1) {
+            return "Domain interval must be at least one tick.";
+        }
+        if (Boolean.TRUE.equals(effect.domainActivationChanceEnabled)
+            && (effect.domainActivationChance == null
+                || effect.domainActivationChance < 0.0
+                || effect.domainActivationChance > 1.0)) {
+            return "Domain activation chance must be between 0% and 100%.";
+        }
+        return effect.domainCondition == null
+            ? null : AbilityConditionType.validationError(effect.domainCondition);
     }
 
     /** Only SHIKIGAMI definitions are valid summon targets. */
@@ -1349,9 +1889,10 @@ public class EffectListEditor extends Table {
             : label;
     }
 
-    private static String integerLabel(AbilityEffectType type) {
+    private static String integerLabel(AbilityEffectType type, AbilityEffectData effect) {
         return switch (type) {
-            case NEVER_MISS, NEVER_HIT -> "Tier (1-5)";
+            case NEVER_MISS, NEVER_HIT, APPLY_NEVER_HIT -> "Tier (1-5)";
+            case APPLY_NEVER_MISS -> "Tier (0 keeps normal dodges; 1-5 priority)";
             case STAT_ADD -> "Amount (+/-)";
             case STAT_SET_VALUE -> "Exact value";
             case STAT_ALLOCATION_MINIMUM -> "Minimum allocation";
@@ -1361,35 +1902,49 @@ public class EffectListEditor extends Table {
             case MODIFY_AP_BAR -> "AP change (+/-)";
             case COST_CE_PER_ROUND -> "CE cost per round";
             case MAX_ACTIVE_SUMMONS -> "Maximum active summons";
-            case HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE, DAMAGE_SHIELD -> "Amount";
-            case TEMP_STAT_ADD -> "Amount (+/-)";
+            case HEAL_HP, RESTORE_CE, DEAL_DIRECT_DAMAGE, DAMAGE_SHIELD -> "Amount";
+            case DRAIN_CE -> AbilityEffectType.selectedCeDrainMode(effect)
+                == AbilityEffectType.CeDrainMode.OVER_TIME ? "CE per tick" : "Amount";
+            case TIMED_STAT_MODIFIER -> "Amount (+/-)";
             case TEMP_STAT_SET_VALUE -> "Exact value";
             default -> "Value";
         };
     }
 
-    private static String decimalLabel(AbilityEffectType type) {
+    private static String decimalLabel(AbilityEffectType type, AbilityEffectData effect) {
+        if (isPercentage(type, effect)) return "Percentage (+/-)";
+        if (type == AbilityEffectType.TIMED_STAT_MODIFIER
+            && AbilityEffectType.selectedStatOperation(effect)
+                == AbilityEffectType.StatOperation.CHANGE) {
+            return "Amount (+/-)";
+        }
+        if (type == AbilityEffectType.TIMED_STAT_MODIFIER
+            && AbilityEffectType.selectedStatOperation(effect)
+                == AbilityEffectType.StatOperation.SET) {
+            return "Exact value";
+        }
         return switch (type) {
             case STAT_DIVIDE -> "Divisor";
             case BF_CHANCE_ADD -> "Chance change % (+/-)";
             case CE_COST_ALTER -> "CE cost multiplier";
-            case HEAL_HP_PERCENT, RESTORE_CE_PERCENT, DRAIN_CE_PERCENT,
-                 DEAL_MAX_HP_DAMAGE -> "Percentage";
-            case TEMP_STAT_PERCENT, BATTLE_STAT_PERCENT -> "Percentage (+/-)";
-            case BATTLE_STAT_ADD -> "Amount (+/-)";
             case SUMMON_CE_UPKEEP_PER_ACTIVE_TICK -> "CE per active tick";
             default -> "Multiplier";
         };
     }
 
-    private static boolean isPercentage(AbilityEffectType type) {
+    private static boolean isPercentage(
+        AbilityEffectType type,
+        AbilityEffectData effect
+    ) {
         return type == AbilityEffectType.BF_CHANCE_ADD
-            || type == AbilityEffectType.HEAL_HP_PERCENT
-            || type == AbilityEffectType.RESTORE_CE_PERCENT
-            || type == AbilityEffectType.DRAIN_CE_PERCENT
-            || type == AbilityEffectType.DEAL_MAX_HP_DAMAGE
-            || type == AbilityEffectType.TEMP_STAT_PERCENT
-            || type == AbilityEffectType.BATTLE_STAT_PERCENT;
+            || type.isAmountModeEffect()
+                && AbilityEffectType.selectedValueMode(effect)
+                    == AbilityEffectType.ValueMode.PERCENT
+            || type == AbilityEffectType.TIMED_STAT_MODIFIER
+                && AbilityEffectType.selectedStatOperation(effect)
+                    == AbilityEffectType.StatOperation.CHANGE
+                && AbilityEffectType.selectedValueMode(effect)
+                    == AbilityEffectType.ValueMode.PERCENT;
     }
 
     private static String battleStatLabel(String value) {

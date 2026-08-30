@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-/** Runtime for New Shadow Style's Simple Domain stance and Miwa's binding vow. */
+/** Runtime for New Shadow Style's Simple Domain state and Miwa's binding vow. */
 public final class NewShadowStyleAbility implements CodedAbilityRuntime {
 
     public static final String KEY = "NEW_SHADOW_STYLE";
@@ -25,23 +25,13 @@ public final class NewShadowStyleAbility implements CodedAbilityRuntime {
     private final BattleCombatant owner;
     private boolean simpleDomainActive;
     private final String simpleDomainMoveId;
-    private final Move reactionMove;
 
     NewShadowStyleAbility(BattleCombatant owner, Set<String> features) {
         this.owner = owner;
-        Move simpleDomain = owner.getCharacter().getKnownMoves().stream()
+        this.simpleDomainMoveId = owner.getCharacter().getKnownMoves().stream()
             .filter(NewShadowStyleAbility::activatesSimpleDomain)
-            .findFirst().orElseThrow(() -> new IllegalStateException(
-                "New Shadow Style runtime requires Simple Domain"));
-        this.simpleDomainMoveId = simpleDomain.getId();
-        String reactionMoveId = activationEffects(simpleDomain).stream()
-            .map(StatusEffect::getCodedTarget)
+            .map(Move::getId)
             .findFirst().orElse(null);
-        this.reactionMove = owner.getCharacter().getKnownMoves().stream()
-            .filter(move -> move.getId().equals(reactionMoveId))
-            .filter(NewShadowStyleAbility::isValidReactionMove)
-            .findFirst().orElseThrow(() -> new IllegalStateException(
-                "Simple Domain requires its linked reinforced Batto reaction move"));
     }
 
     @Override
@@ -52,11 +42,15 @@ public final class NewShadowStyleAbility implements CodedAbilityRuntime {
     ) {
         if (!simpleDomainActive
             || trigger.type() != AbilityTrigger.Type.MOVE_USED || trigger.actor() != owner
-            || trigger.move() == null || trigger.move().getId().equals(simpleDomainMoveId)) {
+            || trigger.move() == null || simpleDomainMoveId == null
+            || trigger.move().getId().equals(simpleDomainMoveId)) {
             return List.of();
         }
         if (!featureActive.test(SIMPLE_DOMAIN_BINDING_VOW)) return List.of();
         simpleDomainActive = false;
+        if (owner.getTimeline() != null) {
+            owner.getTimeline().cancelArmedReaction(simpleDomainMoveId);
+        }
         return List.of(event(trigger.tick(), "Using " + trigger.move().getName()
             + " dispels " + owner.getCharacter().getName() + "'s Simple Domain."));
     }
@@ -84,18 +78,13 @@ public final class NewShadowStyleAbility implements CodedAbilityRuntime {
         int tick,
         Predicate<String> featureActive
     ) {
-        if (!simpleDomainActive || defender != owner || !move.hasTag(MoveTag.ATTACK.name())
-            || (!move.isMelee() && !move.isRanged())) {
+        if (!simpleDomainActive || defender != owner || !move.hasTag(MoveTag.ATTACK.name())) {
             return CodedMoveResponse.none();
         }
 
         simpleDomainActive = false;
-        boolean fullBlock = move.getTags().contains(MoveTag.RANGED)
-            && move.getTags().contains(MoveTag.PHYSICAL);
-        List<Move> reactions = move.isMelee() && reactionMove != null
-            ? List.of(reactionMove) : List.of();
-        return new CodedMoveResponse(fullBlock, reactions, List.of(event(tick,
-            owner.getCharacter().getName() + "'s Simple Domain intercepts "
+        return new CodedMoveResponse(false, List.of(), List.of(event(tick,
+            owner.getCharacter().getName() + "'s Simple Domain reacts to "
                 + move.getName() + " and is dispelled.")));
     }
 
@@ -114,19 +103,7 @@ public final class NewShadowStyleAbility implements CodedAbilityRuntime {
     }
 
     public static boolean supportsTarget(String target, Integer stackCount) {
-        return target != null && target.matches("\\d{6}") && stackCount == null;
-    }
-
-    public static boolean isValidReactionMove(Move move) {
-        return move != null
-            && move.getTags().contains(MoveTag.PHYSICAL)
-            && move.getTags().contains(MoveTag.CURSED_ENERGY)
-            && move.getTags().contains(MoveTag.ATTACK)
-            && move.getTags().contains(MoveTag.MELEE)
-            && move.getTags().contains(MoveTag.KATANA)
-            && move.getEffects().stream().anyMatch(effect ->
-                AbilityEffectType.STUN_CURRENT_ACTION.name().equalsIgnoreCase(effect.type)
-                    && effect.resolvedTrigger() == MoveEffectTrigger.ON_HIT);
+        return stackCount == null && (target == null || target.isBlank() || target.matches("\\d{6}"));
     }
 
     private static boolean activatesSimpleDomain(Move move) {

@@ -40,7 +40,6 @@ public class MoveAssignmentPanel extends Table {
         void onForget(String id);
         void onReorder(MovePool pool, List<String> orderedIds);
         int learnedCount(MovePool pool);
-        int learnedLimit(MovePool pool);
     }
 
     private enum Side {
@@ -222,9 +221,8 @@ public class MoveAssignmentPanel extends Table {
 
     private void reloadColumn(MoveColumn column) {
         if (column.side == Side.LEARNED) {
-            column.heading.setText(poolLabel(column.pool) + "  "
-                + controller.learnedCount(column.pool) + "/"
-                + controller.learnedLimit(column.pool));
+            column.heading.setText(poolLabel(column.pool) + "  ("
+                + controller.learnedCount(column.pool) + ")");
         }
 
         column.loadedItems = List.copyOf(column.side == Side.AVAILABLE

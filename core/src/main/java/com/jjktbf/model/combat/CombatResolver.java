@@ -9,6 +9,7 @@ import com.jjktbf.model.character.coded.CodedMoveResponse;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.move.*;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.domain.DomainCollapseReason;
 
 import java.util.*;
 
@@ -29,15 +30,23 @@ import java.util.*;
  *         - Interrupt resolution
  *   4. After all ticks → ROUND_END processing
  *
- * Tie-breaking at the same fireTick:
- *   - Instant moves (unleashPoint == 1) fire before all others.
- *   - Among ties at the same fireTick: higher Speed wins.
- *   - Identical Speed: random resolution using stable precomputed tie keys.
+     * Tie-breaking at the same fireTick:
+     *   - Instant moves (unleashPoint == 1) fire before all others.
+     *   - Among ties at the same fireTick: higher Speed wins.
+     *   - Within one character's own moves: defense fires before offense.
+     *   - Identical Speed: random resolution using stable precomputed tie keys.
  *
  * All effects are reported as CombatEvents collected in a list.
  * The resolver never touches I/O — events are returned to the controller.
  */
 public class CombatResolver {
+
+    private static final double BURNED_MAX_HP_DAMAGE_PER_TICK = 0.0003;
+    private static final double POISON_MAX_HP_DAMAGE_PER_TICK = 0.0006;
+    private static final double FIRE_BURN_CHANCE = 0.10;
+    private static final double ICE_FREEZE_CHANCE = 0.05;
+    private static final double WET_ICE_FREEZE_CHANCE = 0.50;
+    private static final double ELECTRIC_STUN_CHANCE = 0.10;
 
     private final RandomSource rng;
     private final AbilityActivationEngine abilityActivations;
@@ -55,6 +64,9 @@ public class CombatResolver {
         this.rng = rng;
         this.abilityActivations = new AbilityActivationEngine(rng, summonLookup);
         this.summonLookup = summonLookup;
+        if (summonLookup instanceof DomainDefinitionLookup domains) {
+            this.abilityActivations.withDomainLookup(domains);
+        }
     }
 
     /**
@@ -64,6 +76,11 @@ public class CombatResolver {
     public CombatResolver withSummonLookup(BattleCharacterLookup lookup) {
         this.summonLookup = lookup;
         this.abilityActivations.withCharacterLookup(lookup);
+        return this;
+    }
+
+    public CombatResolver withDomainLookup(DomainDefinitionLookup lookup) {
+        this.abilityActivations.withDomainLookup(lookup);
         return this;
     }
 
@@ -113,7 +130,8 @@ public class CombatResolver {
         if (state == null || owner == null || abilityId == null
             || state.getCurrentPhase() != BattleState.Phase.PLANNING
             || state.isBattleOver()
-            || state.teamOf(owner) == null) {
+            || state.teamOf(owner) == null
+            || !owner.isActive()) {
             return List.of();
         }
         List<CombatEvent> events = new ArrayList<>(abilityActivations.process(
@@ -129,7 +147,11 @@ public class CombatResolver {
         // those mutations before any BATTLE_START ability can change the same values.
         appendAutomaticStatusEvents(state, events);
         if (finishBattleIfNeeded(state, events, 0)) return events;
+        appendReplacementEvents(state.fillReserveVacancies(), events);
         if (processPendingBattleStarts(state, events)) return events;
+        events.addAll(state.domainBattlefield().processRoundStart(
+            state, abilityActivations::executeDomainEffect));
+        if (finishBattleIfNeeded(state, events, 0)) return events;
         boolean roundStart = false;
         while (true) {
             BattleCombatant entrant = null;
@@ -230,6 +252,12 @@ public class CombatResolver {
             return events;
         }
 
+        appendSwitchEvents(state.applyQueuedSwitches(), events);
+        if (processPendingBattleStarts(state, events)) {
+            cursor.get().roundCostsProcessed = false;
+            return events;
+        }
+
         // The round ends once the last placed segment finishes: sweep only as
         // many ticks as the latest segment's AP window actually needs, rather
         // than always running out to the full grid length. Scan every active
@@ -289,11 +317,19 @@ public class CombatResolver {
             regenerateFighterCursedEnergy(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
 
+            events.addAll(abilityActivations.processOverTimeCeDrains(state, tick));
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+
             if (isChargeableTick(state, tick)) {
                 chargeSummonUpkeep(state, tick, events);
                 if (finishBattleIfNeeded(state, events, tick)) return events;
             }
 
+            processBurnedStatuses(state, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+            processPoisonStatuses(state, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+            processRestrainedStatuses(state, tick, events);
             processPerTickStatusRemoval(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
 
@@ -304,7 +340,9 @@ public class CombatResolver {
 
         // STAGGER is a character status, not a move tag. It acts before any
         // segment can begin or fire on this AP tick.
-            for (BattleCombatant combatant : combatants) applyActiveStaggers(combatant, tick, events);
+            for (BattleCombatant combatant : combatants) {
+                applyActiveControlStatuses(combatant, tick, events);
+            }
 
         // --- CE drain when a segment starts ---
             for (BattleCombatant combatant : combatants) {
@@ -317,7 +355,9 @@ public class CombatResolver {
         // was subsequently stunned.
             resolvePendingComponentsAtTick(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
-            for (BattleCombatant combatant : combatants) applyActiveStaggers(combatant, tick, events);
+            for (BattleCombatant combatant : combatants) {
+                applyActiveControlStatuses(combatant, tick, events);
+            }
 
         // --- Collect all moves firing this tick across every active combatant ---
             List<FiringEntry> firing = collectFiringMoves(state, tick);
@@ -330,7 +370,7 @@ public class CombatResolver {
             // A stagger applied by an earlier same-tick move takes effect before
             // the next queued move gets a chance to resolve.
                 for (BattleCombatant combatant : state.activeCombatants()) {
-                    applyActiveStaggers(combatant, tick, events);
+                    applyActiveControlStatuses(combatant, tick, events);
                 }
                 if (finishBattleIfNeeded(state, events, tick)) return events;
                 if (stopSleepingAction(entry, tick, events)) continue;
@@ -339,11 +379,26 @@ public class CombatResolver {
             // This also handles a stagger that lands while the target is charging
             // and has no separate move firing later on the same tick.
                 for (BattleCombatant combatant : state.activeCombatants()) {
-                    applyActiveStaggers(combatant, tick, events);
+                    applyActiveControlStatuses(combatant, tick, events);
                 }
                 if (finishBattleIfNeeded(state, events, tick)) return events;
             }
 
+            // Domain-opening effects only queue declarations. Flush the full
+            // same-tick batch before any immediate Domain program is admitted.
+            events.addAll(state.domainBattlefield().resolveDeclarations(
+                state, abilityActivations::executeDomainEffect, tick));
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+            events.addAll(state.domainBattlefield().processTick(
+                state, abilityActivations::executeDomainEffect, tick));
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+
+            // Status CE upkeep is charged after this tick's actions and before
+            // duration tick-down, so a status pays exactly one installment for
+            // every tick it is active — including its application and expiry
+            // ticks.
+            processStatusCeUpkeeps(state, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return events;
             processTimelineEffectExpiry(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
             updateResolutionEndForTimelineEffects(state);
@@ -375,12 +430,68 @@ public class CombatResolver {
         }
     }
 
+    /** Apply Burned's exact fractional max-HP damage before actions on this tick. */
+    private void processBurnedStatuses(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        processDamagingStatus(
+            state, tick, events, StatusEffectType.BURNED,
+            BURNED_MAX_HP_DAMAGE_PER_TICK);
+    }
+
+    /** Apply Poison's exact fractional max-HP damage before actions on this tick. */
+    private void processPoisonStatuses(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        processDamagingStatus(
+            state, tick, events, StatusEffectType.POISON,
+            POISON_MAX_HP_DAMAGE_PER_TICK);
+    }
+
+    private void processDamagingStatus(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events,
+        StatusEffectType type,
+        double maxHpFraction
+    ) {
+        for (BattleCombatant combatant : state.activeCombatants()) {
+            int requested = combatant.accrueStatusDamageForTick(type, maxHpFraction);
+            if (requested <= 0) continue;
+            int applied = combatant.receiveDamage(requested,
+                fatalAmount -> abilityActivations.preventFatalDamage(
+                    state, AbilityTrigger.fatalDamage(
+                        combatant, combatant, null, null, fatalAmount, tick)));
+            events.addAll(combatant.getCodedAbilities().drainPendingEvents(tick));
+            events.add(CombatEvent.of(applied == 0
+                    ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
+                .source(combatant).target(combatant).intValue(applied).tick(tick)
+                .message(applied == 0
+                    ? combatant.getCharacter().getName() + " resisted "
+                        + type.displayName() + " damage!"
+                    : combatant.getCharacter().getName() + " took damage from "
+                        + type.displayName() + "!")
+                .build());
+            if (applied > 0) {
+                events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                    AbilityTrigger.Type.DAMAGE, combatant, combatant, applied, tick)));
+                wakeFromSleep(state, combatant, combatant, null, -1, tick, events);
+            }
+        }
+    }
+
     private void updateResolutionEndForTimelineEffects(BattleState state) {
         ResolutionCursor c = cursor.get();
         int remainingTicks = 0;
         for (BattleCombatant combatant : state.activeCombatants()) {
             remainingTicks = Math.max(remainingTicks, combatant.getRemainingTimelineEffectTicks());
         }
+        remainingTicks = Math.max(
+            remainingTicks, state.domainBattlefield().remainingTimelineTicks());
         long timerEnd = remainingTicks <= 0
             ? 0L : Math.min((long) c.gridLimit, (long) c.tick + remainingTicks);
         c.maxTick = Math.max(c.actionMaxTick, (int) timerEnd);
@@ -394,6 +505,57 @@ public class CombatResolver {
             if (combatant.getRemainingTimelineEffectTicks() > 0) return true;
         }
         return false;
+    }
+
+    /**
+     * Drain the CE upkeep of every active status that carries one, once per
+     * resolution tick — the same cadence at which status durations tick down.
+     * The base upkeep rate is scaled by the holder's CE Efficiency (efficient
+     * characters sustain statuses more cheaply) and fractional rates carry
+     * their remainder across ticks. A status whose installment cannot be paid
+     * in full collapses (is removed) instead of lingering for free.
+     */
+    private void processStatusCeUpkeeps(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (BattleCombatant combatant : state.activeCombatants()) {
+            if (!combatant.isActive()) continue;
+            List<StatusEffect> upkeepStatuses = combatant.getActiveEffects().stream()
+                .filter(effect -> effect.getCeUpkeepPerTick() > 0.0)
+                .toList();
+            if (upkeepStatuses.isEmpty()) continue;
+            double multiplier = CeUpkeepScaler.upkeepMultiplier(
+                combatant.getEffectiveStats().getCursedEnergyEfficiency(),
+                combatant.getStatMode());
+            for (StatusEffect status : upkeepStatuses) {
+                int due = combatant.accrueStatusCeUpkeep(
+                    status.getCeUpkeepPerTick() * multiplier);
+                if (due <= 0) continue;
+                int drained = combatant.drainCe(due);
+                if (drained > 0) {
+                    events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
+                        .source(combatant).target(combatant).intValue(drained).tick(tick)
+                        .build());
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                        AbilityTrigger.Type.CE_LOST, combatant, null, drained, tick)));
+                }
+                if (drained < due) {
+                    // The CE pool ran out mid-installment: the sustained status
+                    // collapses instead of continuing for free.
+                    combatant.removeStatusEffects(status.getType());
+                    events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+                        .source(combatant).target(combatant).tick(tick)
+                        .message(combatant.getCharacter().getName() + "'s "
+                            + status.getType().displayName()
+                            + " collapses — no cursed energy left to sustain it!")
+                        .build());
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+                        AbilityTrigger.Type.STATUS_REMOVED, combatant, status.getType(), tick)));
+                }
+            }
+        }
     }
 
     private void chargeSummonUpkeep(
@@ -416,7 +578,7 @@ public class CombatResolver {
                 // Efficient summoners maintain shikigami more cheaply: scale the
                 // summed upkeep rate by the summoner's (scaled) CE Efficiency
                 // before fractional accumulation.
-                rate *= SummonUpkeepScaler.upkeepMultiplier(
+                rate *= CeUpkeepScaler.upkeepMultiplier(
                     summoner.getEffectiveStats().getCursedEnergyEfficiency(),
                     summoner.getStatMode());
             }
@@ -456,7 +618,7 @@ public class CombatResolver {
         }
         try {
             for (BattleCombatant combatant : combatants) {
-                combatant.tickTimelineEffects();
+                combatant.tickTimelineEffects(state.getRoundNumber(), tick);
                 events.addAll(combatant.getCodedAbilities().tickTimelineEffects(tick));
                 expiredByCombatant.put(combatant, combatant.drainExpiredStatusEffects());
             }
@@ -496,6 +658,47 @@ public class CombatResolver {
         }
     }
 
+    /** Resolve restraint escape and action-stun rolls before this tick's actions fire. */
+    private void processRestrainedStatuses(
+        BattleState state,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (BattleCombatant combatant : state.activeCombatants()) {
+            if (!combatant.hasEffect(StatusEffectType.RESTRAINED)) continue;
+            double breakoutChance = restraintBreakoutChance(
+                combatant.getRuntimeStat(StatKey.STRENGTH));
+            if (rng.nextDouble() < breakoutChance) {
+                combatant.removeStatusEffects(StatusEffectType.RESTRAINED);
+                events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+                    .source(combatant).target(combatant).tick(tick)
+                    .message(combatant.getCharacter().getName()
+                        + " breaks free from the restraint!")
+                    .build());
+                events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+                    AbilityTrigger.Type.STATUS_REMOVED,
+                    combatant,
+                    StatusEffectType.RESTRAINED,
+                    tick)));
+                continue;
+            }
+            if (rng.nextDouble() >= 0.05 || !combatant.stunCurrentAction(tick)) continue;
+            events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                .source(combatant).target(combatant).tick(tick)
+                .message(combatant.getCharacter().getName()
+                    + " loses their action while struggling against the restraint!")
+                .build());
+        }
+    }
+
+    /** Strength-scaled escape odds for the generic restrained status. */
+    public static double restraintBreakoutChance(int scaledStrength) {
+        int strength = Math.max(10, scaledStrength);
+        if (strength <= 450) return Math.max(0.01, strength / 1000.0);
+        if (strength >= 472) return 0.50;
+        return 0.45 + (strength - 450) * (0.05 / 22.0);
+    }
+
     /** Resolve configured status self-removal before this tick's actions can fire. */
     private void processPerTickStatusRemoval(
         BattleState state,
@@ -505,7 +708,9 @@ public class CombatResolver {
         for (BattleCombatant combatant : state.activeCombatants()) {
             Map<StatusEffectType, Double> removalChances = new LinkedHashMap<>();
             for (StatusEffect effect : combatant.getActiveEffects()) {
-                double chance = effect.getPerTickRemovalChance();
+                double chance = effect.getType() == StatusEffectType.FROZEN
+                    ? StatusEffectType.FROZEN.defaultPerTickRemovalChance()
+                    : effect.getPerTickRemovalChance();
                 if (chance > 0.0) {
                     removalChances.merge(effect.getType(), chance, Math::max);
                 }
@@ -537,6 +742,83 @@ public class CombatResolver {
     // CE draining
     // -------------------------------------------------------------------------
 
+    /** Capture consume-all resource scaling before CE is paid or the move can be interrupted. */
+    private boolean captureResourceScaledBasePower(
+        BattleCombatant combatant,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (AbilityEffectData effect
+            : MoveAvailability.guaranteedBoundedResourcePowerConsumers(
+                combatant, segment.getMove())) {
+            OptionalInt current = combatant.boundedResourceValue(effect.sourceResourceKey);
+            if (current.isEmpty() || current.getAsInt() <= 0) {
+                events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                    .source(combatant).target(combatant).move(segment.getMove()).tick(tick)
+                    .message("The move requires a charged resource.").build());
+                return false;
+            }
+            int consumed = current.getAsInt();
+            BattleCombatant.BoundedResourceTransaction result =
+                combatant.transactBoundedResources(
+                    effect.sourceResourceKey, consumed, null, 0);
+            if (!result.success()) {
+                events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                    .source(combatant).target(combatant).move(segment.getMove()).tick(tick)
+                    .message("The resource could not be consumed.").build());
+                return false;
+            }
+            segment.multiplyExecutionBasePower(consumed);
+            for (var resourceState : result.changedStates()) {
+                events.add(CombatEvent.of(CombatEvent.Type.RESOURCE_CHANGED)
+                    .source(combatant).target(combatant).move(segment.getMove()).tick(tick)
+                    .codedAbilityState(resourceState)
+                    .message(combatant.getCharacter().getName() + "'s "
+                        + resourceState.displayName() + " is now " + resourceState.currentValue()
+                        + "/" + resourceState.maximumValue() + ".")
+                    .build());
+            }
+        }
+        return true;
+    }
+
+    /** Resolve the reactive bud status after voluntary move payment and before fire. */
+    private void processCursedEnergyParasite(
+        BattleState state,
+        BattleCombatant holder,
+        int ceSpent,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (ceSpent <= 0 || holder == null || !holder.isActive()
+            || !holder.hasEffect(StatusEffectType.CURSED_ENERGY_PARASITE)) {
+            return;
+        }
+        double fraction = ceSpent >= 40 ? 0.06 : ceSpent >= 20 ? 0.04 : 0.02;
+        int requested = Math.max(1, (int) Math.round(holder.getMaxHp() * fraction));
+        BattleCombatant source = holder.statusSource(StatusEffectType.CURSED_ENERGY_PARASITE)
+            .orElse(holder);
+        int applied = holder.receiveDamage(requested,
+            fatalAmount -> abilityActivations.preventFatalDamage(
+                state, AbilityTrigger.fatalDamage(
+                    source, holder, null, null, fatalAmount, tick)));
+        events.addAll(holder.getCodedAbilities().drainPendingEvents(tick));
+        events.add(CombatEvent.of(applied == 0
+                ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
+            .source(source).target(holder).intValue(applied).tick(tick)
+            .message(applied == 0
+                ? holder.getCharacter().getName() + " resisted the cursed-energy parasite!"
+                : "The cursed-energy parasite fed on "
+                    + holder.getCharacter().getName() + "'s CE!")
+            .build());
+        if (applied > 0) {
+            events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                AbilityTrigger.Type.DAMAGE, source, holder, applied, tick)));
+            wakeFromSleep(state, source, holder, null, -1, tick, events);
+        }
+    }
+
     private void drainCeForStartingSegments(
         BattleState state,
         BattleCombatant combatant,
@@ -551,12 +833,28 @@ public class CombatResolver {
             if (!combatant.isActive()) return;
             if (segment.isStunned()) continue;
             if (segment.getStartTick() == tick) {
+                if (stopSleepingStart(
+                        combatant, segment.getMove(), segment, tick, events)) {
+                    continue;
+                }
+                if (stopMoveLockedByAbility(
+                        combatant, segment.getMove(), segment, tick, events)) {
+                    continue;
+                }
                 if (stopMoveUnavailableForActiveSummon(
+                    state, combatant, segment.getMove(), segment, tick, events)) {
+                    continue;
+                }
+                if (stopMoveUnavailableForSummonState(
                     state, combatant, segment.getMove(), segment, tick, events)) {
                     continue;
                 }
                 if (stopPlannedMoveUnknownToCurrentForm(
                         combatant, segment, tick, events)) {
+                    continue;
+                }
+                if (stopMoveUnavailableForBoundedResource(
+                        combatant, segment.getMove(), segment, tick, events)) {
                     continue;
                 }
                 if (combatant.consumeMoveCancellation()) {
@@ -568,8 +866,8 @@ public class CombatResolver {
                         .build());
                     continue;
                 }
-                if (segment.getActualCeCost() <= 0) continue;
-                if (!combatant.hasCe(segment.getActualCeCost())) {
+                int ceCost = segment.getActualCeCost();
+                if (ceCost > 0 && !combatant.hasCe(ceCost)) {
                     segment.stun();
                     events.add(CombatEvent.of(CombatEvent.Type.CE_DEPLETED)
                         .source(combatant)
@@ -580,13 +878,24 @@ public class CombatResolver {
                         .build());
                     continue;
                 }
-                int drained = combatant.drainCe(segment.getActualCeCost());
+                if (!captureResourceScaledBasePower(combatant, segment, tick, events)) {
+                    segment.stun();
+                    continue;
+                }
+                events.addAll(abilityActivations.processMoveEffects(
+                    state, combatant, List.of(), segment.getMove(),
+                    MoveEffectTrigger.ON_START, -1, tick,
+                    List.of(), List.of()));
+                if (ceCost <= 0) continue;
+                int drained = combatant.drainCe(ceCost);
                 events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
                     .source(combatant)
                     .move(segment.getMove())
                     .intValue(drained)
                     .tick(tick)
                     .build());
+                processCursedEnergyParasite(state, combatant, drained, tick, events);
+                if (finishBattleIfNeeded(state, events, tick)) return;
                 events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
                     AbilityTrigger.Type.CE_SPENT, combatant, null, drained, tick)));
                 if (finishBattleIfNeeded(state, events, tick)) return;
@@ -649,6 +958,8 @@ public class CombatResolver {
          * Keyed by combatant instance id.
          */
         private final Map<CombatantId, boolean[]> connectedByTarget;
+        private final BattleCombatant.AccuracyClaim temporaryAccuracy;
+        private final Map<CombatantId, Integer> temporaryNeverHitTierByTarget;
         private int pendingRecoilDamage;
         private HitComponent recoilComponent;
         private final List<BattleCombatant> recoilTargets = new ArrayList<>();
@@ -664,6 +975,18 @@ public class CombatResolver {
             return counterAttemptedBy.add(defenderId);
         }
 
+        private int temporaryNeverMissTier() {
+            return temporaryAccuracy.tier();
+        }
+
+        private boolean temporaryGuaranteesNormalAccuracy() {
+            return temporaryAccuracy.guaranteesNormalAccuracy();
+        }
+
+        private int temporaryNeverHitTier(BattleCombatant defender) {
+            return temporaryNeverHitTierByTarget.getOrDefault(defender.getInstanceId(), 0);
+        }
+
         private MoveExecution(
             FiringEntry entry,
             Map<CombatantId, Boolean> forceFullBlockByTarget,
@@ -676,8 +999,12 @@ public class CombatResolver {
             this.launchTick = launchTick;
             this.launchSequence = launchSequence;
             this.targets = List.copyOf(targets);
+            this.temporaryAccuracy = entry.attacker.consumeNeverMiss(entry.segment.getMove());
+            this.temporaryNeverHitTierByTarget = new LinkedHashMap<>();
             this.connectedByTarget = new LinkedHashMap<>();
             for (BattleCombatant target : targets) {
+                temporaryNeverHitTierByTarget.put(
+                    target.getInstanceId(), target.consumeNeverHitTier());
                 connectedByTarget.put(target.getInstanceId(),
                     new boolean[entry.segment.getMove().getHitComponents().size()]);
             }
@@ -738,8 +1065,9 @@ public class CombatResolver {
      * Sort firing entries:
      *  1. Instant moves (unleashPoint == 1) first
      *  2. Higher Speed first
-     *  3. Precomputed random tiebreak
-     *  4. Stable team/roster/instance order as the deterministic fallback
+     *  3. Same character: defensive moves before offensive ones
+     *  4. Precomputed random tiebreak
+     *  5. Stable team/roster/instance order as the deterministic fallback
      */
     private void sortFiringEntries(List<FiringEntry> firing) {
         firing.sort(this::comparePriority);
@@ -774,6 +1102,13 @@ public class CombatResolver {
     }
 
     private int comparePriority(FiringEntry a, FiringEntry b) {
+        // Within one character's own same-tick moves, defense always commits
+        // before offense — regardless of unleash point. Cross-character order
+        // is decided below by instant status and Speed, never by move category.
+        if (a.attacker.getInstanceId().equals(b.attacker.getInstanceId())) {
+            return Boolean.compare(b.segment.getMove().isDefensive(),
+                                   a.segment.getMove().isDefensive());
+        }
         int instantComparison = Boolean.compare(b.segment.isInstant(), a.segment.isInstant());
         if (instantComparison != 0) return instantComparison;
         int aSpeed = a.attacker.getRuntimeStat(StatKey.SPEED);
@@ -812,7 +1147,7 @@ public class CombatResolver {
                 resolveReactionMove(
                     reactionMove, target, entry.attacker, state, tick, events);
                 for (BattleCombatant c : state.activeCombatants()) {
-                    applyActiveStaggers(c, tick, events);
+                    applyActiveControlStatuses(c, tick, events);
                 }
                 if (finishBattleIfNeeded(state, events, tick)
                     || !entry.attacker.isActive() || entry.segment.isStunned()) {
@@ -870,10 +1205,15 @@ public class CombatResolver {
                                 + move.getName() + " is drawn to "
                                 + taunter.getCharacter().getName() + "!")
                             .build());
-                        return TargetSet.single(taunter);
+                        resolved = taunter;
                     }
                 }
 
+                if (resolved != null && !resolved.isActive()
+                    && state.usesReserveRules()
+                    && state.isVacantFighterSlotTarget(selected)) {
+                    return TargetSet.empty();
+                }
                 if (resolved == null || !resolved.isActive() || resolved.isAlliedWith(attacker)) {
                     // Retarget deterministically to the first living enemy.
                     BattleCombatant retarget = state.firstActiveEnemyOf(attacker);
@@ -906,10 +1246,12 @@ public class CombatResolver {
                         selected.add(candidate);
                     }
                 }
-                for (BattleCombatant enemy : enemies) {
-                    if (selected.size() >= requestedCount) break;
-                    if (!selected.contains(enemy) && CursedSpeechAbility.canTarget(move, enemy)) {
-                        selected.add(enemy);
+                if (!state.usesReserveRules()) {
+                    for (BattleCombatant enemy : enemies) {
+                        if (selected.size() >= requestedCount) break;
+                        if (!selected.contains(enemy) && CursedSpeechAbility.canTarget(move, enemy)) {
+                            selected.add(enemy);
+                        }
                     }
                 }
                 return TargetSet.multiple(selected);
@@ -944,7 +1286,8 @@ public class CombatResolver {
         Move move, int tick, List<CombatEvent> events,
         List<BattleCombatant> beneficiaries
     ) {
-        if (move.getDefenseTargeting() == DefenseTargeting.SELF) return;
+        if (move.getDefenseTargeting() == DefenseTargeting.SELF
+            && move.getTargeting() == Targeting.DEFAULT) return;
 
         boolean casterIsBeneficiary = false;
         boolean grantedToAlly = false;
@@ -982,6 +1325,12 @@ public class CombatResolver {
     private List<BattleCombatant> resolveDefenseBeneficiaries(
         BattleState state, BattleCombatant caster, ActionSegment segment, Move move
     ) {
+        if (move.getTargeting() != Targeting.DEFAULT) {
+            return resolvePairEndpoints(state, caster, segment, move).stream()
+                .filter(combatant -> combatant != null && combatant.isActive()
+                    && combatant.isAlliedWith(caster))
+                .toList();
+        }
         return switch (move.getDefenseTargeting()) {
             case SINGLE_ALLY, MULTIPLE_ALLIES -> {
                 List<BattleCombatant> out = new ArrayList<>();
@@ -1039,6 +1388,8 @@ public class CombatResolver {
         }
         if (stopMoveUnavailableForActiveSummon(
             state, launcher, launchedMove, null, tick, events)) return;
+        if (stopMoveUnavailableForBoundedResource(
+            launcher, launchedMove, null, tick, events)) return;
         if (launcher.consumeMoveCancellation()) {
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
                 .target(launcher).move(launchedMove).tick(tick)
@@ -1056,11 +1407,18 @@ public class CombatResolver {
                 .build());
             return;
         }
+        ActionSegment launchedSegment = new ActionSegment(launchedMove, tick, cost);
+        if (!captureResourceScaledBasePower(launcher, launchedSegment, tick, events)) return;
+        events.addAll(abilityActivations.processMoveEffects(
+            state, launcher, List.of(), launchedMove,
+            MoveEffectTrigger.ON_START, -1, tick, List.of(), List.of()));
         if (cost > 0) {
             int drained = launcher.drainCe(cost);
             events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
                 .source(launcher).move(launchedMove).intValue(drained).tick(tick)
                 .build());
+            processCursedEnergyParasite(state, launcher, drained, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return;
             events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
                 AbilityTrigger.Type.CE_SPENT, launcher, null, drained, tick)));
             if (finishBattleIfNeeded(state, events, tick)) return;
@@ -1071,7 +1429,6 @@ public class CombatResolver {
             }
         }
 
-        ActionSegment launchedSegment = new ActionSegment(launchedMove, tick, cost);
         resolveMove(
             new FiringEntry(launchedSegment, launcher),
             targets,
@@ -1096,6 +1453,14 @@ public class CombatResolver {
             state, attacker, move, segment, tick, events)) return;
         if (stopPlannedMoveUnknownToCurrentForm(attacker, segment, tick, events)) return;
 
+        // Apply transpositions only when the final damaging move is known. This
+        // avoids exchanging both a hybrid wrapper and its referenced attack.
+        if (targets.all().size() == 1 && !move.getHitComponents().isEmpty()) {
+            BattleCombatant exchanged = exchangeAttackTarget(
+                state, attacker, targets.primary(), move, tick, events);
+            targets = exchanged == null ? TargetSet.empty() : TargetSet.single(exchanged);
+        }
+
         // This segment's move is now actually executing. Recording it as fired
         // makes it immune to retro-stunning for the rest of the round — a stun
         // or interrupt landing later this tick (or a later tick still inside a
@@ -1109,6 +1474,11 @@ public class CombatResolver {
             .message(attacker.getCharacter().getName() + (reaction ? " reacted with " : " used ")
                 + move.getName() + "!")
             .build());
+        events.addAll(state.domainBattlefield().onOwnerMove(
+            state, attacker, abilityActivations::executeDomainEffect, tick));
+        if (finishBattleIfNeeded(state, events, tick)) return;
+        thawFrozenUserWithFireMove(state, attacker, move, tick, events);
+        if (finishBattleIfNeeded(state, events, tick)) return;
         // MOVE_FIRED fires once, regardless of how many targets the move hits.
         events.addAll(abilityActivations.process(state, AbilityTrigger.move(
             AbilityTrigger.Type.MOVE_USED, attacker, targets.primary(), move, tick)));
@@ -1122,6 +1492,8 @@ public class CombatResolver {
             : List.of();
         List<BattleCombatant> defenseAllies = defenseBeneficiaries.stream()
             .filter(ally -> ally != attacker).toList();
+        List<BattleCombatant> pairTargets = resolvePairEndpoints(
+            state, attacker, segment, move);
 
         // --- Self-effects apply on unleash, for every move type (damaging,
         // defensive, and utility alike). A move that buffs its user when cast
@@ -1131,7 +1503,7 @@ public class CombatResolver {
         if (move.usesUnifiedEffects()) {
             events.addAll(abilityActivations.processMoveEffects(
                 state, attacker, targets.all(), move,
-                MoveEffectTrigger.ON_FIRE, -1, tick, defenseAllies));
+                MoveEffectTrigger.ON_FIRE, -1, tick, defenseAllies, pairTargets));
         } else {
             applySelfEffects(state, attacker, targets.primary(), move, tick, events);
         }
@@ -1188,6 +1560,128 @@ public class CombatResolver {
         resolvePendingComponentsAtTick(state, tick, events);
     }
 
+    /** Resolve ordered explicit pair endpoints, deriving SELF from the move owner. */
+    private static List<BattleCombatant> resolvePairEndpoints(
+        BattleState state,
+        BattleCombatant owner,
+        ActionSegment segment,
+        Move move
+    ) {
+        if (move == null || move.getTargeting() == null) return List.of();
+        List<CombatantId> selected = segment == null ? List.of() : segment.getTargets();
+        return switch (move.getTargeting()) {
+            case SELF_AND_ENEMY, SELF_AND_ALLY -> {
+                BattleCombatant other = selected.isEmpty() ? null : state.combatant(selected.get(0));
+                yield owner.isActive() && other != null && other.isActive()
+                    ? List.of(owner, other) : List.of();
+            }
+            case ALLY_AND_ENEMY -> {
+                if (selected.size() != 2) yield List.of();
+                BattleCombatant ally = state.combatant(selected.get(0));
+                BattleCombatant enemy = state.combatant(selected.get(1));
+                yield ally != null && ally.isActive() && enemy != null && enemy.isActive()
+                    ? List.of(ally, enemy) : List.of();
+            }
+            case DEFAULT -> List.of();
+        };
+    }
+
+    private static BattleCombatant exchangeAttackTarget(
+        BattleState state,
+        BattleCombatant attacker,
+        BattleCombatant intended,
+        Move move,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (intended == null) return null;
+        TargetExchangeRegistry.Result result = state.targetExchanges().resolve(
+            attacker, intended, move);
+        for (TargetExchangeRegistry.ExchangeStep step : result.steps()) {
+            events.add(CombatEvent.of(CombatEvent.Type.TARGETS_EXCHANGED)
+                .source(step.owner())
+                .target(step.previousTarget())
+                .relatedTarget(step.replacementTarget())
+                .move(move)
+                .tick(tick)
+                .message(step.owner().getCharacter().getName() + " exchanged "
+                    + step.previousTarget().getCharacter().getName() + " with "
+                    + step.replacementTarget().getCharacter().getName() + ", redirecting "
+                    + move.getName() + "!")
+                .build());
+        }
+        return result.target();
+    }
+
+    /**
+     * A segment whose user is asleep when it starts never gets going. Sleep
+     * acquired after the start tick is still caught at the fire tick by
+     * {@link #stopSleepingAction}.
+     */
+    private static boolean stopSleepingStart(
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (!attacker.hasEffect(StatusEffectType.SLEEP)) return false;
+        if (segment != null) segment.stun();
+        events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+            .source(attacker).target(attacker).move(move).tick(tick)
+            .message(attacker.getCharacter().getName() + " tried to use "
+                + move.getName() + " but was asleep!")
+            .build());
+        return true;
+    }
+
+    /** Stop a segment whose move tag is locked by an active ability at its start. */
+    private static boolean stopMoveLockedByAbility(
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (attacker.getAbilityFlags().lockedMoveTags.stream().noneMatch(move::hasTag)) {
+            return false;
+        }
+        if (segment != null) segment.stun();
+        events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+            .source(attacker).target(attacker).move(move).tick(tick)
+            .message(moveFailedMessage(attacker, move))
+            .build());
+        return true;
+    }
+
+    /**
+     * Stop a summoning segment whose shikigami cannot currently be summoned
+     * (already active or pending, destroyed, on cooldown, or over the cap).
+     * Duplicates whose earlier twin has not fired yet slip past this and are
+     * still dropped by the enqueue gate when the effect resolves.
+     */
+    private static boolean stopMoveUnavailableForSummonState(
+        BattleState state,
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (state != null) {
+            for (String definitionId : MoveAvailability.summonedDefinitionIds(move)) {
+                if (state.summonRestrictionReason(attacker, definitionId) == null) continue;
+                if (segment != null) segment.stun();
+                events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                    .source(attacker).target(attacker).move(move).tick(tick)
+                    .message(moveFailedMessage(attacker, move))
+                    .build());
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean stopMoveUnavailableForActiveSummon(
         BattleState state,
         BattleCombatant attacker,
@@ -1203,6 +1697,24 @@ public class CombatResolver {
         // A move re-validated as unavailable mid-round (e.g. its shikigami was
         // summoned earlier this same round) uses the generic failure message —
         // the same wording every other failed move reports with.
+        events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+            .source(attacker).target(attacker).move(move).tick(tick)
+            .message(moveFailedMessage(attacker, move))
+            .build());
+        return true;
+    }
+
+    private boolean stopMoveUnavailableForBoundedResource(
+        BattleCombatant attacker,
+        Move move,
+        ActionSegment segment,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        String reason = MoveAvailability.boundedResourceRestrictionReason(
+            attacker, move, List.of());
+        if (reason == null) return false;
+        if (segment != null) segment.stun();
         events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
             .source(attacker).target(attacker).move(move).tick(tick)
             .message(moveFailedMessage(attacker, move))
@@ -1298,7 +1810,9 @@ public class CombatResolver {
             reconcileLifecycle(state, tick, events);
             // Do NOT finish-battle mid-batch: resolve every pending target in
             // this batch first so a simultaneous friendly-fire wipe can draw.
-            for (BattleCombatant c : state.activeCombatants()) applyActiveStaggers(c, tick, events);
+            for (BattleCombatant c : state.activeCombatants()) {
+                applyActiveControlStatuses(c, tick, events);
+            }
         }
         // Cursed Speech rolls independently per target, then applies one summed
         // recoil hit only after every selected target in this impact batch resolves.
@@ -1333,7 +1847,8 @@ public class CombatResolver {
         // under the normal requireFiredDefense gate.
         Timeline defenderTimeline = defender.getTimeline();
         if (defenderTimeline != null) {
-            ActionSegment reaction = defenderTimeline.triggerArmedReaction(tick, move);
+            ActionSegment reaction = defenderTimeline.triggerArmedReaction(
+                tick, move, component);
             if (reaction != null) {
                 events.add(CombatEvent.of(CombatEvent.Type.MOVE_FIRED)
                     .source(defender).move(reaction.getMove()).tick(tick)
@@ -1356,7 +1871,13 @@ public class CombatResolver {
             // revert this to `launchTick < tick` — that re-enables the old rule
             // where a not-yet-fired same-tick defense contested regardless of speed.
             true,
-            trigger -> abilityActivations.onAttackConnected(state, trigger));
+            trigger -> abilityActivations.onAttackConnected(state, trigger),
+            blockMove -> abilityActivations.blockEffectivenessMultiplier(
+                state, defender, attacker, blockMove, move, component, tick),
+            execution.temporaryNeverMissTier(),
+            execution.temporaryGuaranteesNormalAccuracy(),
+            execution.temporaryNeverHitTier(defender),
+            execution.entry.segment.getExecutionBasePowerMultiplier());
         events.addAll(result.getCodedEvents());
         execution.addRecoil(result.getRecoilDamage(), component, defender);
 
@@ -1398,6 +1919,34 @@ public class CombatResolver {
                 .message((result.isPerfectRead() ? "PERFECT READ! " : "")
                     + defender.getCharacter().getName() + " parried " + move.getName() + "!")
                 .build());
+            // A perfect read of a ranged attack returns it to its own user.
+            if (result.reflectsAttack()) {
+                // The reflected strike is still the attacker's own power; keep
+                // the original attacker as the fatal trigger's actor so cursed
+                // provenance (being type, cursed tools) is judged from them.
+                int reflected = attacker.receiveDamage(result.getReflectedDamage(),
+                    fatalAmount -> abilityActivations.preventFatalDamage(
+                        state,
+                        AbilityTrigger.fatalDamage(
+                            attacker, attacker, move, component, fatalAmount, tick)));
+                events.addAll(attacker.getCodedAbilities().drainPendingEvents(tick));
+                events.add(CombatEvent.of(reflected == 0
+                        ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
+                    .source(defender).target(attacker).move(move).componentIndex(componentIndex)
+                    .intValue(reflected).tick(tick)
+                    .message(reflected == 0
+                        ? attacker.getCharacter().getName() + " ignored the reflected "
+                            + move.getName() + "!"
+                        : defender.getCharacter().getName() + " sent " + move.getName()
+                            + " back at " + attacker.getCharacter().getName() + "!")
+                    .build());
+                if (reflected > 0) {
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
+                        AbilityTrigger.Type.DAMAGE, defender, attacker, reflected, tick)));
+                    wakeFromSleep(state, defender, attacker, move, componentIndex, tick, events);
+                }
+                reconcileLifecycle(state, tick, events);
+            }
             if (result.staggersAttacker()) {
                 attacker.addStatusEffect(
                     new StatusEffect(StatusEffectType.STAGGER, 0,
@@ -1433,6 +1982,8 @@ public class CombatResolver {
                 componentIndex, tick, events, execution);
             events.addAll(abilityActivations.process(state, AbilityTrigger.move(
                 AbilityTrigger.Type.MOVE_BLOCKED, attacker, defender, move, tick)));
+            resolveElementalHit(
+                state, attacker, defender, move, component, componentIndex, tick, events);
             return true;
         }
 
@@ -1479,6 +2030,9 @@ public class CombatResolver {
                 AbilityTrigger.Type.DAMAGE, attacker, defender, appliedDamage, tick)));
             wakeFromSleep(state, attacker, defender, move, componentIndex, tick, events);
         }
+
+        resolveElementalHit(
+            state, attacker, defender, move, component, componentIndex, tick, events);
 
         if (result.isBlackFlash()) {
             int requestedCe = (int) Math.round(
@@ -1609,6 +2163,165 @@ public class CombatResolver {
         if (combatant.hasEffect(StatusEffectType.STAGGER)) {
             resolveStaggerStatus(combatant, tick, events);
         }
+    }
+
+    private void applyActiveControlStatuses(
+        BattleCombatant combatant,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        applyActiveStaggers(combatant, tick, events);
+        if (!combatant.hasEffect(StatusEffectType.FROZEN)) return;
+        Timeline timeline = combatant.getTimeline();
+        if (timeline == null) return;
+        boolean stopped = false;
+        for (ActionSegment segment : timeline.getSegments()) {
+            if (segment.isStunned() || segment.hasFired()
+                || segment.getMove().hasTag(MoveTag.FIRE.name())) {
+                continue;
+            }
+            boolean active = tick >= segment.getStartTick() && tick <= segment.getEndTick();
+            if (active || segment.getFireTick() == tick) {
+                segment.stun();
+                stopped = true;
+            }
+        }
+        if (stopped) {
+            events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                .source(combatant).target(combatant).tick(tick)
+                .message(combatant.getCharacter().getName()
+                    + " was Frozen and could not move.")
+                .build());
+        }
+    }
+
+    private void thawFrozenUserWithFireMove(
+        BattleState state,
+        BattleCombatant user,
+        Move move,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (user == null || move == null || !move.hasTag(MoveTag.FIRE.name())
+            || user.removeStatusEffects(StatusEffectType.FROZEN) == 0) {
+            return;
+        }
+        events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+            .source(user).target(user).move(move).tick(tick)
+            .message(user.getCharacter().getName() + " thawed by using " + move.getName() + "!")
+            .build());
+        events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+            AbilityTrigger.Type.STATUS_REMOVED, user, StatusEffectType.FROZEN, tick)));
+    }
+
+    private void resolveElementalHit(
+        BattleState state,
+        BattleCombatant attacker,
+        BattleCombatant defender,
+        Move move,
+        HitComponent component,
+        int componentIndex,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        if (component.hasTag(MoveTag.FIRE)) {
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.FROZEN,
+                defender.getCharacter().getName() + " thawed after being hit by fire!",
+                events);
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.WET,
+                defender.getCharacter().getName() + " dried after being hit by fire!",
+                events);
+            if (rng.nextDouble() < FIRE_BURN_CHANCE) {
+                applyElementalStatus(
+                    state, attacker, defender, move, componentIndex, tick,
+                    new StatusEffect(StatusEffectType.BURNED, 1, 0.0), events);
+            }
+        }
+
+        if (component.hasTag(MoveTag.ICE)) {
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.BURNED,
+                defender.getCharacter().getName() + "'s Burned status was cured by ice!",
+                events);
+            double freezeChance = defender.hasEffect(StatusEffectType.WET)
+                ? WET_ICE_FREEZE_CHANCE : ICE_FREEZE_CHANCE;
+            if (rng.nextDouble() < freezeChance) {
+                applyElementalStatus(
+                    state, attacker, defender, move, componentIndex, tick,
+                    new StatusEffect(StatusEffectType.FROZEN, -1, 0, 0.0), events);
+            }
+        }
+
+        if (component.hasTag(MoveTag.WATER)) {
+            removeElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                StatusEffectType.BURNED,
+                defender.getCharacter().getName() + "'s Burned status was cured by water!",
+                events);
+            applyElementalStatus(
+                state, attacker, defender, move, componentIndex, tick,
+                new StatusEffect(StatusEffectType.WET, 1, 0.0), events);
+        }
+
+        if (component.hasTag(MoveTag.ELECTRIC) && rng.nextDouble() < ELECTRIC_STUN_CHANCE
+            && defender.stunCurrentAction(tick)) {
+            events.add(CombatEvent.of(CombatEvent.Type.MOVE_STUNNED)
+                .source(attacker).target(defender).move(move)
+                .componentIndex(componentIndex).tick(tick)
+                .message(attacker.getCharacter().getName() + "'s " + move.getName()
+                    + " electrically stunned " + defender.getCharacter().getName()
+                    + ", who could not move.")
+                .build());
+        }
+    }
+
+    private void applyElementalStatus(
+        BattleState state,
+        BattleCombatant source,
+        BattleCombatant target,
+        Move move,
+        int componentIndex,
+        int tick,
+        StatusEffect status,
+        List<CombatEvent> events
+    ) {
+        if (target.hasEffect(status.getType())
+            || !target.addStatusEffect(status, state.getCurrentPhase())) {
+            return;
+        }
+        events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
+            .source(source).target(target).move(move).componentIndex(componentIndex)
+            .tick(tick).message(StatusEffectMessages.applicationMessage(
+                source.getCharacter().getName(),
+                target.getCharacter().getName(),
+                status.getType(),
+                source == target)).build());
+        events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+            AbilityTrigger.Type.STATUS_APPLIED, target, status.getType(), tick)));
+    }
+
+    private void removeElementalStatus(
+        BattleState state,
+        BattleCombatant source,
+        BattleCombatant target,
+        Move move,
+        int componentIndex,
+        int tick,
+        StatusEffectType type,
+        String message,
+        List<CombatEvent> events
+    ) {
+        if (target.removeStatusEffects(type) == 0) return;
+        events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+            .source(source).target(target).move(move).componentIndex(componentIndex)
+            .tick(tick).message(message).build());
+        events.addAll(abilityActivations.process(state, AbilityTrigger.status(
+            AbilityTrigger.Type.STATUS_REMOVED, target, type, tick)));
     }
 
     /** Stun active, not-yet-fired segments and report whether any were changed. */
@@ -1995,7 +2708,9 @@ public class CombatResolver {
         if (trigger != defenceResolutionTrigger(move.getDefenseType())) return;
         if (incomingExecution == null
             || !incomingExecution.markCounterAttempt(defender.getInstanceId())) return;
-        if (!abilityActivations.allowsAttackLaunch(state, defender, attacker, move, tick)) {
+        if (!abilityActivations.allowsAttackLaunch(
+                state, defender, attacker, move,
+                incomingExecution.entry.segment.getMove(), tick)) {
             return;
         }
         if (move.referencesAttackMove()) {
@@ -2009,6 +2724,9 @@ public class CombatResolver {
         }
         if (move.getHitComponents().isEmpty()) return;
         if ((long) tick + move.getMaxHitDelayTicks() > cursor.get().gridLimit) return;
+        BattleCombatant counterTarget = exchangeAttackTarget(
+            state, defender, attacker, move, tick, events);
+        if (counterTarget == null) return;
         events.add(CombatEvent.of(CombatEvent.Type.MOVE_FIRED)
             .source(defender).move(move).tick(tick)
             .message(defender.getCharacter().getName() + " counterattacked with "
@@ -2019,7 +2737,7 @@ public class CombatResolver {
         ActionSegment counterSegment = new ActionSegment(move, tick, 0);
         MoveExecution execution = new MoveExecution(
             new FiringEntry(counterSegment, defender), Map.of(), tick,
-            cursor.get().nextLaunchSequence++, List.of(attacker));
+            cursor.get().nextLaunchSequence++, List.of(counterTarget));
         scheduleComponents(execution);
         resolvePendingComponentsAtTick(state, tick, events);
         finishBattleIfNeeded(state, events, tick);
@@ -2101,6 +2819,9 @@ public class CombatResolver {
         events.addAll(abilityActivations.process(
             state, AbilityTrigger.phase(BattleState.Phase.ROUND_END)));
         if (finishBattleIfNeeded(state, events, 0)) return events;
+        events.addAll(state.domainBattlefield().processRoundEnd(
+            state, abilityActivations::executeDomainEffect));
+        if (finishBattleIfNeeded(state, events, 0)) return events;
 
         for (BattleCombatant combatant : combatants) {
             previousMaxHp.put(combatant, combatant.getMaxHp());
@@ -2144,7 +2865,14 @@ public class CombatResolver {
                 }
             }
 
-            if (!battleEnded) state.endRound();
+            if (!battleEnded) {
+                if (finishBattleIfNeeded(state, events, 0)) {
+                    battleEnded = true;
+                } else {
+                    appendReplacementEvents(state.fillReserveVacancies(), events);
+                    state.endRound();
+                }
+            }
         } finally {
             for (BattleCombatant combatant : combatants) {
                 int hpBeforeClamp = combatant.getCurrentHp();
@@ -2179,6 +2907,9 @@ public class CombatResolver {
         int tick
     ) {
         reconcileLifecycle(state, tick, events);
+        events.addAll(state.domainBattlefield().reconcileOwners(
+            state, abilityActivations::executeDomainEffect, tick));
+        reconcileLifecycle(state, tick, events);
         if (!cursor.get().deferSummonMaterialization) {
             materializePendingSummons(state, tick, events);
         }
@@ -2187,6 +2918,9 @@ public class CombatResolver {
         c.pendingComponents.clear();
         c.maxTick = c.tick;
         c.roundCostsProcessed = false;
+        events.addAll(state.domainBattlefield().collapseAll(
+            state, DomainCollapseReason.BATTLE_ENDED,
+            abilityActivations::executeDomainEffect, tick));
         if (events.stream().noneMatch(event -> event.getType() == CombatEvent.Type.BATTLE_OVER)) {
             String message = state.getWinner() == null
                 ? "The battle ends in a draw!"
@@ -2228,6 +2962,40 @@ public class CombatResolver {
         }
     }
 
+    private static void appendSwitchEvents(
+        List<BattleState.FighterSwitch> switches,
+        List<CombatEvent> events
+    ) {
+        for (BattleState.FighterSwitch change : switches) {
+            BattleCombatant outgoing = change.outgoing();
+            BattleCombatant incoming = change.incoming();
+            events.add(CombatEvent.of(CombatEvent.Type.COMBATANT_SWITCHED)
+                .source(outgoing)
+                .target(incoming)
+                .intValue(change.slot() + 1)
+                .tick(0)
+                .message(outgoing.getCharacter().getName() + " switches out for "
+                    + incoming.getCharacter().getName() + "!")
+                .build());
+        }
+    }
+
+    private static void appendReplacementEvents(
+        List<BattleState.FighterSwitch> replacements,
+        List<CombatEvent> events
+    ) {
+        for (BattleState.FighterSwitch change : replacements) {
+            BattleCombatant incoming = change.incoming();
+            events.add(CombatEvent.of(CombatEvent.Type.COMBATANT_REPLACED)
+                .source(change.outgoing())
+                .target(incoming)
+                .intValue(change.slot() + 1)
+                .tick(0)
+                .message(incoming.getCharacter().getName() + " enters from reserve!")
+                .build());
+        }
+    }
+
     private void reconcileLifecycle(
         BattleState state,
         int tick,
@@ -2255,6 +3023,8 @@ public class CombatResolver {
         for (BattleCombatant summon : state.drainPendingSummons(summonLookup)) {
             BattleCombatant summoner = state.combatant(summon.getSummonerId());
             events.add(CombatEvent.summoned(summoner, summon, tick));
+            events.addAll(state.domainBattlefield().onCombatantEntered(
+                state, summon, abilityActivations::executeDomainEffect, tick));
         }
     }
 

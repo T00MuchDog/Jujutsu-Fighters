@@ -18,7 +18,8 @@ public record AcceptedMatchParticipant(
     String displayName,
     PlayerSide side,
     List<String> characterIds,
-    List<Character> characters
+    List<Character> characters,
+    List<List<String>> moveSetIds
 ) {
     public AcceptedMatchParticipant {
         Objects.requireNonNull(playerId, "playerId");
@@ -26,9 +27,31 @@ public record AcceptedMatchParticipant(
         Objects.requireNonNull(side, "side");
         characterIds = characterIds == null ? List.of() : List.copyOf(characterIds);
         characters = characters == null ? List.of() : List.copyOf(characters);
+        moveSetIds = moveSetIds == null ? List.of() : moveSetIds.stream()
+            .map(ids -> ids == null ? List.<String>of() : List.copyOf(ids))
+            .toList();
         if (characterIds.size() != characters.size()) {
             throw new IllegalArgumentException("character ids and definitions must align");
         }
+        if (characterIds.size() != moveSetIds.size()) {
+            throw new IllegalArgumentException("character ids and move sets must align");
+        }
+    }
+
+    /** Roster constructor deriving each configured character's current move set. */
+    public AcceptedMatchParticipant(
+        String playerId,
+        String displayName,
+        PlayerSide side,
+        List<String> characterIds,
+        List<Character> characters
+    ) {
+        this(playerId, displayName, side, characterIds, characters,
+            characters == null ? List.of() : characters.stream()
+                .map(character -> character.getMoveSet().stream()
+                    .map(com.jjktbf.model.move.Move::getId)
+                    .toList())
+                .toList());
     }
 
     /** Legacy single-fighter constructor. */

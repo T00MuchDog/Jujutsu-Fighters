@@ -119,6 +119,12 @@ public class BattleController {
         this.controlMode = Objects.requireNonNull(controlMode, "controlMode");
     }
 
+    public BattleController withDomainLookup(DomainDefinitionLookup lookup) {
+        resolver.withDomainLookup(lookup);
+        aiStrategy.withDomainLookup(lookup);
+        return this;
+    }
+
     /**
      * Run a complete battle between two characters (legacy 1v1 entry point).
      * Blocks until the battle is over. Equivalent to a two-team battle where
@@ -240,9 +246,9 @@ public class BattleController {
         BattleTeam team = state.teamOf(expectedTeamId);
         if (team == null) throw new IllegalArgumentException("Unknown team " + expectedTeamId);
 
-        // Clear the complete active roster before reading the submission. Even a
-        // malformed/omitted page can therefore never replay last round's actions.
-        for (BattleCombatant actor : team.active()) {
+        // Clear the complete roster so a fighter returning from reserve can never
+        // replay a timeline from an earlier field appearance.
+        for (BattleCombatant actor : team.all()) {
             actor.setPlan(null);
             actor.setTimeline(null);
         }
@@ -258,10 +264,12 @@ public class BattleController {
         if (validationError != null) throw new IllegalArgumentException(validationError);
 
         for (BattleCombatant actor : team.active()) {
+            if (teamPlan.isSwitch(actor.getInstanceId())) continue;
             BattlePlan plan = teamPlan.get(actor.getInstanceId());
             actor.setPlan(plan);
             actor.setTimeline(plan.toLegacyTimeline());
         }
+        state.queueSwitches(teamPlan);
     }
 
     // -------------------------------------------------------------------------

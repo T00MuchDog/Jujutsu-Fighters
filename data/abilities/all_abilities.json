@@ -16,7 +16,7 @@
   "id" : "000001",
   "name" : "Miracle Reservoir",
   "flavourText" : "The technique quietly removes the tiny coincidences that once made life feel impossible, keeping them beyond memory until they are needed.",
-  "mechanicText" : "Store 5 MIRACLES, increasing to 6 at CTM 15, 7 at CTM 120, and 8 at CTM 225. At BATTLE START, gain up to 6 MIRACLES, limited by capacity.",
+  "mechanicText" : "Store MIRACLES up to your capacity. At BATTLE START, gain up to 6 MIRACLES, limited by capacity.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Miracles",
@@ -92,7 +92,7 @@
       "cost" : 1
     }
   } ],
-  "masteryThreshold" : 0
+  "masteryThreshold" : 15
 }, {
   "id" : "000003",
   "name" : "Fortune Reclaimed",
@@ -130,12 +130,12 @@
       "gain" : 1
     }
   } ],
-  "masteryThreshold" : 0
+  "masteryThreshold" : 15
 }, {
   "id" : "000004",
   "name" : "Ratio Reinforcement",
   "flavourText" : "Even ordinary cursed-energy reinforcement can briefly reveal the seven-to-three weak point.",
-  "mechanicText" : "RATIO STACK capacity increases from 2 to 5 with CTM. Connected REINFORCEMENT ATTACKS have a CTM-scaled 3%-15% chance to apply RATIO, bypassing BLOCK and reducing DEFENSE to 30% for that hit.",
+  "mechanicText" : "Set RATIO STACK capacity. Connected REINFORCEMENT ATTACKS have a chance to apply RATIO, bypassing BLOCK and reducing DEFENSE to 30% for that hit.",
   "category" : "ACTIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ratio",
@@ -199,7 +199,7 @@
   "id" : "000005",
   "name" : "New Shadow Style",
   "flavourText" : "A learned school of swordsmanship and barrier techniques developed so sorcerers without inherited techniques can defend themselves against superior jujutsu.",
-  "mechanicText" : "Make BATTO KATANA DRAWING and SIMPLE DOMAIN AVAILABLE to learn.",
+  "mechanicText" : "Make *move:000025* and *move:000026* AVAILABLE to learn.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -216,7 +216,7 @@
   "id" : "000006",
   "name" : "Simple Domain Binding Vow",
   "flavourText" : "Miwa anchors both feet to the point where her stance began, sacrificing all movement to maintain the boundary.",
-  "mechanicText" : "Using another move while SIMPLE DOMAIN is active dispels SIMPLE DOMAIN.",
+  "mechanicText" : "Using another move while *move:000026* is active dispels *move:000026*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -244,7 +244,7 @@
   "id" : "000008",
   "name" : "Vessel of Sukuna",
   "flavourText" : "A body capable of containing the King of Curses bears qualities beyond those of an ordinary vessel.",
-  "mechanicText" : "Grant access to FREAK OF NATURE, IMMUNE TO POISONS, and VESSEL.",
+  "mechanicText" : "Grant access to *ability:000009*, *ability:000010*, and *ability:000011*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -308,7 +308,7 @@
   "id" : "000011",
   "name" : "Vessel",
   "flavourText" : "Two souls inhabit one body while preserving the boundary between them.",
-  "mechanicText" : "Grant access to VISUALISE THE SOUL.",
+  "mechanicText" : "Grant access to *ability:000012*.",
   "category" : "PASSIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000008",
@@ -350,7 +350,7 @@
   "id" : "000014",
   "name" : "Parallel Manifestation",
   "flavourText" : "With greater command of the shadows, the user sustains several manifested shikigami at once.",
-  "mechanicText" : "Set MAX ACTIVE SUMMONS to 1, increasing to 2 at CTM 30 and 3 at CTM 60.",
+  "mechanicText" : "Limit how many SHIKIGAMI can be active at once.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ten Shadows",
@@ -379,7 +379,7 @@
   "id" : "000015",
   "name" : "Partially Realised Heavenly Restriction",
   "flavourText" : "A binding placed upon Maki at birth suppresses her jujutsu potential in exchange for a body that has only begun to realise its inhuman potential.",
-  "mechanicText" : "Grant access to FREAK OF NATURE, JUJUTSU INAPTITUDE, HEAVENLY BODY, and PARTIAL RESISTANCE TO CURSES.",
+  "mechanicText" : "Grant access to *ability:000009*, *ability:000016*, *ability:000017*, and *ability:000018*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -482,7 +482,7 @@
   "id" : "000020",
   "name" : "Shadows Unravel",
   "flavourText" : "When the last of the user's cursed energy fades, every maintained shadow loses its form and returns to darkness.",
-  "mechanicText" : "At 0 CE, DESUMMON every owned SHIKIGAMI.",
+  "mechanicText" : "At 0 CE, *move:000049* every owned SHIKIGAMI.",
   "category" : "ACTIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ten Shadows",
@@ -504,7 +504,7 @@
   "id" : "000021",
   "name" : "Ten Shadows Shikigami",
   "flavourText" : "This familiar is sustained through its summoner's shadow and may withdraw into it at will.",
-  "mechanicText" : "Unlock DESUMMON.",
+  "mechanicText" : "Unlock *move:000049*.",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -517,7 +517,7 @@
   "id" : "000022",
   "name" : "White Dog",
   "flavourText" : "The white Divine Dog pursues cursed traces with exceptional speed and precision.",
-  "mechanicText" : "Unlock DIVINE DOG BITE and TRACKING POUNCE",
+  "mechanicText" : "Unlock *move:000050* and *move:000051*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -534,7 +534,7 @@
   "id" : "000023",
   "name" : "Black Dog",
   "flavourText" : "The black Divine Dog brings greater force to the hunt, ripping apart anything it corners.",
-  "mechanicText" : "Unlock DIVINE DOG BITE and RENDING POUNCE",
+  "mechanicText" : "Unlock *move:000050* and *move:000052*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -551,7 +551,7 @@
   "id" : "000024",
   "name" : "Nue",
   "flavourText" : "Nue dominates the air and channels cursed lightning through its wings and talons.",
-  "mechanicText" : "Unlock SKY RESCUE, ELECTRIFIED TALONS and LIGHTNING DISCHARGE. Drain 0.35 CE from the summoner each active tick.",
+  "mechanicText" : "Unlock *move:000081*, *move:000053* and *move:000054*. Drain 0.35 CE from the summoner each active tick.",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -572,7 +572,7 @@
   "id" : "000025",
   "name" : "Toad",
   "flavourText" : "Toad controls space with a long, powerful tongue suited to striking and binding prey.",
-  "mechanicText" : "Unlock TONGUE RESCUE, TONGUE LASH and BINDING TONGUE",
+  "mechanicText" : "Unlock *move:000084*, *move:000055* and *move:000056*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -593,7 +593,7 @@
   "id" : "000026",
   "name" : "Great Serpent",
   "flavourText" : "Great Serpent overwhelms prey with its immense coils before swallowing the opening whole.",
-  "mechanicText" : "Unlock COILING GUARD, SERPENT CONSTRICT and DEVOURING LUNGE",
+  "mechanicText" : "Unlock *move:000082*, *move:000057* and *move:000058*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -613,8 +613,8 @@
 }, {
   "id" : "000027",
   "name" : "Divine Dog Totality",
-  "flavourText" : "Totality concentrates the Divine Dogs' inherited power into a predator of extraordinary speed and force.",
-  "mechanicText" : "Unlock RESCUE SPRINT, TOTALITY CLAW and PREDATOR RUSH",
+  "flavourText" : "*ability:000019* concentrates the Divine Dogs' inherited power into a predator of extraordinary speed and force.",
+  "mechanicText" : "Unlock *move:000083*, *move:000059* and *move:000060*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -635,7 +635,7 @@
   "id" : "000028",
   "name" : "Max Elephant",
   "flavourText" : "Max Elephant manifests overwhelming mass and a vast volume of water through the user's shadow.",
-  "mechanicText" : "Unlock CRUSHING STOMP and WATER DELUGE",
+  "mechanicText" : "Unlock *move:000061* and *move:000062*",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -651,8 +651,8 @@
 }, {
   "id" : "000029",
   "name" : "Toad/Nue Fusion",
-  "flavourText" : "Through Well's Unknown Abyss, Toad and Nue merge into a winged swarm that binds enemies from above while striking with coordinated tongues and talons.",
-  "mechanicText" : "Unlock WINGED TONGUE SNARE and AERIAL SWARM. Drain 0.45 CE from the summoner each active tick.",
+  "flavourText" : "Through *ability:000032*, *ability:000025* and *ability:000024* merge into a winged swarm that binds enemies from above while striking with coordinated tongues and talons.",
+  "mechanicText" : "Unlock *move:000063* and *move:000064*. Drain 0.45 CE from the summoner each active tick.",
   "category" : "PASSIVE",
   "sourceType" : "SHIKIGAMI",
   "effects" : [ {
@@ -684,7 +684,7 @@
   "id" : "000031",
   "name" : "Refined Commands",
   "flavourText" : "Careful diction and disciplined cursed-energy control make each command harder to resist without increasing its strain.",
-  "mechanicText" : "At CTM 60, add min(20, CTM / 12) percentage points to CURSED SPEECH command success chance.",
+  "mechanicText" : "Increase *ability:000030* command success chance.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Cursed Speech",
@@ -707,8 +707,8 @@
 }, {
   "id" : "000032",
   "name" : "Well's Unknown Abyss",
-  "flavourText" : "Two living shikigami are drawn together into a single composite shadow — a temporary union weaker than any Totality, but one that may be broken apart and reformed freely, for its components never truly die.",
-  "mechanicText" : "Unlock WELLS UNKNOWN ABYSS shikigami: temporary fusions of two living shikigami. Weaker than Totality, but destroyed at no lasting cost.",
+  "flavourText" : "Two living shikigami are drawn together into a single composite shadow — a temporary union weaker than any *ability:000019*, but one that may be broken apart and reformed freely, for its components never truly die.",
+  "mechanicText" : "Unlock WELLS UNKNOWN ABYSS shikigami: temporary fusions of two living shikigami. Weaker than *ability:000019*, but destroyed at no lasting cost.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ten Shadows",
@@ -748,8 +748,8 @@
 }, {
   "id" : "000035",
   "name" : "Three Sibling Cores",
-  "flavourText" : "Panda was born with three compatible cores: Panda, Gorilla, and an elder sister whose form is not available during the Kyoto Goodwill Event.",
-  "mechanicText" : "Grant access to PANDA CORE, PANDA CORE SUCCESSION, GORILLA CORE, and GORILLA CORE SUCCESSION.",
+  "flavourText" : "Panda was born with three compatible cores: *ability:000036*, *ability:000038*, and an elder sister whose form is not available during the Kyoto Goodwill Event.",
+  "mechanicText" : "Grant access to *ability:000036*, *ability:000037*, *ability:000038*, and *ability:000039*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -774,7 +774,7 @@
   "id" : "000036",
   "name" : "Panda Core",
   "flavourText" : "Panda's balanced core combines sharp judgment, resilient defense, and the dexterity to protect his allies.",
-  "mechanicText" : "Grant GORILLA MODE.",
+  "mechanicText" : "Grant *move:000085*.",
   "category" : "PASSIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000035",
@@ -787,8 +787,8 @@
 }, {
   "id" : "000037",
   "name" : "Panda Core Succession",
-  "flavourText" : "When the Panda core can no longer sustain the body, Panda shifts control to his surviving Gorilla core.",
-  "mechanicText" : "At 0 HP, transform into GORILLA MODE at its stored HP, or full HP if it has not yet entered battle.",
+  "flavourText" : "When the *ability:000036* can no longer sustain the body, Panda shifts control to his surviving *ability:000038*.",
+  "mechanicText" : "At 0 HP, transform into *move:000085* at its stored HP, or full HP if it has not yet entered battle.",
   "category" : "ACTIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000036",
@@ -804,7 +804,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000018",
+    "characterId" : "000020",
     "transformationHpMode" : "FULL",
     "target" : "SELF"
   } ],
@@ -813,7 +813,7 @@
   "id" : "000038",
   "name" : "Gorilla Core",
   "flavourText" : "The short-tempered Gorilla core sacrifices efficiency for explosive strength, speed, and the power to send vibrations through an opponent's guard.",
-  "mechanicText" : "Grant GORILLA PUMMEL, UNBLOCKABLE DRUMMING BEAT, and RETURN TO PANDA CORE. Pay 40 CE at the start of each round.",
+  "mechanicText" : "Grant *move:000086*, *move:000087*, and *move:000088*. Pay 40 CE at the start of each round.",
   "category" : "PASSIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000035",
@@ -838,8 +838,8 @@
 }, {
   "id" : "000039",
   "name" : "Gorilla Core Succession",
-  "flavourText" : "If the Gorilla core is destroyed while the Panda core still lives, control returns to Panda's balanced form.",
-  "mechanicText" : "At 0 HP, return to PANDA CORE at its stored HP. The transformation fails if PANDA CORE was already defeated.",
+  "flavourText" : "If the *ability:000038* is destroyed while the *ability:000036* still lives, control returns to Panda's balanced form.",
+  "mechanicText" : "At 0 HP, return to *ability:000036* at its stored HP. The transformation fails if *ability:000036* was already defeated.",
   "category" : "ACTIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000038",
@@ -855,7 +855,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000017",
+    "characterId" : "000004",
     "transformationHpMode" : "FULL",
     "target" : "SELF"
   } ],
@@ -940,7 +940,7 @@
   "id" : "000043",
   "name" : "Seven-Three Insight",
   "flavourText" : "Long practice with the Ratio Technique teaches its user to see the seven-to-three line in everything.",
-  "mechanicText" : "Add ACCURACY to your INNATE TECHNIQUE moves: +5, rising to +15 as CURSED TECHNIQUE MASTERY grows.",
+  "mechanicText" : "Add ACCURACY to your INNATE TECHNIQUE moves.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ratio",
@@ -1014,6 +1014,366 @@
     "type" : "MOVE_ACCURACY_MULTIPLY",
     "doubleValue" : 1.1,
     "moveTag" : "STAFF"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000045",
+  "name" : "My Best Friend",
+  "flavourText" : "Todo's certainty in his brother turns their shared momentum into overwhelming combat instinct.",
+  "mechanicText" : "At BATTLE START, when fighting alongside Aoi Todo or either Yuji Itadori, gain 10% COMBAT ABILITY for the battle.",
+  "category" : "ACTIVE",
+  "sourceType" : "CHARACTER",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "ALL",
+      "children" : [ {
+        "type" : "BATTLE_STARTED"
+      }, {
+        "type" : "ANY",
+        "children" : [ {
+          "type" : "CHARACTER_PRESENT",
+          "actor" : "ALLY",
+          "characterId" : "000000"
+        }, {
+          "type" : "CHARACTER_PRESENT",
+          "actor" : "ALLY",
+          "characterId" : "000010"
+        }, {
+          "type" : "CHARACTER_PRESENT",
+          "actor" : "ALLY",
+          "characterId" : "000006"
+        } ]
+      } ]
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "combatAbility",
+    "doubleValue" : 0.1,
+    "valueMode" : "PERCENT",
+    "statType" : "CORE",
+    "statOperation" : "CHANGE",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000046",
+  "name" : "Strength Amplification",
+  "flavourText" : "Playful Cloud converts the wielder's physical might directly into striking force, making the three-section staff as dangerous as the hands that wield it.",
+  "mechanicText" : "While PLAYFUL CLOUD is equipped, STAFF move BASE POWER scales with current scaled STRENGTH: x0.2 at 10, x1 at 80, and x5 at scaled maximum.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_TOOL",
+  "sourceValue" : "000002",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "MOVE_BASE_POWER_SCALE_BY_STAT",
+    "stat" : "strength",
+    "minimumStatMultiplier" : 0.2,
+    "maximumStatMultiplier" : 5.0,
+    "moveTag" : "STAFF"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000047",
+  "name" : "Blood Manipulation Reserves",
+  "flavourText" : "A prepared supply of blood to use for external blood manipulation techniques",
+  "mechanicText" : "Begin battle with 5 BLOOD SUPPLY.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Blood Manipulation",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DEFINE_BOUNDED_RESOURCE",
+    "resourceKey" : "BLOOD_SUPPLY",
+    "resourceLabel" : "Blood Supply",
+    "resourceCapacity" : 5,
+    "resourceStartValue" : 5
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000048",
+  "name" : "Blood Coagulation",
+  "flavourText" : "Fine control over blood within the body accelerates clotting, staunching blood loss before it can sap the user's strength.",
+  "mechanicText" : "Increase VITALITY by 5%.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Blood Manipulation",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "STAT_MULTIPLY",
+    "stat" : "vitality",
+    "doubleValue" : 1.05
+  } ],
+  "masteryThreshold" : 35
+}, {
+  "id" : "000049",
+  "name" : "Compression",
+  "flavourText" : "Convergence compresses prepared blood into dense ammunition capable of sustaining high-pressure techniques.",
+  "mechanicText" : "Unlock COMPRESSION by learning *move:000107*. Store COMPRESSION up to your capacity.",
+  "category" : "PASSIVE",
+  "sourceType" : "MOVE",
+  "sourceValue" : "000097",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DEFINE_BOUNDED_RESOURCE",
+    "resourceKey" : "COMPRESSION",
+    "resourceLabel" : "Compression",
+    "resourceCapacity" : 1,
+    "resourceStartValue" : 0,
+    "masteryProgression" : {
+      "resourceCapacity" : {
+        "mode" : "BENCHMARKS",
+        "benchmarks" : [ {
+          "mastery" : 0,
+          "value" : 1
+        }, {
+          "mastery" : 50,
+          "value" : 2
+        }, {
+          "mastery" : 90,
+          "value" : 3
+        }, {
+          "mastery" : 160,
+          "value" : 4
+        }, {
+          "mastery" : 250,
+          "value" : 5
+        } ]
+      }
+    }
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000050",
+  "name" : "Cursed Spirit Physiology",
+  "flavourText" : "A curse is a body made from cursed energy itself, sustained by reserves far beyond those of ordinary flesh.",
+  "mechanicText" : "Multiply MAX CE by 5, regenerate 1 CE per TICK, waive low CE COSTS according to raw BST, and grant *move:000132*.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 5.0,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "MAX_CE"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 0.95,
+    "statOperation" : "CHANGE",
+    "stringValue" : "CE_REGENERATION"
+  }, {
+    "effectId" : "effect-000002",
+    "type" : "CE_COST_WAIVE_BY_STAT_TOTAL",
+    "intValue" : 100
+  }, {
+    "effectId" : "effect-000003",
+    "type" : "GRANT_MOVE",
+    "moveId" : "000120"
+  } ],
+  "masteryThreshold" : 0,
+  "automaticallyAssigned" : true
+}, {
+  "id" : "000051",
+  "name" : "Exorcism Requires Cursed Energy",
+  "flavourText" : "Ordinary force can tear apart a curse, but only cursed power can erase the energy holding its form together.",
+  "mechanicText" : "Fatal uncursed PHYSICAL hits leave the user at 1 HP. CURSED ENERGY, TECHNIQUES, CURSED TOOLS, cursed beings, and non-hit damage can EXORCISE normally.",
+  "category" : "ACTIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "ALL",
+      "children" : [ {
+        "type" : "FATAL_DAMAGE",
+        "actor" : "SELF"
+      }, {
+        "type" : "INCOMING_HIT_LACKS_CURSED_ENERGY",
+        "actor" : "SELF"
+      } ]
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "SURVIVE_FATAL_DAMAGE",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "uses" : 1
+  } ],
+  "masteryThreshold" : 0,
+  "automaticallyAssigned" : true
+}, {
+  "id" : "000052",
+  "name" : "Amorphous Anatomy",
+  "flavourText" : "A body without fixed organs disperses blunt force through shifting cursed flesh.",
+  "mechanicText" : "Reduce incoming PHYSICAL damage by 10%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "INCOMING_DAMAGE_MULTIPLY",
+    "doubleValue" : 0.9,
+    "moveTag" : "PHYSICAL"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000053",
+  "name" : "Volatile Cursed Core",
+  "flavourText" : "Unstable energy leaks from every seam, magnifying both the curse's violence and the damage that can rupture it.",
+  "mechanicText" : "Increase CURSED ENERGY damage dealt by 12% and all DAMAGE TAKEN by 8%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DAMAGE_MULTIPLY",
+    "doubleValue" : 1.12,
+    "moveTag" : "CURSED_ENERGY"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.08,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "DAMAGE_TAKEN"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000054",
+  "name" : "Bottomless Malice",
+  "flavourText" : "The hatred that formed the curse gathers into a reservoir that seems to deepen whenever it is measured.",
+  "mechanicText" : "Increase MAX CE by 25% and CE REGENERATION by 0.25 per TICK.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.25,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "MAX_CE"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 0.25,
+    "statOperation" : "CHANGE",
+    "stringValue" : "CE_REGENERATION"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000055",
+  "name" : "Natural Calamity",
+  "flavourText" : "The curse embodies disaster on a scale that spreads suffering beyond any single victim.",
+  "mechanicText" : "Increase AOE damage dealt by 15%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DAMAGE_MULTIPLY",
+    "doubleValue" : 1.15,
+    "moveTag" : "AOE"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000056",
+  "name" : "Grudge-Fed Flesh",
+  "flavourText" : "Every wound the curse inflicts feeds fresh resentment back into its damaged form.",
+  "mechanicText" : "After dealing at least 25 DAMAGE in one instance, restore 2% MAX HP.",
+  "category" : "ACTIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "DAMAGE_DEALT_AT_LEAST",
+      "actor" : "SELF",
+      "amount" : 25
+    },
+    "targetEffectIds" : [ "effect-000000" ],
+    "matchSameTrigger" : true
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "HEAL_HP",
+    "doubleValue" : 0.02,
+    "valueMode" : "PERCENT",
+    "target" : "SELF"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000057",
+  "name" : "Oppressive Aura",
+  "flavourText" : "The curse floods the battlefield with killing intent that weakens enemies will.",
+  "mechanicText" : "At ROUND START, reduce every enemy's ACCURACY by 10 for 1 ROUND.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "AUTO_STATUS_APPLY",
+    "stringValue" : "ACCURACY_DECREASE",
+    "target" : "ENEMY",
+    "timing" : "ROUND_START",
+    "durationRounds" : 1,
+    "magnitude" : 10.0
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000058",
+  "name" : "Dense Cursed Core",
+  "flavourText" : "A compact knot of cursed energy makes the spirit slower, heavier, and exceptionally difficult to disperse.",
+  "mechanicText" : "Increase MAX HP by 15% and DEFENSE by 10%, but reduce SPEED by 10%.",
+  "category" : "PASSIVE",
+  "sourceType" : "CURSED_SPIRIT",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.15,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "MAX_HP"
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "BATTLE_STAT_MODIFIER",
+    "doubleValue" : 1.1,
+    "statOperation" : "MULTIPLY",
+    "stringValue" : "DEFENSE"
+  }, {
+    "effectId" : "effect-000002",
+    "type" : "STAT_MULTIPLY",
+    "stat" : "speed",
+    "doubleValue" : 0.9
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000059",
+  "name" : "Hidden Presence",
+  "flavourText" : "Hanami's presence slips away from ordinary senses even while the forest closes around its prey.",
+  "mechanicText" : "Enemy RANGED attacks lose 10 ACCURACY against the user.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Disaster Plants",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "OPPONENT_ACCURACY_ADD",
+    "intValue" : -10,
+    "moveTag" : "RANGED"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000060",
+  "name" : "Flower Offering",
+  "flavourText" : "The flower on Hanami's shoulder stores stolen life force until it can be released as a single devastating blast.",
+  "mechanicText" : "Create FLOWER OFFERING with 0/3 charges. LIFE FORCE ABSORPTION adds charges; the LIFE-FORCE BEAM consumes all charges for 60 BASE POWER each.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Disaster Plants",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DEFINE_BOUNDED_RESOURCE",
+    "resourceKey" : "FLOWER_OFFERING",
+    "resourceLabel" : "Flower Offering",
+    "resourceCapacity" : 3,
+    "resourceStartValue" : 0
   } ],
   "masteryThreshold" : 0
 } ]

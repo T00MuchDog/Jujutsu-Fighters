@@ -160,7 +160,7 @@ public class CombatStats {
 
     /**
      * Cursed Energy Output buff applied on a Black Flash proc, expressed as the
-     * additive percentage granted via a {@code TEMP_STAT_PERCENT} effect
+     * additive percentage granted via a timed stat modifier
      * (0.20 = +20% = an effective ×1.2 multiplier).
      */
     public static final double BF_CE_OUTPUT_BUFF_FRACTION = 0.20;

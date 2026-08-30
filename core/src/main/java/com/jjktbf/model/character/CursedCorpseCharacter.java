@@ -43,6 +43,21 @@ public class CursedCorpseCharacter extends Character {
             knownMoves, abilities, accessibleTechniques, equipment);
     }
 
+    CursedCorpseCharacter(
+        String id,
+        String name,
+        CharacterStats baseStats,
+        String innateTechniqueName,
+        List<Move> learnedMoves,
+        List<Move> moveSet,
+        List<Ability> abilities,
+        java.util.Set<String> accessibleTechniques,
+        Equipment equipment
+    ) {
+        super(id, name, CharacterType.CURSED_CORPSE, baseStats, innateTechniqueName,
+            learnedMoves, moveSet, abilities, accessibleTechniques, equipment);
+    }
+
     public CursedCorpseCharacter(
         String id,
         String name,

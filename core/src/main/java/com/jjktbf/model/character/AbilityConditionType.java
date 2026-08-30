@@ -22,6 +22,10 @@ public enum AbilityConditionType {
     ALWAYS("Always active", "Generic effects activate once when battle processing begins; coded effects remain eligible at every natural runtime opportunity. It cannot be combined with another condition."),
     MANUAL_ACTIVATION("Manual activation", "Activates only when the battle controller requests this ability during planning."),
     BATTLE_STARTED("Battle started", "The battle has just started."),
+    CHARACTER_PRESENT(
+        "Character present",
+        "An active combatant with the selected canonical character definition is present.",
+        ACTOR, CHARACTER_ID),
 
     HP_PERCENT_AT_OR_BELOW("HP at or below %", "The selected combatant's HP reaches or falls below this percentage.", ACTOR, PERCENTAGE),
     HP_PERCENT_AT_OR_ABOVE("HP at or above %", "The selected combatant's HP reaches or rises above this percentage.", ACTOR, PERCENTAGE),
@@ -45,7 +49,15 @@ public enum AbilityConditionType {
     EVENT_TARGET("Current event targets combatant", "The selected combatant is the target of the current battle event.", ACTOR),
     ATTACK_CONNECTED("Attack connected", "The selected combatant's current hit connected before block and defense.", ACTOR),
     CONNECTED_HIT_HAS_TAG("Connected hit has tag", "The selected combatant's current connected hit has this tag.", ACTOR, MOVE_TAG),
+    INCOMING_HIT_HAS_TAG(
+        "Incoming hit has tag",
+        "The current hit targets the effect owner and has this tag. CURSED_ENERGY also includes innate and non-innate techniques.",
+        MOVE_TAG),
     FATAL_DAMAGE("Fatal damage incoming", "The selected combatant is about to take damage or an effect that would reduce HP to zero.", ACTOR),
+    INCOMING_HIT_LACKS_CURSED_ENERGY(
+        "Incoming hit lacks cursed energy",
+        "The selected combatant is about to take a fatal physical hit that is not cursed energy, a technique, a cursed tool, or an attack from a cursed being.",
+        ACTOR),
 
     TIMELINE_POINT_REACHED("Timeline point reached", "The action counter reaches this tick.", TICK),
     ROUND_REACHED("Round reached", "The battle reaches this round.", ROUND),
@@ -107,10 +119,13 @@ public enum AbilityConditionType {
         condition.moveId = null;
         condition.moveTag = uses(MOVE_TAG)
             ? (this == CONNECTED_HIT_HAS_TAG
-                ? MoveTag.PHYSICAL.name() : MoveTag.ATTACK.name())
+                ? MoveTag.PHYSICAL.name()
+                : this == INCOMING_HIT_HAS_TAG
+                    ? MoveTag.FIRE.name() : MoveTag.ATTACK.name())
             : null;
         condition.moveTags = uses(MOVE_TAGS)
             ? new java.util.ArrayList<>(java.util.List.of(MoveTag.PHYSICAL.name())) : null;
+        condition.characterId = null;
         condition.stat = uses(STAT) ? StatKey.VITALITY.fieldName : null;
         condition.statusType = uses(STATUS_TYPE)
             ? StatusEffectType.STRENGTH_INCREASE.name() : null;
@@ -130,6 +145,7 @@ public enum AbilityConditionType {
         if (!uses(MOVE_ID)) condition.moveId = null;
         if (!uses(MOVE_TAG)) condition.moveTag = null;
         if (!uses(MOVE_TAGS)) condition.moveTags = null;
+        if (!uses(CHARACTER_ID)) condition.characterId = null;
         if (!uses(STAT)) condition.stat = null;
         if (!uses(STATUS_TYPE)) condition.statusType = null;
         if (!uses(CODED_ABILITY)) condition.codedAbilityKey = null;
@@ -178,7 +194,7 @@ public enum AbilityConditionType {
         }
         if (type.uses(ACTOR)) {
             try { AbilityConditionActor.valueOf(condition.actor); }
-            catch (Exception ex) { return path + " needs SELF, ENEMY, or ANY."; }
+            catch (Exception ex) { return path + " needs SELF, ALLY, ENEMY, or ANY."; }
         }
         if (type.uses(PERCENTAGE)
             && (condition.percentage == null || !Double.isFinite(condition.percentage)
@@ -207,6 +223,9 @@ public enum AbilityConditionType {
                 if (!selected.add(tag)) return path + " cannot repeat a damage-type tag.";
             }
         }
+        if (type.uses(CHARACTER_ID) && isBlank(condition.characterId)) {
+            return path + " needs a character ID.";
+        }
         if (type.uses(STAT)) {
             try { StatKey.fromString(condition.stat); }
             catch (Exception ex) { return path + " needs a valid character stat."; }
@@ -216,8 +235,8 @@ public enum AbilityConditionType {
             catch (Exception ex) { return path + " needs a valid status."; }
         }
         if (type.uses(CODED_ABILITY)
-            && !CodedAbilityRegistry.supportsStateKey(condition.codedAbilityKey)) {
-            return path + " needs a valid coded state.";
+            && (condition.codedAbilityKey == null || condition.codedAbilityKey.isBlank())) {
+            return path + " needs a coded state or bounded resource key.";
         }
         if (type.uses(TICK) && (condition.tick == null || condition.tick < 1)) {
             return path + " timeline point must be at least 1.";

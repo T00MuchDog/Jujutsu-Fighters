@@ -4,6 +4,7 @@ import com.jjktbf.model.combat.BattleStatMode;
 import com.jjktbf.multiplayer.engine.HeadlessBattleSession;
 import com.jjktbf.multiplayer.engine.MatchParticipant;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
+import com.jjktbf.multiplayer.protocol.BattlePhase;
 import com.jjktbf.multiplayer.protocol.CommandResult;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
 import com.jjktbf.multiplayer.protocol.MatchState;
@@ -38,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Owns authoritative in-memory matches, connections, timers, and persistence. */
 public final class MatchManager implements AutoCloseable {
     public static final Duration DEFAULT_COMPLETED_MATCH_RETENTION = Duration.ofMinutes(1);
+    public static final Duration DEFAULT_PLANNING_TIMEOUT = Duration.ofSeconds(90);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MatchManager.class);
     private static final String DISCONNECT_TIMEOUT_REASON = "DISCONNECT_TIMEOUT";
@@ -47,6 +49,7 @@ public final class MatchManager implements AutoCloseable {
     private final MatchPersistenceRepository repository;
     private final Duration disconnectGracePeriod;
     private final Duration completedMatchRetention;
+    private final Duration planningTimeout;
     private final Clock clock;
     private final ScheduledExecutorService scheduler;
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -90,6 +93,7 @@ public final class MatchManager implements AutoCloseable {
             database,
             disconnectGracePeriod,
             completedMatchRetention,
+            DEFAULT_PLANNING_TIMEOUT,
             clock,
             newScheduler()
         );
@@ -103,12 +107,35 @@ public final class MatchManager implements AutoCloseable {
         Clock clock,
         ScheduledExecutorService scheduler
     ) {
+        this(
+            database,
+            disconnectGracePeriod,
+            completedMatchRetention,
+            DEFAULT_PLANNING_TIMEOUT,
+            clock,
+            scheduler
+        );
+    }
+
+    /** Constructor with injectable planning timing for deterministic tests. */
+    public MatchManager(
+        Database database,
+        Duration disconnectGracePeriod,
+        Duration completedMatchRetention,
+        Duration planningTimeout,
+        Clock clock,
+        ScheduledExecutorService scheduler
+    ) {
         this.repository = new MatchPersistenceRepository(
             Objects.requireNonNull(database, "database"));
         this.disconnectGracePeriod = requirePositive(
             disconnectGracePeriod, "disconnectGracePeriod");
         this.completedMatchRetention = requireNonNegative(
             completedMatchRetention, "completedMatchRetention");
+        this.planningTimeout = requirePositive(planningTimeout, "planningTimeout");
+        if (this.planningTimeout.toMillis() < 1L) {
+            throw new IllegalArgumentException("planningTimeout must be at least one millisecond");
+        }
         this.clock = Objects.requireNonNull(clock, "clock");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         int abandoned = repository.abandonInterruptedMatches(clock.millis());
@@ -211,6 +238,7 @@ public final class MatchManager implements AutoCloseable {
             participant.disconnectDeadline = null;
 
             match.session.setConnected(identity.playerId(), true, null);
+            resumePlanningTimer(match);
 
             if (replaced != null && replaced != connection) {
                 safeClose(replaced);
@@ -306,6 +334,7 @@ public final class MatchManager implements AutoCloseable {
                 );
             }
 
+            expirePlanningIfDue(match);
             CommandResult result = match.session.applyCommand(playerId, command);
             if (!result.accepted()) {
                 MatchState senderState = match.session.snapshotFor(playerId);
@@ -329,7 +358,7 @@ public final class MatchManager implements AutoCloseable {
                 return wireResult;
             }
 
-            MatchState authoritativeState = result.state();
+            MatchState authoritativeState = reconcilePlanningTimer(match);
             broadcastState(match, playerId, result.commandId());
             if (isTerminal(authoritativeState.status())) {
                 MatchResultType resultType = authoritativeState.winnerPlayerId() == null
@@ -343,6 +372,145 @@ public final class MatchManager implements AutoCloseable {
                 match.session.snapshotFor(playerId)
             );
         }
+    }
+
+    private MatchState reconcilePlanningTimer(ActiveMatch match) {
+        MatchState state = match.session.snapshot();
+        if (state.phase() != BattlePhase.PLANNING || isTerminal(state.status())) {
+            cancelPlanningTimer(match);
+            return state;
+        }
+        if (match.planningRound == state.roundNumber()
+            && (match.planningDeadline != null || match.planningRemainingNanos > 0L)) {
+            return state;
+        }
+
+        cancelPlanningTimer(match);
+        if (state.status() != MatchStatus.ACTIVE) {
+            match.planningRound = state.roundNumber();
+            match.planningRemainingNanos = planningTimeout.toNanos();
+            return state;
+        }
+        return armPlanningTimer(match, state.roundNumber(), planningTimeout.toNanos());
+    }
+
+    private MatchState armPlanningTimer(ActiveMatch match, int round, long delayNanos) {
+        long boundedDelay = Math.max(1L, delayNanos);
+        long delayMillis = nanosToCeilingMillis(boundedDelay);
+        long effectiveDelayNanos = TimeUnit.MILLISECONDS.toNanos(delayMillis);
+        long deadline = Math.addExact(clock.millis(), delayMillis);
+        long nowNanos = System.nanoTime();
+
+        match.planningRound = round;
+        match.planningDeadline = deadline;
+        match.planningDueNanos = saturatingAdd(nowNanos, effectiveDelayNanos);
+        match.planningRemainingNanos = 0L;
+        MatchState timedState = match.session.setPlanningDeadline(deadline);
+        try {
+            long scheduleDelay = Math.max(1L, match.planningDueNanos - System.nanoTime());
+            match.planningTask = scheduler.schedule(
+                () -> expirePlanning(match.setup.matchId(), round, deadline),
+                scheduleDelay,
+                TimeUnit.NANOSECONDS
+            );
+        } catch (RuntimeException exception) {
+            match.session.clearPlanningDeadline();
+            match.planningRound = -1;
+            match.planningDeadline = null;
+            match.planningDueNanos = 0L;
+            match.planningRemainingNanos = 0L;
+            throw exception;
+        }
+        return timedState;
+    }
+
+    private void pausePlanningTimer(ActiveMatch match) {
+        if (match.planningDeadline == null || match.planningTask == null) {
+            return;
+        }
+        long remainingNanos = Math.max(1L, match.planningDueNanos - System.nanoTime());
+        match.planningTask.cancel(false);
+        match.planningTask = null;
+        match.planningDeadline = null;
+        match.planningDueNanos = 0L;
+        match.planningRemainingNanos = remainingNanos;
+        match.session.clearPlanningDeadline();
+    }
+
+    private void resumePlanningTimer(ActiveMatch match) {
+        MatchState state = match.session.snapshot();
+        if (state.status() != MatchStatus.ACTIVE
+            || state.phase() != BattlePhase.PLANNING
+            || match.planningDeadline != null
+            || match.planningRemainingNanos <= 0L
+            || match.planningRound != state.roundNumber()) {
+            return;
+        }
+        armPlanningTimer(match, state.roundNumber(), match.planningRemainingNanos);
+    }
+
+    private void expirePlanningIfDue(ActiveMatch match) {
+        if (match.planningDeadline == null) {
+            return;
+        }
+        if (clock.millis() >= match.planningDeadline
+            || System.nanoTime() >= match.planningDueNanos) {
+            expirePlanningLocked(
+                match,
+                match.planningRound,
+                match.planningDeadline
+            );
+        }
+    }
+
+    private void expirePlanning(String matchId, int expectedRound, long expectedDeadline) {
+        ActiveMatch match = matches.get(matchId);
+        if (match == null || closed.get()) {
+            return;
+        }
+
+        try {
+            synchronized (match) {
+                if (closed.get()) {
+                    return;
+                }
+                expirePlanningLocked(match, expectedRound, expectedDeadline);
+            }
+        } catch (RuntimeException exception) {
+            LOGGER.error(
+                "Match planning expiry failed matchId={} round={} error={}",
+                matchId,
+                expectedRound,
+                exception.getClass().getSimpleName()
+            );
+        }
+    }
+
+    private void expirePlanningLocked(
+        ActiveMatch match,
+        int expectedRound,
+        long expectedDeadline
+    ) {
+        if (match.planningRound != expectedRound
+            || !Objects.equals(match.planningDeadline, expectedDeadline)
+            || match.session.getPhase() != BattlePhase.PLANNING
+            || match.session.isEnded()) {
+            return;
+        }
+
+        cancelPlanningTimer(match);
+        MatchState state = match.session.expirePlanning();
+        broadcastState(match, null, null);
+        if (isTerminal(state.status())) {
+            MatchResultType resultType = state.winnerPlayerId() == null
+                ? MatchResultType.DRAW : MatchResultType.VICTORY;
+            completeMatch(match, state, resultType, true);
+        }
+        LOGGER.info(
+            "Match planning expired matchId={} round={}",
+            match.setup.matchId(),
+            expectedRound
+        );
     }
 
     /** Ignores callbacks from an old socket after a replacement connection has joined. */
@@ -367,6 +535,8 @@ public final class MatchManager implements AutoCloseable {
                 return false;
             }
 
+            expirePlanningIfDue(match);
+
             long now = clock.millis();
             long deadline = Math.addExact(now, disconnectGracePeriod.toMillis());
             repository.recordDisconnected(
@@ -375,6 +545,9 @@ public final class MatchManager implements AutoCloseable {
                 statusAfterDisconnect(match),
                 now
             );
+            if (!match.session.isEnded()) {
+                pausePlanningTimer(match);
+            }
             participant.connection = null;
             cancelDisconnect(participant);
             participant.disconnectDeadline = deadline;
@@ -495,6 +668,7 @@ public final class MatchManager implements AutoCloseable {
         if (match.completionPersisted) {
             return;
         }
+        cancelPlanningTimer(match);
 
         // Persist the terminal result BEFORE telling clients it ended. This
         // guarantees clients never observe a "match over" state that the server
@@ -594,6 +768,7 @@ public final class MatchManager implements AutoCloseable {
             if (!match.session.isEnded() || !matches.remove(match.setup.matchId(), match)) {
                 return;
             }
+            cancelPlanningTimer(match);
             for (ActiveMatch.ActiveParticipant participant : match.participants.values()) {
                 cancelDisconnect(participant);
                 if (participant.connection != null) {
@@ -871,9 +1046,19 @@ public final class MatchManager implements AutoCloseable {
         if (participant.characterIds().size() != participant.characters().size()) {
             return false;
         }
+        if (participant.characterIds().size() != participant.moveSetIds().size()) {
+            return false;
+        }
         for (int index = 0; index < participant.characterIds().size(); index++) {
             if (!participant.characterIds().get(index)
                 .equals(participant.characters().get(index).getId())) {
+                return false;
+            }
+            List<String> configuredMoveIds = participant.characters().get(index)
+                .getMoveSet().stream()
+                .map(com.jjktbf.model.move.Move::getId)
+                .toList();
+            if (!participant.moveSetIds().get(index).equals(configuredMoveIds)) {
                 return false;
             }
         }
@@ -902,7 +1087,8 @@ public final class MatchManager implements AutoCloseable {
         return first.playerId().equals(second.playerId())
             && first.displayName().equals(second.displayName())
             && first.side() == second.side()
-            && first.characterIds().equals(second.characterIds());
+            && first.characterIds().equals(second.characterIds())
+            && first.moveSetIds().equals(second.moveSetIds());
     }
 
     private MatchState existingState(ActiveMatch existing, AcceptedMatchSetup setup) {
@@ -934,6 +1120,18 @@ public final class MatchManager implements AutoCloseable {
         }
     }
 
+    private static void cancelPlanningTimer(ActiveMatch match) {
+        ScheduledFuture<?> task = match.planningTask;
+        match.planningTask = null;
+        match.planningDeadline = null;
+        match.planningRound = -1;
+        match.planningDueNanos = 0L;
+        match.planningRemainingNanos = 0L;
+        if (task != null) {
+            task.cancel(false);
+        }
+    }
+
     private void ensureOpen() {
         if (closed.get()) {
             throw new IllegalStateException("MatchManager is closed");
@@ -958,6 +1156,15 @@ public final class MatchManager implements AutoCloseable {
         return duration;
     }
 
+    private static long nanosToCeilingMillis(long nanos) {
+        long wholeMillis = nanos / 1_000_000L;
+        return nanos % 1_000_000L == 0L ? wholeMillis : Math.addExact(wholeMillis, 1L);
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        return left > Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
+    }
+
     private static ScheduledExecutorService newScheduler() {
         ThreadFactory threadFactory = runnable -> {
             Thread thread = Executors.defaultThreadFactory().newThread(runnable);
@@ -965,7 +1172,7 @@ public final class MatchManager implements AutoCloseable {
             thread.setDaemon(true);
             return thread;
         };
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1, threadFactory);
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2, threadFactory);
         executor.setRemoveOnCancelPolicy(true);
         executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
@@ -982,6 +1189,7 @@ public final class MatchManager implements AutoCloseable {
         for (ActiveMatch match : matches.values()) {
             synchronized (match) {
                 cancelAllDisconnects(match);
+                cancelPlanningTimer(match);
                 if (match.cleanupTask != null) {
                     match.cleanupTask.cancel(false);
                     match.cleanupTask = null;

@@ -10,6 +10,7 @@ import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
 import com.jjktbf.model.technique.TechniqueRepository;
 import com.jjktbf.model.technique.TechniqueSkillTree;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.weapon.CursedToolData;
 import com.jjktbf.model.weapon.CursedToolRepository;
 
@@ -113,10 +114,17 @@ public class CharacterData {
     public int cursedTechniqueMastery = 80;
 
     /**
-     * 6-digit move IDs from MoveRepository, in order of assignment.
+     * Every move this character has learned, in authored order. This pool is
+     * uncapped; the stat-derived limits apply only to a per-battle move set.
      * Guaranteed moves (Basic Punch, Basic Block) should always be first.
      */
     public List<String> moveIds;
+
+    /**
+     * Learned move IDs selected for this character's saved battle move set.
+     * Null uses the first learned moves that fit the slot budgets.
+     */
+    public List<String> moveSetIds;
 
     /**
      * Move IDs unlocked by technique-tree nodes and available to learn. They do
@@ -135,6 +143,9 @@ public class CharacterData {
      * assignment. They do not become active until also present in {@link #abilityIds}.
      */
     public List<String> availableAbilityIds;
+
+    /** Domain IDs unlocked by active technique-tree Domain nodes. */
+    public List<String> availableDomainIds;
 
     // -------------------------------------------------------------------------
     // Derived helpers
@@ -212,6 +223,17 @@ public class CharacterData {
         TechniqueRepository techniqueRepo,
         CursedToolRepository cursedToolRepo
     ) {
+        return toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo, null);
+    }
+
+    /** Builds a battle character with an explicit ordered subset of learned moves. */
+    public Character toCharacter(
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        CursedToolRepository cursedToolRepo,
+        List<String> requestedMoveSetIds
+    ) {
         CharacterStats stats = toCharacterStats();
         List<Move> moves = new ArrayList<>();
         List<InnateTechniqueData> techniques = techniqueRepo == null ? null : techniqueRepo.getAll();
@@ -232,6 +254,8 @@ public class CharacterData {
 
         validateSelectedMoveNodes(moveRepo, techniques, prerequisiteWaiver);
 
+        ContentNameTokens.NameLookup descriptionNames =
+            descriptionNameLookup(moveRepo, abilityRepo);
         for (String moveId : resolvedMoveIds) {
                 if (moveId == null || moveId.isBlank()) {
                     System.err.println("[WARN] Blank move ID skipped for character '" + name + "'");
@@ -241,7 +265,8 @@ public class CharacterData {
                 if (found.isPresent()) {
                     try {
                         moves.add(found.get().toMoveResolved(
-                            launchId -> moveRepo.findById(launchId).orElse(null)));
+                            launchId -> moveRepo.findById(launchId).orElse(null),
+                            descriptionNames));
                     } catch (Exception e) {
                         System.err.println("[WARN] Could not build move " + moveId + ": " + e.getMessage());
                     }
@@ -265,7 +290,8 @@ public class CharacterData {
                         }
                     })
                     .orElse(false), techniqueRepo, learnedToolMoveIds,
-                equipment.grantedMoveIds()));
+                equipment.grantedMoveIds()),
+            descriptionNames);
         AbilityResolver.Result resolvedAbilities = resolved.abilities();
         validateAbilityAssignments(abilityRepo, resolvedAbilities);
         validateStatAllocationMinimums(resolvedAbilities);
@@ -273,7 +299,32 @@ public class CharacterData {
         Set<String> availableMoveIds = new LinkedHashSet<>(resolvedAbilities.availableMoveIds());
         availableMoveIds.addAll(equipment.grantedMoveIds());
         validateDirectMoveAssignments(moveRepo, new ArrayList<>(availableMoveIds));
-        return resolved.character();
+        List<String> effectiveMoveSetIds = requestedMoveSetIds != null
+            ? requestedMoveSetIds : moveSetIds;
+        Character character = effectiveMoveSetIds == null
+            ? resolved.character() : resolved.character().withMoveSet(effectiveMoveSetIds);
+        return character.withAccessibleDomains(availableDomainIds);
+    }
+
+    /**
+     * Name lookup for {@code *move:id*} / {@code *ability:id*} description
+     * reference tokens, built from whatever repositories are at hand. Null
+     * repositories resolve nothing, so tests building partial graphs keep
+     * authored text verbatim.
+     */
+    public static ContentNameTokens.NameLookup descriptionNameLookup(
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo
+    ) {
+        return (type, id) -> {
+            if (id == null) return null;
+            if (ContentNameTokens.MOVE_PREFIX.equalsIgnoreCase(type)) {
+                return moveRepo == null ? null
+                    : moveRepo.findById(id).map(move -> move.name).orElse(null);
+            }
+            return abilityRepo == null ? null
+                : abilityRepo.findById(id).map(ability -> ability.name).orElse(null);
+        };
     }
 
     /**
@@ -296,10 +347,13 @@ public class CharacterData {
                 List.of());
         }
         List<Move> allMoves = new ArrayList<>();
+        ContentNameTokens.NameLookup descriptionNames =
+            descriptionNameLookup(moveRepo, abilityRepo);
         for (MoveData move : moveRepo.getAll()) {
             try {
                 allMoves.add(move.toMoveResolved(
-                    launchId -> moveRepo.findById(launchId).orElse(null)));
+                    launchId -> moveRepo.findById(launchId).orElse(null),
+                    descriptionNames));
             } catch (RuntimeException exception) {
                 System.err.println("[WARN] Invalid move " + move.id
                     + " cannot be granted by equipment: " + exception.getMessage());
@@ -351,6 +405,38 @@ public class CharacterData {
         };
     }
 
+    private Character constructTypedCharacterWithDefaultMoveSet(
+        CharacterStats stats,
+        List<Move> learnedMoves,
+        List<Ability> abilities,
+        Equipment equipment
+    ) {
+        CharacterType resolved = effectiveType();
+        Set<String> accessibleTechniques = Character.accessibleTechniquesOf(
+            innateTechniqueName, abilities);
+        return switch (resolved) {
+            case SHIKIGAMI -> {
+                if (baseCeDrainPerTick == null || !Double.isFinite(baseCeDrainPerTick)
+                    || baseCeDrainPerTick <= 0.0) {
+                    throw new IllegalArgumentException(
+                        "Shikigami base CE drain per tick must be greater than 0");
+                }
+                yield new ShikigamiCharacter(id, name, stats, innateTechniqueName,
+                    learnedMoves, null, abilities, accessibleTechniques,
+                    equipment, baseCeDrainPerTick);
+            }
+            case CURSED_SPIRIT -> new CursedSpiritCharacter(
+                id, name, stats, innateTechniqueName, learnedMoves, null,
+                abilities, accessibleTechniques, equipment);
+            case CURSED_CORPSE -> new CursedCorpseCharacter(
+                id, name, stats, innateTechniqueName, learnedMoves, null,
+                abilities, accessibleTechniques, equipment);
+            case SORCERER -> new SorcererCharacter(
+                id, name, stats, innateTechniqueName, learnedMoves, null,
+                abilities, accessibleTechniques, equipment);
+        };
+    }
+
     /** Character plus the stable ability result used to construct it. */
     public record ResolvedCharacter(Character character, AbilityResolver.Result abilities) { }
 
@@ -364,6 +450,18 @@ public class CharacterData {
         Equipment equipment,
         Function<Set<String>, AbilityResolver.Result> abilityResolver
     ) {
+        return resolveEquipmentContent(
+            stats, selectedMoves, equipment, abilityResolver, null);
+    }
+
+    /** Resolves equipment content and substitutes stable IDs in player-facing ability text. */
+    public ResolvedCharacter resolveEquipmentContent(
+        CharacterStats stats,
+        List<Move> selectedMoves,
+        Equipment equipment,
+        Function<Set<String>, AbilityResolver.Result> abilityResolver,
+        ContentNameTokens.NameLookup descriptionNames
+    ) {
         Objects.requireNonNull(abilityResolver, "Ability resolver cannot be null");
         Equipment resolvedEquipment = equipment == null ? Equipment.NONE : equipment;
         Set<String> toolMoveIds = resolvedEquipment.grantedMoveIds();
@@ -371,9 +469,10 @@ public class CharacterData {
         Set<Set<String>> seen = new HashSet<>();
         while (seen.add(learnedToolMoveIds)) {
             AbilityResolver.Result abilities = abilityResolver.apply(learnedToolMoveIds);
-            Character character = constructTypedCharacter(
-                stats, selectedMoves, abilities.toDomainAbilities(), resolvedEquipment);
-            Set<String> nextLearnedToolMoveIds = character.getKnownMoves().stream()
+            Character character = constructTypedCharacterWithDefaultMoveSet(
+                stats, selectedMoves,
+                abilities.toDomainAbilities(descriptionNames), resolvedEquipment);
+            Set<String> nextLearnedToolMoveIds = character.getLearnedMoves().stream()
                 .map(Move::getId)
                 .filter(toolMoveIds::contains)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -514,8 +613,11 @@ public class CharacterData {
         d.cursedTechniqueMastery = cs.getCursedTechniqueMastery();
 
         Set<String> automaticMoveIds = equipment.grantedMoveIds();
-        d.moveIds = character.getKnownMoves().stream()
+        d.moveIds = character.getLearnedMoves().stream()
             .filter(move -> !automaticMoveIds.contains(move.getId()))
+            .map(Move::getId)
+            .toList();
+        d.moveSetIds = character.getMoveSet().stream()
             .map(Move::getId)
             .toList();
         d.abilityIds = character.getAbilities().stream()

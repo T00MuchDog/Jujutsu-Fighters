@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.jjktbf.model.character.AbilityConditionData;
 import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectData;
+import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
@@ -148,6 +149,61 @@ public class MoveEffectData extends AbilityEffectData {
         if (effectType.isAccuracyPriority()
             && moveTrigger != MoveEffectTrigger.ACCURACY_CHECK) {
             return effectType.displayName() + " must use Accuracy check.";
+        }
+        if (effectType == AbilityEffectType.EXCHANGE_ATTACK_TARGETS
+            && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+            return "Exchange attack targets must use On fire.";
+        }
+        if (effectType == AbilityEffectType.ESTABLISH_DOMAIN
+            && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+            return "Establish Domain must use On fire.";
+        }
+        if (effectType.isBlockEffectivenessModifier()
+            && moveTrigger != MoveEffectTrigger.BLOCK_CALCULATION) {
+            return effectType.displayName() + " must use While blocking.";
+        }
+        if (!effectType.isBlockEffectivenessModifier()
+            && moveTrigger == MoveEffectTrigger.BLOCK_CALCULATION) {
+            return "Only block-effectiveness modifiers may use While blocking.";
+        }
+        if (effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && moveTrigger != MoveEffectTrigger.ON_START
+            && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+            return "Bounded resource transactions must use On move start or On fire.";
+        }
+        if (effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
+            && moveTrigger != MoveEffectTrigger.ON_START) {
+            return "Resource-scaled base power must be captured On move start.";
+        }
+        if (effectType != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            && effectType != AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER
+            && moveTrigger == MoveEffectTrigger.ON_START) {
+            return "Only move-start resource effects may use On move start.";
+        }
+        if ((effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                || effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
+            && !AbilityConditionType.ALWAYS.name().equalsIgnoreCase(resolvedCondition().type)) {
+            return "Move-start resource effects must always apply.";
+        }
+        if ((effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                || effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
+            && (Boolean.TRUE.equals(activationChanceEnabled)
+                || activationMasteryProgression != null)) {
+            return "Move-start resource effects cannot roll an activation chance.";
+        }
+        if (target != null) {
+            AbilityEffectTarget effectTarget = AbilityEffectTarget.valueOf(target);
+            if ((effectType == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                    || effectType == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
+                && effectTarget != AbilityEffectTarget.SELF) {
+                return "Move-start resource effects must target self.";
+            }
+            if ((effectTarget == AbilityEffectTarget.PAIR_FIRST
+                    || effectTarget == AbilityEffectTarget.PAIR_SECOND
+                    || effectTarget == AbilityEffectTarget.PAIR_BOTH)
+                && moveTrigger != MoveEffectTrigger.ON_FIRE) {
+                return "Pair targets may only be used by On fire effects.";
+            }
         }
         if (!effectType.isAccuracyPriority()
             && moveTrigger == MoveEffectTrigger.ACCURACY_CHECK) {

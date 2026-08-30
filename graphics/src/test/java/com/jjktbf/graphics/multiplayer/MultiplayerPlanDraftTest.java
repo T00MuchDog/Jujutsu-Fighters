@@ -90,7 +90,7 @@ class MultiplayerPlanDraftTest {
     }
 
     @Test
-    void serverRestrictedMoveCannotEnterTheDraft() {
+    void serverRestrictedMoveMayStillEnterTheDraft() {
         MultiplayerPlanDraft draft = new MultiplayerPlanDraft();
         draft.beginRound(1, 20, 20);
         MoveState restricted = move(
@@ -98,9 +98,9 @@ class MultiplayerPlanDraftTest {
 
         MultiplayerPlanDraft.AddResult result = draft.addFirstFit(restricted);
 
-        assertEquals(MultiplayerPlanDraft.AddStatus.MOVE_RESTRICTED, result.status());
-        assertFalse(draft.canAdd(restricted));
-        assertTrue(draft.placements().isEmpty());
+        assertTrue(result.added());
+        assertTrue(draft.canAdd(restricted));
+        assertEquals(1, draft.placements().size());
     }
 
     @Test
@@ -212,6 +212,31 @@ class MultiplayerPlanDraftTest {
         MoveState utility = targetedMove("utility", List.of("UTILITY"), null, 0);
         assertTrue(draft.canAdd(utility));
         assertFalse(draft.canAdd(utility, List.of("one")));
+    }
+
+    @Test
+    void pairIntentRequiresExactDistinctEndpointsAndPreservesOrder() {
+        MultiplayerPlanDraft draft = new MultiplayerPlanDraft();
+        draft.beginRound(1, 20, 0);
+        MoveState pair = new MoveState(
+            "pair", "Pair", "Choose ally then enemy", "UTILITY", List.of("UTILITY"),
+            PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true, 5, 1, false,
+            0, 0, 0, 0, 0, true, null, null, List.of(), null, 0, null, null,
+            "SELF", 2, "ALLY_AND_ENEMY");
+
+        assertEquals(MultiplayerPlanDraft.AddStatus.INVALID_TARGET_SELECTION,
+            draft.addFirstFit(pair, "actor", List.of("ally")).status());
+        assertEquals(MultiplayerPlanDraft.AddStatus.INVALID_TARGET_SELECTION,
+            draft.addFirstFit(pair, "actor", List.of("ally", "ally")).status());
+        assertEquals(MultiplayerPlanDraft.AddStatus.INVALID_TARGET_SELECTION,
+            draft.addFirstFit(pair, "actor", List.of("actor", "enemy")).status());
+
+        MultiplayerPlanDraft.AddResult result =
+            draft.addFirstFit(pair, "actor", List.of("ally", "enemy"));
+        assertTrue(result.added());
+        assertEquals(List.of("ally", "enemy"), result.placement().targetIds());
+        assertEquals(List.of("ally", "enemy"), TargetListSupport.targetIds(
+            result.placement().toIntent()));
     }
 
     private static MoveState move(String id, PlanBoard board, int apCost, int ceCost) {

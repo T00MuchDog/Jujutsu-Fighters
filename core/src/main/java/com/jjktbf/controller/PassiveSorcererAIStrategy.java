@@ -47,7 +47,7 @@ public class PassiveSorcererAIStrategy implements AIStrategy {
     public BattlePlan selectPlan(BattleCombatant ai, BattleCombatant opponent, RandomSource rng) {
         int gridLength = Timeline.gridLengthForStrongestAp(
             Math.max(ai.getMaxApBar(), opponent == null ? 0 : opponent.getMaxApBar()));
-        BattlePlan plan = new BattlePlan(ai.getMaxApBar(), ai.getCurrentCe(), gridLength);
+        BattlePlan plan = BattlePlan.forCombatant(ai, gridLength);
         OpponentIntel intel = OpponentIntel.forOpponent(opponent);
 
         List<Move> attacks = new ArrayList<>();
@@ -100,7 +100,7 @@ public class PassiveSorcererAIStrategy implements AIStrategy {
                 default -> SmartAIScoring.placeAtFreeRandom(plan, d, ceCost, gridLength, rng); // scatter
             };
             if (seg != null) {
-                defenseApUsed += d.getApCost();
+                defenseApUsed += plan.effectiveApCost(d);
                 placedIndex++;
             }
         }

@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.combat.BattleStatMode;
+import com.jjktbf.model.combat.CombatEvent;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,6 +21,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ProtocolJsonTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
+
+    @Test
+    void characterSelectionRoundTripsOrderedMoveSetsAndCopiesNestedLists() throws Exception {
+        List<String> firstMoveSet = new ArrayList<>(List.of("move-b", "move-a"));
+        MatchCharacterSelectionRequest request = new MatchCharacterSelectionRequest(
+            List.of("fighter-a", "fighter-b"),
+            List.of(firstMoveSet, List.of("move-c")));
+        firstMoveSet.clear();
+
+        String json = mapper.writeValueAsString(request);
+        MatchCharacterSelectionRequest restored = mapper.readValue(
+            json, MatchCharacterSelectionRequest.class);
+
+        assertEquals(request, restored);
+        assertEquals(List.of("move-b", "move-a"), request.moveSetIds().get(0));
+        assertThrows(UnsupportedOperationException.class,
+            () -> request.moveSetIds().get(0).add("move-d"));
+    }
 
     @Test
     void completeMatchStateRoundTrips() throws Exception {
@@ -60,6 +80,35 @@ class ProtocolJsonTest {
     }
 
     @Test
+    void combatAndWireEventEnumsRemainInExactParity() {
+        Set<String> core = java.util.Arrays.stream(CombatEvent.Type.values())
+            .map(Enum::name).collect(java.util.stream.Collectors.toSet());
+        Set<String> wire = java.util.Arrays.stream(BattleEventType.values())
+            .map(Enum::name).collect(java.util.stream.Collectors.toSet());
+
+        assertEquals(core, wire);
+    }
+
+    @Test
+    void domainEventMetadataRoundTrips() throws Exception {
+        BattleEventState event = new BattleEventState(
+            "domain-event", BattleEventType.DOMAIN_COLLAPSED, 3, 7,
+            PlayerSide.PLAYER_ONE, "caster", "Caster",
+            null, null, null, null, null,
+            null, 25, null, "The Domain collapses.",
+            "PLAYER-f1", null, null, null, null, null,
+            "domain-1", "domain-2", "UNLIMITED_VOID", "Unlimited Void",
+            "INTERNAL_BARRIER_BROKEN");
+
+        BattleEventState restored = mapper.readValue(
+            mapper.writeValueAsString(event), BattleEventState.class);
+
+        assertEquals(event, restored);
+        assertEquals("domain-1", restored.domainInstanceId());
+        assertEquals("INTERNAL_BARRIER_BROKEN", restored.domainCollapseReason());
+    }
+
+    @Test
     void summonPlanningMetadataRoundTrips() throws Exception {
         MoveState summon = new MoveState(
             "SUMMON_DOG", "Summon Dog", "Manifest a Divine Dog.", "UTILITY",
@@ -95,6 +144,45 @@ class ProtocolJsonTest {
         assertEquals(3, tree.get("aoeTargetCount").intValue());
         assertEquals("RETURN", tree.get("commandMode").textValue());
         assertEquals("Cursed Speech", tree.get("requiredTechniqueId").textValue());
+    }
+
+    @Test
+    void pairAndDefenseTargetingMetadataRoundTripsWithSafeDefaults() throws Exception {
+        MoveState pair = new MoveState(
+            "PAIR", "Pair", "Choose endpoints.", "UTILITY", List.of("UTILITY"),
+            PlanBoard.DEFENSIVE, 0, List.of(), 1.0, true, 5, 1, false,
+            0, 0, 0, 0, 0, true, null, null, List.of(), null, 0, null, null,
+            "SINGLE_ALLY", 4, "ALLY_AND_ENEMY");
+
+        MoveState restored = mapper.readValue(mapper.writeValueAsString(pair), MoveState.class);
+        MoveState legacy = mapper.readValue("{\"moveId\":\"OLD\"}", MoveState.class);
+
+        assertEquals("SINGLE_ALLY", restored.defenseTargeting());
+        assertEquals(4, restored.defenseTargetCount());
+        assertEquals("ALLY_AND_ENEMY", restored.targeting());
+        assertEquals("SELF", legacy.defenseTargeting());
+        assertEquals(2, legacy.defenseTargetCount());
+        assertEquals("DEFAULT", legacy.targeting());
+    }
+
+    @Test
+    void targetExchangeEventRoundTripsBothCombatantEndpoints() throws Exception {
+        BattleEventState event = new BattleEventState(
+            "event-swap", BattleEventType.TARGETS_EXCHANGED, 2, 14,
+            PlayerSide.PLAYER_ONE, "000019", "Aoi Todo",
+            PlayerSide.PLAYER_ONE, "000019", "Aoi Todo",
+            "000092", "Boogie Woogie", null, null, null,
+            "Todo exchanged the attack targets.",
+            "PLAYER-f1", "PLAYER-f1", PlayerSide.PLAYER_TWO,
+            "000005", "Hanami", "ENEMY-f1");
+
+        BattleEventState restored = mapper.readValue(
+            mapper.writeValueAsString(event), BattleEventState.class);
+
+        assertEquals(event, restored);
+        assertEquals("PLAYER-f1", restored.targetInstanceId());
+        assertEquals(PlayerSide.PLAYER_TWO, restored.relatedTargetSide());
+        assertEquals("ENEMY-f1", restored.relatedTargetInstanceId());
     }
 
     @Test
@@ -196,7 +284,9 @@ class ProtocolJsonTest {
     void socketMessagesRoundTripForEveryExplicitType() throws Exception {
         MatchState state = completeMatchState();
         ActionCommand command = ActionCommand.submitPlan(
-            "command-1", state.matchId(), state.stateVersion(), List.of(new PlanPlacement("000004", 13)));
+            "command-1", state.matchId(), state.stateVersion(),
+            List.of(new PlanPlacement("000004", 13)),
+            List.of(new SwitchSelection("PLAYER-f2", "PLAYER-f4")));
         ErrorResponse error = new ErrorResponse(
             "STATE_VERSION_MISMATCH",
             "The match state changed.",
@@ -227,9 +317,12 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(17, joined.protocolVersion());
+        assertEquals(23, joined.protocolVersion());
+        assertEquals(List.of(new SwitchSelection("PLAYER-f2", "PLAYER-f4")),
+            command.payload().switches());
         assertEquals(42L, joined.stateVersion());
         assertEquals(1_700_000_060_000L, messages.get(6).disconnectDeadline());
+        assertEquals(1_700_000_090_000L, joined.state().planningDeadline());
         assertTrue(ProtocolVersion.isCompatible(
             joined.gameVersion(), joined.protocolVersion(), joined.ruleset()));
         assertFalse(ProtocolVersion.isCompatible(
@@ -404,6 +497,14 @@ class ProtocolJsonTest {
             null,
             42,
             List.of(event),
+            new DomainBattlefieldState(
+                List.of(new DomainState(
+                    "domain-1", "UNLIMITED_VOID", "Unlimited Void", "PLAYER-f1",
+                    false, "CLOSED", "NONE", List.of("ENEMY-f1"),
+                    List.of("PLAYER-f1", "ENEMY-f1"), List.of("PLAYER-f1"),
+                    1, 4, 80, 60, -1)),
+                List.of(new DomainClashState("domain-1", "domain-2"))),
+            1_700_000_090_000L,
             1_700_000_000_000L
         );
     }

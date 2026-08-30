@@ -12,11 +12,19 @@ import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.ShikigamiCharacter;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.CeEfficiencyCalculator;
+import com.jjktbf.model.combat.BattleCharacterLookup;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
+import com.jjktbf.model.domain.DomainData;
+import com.jjktbf.model.domain.DomainDefinition;
 import com.jjktbf.model.move.AoeType;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
+import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
+import com.jjktbf.model.move.MoveType;
 import com.jjktbf.multiplayer.protocol.ActionCommand;
 import com.jjktbf.multiplayer.protocol.BattleEventType;
 import com.jjktbf.multiplayer.protocol.BattlePhase;
@@ -27,6 +35,7 @@ import com.jjktbf.multiplayer.protocol.PlanPlacement;
 import com.jjktbf.multiplayer.protocol.PlayerSide;
 import com.jjktbf.multiplayer.protocol.PlayerState;
 import com.jjktbf.multiplayer.protocol.RoundStartCharacterState;
+import com.jjktbf.multiplayer.protocol.SwitchSelection;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -188,6 +197,186 @@ class HeadlessBattleSessionTest {
     }
 
     @Test
+    void authoritativeDomainEventsAndStateSurviveTheWireSnapshot() {
+        DomainData data = new DomainData();
+        data.id = "TEST_DOMAIN";
+        data.name = "Test Domain";
+        data.requiredTechniqueName = "Test Technique";
+        data.durationRounds = 2;
+        DomainDefinition domain = data.toDomain();
+        MoveEffectData establish = AbilityEffectType.ESTABLISH_DOMAIN.createDefaultMoveEffect();
+        establish.effectId = "ESTABLISH_TEST_DOMAIN";
+        establish.domainId = domain.id();
+        establish.trigger = MoveEffectTrigger.ON_FIRE.name();
+        Move opening = new Move.Builder("OPEN_TEST_DOMAIN")
+            .name("Open Test Domain")
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY, MoveTag.CURSED_ENERGY))
+            .apCost(1)
+            .unleashPoint(1)
+            .freeMove(true)
+            .effects(List.of(establish))
+            .build();
+        CharacterStats stats = new CharacterStats.Builder()
+            .cursedEnergyEfficiency(160)
+            .build();
+        Character owner = new SorcererCharacter(
+            "domain-owner", "Domain Owner", stats, "Test Technique", List.of(opening))
+            .withAccessibleDomains(List.of(domain.id()));
+        Character opponent = new SorcererCharacter(
+            "opponent", "Opponent", stats, null,
+            List.of(physicalAttack("IDLE_MOVE", 1, true)));
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One", owner, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", opponent, PlayerSide.PLAYER_TWO),
+            11L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK,
+            new TestContentLookup(domain)
+        );
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+
+        assertTrue(session.applyCommand(
+            "player-1",
+            command(session, "domain-plan",
+                new PlanPlacement(opening.getId(), 1, PLAYER_ONE_ID, List.of()))
+        ).accepted());
+        CommandResult resolved = session.applyCommand(
+            "player-2", command(session, "empty-plan"));
+
+        assertTrue(resolved.accepted());
+        assertTrue(resolved.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.DOMAIN_ESTABLISHED
+                && domain.id().equals(event.domainId())
+                && event.domainInstanceId() != null));
+        assertEquals(1, resolved.state().domainBattlefield().activeDomains().size());
+        assertEquals(domain.id(), resolved.state().domainBattlefield()
+            .activeDomains().get(0).domainId());
+        assertEquals(PLAYER_ONE_ID, resolved.state().domainBattlefield()
+            .activeDomains().get(0).ownerInstanceId());
+    }
+
+    @Test
+    void reconnectSnapshotPreservesTheActiveDomainBattlefield() {
+        DomainData data = new DomainData();
+        data.id = "RECONNECT_DOMAIN";
+        data.name = "Reconnect Domain";
+        data.requiredTechniqueName = "Reconnect Technique";
+        data.durationRounds = 2;
+        data.internalBarrierIntegrity = 40;
+        DomainDefinition domain = data.toDomain();
+        MoveEffectData establish = AbilityEffectType.ESTABLISH_DOMAIN.createDefaultMoveEffect();
+        establish.effectId = "ESTABLISH_RECONNECT_DOMAIN";
+        establish.domainId = domain.id();
+        establish.trigger = MoveEffectTrigger.ON_FIRE.name();
+        Move opening = new Move.Builder("OPEN_RECONNECT_DOMAIN")
+            .name("Open Reconnect Domain")
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY, MoveTag.CURSED_ENERGY))
+            .apCost(1)
+            .unleashPoint(1)
+            .freeMove(true)
+            .effects(List.of(establish))
+            .build();
+        CharacterStats stats = new CharacterStats.Builder()
+            .cursedEnergyEfficiency(160)
+            .build();
+        Character owner = new SorcererCharacter(
+            "domain-owner", "Domain Owner", stats, "Reconnect Technique", List.of(opening))
+            .withAccessibleDomains(List.of(domain.id()));
+        Character opponent = new SorcererCharacter(
+            "opponent", "Opponent", stats, null,
+            List.of(physicalAttack("IDLE_MOVE", 1, true)));
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One", owner, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", opponent, PlayerSide.PLAYER_TWO),
+            11L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK,
+            new TestContentLookup(domain)
+        );
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+        session.applyCommand(
+            "player-1",
+            command(session, "domain-plan",
+                new PlanPlacement(opening.getId(), 1, PLAYER_ONE_ID, List.of())));
+        session.applyCommand("player-2", command(session, "empty-plan"));
+
+        // The owner drops and reconnects mid-Domain: the authoritative snapshot
+        // a reconnecting client receives must still describe the Domain.
+        session.setConnected("player-1", false);
+        session.setConnected("player-1", true);
+        MatchState snapshot = session.snapshot();
+        assertEquals(1, snapshot.domainBattlefield().activeDomains().size());
+        var active = snapshot.domainBattlefield().activeDomains().get(0);
+        assertEquals(domain.id(), active.domainId());
+        assertEquals(PLAYER_ONE_ID, active.ownerInstanceId());
+        assertEquals(40, active.internalBarrierIntegrity());
+        assertTrue(active.memberInstanceIds().contains(PLAYER_ONE_ID));
+        assertTrue(active.memberInstanceIds().contains(PLAYER_TWO_ID));
+
+        // And it must survive the JSON wire exactly once more.
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            MatchState overTheWire = mapper.readValue(
+                mapper.writeValueAsString(snapshot), MatchState.class);
+            assertEquals(active.instanceId(),
+                overTheWire.domainBattlefield().activeDomains().get(0).instanceId());
+            assertEquals(active.memberInstanceIds(),
+                overTheWire.domainBattlefield().activeDomains().get(0).memberInstanceIds());
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    @Test
+    void planningExpiryLocksMissingPlansAndResolvesImmediately() {
+        Move attack = physicalAttack("EXPIRY_ATTACK", 1, true);
+        HeadlessBattleSession session = session(101L, attack, attack);
+        long deadline = FIXED_CLOCK.millis() + 90_000L;
+
+        MatchState armed = session.setPlanningDeadline(deadline);
+        MatchState expired = session.expirePlanning();
+
+        assertEquals(deadline, armed.planningDeadline());
+        assertEquals(armed.stateVersion() + 1, expired.stateVersion());
+        assertEquals(BattlePhase.ROUND_END, expired.phase());
+        assertNull(expired.planningDeadline());
+        assertTrue(expired.players().stream().allMatch(PlayerState::planSubmitted));
+        assertTrue(expired.players().stream()
+            .flatMap(player -> player.combatants().stream())
+            .allMatch(character -> character.plan() != null
+                && character.plan().queuedSegments().isEmpty()
+                && character.plan().resolvedSegments().isEmpty()));
+        assertEquals(expired, session.expirePlanning());
+    }
+
+    @Test
+    void planningExpiryPreservesAPlanAlreadySubmittedByOnePlayer() {
+        Move attack = physicalAttack("PARTIAL_EXPIRY_ATTACK", 1, true);
+        HeadlessBattleSession session = session(102L, attack, attack);
+        session.setPlanningDeadline(FIXED_CLOCK.millis() + 90_000L);
+        assertTrue(session.applyCommand(
+            "player-1",
+            command(session, "before-expiry", targeted(attack, 1, PlayerSide.PLAYER_ONE))
+        ).accepted());
+
+        MatchState expired = session.expirePlanning();
+
+        PlayerState submitted = expired.player(PlayerSide.PLAYER_ONE).orElseThrow();
+        PlayerState timedOut = expired.player(PlayerSide.PLAYER_TWO).orElseThrow();
+        assertEquals(1, submitted.character().plan().resolvedSegments().size());
+        assertTrue(timedOut.character().plan().resolvedSegments().isEmpty());
+        assertTrue(timedOut.planSubmitted());
+    }
+
+    @Test
     void invalidCommandLeavesCompleteStateUnchanged() {
         Move attack = physicalAttack("KNOWN", 10, true);
         HeadlessBattleSession session = session(11L, attack, attack);
@@ -228,6 +417,38 @@ class HeadlessBattleSessionTest {
         assertFalse(result.accepted());
         assertEquals("MOVE_CAP_REACHED", result.error().code());
         assertEquals(before, session.snapshot());
+    }
+
+    @Test
+    void authoritativeResourceValidationUsesChronologicalPlacementOrder() {
+        Move convert = resourceMove("CONVERT", "SUPPLY", 1, "CHARGE", 1);
+        Move spend = resourceMove("SPEND", "CHARGE", 1, null, 0);
+        Ability resources = boundedResourceAbility();
+        CharacterStats stats = new CharacterStats.Builder().build();
+        Character playerOne = new SorcererCharacter(
+            "character-1", "Character One", stats, null,
+            List.of(convert, spend), List.of(resources));
+        Move opponentMove = physicalAttack("OPPONENT_MOVE", 1, true);
+        Character playerTwo = new SorcererCharacter(
+            "character-2", "Character Two", stats, null, List.of(opponentMove));
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One", playerOne, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", playerTwo, PlayerSide.PLAYER_TWO),
+            112L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK);
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+
+        CommandResult result = session.applyCommand(
+            "player-1",
+            command(session, "out-of-order-resource-plan",
+                new PlanPlacement(spend.getId(), 2, PLAYER_ONE_ID, List.of()),
+                new PlanPlacement(convert.getId(), 1, PLAYER_ONE_ID, List.of())));
+
+        assertTrue(result.accepted());
     }
 
     @Test
@@ -330,6 +551,38 @@ class HeadlessBattleSessionTest {
             new PlanPlacement(knockout.getId(), 1, PLAYER_ONE_ID,
                 List.of(backupEnemy))));
         assertTrue(active.accepted());
+    }
+
+    @Test
+    void mixedPairTargetsRequireOrderedAllyThenEnemy() {
+        Move pair = new Move.Builder("PAIR")
+            .name("Pair")
+            .category(MoveCategory.UTILITY)
+            .targeting(Targeting.ALLY_AND_ENEMY)
+            .apCost(5)
+            .unleashPoint(1)
+            .freeMove(true)
+            .build();
+        HeadlessBattleSession session = session(1202L, pair, pair);
+        String allyId = session.addFighterForTesting(
+            "player-1", character("character-1b", "Ally", pair));
+
+        CommandResult reversed = session.applyCommand("player-1", command(
+            session, "pair-reversed", new PlanPlacement(
+                pair.getId(), 1, PLAYER_ONE_ID, List.of(PLAYER_TWO_ID, allyId))));
+        assertFalse(reversed.accepted());
+        assertEquals("INVALID_TARGET", reversed.error().code());
+
+        CommandResult accepted = session.applyCommand("player-1", command(
+            session, "pair-valid", new PlanPlacement(
+                pair.getId(), 1, PLAYER_ONE_ID, List.of(allyId, PLAYER_TWO_ID))));
+        assertTrue(accepted.accepted());
+        var moveState = accepted.state().player(PlayerSide.PLAYER_ONE).orElseThrow()
+            .character().knownMoves().get(0);
+        assertEquals("ALLY_AND_ENEMY", moveState.targeting());
+        assertEquals(List.of(allyId, PLAYER_TWO_ID), accepted.state()
+            .player(PlayerSide.PLAYER_ONE).orElseThrow().character().plan()
+            .queuedSegments().get(0).targetIds());
     }
 
     @Test
@@ -737,6 +990,57 @@ class HeadlessBattleSessionTest {
     }
 
     @Test
+    void sixFighterRosterFieldsThreeAndAcceptsAuthoritativeSwitchIntent() {
+        Move attack = physicalAttack("SWITCH_ATTACK", 10, true);
+        List<Character> players = java.util.stream.IntStream.rangeClosed(1, 6)
+            .mapToObj(index -> character("player-switch-" + index, "Player " + index, attack))
+            .toList();
+        List<Character> enemies = java.util.stream.IntStream.rangeClosed(1, 6)
+            .mapToObj(index -> character("enemy-switch-" + index, "Enemy " + index, attack))
+            .toList();
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "switch-match",
+            new MatchParticipant("player-1", "Player One", players, PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", enemies, PlayerSide.PLAYER_TWO),
+            2210L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK);
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "switch-match");
+
+        PlayerState initial = session.snapshot().player(PlayerSide.PLAYER_ONE).orElseThrow();
+        assertEquals(List.of("ACTIVE", "ACTIVE", "ACTIVE", "RESERVE", "RESERVE", "RESERVE"),
+            initial.combatants().stream().map(combatant -> combatant.lifecycle()).toList());
+
+        CommandResult submitted = session.applyCommand("player-1", ActionCommand.submitPlan(
+            "switch-plan",
+            "switch-match",
+            session.getStateVersion(),
+            List.of(),
+            List.of(new SwitchSelection("PLAYER-f1", "PLAYER-f4"))));
+        assertTrue(submitted.accepted());
+        CommandResult resolved = session.applyCommand("player-2", ActionCommand.submitPlan(
+            "switch-enemy-attack", "switch-match", session.getStateVersion(), List.of(
+                new PlanPlacement(attack.getId(), 1, "ENEMY-f1", "PLAYER-f1"))));
+
+        assertTrue(resolved.accepted());
+        PlayerState switched = resolved.state().player(PlayerSide.PLAYER_ONE).orElseThrow();
+        assertEquals("RESERVE", switched.combatants().get(0).lifecycle());
+        assertEquals("ACTIVE", switched.combatants().get(3).lifecycle());
+        assertTrue(resolved.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.COMBATANT_SWITCHED
+                && "PLAYER-f1".equals(event.sourceInstanceId())
+                && "PLAYER-f4".equals(event.targetInstanceId())));
+        assertTrue(resolved.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.DAMAGE_DEALT
+                && "PLAYER-f4".equals(event.targetInstanceId())));
+        assertEquals(List.of("PLAYER-f4"), resolved.state()
+            .player(PlayerSide.PLAYER_TWO).orElseThrow()
+            .combatants().get(0).plan().resolvedSegments().get(0).targetIds());
+    }
+
+    @Test
     void forgedTeamActorOrTargetRejectsTheEntirePlanWithoutMutation() {
         Move attack = physicalAttack("OWNERSHIP_ATTACK", 10, true);
         HeadlessBattleSession session = session(1322L, attack, attack);
@@ -918,7 +1222,7 @@ class HeadlessBattleSessionTest {
     }
 
     @Test
-    void moveSnapshotsKeepLegacyZeroPowerAttacksInLegacyShape() {
+    void moveSnapshotsIncludeZeroPowerAttackComponents() {
         Move zeroPower = new Move.Builder("ZERO_POWER")
             .name("Zero Power")
             .category(MoveCategory.PHYSICAL)
@@ -930,7 +1234,8 @@ class HeadlessBattleSessionTest {
             .character().knownMoves().get(0);
 
         assertEquals(0, move.basePower());
-        assertTrue(move.hitComponents().isEmpty());
+        assertEquals(1, move.hitComponents().size());
+        assertEquals(0, move.hitComponents().get(0).basePower());
     }
 
     @Test
@@ -1264,10 +1569,57 @@ class HeadlessBattleSessionTest {
             .build();
     }
 
+    private static Ability boundedResourceAbility() {
+        AbilityEffectData supply = AbilityEffectType.DEFINE_BOUNDED_RESOURCE.createDefault();
+        supply.resourceKey = "SUPPLY";
+        supply.resourceLabel = "Supply";
+        supply.resourceCapacity = 1;
+        supply.resourceStartValue = 1;
+        AbilityEffectData charge = AbilityEffectType.DEFINE_BOUNDED_RESOURCE.createDefault();
+        charge.resourceKey = "CHARGE";
+        charge.resourceLabel = "Charge";
+        charge.resourceCapacity = 1;
+        charge.resourceStartValue = 0;
+        AbilityData data = new AbilityData();
+        data.id = "RESOURCES";
+        data.name = "Resources";
+        data.category = "PASSIVE";
+        data.sourceType = "CHARACTER";
+        data.effects = List.of(supply, charge);
+        return new Ability(data);
+    }
+
+    private static Move resourceMove(
+        String id,
+        String sourceKey,
+        int sourceAmount,
+        String targetKey,
+        int targetAmount
+    ) {
+        MoveEffectData effect = AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            .createDefaultMoveEffect();
+        effect.effectId = "effect-000000";
+        effect.trigger = MoveEffectTrigger.ON_START.name();
+        effect.sourceResourceKey = sourceKey;
+        effect.sourceResourceAmount = sourceAmount;
+        effect.targetResourceKey = targetKey;
+        effect.targetResourceAmount = targetAmount;
+        return new Move.Builder(id)
+            .name(id)
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY))
+            .apCost(1)
+            .unleashPoint(1)
+            .freeMove(true)
+            .effects(List.of(effect))
+            .build();
+    }
+
     private static Move physicalAttack(String id, int power, boolean neverMiss) {
         return new Move.Builder(id)
             .name(id)
             .description("A test physical attack.")
+            .moveTypes(Set.of(MoveType.SORCERER, MoveType.SHIKIGAMI))
             .category(MoveCategory.PHYSICAL)
             .basePower(power)
             .baseAccuracy(0.75)
@@ -1293,5 +1645,20 @@ class HeadlessBattleSessionTest {
             .maxCeCost(baseCeCost * 2)
             .freeMove(true)
             .build();
+    }
+
+    private record TestContentLookup(DomainDefinition domain)
+        implements BattleCharacterLookup, DomainDefinitionLookup {
+
+        @Override
+        public Optional<Character> findCharacter(String characterId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<DomainDefinition> findDomain(String domainId) {
+            return domain != null && domain.id().equals(domainId)
+                ? Optional.of(domain) : Optional.empty();
+        }
     }
 }

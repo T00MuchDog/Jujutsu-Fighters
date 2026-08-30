@@ -12,6 +12,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Align;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
+import com.jjktbf.graphics.ui.AbilityStateMeter;
 import com.jjktbf.graphics.ui.MiraclesMeter;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
@@ -26,11 +27,12 @@ import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.BattleState;
-import com.jjktbf.model.combat.MoveAvailability;
+import com.jjktbf.model.combat.MoveTargetSelection;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
-import com.jjktbf.model.move.AoeType;
-import com.jjktbf.model.move.DefenseTargeting;
+import com.jjktbf.model.move.Targeting;
+import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
 
 import java.util.ArrayList;
@@ -100,12 +102,11 @@ public class PlanningPanel {
     private final com.jjktbf.model.character.AbilityApplicator.AbilityFlags abilityFlags;
     private final Map<String, Integer> authoritativeCeCosts;
     private final BattleCombatant localCombatant;
-    private final Integer maxActiveSummons;
-    private final int activeSummonCount;
     private BattleState localBattleState;
-    private Map<String, String> moveRestrictions = Map.of();
+    private List<CodedAbilityState> abilityStates = List.of();
     private final BattleUiAssets ui;
     private final MiraclesMeter miraclesMeter = new MiraclesMeter();
+    private final AbilityStateMeter abilityStateMeter = new AbilityStateMeter();
     private BattleUiLayout.Planner layout = new BattleUiLayout.Planner();
     private boolean windowsTextGeometry;
 
@@ -177,7 +178,6 @@ public class PlanningPanel {
     private String lockError;
     private ActionSegment targetMenuSegment;
     private final List<Rectangle> targetOptionBounds = new ArrayList<>();
-    private final Rectangle targetDoneBounds = new Rectangle();
     private final Map<ActionSegment, List<CombatantId>> targetLists = new IdentityHashMap<>();
     private final Set<ActionSegment> pendingTargetSelections =
         Collections.newSetFromMap(new IdentityHashMap<>());
@@ -218,7 +218,7 @@ public class PlanningPanel {
         float screenHeight
     ) {
         this.gridLength = gridLength;
-        this.plan = new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+        this.plan = BattlePlan.forCombatant(combatant, gridLength);
         this.maxCe = combatant.getMaxCursedEnergy();
         this.actorId = combatant.getInstanceId() == null
             ? null : combatant.getInstanceId().value();
@@ -229,10 +229,8 @@ public class PlanningPanel {
         this.abilityFlags = combatant.getAbilityFlags();
         this.authoritativeCeCosts = Map.of();
         this.localCombatant = combatant;
-        this.maxActiveSummons = combatant.getAbilityFlags().maxActiveSummons;
-        this.activeSummonCount = 0;
         this.ui = ui;
-        miraclesMeter.setState(findMiraclesState(combatant.getCodedAbilities().states()));
+        setAbilityStates(combatant.abilityStates());
         knownMoves.addAll(combatant.getCharacter().getKnownMoves());
         createBars();
         resize(screenWidth, screenHeight);
@@ -272,7 +270,7 @@ public class PlanningPanel {
         float screenHeight
     ) {
         this(gridLength, null, List.of(), moves, ceCosts, apBudget, ceBudget, maxCe,
-            miraclesState, null, 0, ui, screenWidth, screenHeight);
+            miraclesState, ui, screenWidth, screenHeight);
     }
 
     public PlanningPanel(
@@ -285,26 +283,6 @@ public class PlanningPanel {
         int ceBudget,
         int maxCe,
         CodedAbilityState miraclesState,
-        BattleUiAssets ui,
-        float screenWidth,
-        float screenHeight
-    ) {
-        this(gridLength, actorId, targetOptions, moves, ceCosts, apBudget, ceBudget, maxCe,
-            miraclesState, null, 0, ui, screenWidth, screenHeight);
-    }
-
-    public PlanningPanel(
-        int gridLength,
-        String actorId,
-        List<TargetOption> targetOptions,
-        List<Move> moves,
-        Map<String, Integer> ceCosts,
-        int apBudget,
-        int ceBudget,
-        int maxCe,
-        CodedAbilityState miraclesState,
-        Integer maxActiveSummons,
-        int activeSummonCount,
         BattleUiAssets ui,
         float screenWidth,
         float screenHeight
@@ -319,10 +297,9 @@ public class PlanningPanel {
         this.abilityFlags = null;
         this.authoritativeCeCosts = ceCosts == null ? Map.of() : Map.copyOf(ceCosts);
         this.localCombatant = null;
-        this.maxActiveSummons = maxActiveSummons;
-        this.activeSummonCount = Math.max(0, activeSummonCount);
         this.ui = ui;
         miraclesMeter.setState(miraclesState);
+        abilityStateMeter.setStates(miraclesState == null ? List.of() : List.of(miraclesState));
         if (moves != null) knownMoves.addAll(moves);
         createBars();
         resize(screenWidth, screenHeight);
@@ -340,8 +317,9 @@ public class PlanningPanel {
         this.localBattleState = state;
     }
 
-    public void setMoveRestrictions(Map<String, String> restrictions) {
-        this.moveRestrictions = restrictions == null ? Map.of() : Map.copyOf(restrictions);
+    public void setAbilityStates(List<CodedAbilityState> states) {
+        abilityStates = states == null ? List.of() : List.copyOf(states);
+        abilityStateMeter.setStates(abilityStates);
     }
 
     /** Applies profile metrics and immediately reflows the production planner. */
@@ -487,18 +465,32 @@ public class PlanningPanel {
 
     public boolean chooseTarget(ActionSegment segment, String targetId) {
         if (segment == null || !requiresExplicitTargets(segment.getMove())) return false;
-        boolean valid = eligibleTargetOptions(segment.getMove()).stream()
+        Move move = segment.getMove();
+        List<CombatantId> selected = new ArrayList<>(targetsOf(segment));
+        boolean orderedPair = isOrderedPairMove(move);
+        int selectionIndex = orderedPair ? selected.size() : 0;
+        boolean valid = eligibleTargetOptions(move, selectionIndex).stream()
             .anyMatch(option -> option.instanceId().equals(targetId));
         if (!valid) return false;
 
         CombatantId target = new CombatantId(targetId);
-        if (isMultipleTargetMove(segment.getMove())) {
+        if (orderedPair) {
+            if (selected.size() >= targetCap(move) || selected.contains(target)) return false;
+            selected.add(target);
+            setTargets(segment, selected);
+            if (selected.size() == targetCap(move)) {
+                pendingTargetSelections.remove(segment);
+                closeTargetMenu();
+            } else {
+                pendingTargetSelections.add(segment);
+                if (targetMenuSegment == segment) layoutTargetMenu();
+            }
+        } else if (isMultipleTargetMove(move)) {
             pendingTargetSelections.add(segment);
-            List<CombatantId> selected = new ArrayList<>(targetsOf(segment));
             if (selected.remove(target)) {
                 setTargets(segment, selected);
             } else {
-                if (selected.size() >= targetCap(segment.getMove())) return false;
+                if (selected.size() >= targetCap(move)) return false;
                 selected.add(target);
                 setTargets(segment, selected);
             }
@@ -513,7 +505,9 @@ public class PlanningPanel {
     public boolean confirmTargetSelection(ActionSegment segment) {
         if (segment == null || !isMultipleTargetMove(segment.getMove())) return false;
         int count = targetsOf(segment).size();
-        if (count < 1 || count > targetCap(segment.getMove())) return false;
+        MoveTargetSelection.Requirements requirements =
+            MoveTargetSelection.requirements(segment.getMove());
+        if (count < requirements.minimumCount() || count > requirements.maximumCount()) return false;
         pendingTargetSelections.remove(segment);
         if (targetMenuSegment == segment) closeTargetMenu();
         lockError = null;
@@ -529,7 +523,8 @@ public class PlanningPanel {
     }
 
     private List<CombatantId> defaultTargets(Move move) {
-        List<TargetOption> eligible = eligibleTargetOptions(move);
+        if (isOrderedPairMove(move)) return List.of();
+        List<TargetOption> eligible = eligibleTargetOptions(move, 0);
         if (!requiresExplicitTargets(move) || eligible.isEmpty()) return List.of();
         if (isMultipleTargetMove(move) && eligible.size() != 1) return List.of();
         return List.of(new CombatantId(eligible.get(0).instanceId()));
@@ -546,12 +541,29 @@ public class PlanningPanel {
         int ceCost,
         List<String> targetIds
     ) {
+        if (move == null) return null;
+        return restorePlacement(move, startTick, ceCost, targetIds,
+            plan.effectiveApCost(move), plan.effectiveUnleashPoint(move));
+    }
+
+    public ActionSegment restorePlacement(
+        Move move,
+        int startTick,
+        int ceCost,
+        List<String> targetIds,
+        int apCost,
+        int unleashPoint
+    ) {
+        if (move == null) return null;
         List<CombatantId> targets = targetIds == null ? List.of() : targetIds.stream()
             .filter(id -> id != null && !id.isBlank())
             .map(CombatantId::new)
             .distinct()
             .toList();
-        return place(move, startTick, ceCost, targets);
+        ActionSegment segment = plan.restorePlacement(
+            move, startTick, ceCost, targets, apCost, unleashPoint);
+        if (segment != null) setTargets(segment, targets);
+        return segment;
     }
 
     private ActionSegment place(Move move, int startTick, int ceCost, List<CombatantId> targets) {
@@ -579,9 +591,12 @@ public class PlanningPanel {
     }
 
     private static boolean isMultipleTargetMove(Move move) {
+        return move != null && MoveTargetSelection.requirements(move).maximumCount() > 1;
+    }
+
+    private static boolean isOrderedPairMove(Move move) {
         return move != null
-            && (move.getAoeType() == AoeType.MULTIPLE
-                || DefenseTargeting.forMove(move) == DefenseTargeting.MULTIPLE_ALLIES);
+            && move.getTargeting() == Targeting.ALLY_AND_ENEMY;
     }
 
     private static boolean requiresExplicitTargets(Move move) {
@@ -589,10 +604,7 @@ public class PlanningPanel {
     }
 
     private static int targetCap(Move move) {
-        if (DefenseTargeting.forMove(move) == DefenseTargeting.MULTIPLE_ALLIES) {
-            return Math.max(1, move.getDefenseTargetCount());
-        }
-        return isMultipleTargetMove(move) ? Math.max(1, move.getAoeTargetCount()) : 1;
+        return move == null ? 0 : MoveTargetSelection.requirements(move).maximumCount();
     }
 
     private static List<TargetOption> targetOptions(List<BattleCombatant> targets) {
@@ -689,6 +701,17 @@ public class PlanningPanel {
         } else {
             miraclesBounds.set(0f, 0f, 0f, 0f);
         }
+        if (abilityStateMeter.stateCount() > 0) {
+            float resourceWidth = Math.min(280f, Math.max(180f, width * 0.24f));
+            float resourceRowHeight = Math.max(26f, scaled(30f));
+            float resourceHeight = abilityStateMeter.stateCount() * (resourceRowHeight + 4f) - 4f;
+            float resourceY = boardAreaTop - layout.miraclesTopGap - resourceHeight;
+            abilityStateMeter.setBounds(
+                headerBounds.x, resourceY, resourceWidth, resourceRowHeight);
+            boardAreaTop = resourceY - layout.miraclesBottomGap;
+        } else {
+            abilityStateMeter.setBounds(0f, 0f, 0f, 0f);
+        }
 
         // The bar grows with the fight's AP tier while keeping the dot spacing
         // fixed: dot spacing is calibrated so the original DEFAULT_GRID_LENGTH
@@ -744,6 +767,7 @@ public class PlanningPanel {
         offenseLabelBounds.set(388f, 483f - verticalShift, 126f, 40f);
         defenseLabelBounds.set(388f, 389f - verticalShift, 126f, 40f);
         miraclesBounds.set(0f, 0f, 0f, 0f);
+        abilityStateMeter.setBounds(0f, 0f, 0f, 0f);
 
         paletteBounds.set(18f, 18f, 2524f, 344f - verticalShift);
         buildPalette(1);
@@ -944,8 +968,13 @@ public class PlanningPanel {
         for (int i = 0; i < cards.size(); i++) {
             MoveCardView card = cards.get(i);
             Move move = card.getMove();
-            boolean restricted = isMoveRestricted(move);
-            card.setDisabled(readOnly || restricted || !plan.canPlace(move, ceCost(move)));
+            if (localCombatant != null) {
+                card.setDisplayDescription(MoveDescriptionVariables.resolve(
+                    move, TechniqueMasteryResolver.masteryOf(localCombatant)));
+            }
+            card.setDisplayedTiming(
+                plan.effectiveApCost(move), plan.effectiveUnleashPoint(move));
+            card.setDisabled(readOnly || !plan.canPlace(move, ceCost(move)));
             card.setHovered(i == hoveredCard);
             card.setDragging(move == draggingMove);
         }
@@ -970,19 +999,6 @@ public class PlanningPanel {
         }
     }
 
-    private boolean isMoveRestricted(Move move) {
-        if (moveRestrictions.containsKey(move.getId())) return true;
-        List<Move> alreadyPlannedMoves = plan.allSegments().stream()
-            .map(ActionSegment::getMove)
-            .toList();
-        if (localCombatant != null) {
-            return MoveAvailability.restrictionReason(
-                localBattleState, localCombatant, move, alreadyPlannedMoves) != null;
-        }
-        return MoveAvailability.plannedSummonRestrictionReason(
-            move, alreadyPlannedMoves, maxActiveSummons, activeSummonCount) != null;
-    }
-
     public void draw(Batch batch, BitmapFont font, BitmapFont titleFont, BitmapFont statFont) {
         updatePaletteScrollAnimation(Gdx.graphics.getDeltaTime());
         refresh();
@@ -993,6 +1009,7 @@ public class PlanningPanel {
             drawHeader(batch, font, titleFont);
             drawActorName(batch, font);
             miraclesMeter.draw(batch, ui, statFont);
+            abilityStateMeter.draw(batch, ui, statFont);
         }
         drawTimelineLabel(batch, font, offensiveBar, "OFFENSE", ui.offenseIcon, BattleUiAssets.OFFENSE);
         drawTimelineLabel(batch, font, defensiveBar, "DEFENSE", ui.defenseIcon, BattleUiAssets.DEFENSE);
@@ -1222,7 +1239,8 @@ public class PlanningPanel {
 
     private void drawTargetMenu(Batch batch, BitmapFont font) {
         if (targetMenuSegment == null) return;
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(targetMenuSegment.getMove());
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
         if (eligibleTargets.isEmpty()) return;
         layoutTargetMenu();
         boolean multiple = isMultipleTargetMove(targetMenuSegment.getMove());
@@ -1235,7 +1253,8 @@ public class PlanningPanel {
             (hovered || selected ? ui.cardOver : ui.card).draw(
                 batch, bounds.x, bounds.y, bounds.width, bounds.height);
             font.setColor(BattleUiAssets.TEXT);
-            String prefix = multiple ? (selected ? "[x] " : "[ ] ") : "";
+            String prefix = multiple && !isOrderedPairMove(targetMenuSegment.getMove())
+                ? (selected ? "[x] " : "[ ] ") : "";
             font.draw(batch, prefix + option.label(),
                 bounds.x + scaled(8f), bounds.y + scaled(20f));
         }
@@ -1243,17 +1262,11 @@ public class PlanningPanel {
             int count = selectedIds.size();
             int cap = targetCap(targetMenuSegment.getMove());
             font.setColor(BattleUiAssets.YELLOW);
-            font.draw(batch, "SELECT TARGETS  " + count + "/" + cap,
-                targetDoneBounds.x,
-                targetDoneBounds.y + targetDoneBounds.height * (eligibleTargets.size() + 1)
-                    + scaled(20f));
-            boolean canFinish = count > 0 && count <= cap;
-            (canFinish && targetDoneBounds.contains(dragMouseX, dragMouseY)
-                ? ui.cardOver : ui.card).draw(batch, targetDoneBounds.x, targetDoneBounds.y,
-                    targetDoneBounds.width, targetDoneBounds.height);
-            font.setColor(canFinish ? BattleUiAssets.TEXT : BattleUiAssets.MUTED);
-            font.draw(batch, "DONE",
-                targetDoneBounds.x + scaled(8f), targetDoneBounds.y + scaled(20f));
+            String selectionLabel = isOrderedPairMove(targetMenuSegment.getMove())
+                ? (count == 0 ? "SELECT ALLY" : "SELECT ENEMY") : "SELECT TARGETS";
+            Rectangle topOption = targetOptionBounds.get(0);
+            font.draw(batch, selectionLabel + "  " + count + "/" + cap,
+                topOption.x, topOption.y + topOption.height + scaled(20f));
         }
     }
 
@@ -1269,21 +1282,20 @@ public class PlanningPanel {
         x = clamp(x, scaled(10f),
             Math.max(scaled(10f), screenWidth - width - scaled(10f)));
         boolean multiple = isMultipleTargetMove(targetMenuSegment.getMove());
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(targetMenuSegment.getMove());
-        float totalHeight = rowHeight * (eligibleTargets.size() + (multiple ? 2 : 0));
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
+        float totalHeight = rowHeight * (eligibleTargets.size() + (multiple ? 1 : 0));
         float planningTop = unifiedWindowsLayout ? UNIFIED_SECTION_HEIGHT : screenHeight;
         if (y + totalHeight > planningTop - scaled(10f)) {
             y = Math.max(scaled(10f),
                 (selectedView == null ? y : selectedView.getBounds().y)
                     - totalHeight - scaled(4f));
         }
-        float optionsY = y + (multiple ? rowHeight : 0f);
+        float optionsY = y;
         for (int i = 0; i < eligibleTargets.size(); i++) {
             targetOptionBounds.add(new Rectangle(
                 x, optionsY + (eligibleTargets.size() - i - 1) * rowHeight, width, rowHeight));
         }
-        if (multiple) targetDoneBounds.set(x, y, width, rowHeight);
-        else targetDoneBounds.set(0f, 0f, 0f, 0f);
     }
 
     private ActionSegmentView viewFor(ActionSegment segment) {
@@ -1298,9 +1310,16 @@ public class PlanningPanel {
 
     private void openTargetMenu(ActionSegment segment) {
         if (segment == null || !requiresExplicitTargets(segment.getMove())) return;
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(segment.getMove());
+        int selectedCount = targetsOf(segment).size();
+        if (isOrderedPairMove(segment.getMove())
+            && selectedCount == targetCap(segment.getMove())) {
+            setTargets(segment, List.of());
+            selectedCount = 0;
+        }
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            segment.getMove(), selectedCount);
         if (eligibleTargets.isEmpty()) return;
-        if (eligibleTargets.size() == 1) {
+        if (eligibleTargets.size() == 1 && !isOrderedPairMove(segment.getMove())) {
             setTargets(segment, List.of(new CombatantId(eligibleTargets.get(0).instanceId())));
             pendingTargetSelections.remove(segment);
             closeTargetMenu();
@@ -1314,19 +1333,13 @@ public class PlanningPanel {
     private void closeTargetMenu() {
         targetMenuSegment = null;
         targetOptionBounds.clear();
-        targetDoneBounds.set(0f, 0f, 0f, 0f);
     }
 
     private boolean handleTargetMenuClick() {
         if (targetMenuSegment == null) return false;
         layoutTargetMenu();
-        List<TargetOption> eligibleTargets = eligibleTargetOptions(targetMenuSegment.getMove());
-        if (isMultipleTargetMove(targetMenuSegment.getMove())
-            && targetDoneBounds.contains(dragMouseX, dragMouseY)) {
-            boolean confirmedTargets = confirmTargetSelection(targetMenuSegment);
-            soundPlayer.accept(confirmedTargets ? SoundCue.UI_CONFIRM : SoundCue.UI_DENIED);
-            return true;
-        }
+        List<TargetOption> eligibleTargets = eligibleTargetOptions(
+            targetMenuSegment.getMove(), targetsOf(targetMenuSegment).size());
         for (int i = 0; i < targetOptionBounds.size(); i++) {
             if (targetOptionBounds.get(i).contains(dragMouseX, dragMouseY)) {
                 boolean changed = chooseTarget(targetMenuSegment, eligibleTargets.get(i).instanceId());
@@ -1334,35 +1347,42 @@ public class PlanningPanel {
                 return true;
             }
         }
-        if (isMultipleTargetMove(targetMenuSegment.getMove())) return true;
+        if (isMultipleTargetMove(targetMenuSegment.getMove())
+            && confirmTargetSelection(targetMenuSegment)) {
+            soundPlayer.accept(SoundCue.UI_CONFIRM);
+        }
         closeTargetMenu();
         return false;
     }
 
     private String targetSelectionError() {
         for (ActionSegment segment : plan.allSegments()) {
-            int count = targetsOf(segment).size();
             if (isMultipleTargetMove(segment.getMove())) {
                 if (pendingTargetSelections.contains(segment)) {
                     return "Finish selecting targets for '" + segment.getMove().getName() + "'";
                 }
-                if (count < 1) {
-                    return "Move '" + segment.getMove().getName() + "' requires at least one target";
-                }
-                if (count > targetCap(segment.getMove())) {
-                    return "Move '" + segment.getMove().getName() + "' has too many targets";
-                }
-            } else if (BattlePlan.requiresTarget(segment.getMove()) && count == 0) {
-                return "Move '" + segment.getMove().getName() + "' requires a target";
+            }
+            String countError = MoveTargetSelection.targetCountError(
+                segment.getMove(), targetsOf(segment));
+            if (countError != null) return countError;
+            if (localBattleState != null && actorId != null) {
+                BattleCombatant actor = localBattleState.combatant(new CombatantId(actorId));
+                String relationshipError = MoveTargetSelection.validationError(
+                    localBattleState, actor, segment.getMove(), targetsOf(segment));
+                if (relationshipError != null) return relationshipError;
             }
         }
         return plan.missingTargetError();
     }
 
     private List<TargetOption> eligibleTargetOptions(Move move) {
-        // Defensive ally-targeting moves pick from allies instead of enemies.
-        if (move != null
-            && DefenseTargeting.forMove(move).requiresSelectedTargets()) {
+        return eligibleTargetOptions(move, 0);
+    }
+
+    private List<TargetOption> eligibleTargetOptions(Move move, int selectionIndex) {
+        MoveTargetSelection.Relationship relationship =
+            MoveTargetSelection.requirements(move).relationshipAt(selectionIndex);
+        if (relationship == MoveTargetSelection.Relationship.ALLY) {
             return allyOptions;
         }
         if (!CursedSpeechAbility.RETURN.equalsIgnoreCase(
@@ -1432,8 +1452,8 @@ public class PlanningPanel {
         Rectangle barBounds = bar.getBounds();
         boolean overTrack = barBounds.contains(dragMouseX, dragMouseY);
         float width = overTrack
-            ? bar.segmentWidth(move.getApCost())
-            : Math.max(scaled(132f), bar.segmentWidth(move.getApCost()));
+            ? bar.segmentWidth(plan.effectiveApCost(move))
+            : Math.max(scaled(132f), bar.segmentWidth(plan.effectiveApCost(move)));
         float height = overTrack ? barBounds.height - 12f : scaled(48f);
         float x = overTrack ? bar.segmentLeft(draggingTick) : dragMouseX - width / 2f;
         float y = overTrack ? barBounds.y + 6f : dragMouseY - height / 2f;
@@ -1477,20 +1497,20 @@ public class PlanningPanel {
     /** Returns the first AP tick at or to the right of {@code startTick} that fits the move. */
     private int firstAvailableTick(BattlePlan.Board board, int startTick, Move move) {
         TimelineBar bar = barFor(board);
-        int lastStart = lastStartTick(move, bar.getDotCount());
+        int lastStart = effectiveLastStartTick(move, bar.getDotCount());
         for (int tick = startTick; tick <= lastStart; tick++) {
             if (plan.boardTimeline(board).isRangeFree(
-                tick, tick + move.getApCost() - 1)) return tick;
+                tick, tick + plan.effectiveApCost(move) - 1)) return tick;
         }
         return -1;
     }
 
     /** Returns the nearest AP tick at or to the left of {@code startTick} that fits the move. */
     private int lastAvailableTick(BattlePlan.Board board, int startTick, Move move) {
-        int lastStart = lastStartTick(move, barFor(board).getDotCount());
+        int lastStart = effectiveLastStartTick(move, barFor(board).getDotCount());
         for (int tick = Math.min(startTick, lastStart); tick >= 1; tick--) {
             if (plan.boardTimeline(board).isRangeFree(
-                tick, tick + move.getApCost() - 1)) return tick;
+                tick, tick + plan.effectiveApCost(move) - 1)) return tick;
         }
         return -1;
     }
@@ -1498,6 +1518,14 @@ public class PlanningPanel {
     static int lastStartTick(Move move, int gridLength) {
         long occupancyLastStart = (long) gridLength - move.getApCost() + 1L;
         long impactLastStart = (long) gridLength - move.getUnleashPoint() + 1L
+            - move.getMaxHitDelayTicks();
+        long lastStart = Math.min(occupancyLastStart, impactLastStart);
+        return lastStart < 1L ? 0 : (int) Math.min(Integer.MAX_VALUE, lastStart);
+    }
+
+    private int effectiveLastStartTick(Move move, int gridLength) {
+        long occupancyLastStart = (long) gridLength - plan.effectiveApCost(move) + 1L;
+        long impactLastStart = (long) gridLength - plan.effectiveUnleashPoint(move) + 1L
             - move.getMaxHitDelayTicks();
         long lastStart = Math.min(occupancyLastStart, impactLastStart);
         return lastStart < 1L ? 0 : (int) Math.min(Integer.MAX_VALUE, lastStart);
@@ -1649,7 +1677,7 @@ public class PlanningPanel {
             List<CombatantId> targets = draggingSegment == null
                 ? defaultTargets(move) : originalTargets;
             boolean droppedOnTimeline = barFor(draggingBoard).getBounds().contains(dragMouseX, dragMouseY);
-            ActionSegment placed = isMoveRestricted(move) ? null : clickingMoveCard
+            ActionSegment placed = clickingMoveCard
                 ? placeFirstFit(move, ceCost(move), targets)
                 : droppedOnTimeline && snapValid
                     ? place(move, draggingTick, ceCost(move), targets) : null;
@@ -1768,9 +1796,9 @@ public class PlanningPanel {
                 return;
             }
             int requestedTick = bar.tickAtX(dragMouseX);
-            int requestedEnd = requestedTick + move.getApCost() - 1;
+            int requestedEnd = requestedTick + plan.effectiveApCost(move) - 1;
             int availableTick;
-            if (requestedTick <= lastStartTick(move, bar.getDotCount())
+            if (requestedTick <= effectiveLastStartTick(move, bar.getDotCount())
                 && plan.boardTimeline(draggingBoard).isRangeFree(requestedTick, requestedEnd)) {
                 availableTick = requestedTick;
             } else {
@@ -1781,13 +1809,13 @@ public class PlanningPanel {
                 } else if (rightTick < 0) {
                     availableTick = leftTick;
                 } else {
-                    float snapMidpoint = (leftTick + rightTick + move.getApCost() - 1) / 2f;
+                    float snapMidpoint = (leftTick + rightTick
+                        + plan.effectiveApCost(move) - 1) / 2f;
                     availableTick = requestedTick <= snapMidpoint ? leftTick : rightTick;
                 }
             }
             draggingTick = availableTick > 0 ? availableTick : requestedTick;
             snapValid = availableTick > 0
-                && !isMoveRestricted(move)
                 && plan.canPlace(move, ceCost(move));
         }
 

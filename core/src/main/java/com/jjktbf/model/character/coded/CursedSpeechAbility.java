@@ -8,6 +8,7 @@ import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.StatusEffect;
+import com.jjktbf.model.move.StatusEffectType;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.character.AbilityEffectType;
@@ -108,14 +109,22 @@ public final class CursedSpeechAbility implements CodedAbilityRuntime {
             (int) Math.round((baseChance + bonus) * ceAdjustment));
         double recoilMultiplier = targetReinforcedCe / Math.max(1.0, userReinforcedCe);
         int recoil = (int) Math.round(baseRecoil * recoilMultiplier);
+        // A defender whose ears are covered in cursed energy cannot hear the
+        // command at all: the command fails deterministically and the whole hit
+        // is negated, exactly like an ordinary resisted command.
+        boolean warded = defender.hasEffect(StatusEffectType.CURSED_SPEECH_WARD);
+        if (warded) chance = 0;
         boolean eligible = !RETURN.equalsIgnoreCase(command.getCodedTarget())
             || defender.isSummon();
-        boolean succeeds = eligible && rng.nextDouble() < chance / 100.0;
+        boolean succeeds = !warded && eligible && rng.nextDouble() < chance / 100.0;
 
-        String message = succeeds
-            ? owner.getCharacter().getName() + "'s " + move.getName() + " takes hold on "
-                + defender.getCharacter().getName() + "!"
-            : defender.getCharacter().getName() + " resists " + move.getName() + "!";
+        String message = warded
+            ? defender.getCharacter().getName() + "'s cursed energy earplugs block "
+                + move.getName() + "!"
+            : succeeds
+                ? owner.getCharacter().getName() + "'s " + move.getName() + " takes hold on "
+                    + defender.getCharacter().getName() + "!"
+                : defender.getCharacter().getName() + " resists " + move.getName() + "!";
         CombatEvent event = CombatEvent.of(CombatEvent.Type.ABILITY_ACTIVATED)
             .source(owner).target(defender).move(move).tick(tick)
             .intValue(chance).message(message).build();

@@ -1,8 +1,5 @@
 package com.jjktbf.model.combat;
 
-import com.jjktbf.model.character.coded.CursedSpeechAbility;
-
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +23,7 @@ public final class TeamBattlePlan {
     private final BattleTeamId teamId;
     private final int gridLength;
     private final Map<CombatantId, BattlePlan> plansByActor = new LinkedHashMap<>();
+    private final Map<CombatantId, CombatantId> switchesByActor = new LinkedHashMap<>();
 
     public TeamBattlePlan(BattleTeamId teamId, int gridLength) {
         this.teamId = Objects.requireNonNull(teamId, "teamId");
@@ -45,7 +43,16 @@ public final class TeamBattlePlan {
     public void put(CombatantId actor, BattlePlan plan) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(plan, "plan");
+        switchesByActor.remove(actor);
         plansByActor.put(actor, plan);
+    }
+
+    /** Spend this actor's round switching to a living reserve fighter. */
+    public void switchTo(CombatantId actor, CombatantId incomingReserve) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(incomingReserve, "incomingReserve");
+        plansByActor.remove(actor);
+        switchesByActor.put(actor, incomingReserve);
     }
 
     /** The plan for an actor, or {@code null} if none is drafted. */
@@ -54,12 +61,24 @@ public final class TeamBattlePlan {
     }
 
     public boolean has(CombatantId actor) {
-        return actor != null && plansByActor.containsKey(actor);
+        return actor != null
+            && (plansByActor.containsKey(actor) || switchesByActor.containsKey(actor));
+    }
+
+    public boolean isSwitch(CombatantId actor) {
+        return actor != null && switchesByActor.containsKey(actor);
+    }
+
+    public CombatantId switchTarget(CombatantId actor) {
+        return actor == null ? null : switchesByActor.get(actor);
     }
 
     /** Every actor id with a draft, in insertion order. */
     public List<CombatantId> actors() {
-        return List.copyOf(plansByActor.keySet());
+        java.util.LinkedHashSet<CombatantId> actors = new java.util.LinkedHashSet<>();
+        actors.addAll(plansByActor.keySet());
+        actors.addAll(switchesByActor.keySet());
+        return List.copyOf(actors);
     }
 
     /** An unmodifiable view of actor → plan. */
@@ -67,12 +86,16 @@ public final class TeamBattlePlan {
         return Collections.unmodifiableMap(plansByActor);
     }
 
+    public Map<CombatantId, CombatantId> switches() {
+        return Collections.unmodifiableMap(switchesByActor);
+    }
+
     public int size() {
-        return plansByActor.size();
+        return plansByActor.size() + switchesByActor.size();
     }
 
     public boolean isEmpty() {
-        return plansByActor.isEmpty();
+        return plansByActor.isEmpty() && switchesByActor.isEmpty();
     }
 
     /**
@@ -106,12 +129,33 @@ public final class TeamBattlePlan {
         }
 
         List<BattleCombatant> active = team.active();
-        if (plansByActor.size() != active.size()) {
+        if (size() != active.size()) {
             return "Team plan must include every active combatant exactly once";
         }
         for (BattleCombatant combatant : active) {
-            if (!plansByActor.containsKey(combatant.getInstanceId())) {
-                return "Missing plan for active combatant " + combatant.getInstanceId();
+            if (!has(combatant.getInstanceId())) {
+                return "Missing plan or switch for active combatant "
+                    + combatant.getInstanceId();
+            }
+        }
+
+
+        java.util.Set<CombatantId> selectedReserves = new java.util.HashSet<>();
+        for (Map.Entry<CombatantId, CombatantId> entry : switchesByActor.entrySet()) {
+            BattleCombatant actor = state.combatant(entry.getKey());
+            BattleCombatant incoming = state.combatant(entry.getValue());
+            if (actor == null || !actor.isActive() || !actor.isFighter()
+                || state.teamOf(actor) != team) {
+                return "Switch actor " + entry.getKey() + " is not an active fighter on team "
+                    + teamId;
+            }
+            if (incoming == null || !incoming.isReserve() || !incoming.isFighter()
+                || incoming.isDefeated() || state.teamOf(incoming) != team) {
+                return "Switch target " + entry.getValue() + " is not a living reserve on team "
+                    + teamId;
+            }
+            if (!selectedReserves.add(entry.getValue())) {
+                return "A reserve fighter can only be selected for one switch";
             }
         }
 
@@ -124,33 +168,12 @@ public final class TeamBattlePlan {
             if (plan.gridLength() != gridLength) {
                 return "Plan for " + entry.getKey() + " does not use the common grid";
             }
-            List<com.jjktbf.model.move.Move> alreadyPlannedMoves = new ArrayList<>();
             for (ActionSegment segment : plan.allSegments()) {
-                String restriction = MoveAvailability.restrictionReason(
-                    state, actor, segment.getMove(), alreadyPlannedMoves);
-                if (restriction != null) {
-                    return "Move '" + segment.getMove().getName() + "' is restricted: "
-                        + restriction;
-                }
-                alreadyPlannedMoves.add(segment.getMove());
-                MoveTargeting targeting = MoveTargeting.forMove(segment.getMove());
                 List<CombatantId> targetIds = segment.getTargets();
-                int minimumTargets = targeting == MoveTargeting.SINGLE_ENEMY ? 1
-                    : targeting == MoveTargeting.MULTIPLE_ENEMIES ? 1 : 0;
-                int maximumTargets = targeting == MoveTargeting.SINGLE_ENEMY ? 1
-                    : targeting == MoveTargeting.MULTIPLE_ENEMIES
-                        ? segment.getMove().getAoeTargetCount() : 0;
-                if (targetIds.size() < minimumTargets || targetIds.size() > maximumTargets) {
-                    return "Move '" + segment.getMove().getName()
-                        + "' has an invalid target count (combatant " + entry.getKey() + ")";
-                }
-                for (CombatantId targetId : targetIds) {
-                    BattleCombatant target = state.combatant(targetId);
-                    if (target == null || !target.isActive() || state.teamOf(target) == team
-                        || !CursedSpeechAbility.canTarget(segment.getMove(), target)) {
-                        return "Move '" + segment.getMove().getName()
-                            + "' has an invalid target (combatant " + entry.getKey() + ")";
-                    }
+                String targetError = MoveTargetSelection.validationError(
+                    state, actor, segment.getMove(), targetIds);
+                if (targetError != null) {
+                    return targetError + " (combatant " + entry.getKey() + ")";
                 }
             }
         }

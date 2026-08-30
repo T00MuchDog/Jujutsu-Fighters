@@ -17,6 +17,7 @@ public class CombatEvent {
 
     public enum Type {
         // Move execution
+        MOVE_STARTED,
         MOVE_FIRED,         // move unleashed — attack resolved
         MOVE_MISSED,
         MOVE_BLOCKED,        // block fully negated the damage (BLOCK at 100% reduction)
@@ -27,6 +28,7 @@ public class CombatEvent {
 
         // Targeting
         TARGET_RETARGETED,  // a single-target move's invalid target was retargeted at fire time
+        TARGETS_EXCHANGED,  // a target-exchange window transposed an attack recipient
         DEFENSE_GRANTED,    // a defensive move's active-defense window was conferred to an ally
 
         // Summoning
@@ -38,6 +40,18 @@ public class CombatEvent {
 
         // Generic effect resolution
         EFFECT_FAILED,
+        RESOURCE_CHANGED,
+
+        // Domains
+        DOMAIN_DECLARED,
+        DOMAIN_ESTABLISHED,
+        DOMAIN_COUNTER_ESTABLISHED,
+        DOMAIN_CLASH_STARTED,
+        DOMAIN_CLASH_ENDED,
+        DOMAIN_BARRIER_DAMAGED,
+        DOMAIN_SURE_HIT_APPLIED,
+        DOMAIN_SURE_HIT_NEGATED,
+        DOMAIN_COLLAPSED,
 
         // Damage
         DAMAGE_DEALT,
@@ -58,10 +72,13 @@ public class CombatEvent {
 
         // Combatant lifecycle
         COMBATANT_SUMMONED,
+        COMBATANT_SWITCHED,
+        COMBATANT_REPLACED,
         COMBATANT_DEFEATED,
         COMBATANT_REMOVED,
 
         // BFS
+        BFS_ENTERED,
         BFS_EXPIRED,
 
         // Abilities
@@ -69,6 +86,7 @@ public class CombatEvent {
         RATIO_TRIGGERED,
 
         // Round / battle
+        ROUND_START,
         ROUND_END,
         BATTLE_OVER
     }
@@ -76,6 +94,7 @@ public class CombatEvent {
     private final Type            type;
     private final BattleCombatant source;     // who caused the event (may be null for system events)
     private final BattleCombatant target;     // who was affected (may be null)
+    private final BattleCombatant relatedTarget; // second combatant in pair-based events
     private final Move            move;       // relevant move (may be null)
     private final int             intValue;   // damage, CE amount, etc.
     private final int             tick;       // AP tick this event occurred on (0 = system/round events)
@@ -87,12 +106,18 @@ public class CombatEvent {
     private final String          previousCharacterId;
     private final String          characterId;
     private final String          characterName;
+    private final String          domainInstanceId;
+    private final String          relatedDomainInstanceId;
+    private final String          domainId;
+    private final String          domainName;
+    private final String          domainCollapseReason;
     private final String          message;    // human-readable description
 
     private CombatEvent(Builder b) {
         this.type      = b.type;
         this.source    = b.source;
         this.target    = b.target;
+        this.relatedTarget = b.relatedTarget;
         this.move      = b.move;
         this.intValue  = b.intValue;
         this.tick      = b.tick;
@@ -101,12 +126,18 @@ public class CombatEvent {
         this.previousCharacterId = b.previousCharacterId;
         this.characterId = b.characterId;
         this.characterName = b.characterName;
+        this.domainInstanceId = b.domainInstanceId;
+        this.relatedDomainInstanceId = b.relatedDomainInstanceId;
+        this.domainId = b.domainId;
+        this.domainName = b.domainName;
+        this.domainCollapseReason = b.domainCollapseReason;
         this.message   = b.message;
     }
 
     public Type            getType()     { return type; }
     public BattleCombatant getSource()   { return source; }
     public BattleCombatant getTarget()   { return target; }
+    public BattleCombatant getRelatedTarget() { return relatedTarget; }
     public Move            getMove()     { return move; }
     public int             getIntValue() { return intValue; }
     public int             getTick()     { return tick; }
@@ -115,6 +146,11 @@ public class CombatEvent {
     public String          getPreviousCharacterId() { return previousCharacterId; }
     public String          getCharacterId() { return characterId; }
     public String          getCharacterName() { return characterName; }
+    public String          getDomainInstanceId() { return domainInstanceId; }
+    public String          getRelatedDomainInstanceId() { return relatedDomainInstanceId; }
+    public String          getDomainId() { return domainId; }
+    public String          getDomainName() { return domainName; }
+    public String          getDomainCollapseReason() { return domainCollapseReason; }
     public String          getMessage()  { return message; }
 
     @Override
@@ -144,6 +180,7 @@ public class CombatEvent {
         private final Type type;
         private BattleCombatant source;
         private BattleCombatant target;
+        private BattleCombatant relatedTarget;
         private Move            move;
         private int             intValue;
         private int             tick;
@@ -152,12 +189,21 @@ public class CombatEvent {
         private String          previousCharacterId;
         private String          characterId;
         private String          characterName;
+        private String          domainInstanceId;
+        private String          relatedDomainInstanceId;
+        private String          domainId;
+        private String          domainName;
+        private String          domainCollapseReason;
         private String          message = "";
 
         private Builder(Type type) { this.type = type; }
 
         public Builder source(BattleCombatant v)  { this.source   = v; return this; }
         public Builder target(BattleCombatant v)  { this.target   = v; return this; }
+        public Builder relatedTarget(BattleCombatant v) {
+            this.relatedTarget = v;
+            return this;
+        }
         public Builder move(Move v)               { this.move     = v; return this; }
         public Builder intValue(int v)            { this.intValue = v; return this; }
         public Builder tick(int v)                { this.tick     = v; return this; }
@@ -169,6 +215,17 @@ public class CombatEvent {
         public Builder previousCharacterId(String v) { this.previousCharacterId = v; return this; }
         public Builder characterId(String v) { this.characterId = v; return this; }
         public Builder characterName(String v) { this.characterName = v; return this; }
+        public Builder domainInstanceId(String v) { this.domainInstanceId = v; return this; }
+        public Builder relatedDomainInstanceId(String v) {
+            this.relatedDomainInstanceId = v;
+            return this;
+        }
+        public Builder domainId(String v) { this.domainId = v; return this; }
+        public Builder domainName(String v) { this.domainName = v; return this; }
+        public Builder domainCollapseReason(String v) {
+            this.domainCollapseReason = v;
+            return this;
+        }
         public Builder message(String v)          { this.message  = v; return this; }
 
         public CombatEvent build() { return new CombatEvent(this); }

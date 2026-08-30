@@ -79,10 +79,100 @@ class AbilitySystemTest {
             if (type == AbilityEffectType.GRANT_MOVE
                 || type == AbilityEffectType.UNLOCK_MOVE) effect.moveId = "MOVE";
             if (type == AbilityEffectType.GRANT_ABILITY) effect.abilityId = "ABILITY";
-            if (type == AbilityEffectType.UNLOCK_TECHNIQUE) effect.stringValue = "Technique";
+            if (type.uses(AbilityEffectParameter.TECHNIQUE)) {
+                effect.stringValue = "Technique";
+            }
+            if (type.uses(AbilityEffectParameter.DOMAIN_ID)) effect.domainId = "DOMAIN";
             if (type.uses(AbilityEffectParameter.CHARACTER_ID)) effect.characterId = "000010";
             assertNull(type.validationError(effect), type.name());
         }
+    }
+
+    @Test
+    void malformedEffectSelectorsReturnValidationErrors() {
+        AbilityEffectData amount = AbilityEffectType.HEAL_HP.createDefault();
+        amount.valueMode = "INVALID";
+        assertEquals(AbilityEffectType.ValueMode.FLAT,
+            AbilityEffectType.selectedValueMode(amount));
+        assertEquals("Choose flat amount or maximum percentage.",
+            AbilityEffectType.HEAL_HP.validationError(amount));
+
+        AbilityEffectData stat = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        stat.statType = "INVALID";
+        assertEquals(AbilityEffectType.StatType.CORE,
+            AbilityEffectType.selectedStatType(stat));
+        assertEquals("Choose a core or battle stat.",
+            AbilityEffectType.TIMED_STAT_MODIFIER.validationError(stat));
+
+        stat = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        stat.statOperation = "INVALID";
+        assertEquals(AbilityEffectType.StatOperation.CHANGE,
+            AbilityEffectType.selectedStatOperation(stat));
+        assertEquals("Choose change, multiply, or set.",
+            AbilityEffectType.TIMED_STAT_MODIFIER.validationError(stat));
+
+        AbilityEffectData accuracy = AbilityEffectType.APPLY_NEVER_MISS.createDefault();
+        accuracy.accuracyDuration = "INVALID";
+        assertEquals(AbilityEffectType.AccuracyDuration.NEXT_ATTACK,
+            AbilityEffectType.selectedAccuracyDuration(accuracy));
+        assertEquals("Choose next attack or a duration.",
+            AbilityEffectType.APPLY_NEVER_MISS.validationError(accuracy));
+    }
+
+    @Test
+    void battleStatSetOperationRequiresBattleStatAndNonNegativeValue() {
+        AbilityEffectData pin = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        pin.statType = AbilityEffectType.StatType.BATTLE.name();
+        pin.statOperation = AbilityEffectType.StatOperation.SET.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(pin);
+        pin.stringValue = "EVASION";
+        pin.doubleValue = 0.0;
+        assertNull(AbilityEffectType.TIMED_STAT_MODIFIER.validationError(pin));
+
+        pin.doubleValue = -1.0;
+        assertEquals("Enter a non-negative value.",
+            AbilityEffectType.TIMED_STAT_MODIFIER.validationError(pin));
+
+        AbilityEffectData core = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        core.statType = AbilityEffectType.StatType.CORE.name();
+        core.statOperation = AbilityEffectType.StatOperation.SET.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(core);
+        core.stat = "SPEED";
+        assertEquals("Set requires a battle stat; core stats use the timed character stat set.",
+            AbilityEffectType.TIMED_STAT_MODIFIER.validationError(core));
+    }
+
+    @Test
+    void retiredEffectNamesMigrateToCanonicalConfiguration() {
+        AbilityEffectData amount = new AbilityEffectData();
+        amount.type = "HEAL_HP_PERCENT";
+        amount.doubleValue = 0.25;
+        assertTrue(amount.migrateLegacyType());
+        assertEquals(AbilityEffectType.HEAL_HP.name(), amount.type);
+        assertEquals(AbilityEffectType.ValueMode.PERCENT.name(), amount.valueMode);
+        assertEquals(0.25, amount.doubleValue);
+
+        AbilityEffectData stat = new AbilityEffectData();
+        stat.type = "BATTLE_STAT_MULTIPLY";
+        stat.stringValue = "DAMAGE_DEALT";
+        stat.doubleValue = 1.2;
+        assertTrue(stat.migrateLegacyType());
+        assertEquals(AbilityEffectType.TIMED_STAT_MODIFIER.name(), stat.type);
+        assertEquals(AbilityEffectType.StatType.BATTLE.name(), stat.statType);
+        assertEquals(AbilityEffectType.StatOperation.MULTIPLY.name(), stat.statOperation);
+        assertNull(stat.valueMode);
+
+        AbilityEffectData accuracy = new AbilityEffectData();
+        accuracy.type = "GUARANTEE_NEXT_DODGE";
+        accuracy.uses = 2;
+        accuracy.durationRounds = -1;
+        assertTrue(accuracy.migrateLegacyType());
+        assertEquals(AbilityEffectType.APPLY_NEVER_HIT.name(), accuracy.type);
+        assertEquals(5, accuracy.intValue);
+        assertEquals(AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name(),
+            accuracy.accuracyDuration);
+        assertEquals(2, accuracy.uses);
+        assertEquals(-1, accuracy.durationRounds);
     }
 
     @Test
@@ -160,6 +250,80 @@ class AbilitySystemTest {
         // ((20 x 0.5) - 3) x 2 + 5 = 19; the first alteration may pass the min bound.
         assertEquals(19, com.jjktbf.model.combat.CeEfficiencyCalculator.computeActualCost(
             move, 80, 80, flags));
+    }
+
+    @Test
+    void permanentBattleStatModifiersSetStartingPoolsAndRegeneration() {
+        AbilityEffectData maxCe = AbilityEffectType.BATTLE_STAT_MODIFIER.createDefault();
+        maxCe.stringValue = BattleStatKey.MAX_CE.name();
+        maxCe.statOperation = AbilityEffectType.StatOperation.MULTIPLY.name();
+        maxCe.doubleValue = 5.0;
+        AbilityEffectData regeneration = AbilityEffectType.BATTLE_STAT_MODIFIER.createDefault();
+        regeneration.stringValue = BattleStatKey.CE_REGENERATION.name();
+        regeneration.statOperation = AbilityEffectType.StatOperation.CHANGE.name();
+        regeneration.doubleValue = 0.95;
+        AbilityData physiology = ability("PASSIVE", "Physiology", "PHYSIOLOGY");
+        physiology.effects = List.of(maxCe, regeneration);
+
+        CharacterStats stats = new CharacterStats.Builder().build();
+        BattleCombatant baseline = new BattleCombatant(new SorcererCharacter(
+            "BASE", "Baseline", stats, null, List.of()));
+        BattleCombatant modified = new BattleCombatant(new SorcererCharacter(
+            "MODIFIED", "Modified", stats, null, List.of(),
+            List.of(new Ability(physiology))));
+        new BattleState(modified, baseline);
+
+        assertEquals(baseline.getMaxCursedEnergy() * 5, modified.getMaxCursedEnergy());
+        assertEquals(modified.getMaxCursedEnergy(), modified.getCurrentCe());
+        assertEquals(1.0, modified.getCursedEnergyRegenerationPerTick(), 0.000001);
+    }
+
+    @Test
+    void permanentBattleStatSetPinsTheValueInsteadOfAdding() {
+        AbilityEffectData pin = AbilityEffectType.BATTLE_STAT_MODIFIER.createDefault();
+        pin.stringValue = BattleStatKey.MAX_CE.name();
+        pin.statOperation = AbilityEffectType.StatOperation.SET.name();
+        pin.doubleValue = -1.0;
+        assertEquals("Enter a non-negative value.",
+            AbilityEffectType.BATTLE_STAT_MODIFIER.validationError(pin));
+        pin.doubleValue = 100.0;
+        assertNull(AbilityEffectType.BATTLE_STAT_MODIFIER.validationError(pin));
+        AbilityData pinned = ability("PASSIVE", "Pinned Reserves", "PINNED");
+        pinned.effects = List.of(pin);
+
+        CharacterStats stats = new CharacterStats.Builder().build();
+        BattleCombatant baseline = new BattleCombatant(new SorcererCharacter(
+            "BASE", "Baseline", stats, null, List.of()));
+        BattleCombatant modified = new BattleCombatant(new SorcererCharacter(
+            "MODIFIED", "Modified", stats, null, List.of(),
+            List.of(new Ability(pinned))));
+        new BattleState(modified, baseline);
+
+        assertEquals(100, modified.getMaxCursedEnergy(),
+            "Set must pin max CE to the authored value, not add it to the base pool.");
+        assertEquals(100, modified.getCurrentCe());
+    }
+
+    @Test
+    void statTotalCeWaiverUsesAuthoredBaseCostAndRawStats() {
+        AbilityEffectData waiver =
+            AbilityEffectType.CE_COST_WAIVE_BY_STAT_TOTAL.createDefault();
+        waiver.intValue = 100;
+        AbilityEffectData doubledStrength = AbilityEffectType.STAT_MULTIPLY.createDefault();
+        doubledStrength.stat = "strength";
+        doubledStrength.doubleValue = 2.0;
+        AbilityData physiology = ability("PASSIVE", "Physiology", "PHYSIOLOGY");
+        physiology.effects = List.of(waiver, doubledStrength);
+        BattleCombatant combatant = new BattleCombatant(new SorcererCharacter(
+            "SPIRIT", "Spirit", new CharacterStats.Builder().build(), null,
+            List.of(), List.of(new Ability(physiology))));
+
+        Move thresholdCost = ceMove("THRESHOLD", 8);
+        Move aboveThreshold = ceMove("ABOVE_THRESHOLD", 9);
+
+        assertEquals(800, combatant.getCharacter().getBaseStats().baseStatTotal());
+        assertEquals(0, combatant.computeMoveCeCost(thresholdCost));
+        assertEquals(9, combatant.computeMoveCeCost(aboveThreshold));
     }
 
     @Test
@@ -769,7 +933,8 @@ class AbilitySystemTest {
             AbilityConditionType.FATAL_DAMAGE.createDefault());
         fatalHeal.targetEffectIds = List.of(heal.effectId);
         assertEquals(
-            "Condition 1 uses a pre-resolution condition that can only target coded effects.",
+            "Condition 1 uses a pre-resolution condition that can only target coded effects "
+                + "or fatal survival.",
             AbilityConditionRuleData.validationError(List.of(fatalHeal), List.of(heal)));
 
         AbilityEffectData ratio = AbilityEffectType.CODED.createDefault();
@@ -862,7 +1027,9 @@ class AbilitySystemTest {
         immunity.uses = 1;
         AbilityEffectData shield = AbilityEffectType.DAMAGE_SHIELD.createDefault();
         shield.intValue = 10;
-        AbilityEffectData ap = AbilityEffectType.BATTLE_STAT_ADD.createDefault();
+        AbilityEffectData ap = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        ap.statType = AbilityEffectType.StatType.BATTLE.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(ap);
         ap.stringValue = BattleStatKey.MAX_AP.name();
         ap.doubleValue = 20.0;
         ap.durationRounds = 1;
@@ -895,7 +1062,7 @@ class AbilitySystemTest {
     @Test
     void runtimeAbilityEffectsCanExpireByTimelineTicks() {
         BattleCombatant owner = combatant("OWNER", List.of(), List.of());
-        AbilityEffectData strength = AbilityEffectType.TEMP_STAT_ADD.createDefault();
+        AbilityEffectData strength = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
         strength.stat = com.jjktbf.model.character.StatKey.STRENGTH.fieldName;
         strength.intValue = 10;
         strength.durationRounds = 0;
@@ -966,7 +1133,7 @@ class AbilitySystemTest {
 
     @Test
     void malformedAbilityDurationFailsAtDomainConstruction() {
-        AbilityEffectData effect = AbilityEffectType.TEMP_STAT_ADD.createDefault();
+        AbilityEffectData effect = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
         effect.durationRounds = 0;
         effect.durationTicks = 0;
         AbilityData data = ability("ACTIVE", "Invalid duration", "INVALID_DURATION");
@@ -1352,6 +1519,20 @@ class AbilitySystemTest {
             .neverMiss(true)
             .apCost(1)
             .unleashPoint(1)
+            .build();
+    }
+
+    private static Move ceMove(String id, int baseCost) {
+        return new Move.Builder(id)
+            .name(id)
+            .category(MoveCategory.CURSED_ENERGY)
+            .tags(Set.of(MoveTag.CURSED_ENERGY))
+            .apCost(1)
+            .unleashPoint(1)
+            .baseCeCost(baseCost)
+            .hasCeCost(true)
+            .minCeCost(1)
+            .maxCeCost(baseCost * 4)
             .build();
     }
 

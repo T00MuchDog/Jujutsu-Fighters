@@ -6,4 +6,9 @@
   "id" : "000001",
   "name" : "Hand Sword",
   "weaponType" : "KATANA"
+}, {
+  "id" : "000002",
+  "name" : "Playful Cloud",
+  "weaponType" : "STAFF",
+  "imbuedTechniqueName" : "Strength Amplification"
 } ]

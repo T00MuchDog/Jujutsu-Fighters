@@ -124,6 +124,8 @@ public final class AbilityApplicator {
                         flags.ceCostMultiplierEffects.add(eff);
                     }
                     case CE_COST_ALTER -> flags.addCeCostAlteration(eff, null);
+                    case CE_COST_WAIVE_BY_STAT_TOTAL ->
+                        flags.ceCostWaiveByStatTotalEffects.add(eff.copy());
 
                     case MOVE_ACCURACY_ADD       -> {
                         flags.accuracyBonus += nvl(eff.intValue, 0);
@@ -153,12 +155,14 @@ public final class AbilityApplicator {
                         flags.basePowerMultiplier *= nvl(eff.doubleValue, 1.0);
                         flags.basePowerMultiplierEffects.add(eff);
                     }
+                    case MOVE_BASE_POWER_SCALE_BY_STAT ->
+                        flags.statScaledBasePowerEffects.add(eff);
                     case INCOMING_DAMAGE_MULTIPLY -> {
                         flags.incomingDamageMultiplier *= nvl(eff.doubleValue, 1.0);
                         flags.incomingDamageMultiplierEffects.add(eff);
                     }
                     case BF_CHANCE_ADD           -> flags.bfChanceBonus    += nvl(eff.doubleValue, 0.0);
-                    case BATTLE_STAT_ODDS_MULTIPLY ->
+                    case BATTLE_STAT_ODDS_MULTIPLY, BATTLE_STAT_MODIFIER ->
                         flags.passiveBattleStatEffects.add(eff.copy());
                     case MODIFY_DEFENSE          -> flags.defenseMultiplier *= nvl(eff.doubleValue, 1.0);
                     case DEFENSE_FROM_DURABILITY ->
@@ -189,6 +193,7 @@ public final class AbilityApplicator {
                         if (eff.moveTag != null) flags.lockedMoveTags.add(eff.moveTag);
                     }
                     case AUTO_STATUS_APPLY -> flags.autoStatusEffects.add(eff);
+                    case DEFINE_BOUNDED_RESOURCE -> flags.boundedResourceDefinitions.add(eff.copy());
 
                     case UNLOCK_TECHNIQUE  -> {
                         // Technique access is resolved once at construction, not per
@@ -206,17 +211,16 @@ public final class AbilityApplicator {
                     case SOUL_AWARE_ATTACKS -> flags.soulAwareAttacks = true;
 
                     // Applied by AbilityActivationEngine when an active condition is met.
-                    case HEAL_HP, HEAL_HP_PERCENT, RESTORE_CE, RESTORE_CE_PERCENT,
-                         DRAIN_CE, DRAIN_CE_PERCENT, DEAL_DIRECT_DAMAGE, DEAL_MAX_HP_DAMAGE,
+                    case HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE,
                          INSTANT_KILL, APPLY_STATUS, REMOVE_STATUS, CLEAR_STATUSES,
-                          TEMP_STAT_ADD, TEMP_STAT_MULTIPLY, TEMP_STAT_SET_VALUE,
-                          BATTLE_STAT_ADD, BATTLE_STAT_MULTIPLY, BATTLE_STAT_PERCENT,
-                          TEMP_STAT_PERCENT,
+                          TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
                           STUN_CURRENT_ACTION, IGNORE_DAMAGE,
-                          DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE, GUARANTEE_NEXT_HIT,
-                           GUARANTEE_NEXT_DODGE, GUARANTEE_NEXT_BLACK_FLASH,
-                           CANCEL_NEXT_MOVE, TEMP_LOCK_MOVE_TAG,
-                           DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
+                          DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS,
+                           APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,
+                            CANCEL_NEXT_MOVE, TEMP_LOCK_MOVE_TAG,
+                            TRANSACT_BOUNDED_RESOURCE,
+                            CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER,
+                            DESUMMON_OWNED_SHIKIGAMI, DESUMMON_TARGET_SHIKIGAMI,
                            SUMMON_CHARACTER -> { }
                 }
             }
@@ -320,23 +324,34 @@ public final class AbilityApplicator {
                 && type != AbilityEffectType.STAT_SET_VALUE
                 && type != AbilityEffectType.TEMP_STAT_SET_VALUE
                 && type != AbilityEffectType.STAT_ADD
-                && type != AbilityEffectType.TEMP_STAT_ADD
                 && type != AbilityEffectType.STAT_MULTIPLY
-                && type != AbilityEffectType.TEMP_STAT_MULTIPLY
-                && type != AbilityEffectType.TEMP_STAT_PERCENT
+                && type != AbilityEffectType.TIMED_STAT_MODIFIER
                 && type != AbilityEffectType.STAT_DIVIDE) continue;
+            if (type == AbilityEffectType.TIMED_STAT_MODIFIER
+                && AbilityEffectType.statType(effect) != AbilityEffectType.StatType.CORE) {
+                continue;
+            }
             StatKey key = resolveStatKey(effect.stat);
             if (key == null) continue;
             switch (type) {
                 case STAT_SET_MIN -> overrides.put(key, 0);
                 case STAT_SET_VALUE, TEMP_STAT_SET_VALUE ->
                     overrides.put(key, nvl(effect.intValue, 0));
-                case STAT_ADD, TEMP_STAT_ADD ->
+                case STAT_ADD ->
                     additions.merge(key, nvl(effect.intValue, 0), Integer::sum);
-                case STAT_MULTIPLY, TEMP_STAT_MULTIPLY ->
+                case STAT_MULTIPLY ->
                     multipliers.merge(key, nvl(effect.doubleValue, 1.0), (a, b) -> a * b);
-                case TEMP_STAT_PERCENT ->
-                    percents.merge(key, nvl(effect.doubleValue, 0.0), Double::sum);
+                case TIMED_STAT_MODIFIER -> {
+                    if (AbilityEffectType.statOperation(effect)
+                        == AbilityEffectType.StatOperation.MULTIPLY) {
+                        multipliers.merge(key, nvl(effect.doubleValue, 1.0), (a, b) -> a * b);
+                    } else if (AbilityEffectType.valueMode(effect)
+                        == AbilityEffectType.ValueMode.PERCENT) {
+                        percents.merge(key, nvl(effect.doubleValue, 0.0), Double::sum);
+                    } else {
+                        additions.merge(key, nvl(effect.intValue, 0), Integer::sum);
+                    }
+                }
                 case STAT_DIVIDE -> {
                     double divisor = effect.doubleValue != null && effect.doubleValue != 0
                         ? effect.doubleValue : 1.0;
@@ -446,6 +461,8 @@ public final class AbilityApplicator {
         public double  summonCeUpkeepPerActiveTick = 0.0;
         public final java.util.List<AbilityEffectData> ceCostToMinimumEffects = new java.util.ArrayList<>();
         public final java.util.List<AbilityEffectData> ceCostMultiplierEffects = new java.util.ArrayList<>();
+        public final java.util.List<AbilityEffectData> ceCostWaiveByStatTotalEffects =
+            new java.util.ArrayList<>();
         private final java.util.List<CeCostAlteration> ceCostAlterations = new java.util.ArrayList<>();
 
         // Own accuracy
@@ -469,6 +486,7 @@ public final class AbilityApplicator {
         public Double  defenseFromDurabilityMultiplier = null;
         public final java.util.List<AbilityEffectData> damageMultiplierEffects = new java.util.ArrayList<>();
         public final java.util.List<AbilityEffectData> basePowerMultiplierEffects = new java.util.ArrayList<>();
+        public final java.util.List<AbilityEffectData> statScaledBasePowerEffects = new java.util.ArrayList<>();
         // Incoming damage taken — applied to matching moves against this combatant.
         public double  incomingDamageMultiplier = 1.0;
         public final java.util.List<AbilityEffectData> incomingDamageMultiplierEffects = new java.util.ArrayList<>();
@@ -502,6 +520,8 @@ public final class AbilityApplicator {
 
         // Status automation
         public final java.util.List<AbilityEffectData> autoStatusEffects = new java.util.ArrayList<>();
+        public final java.util.List<AbilityEffectData> boundedResourceDefinitions =
+            new java.util.ArrayList<>();
 
         /** Add one legacy continuous effect to this flag set. */
         public void addEffect(AbilityEffectData effect) {
@@ -519,6 +539,8 @@ public final class AbilityApplicator {
                     ceCostMultiplierEffects.add(effect);
                 }
                 case CE_COST_ALTER -> addCeCostAlteration(effect, null);
+                case CE_COST_WAIVE_BY_STAT_TOTAL ->
+                    ceCostWaiveByStatTotalEffects.add(effect.copy());
                 case MOVE_ACCURACY_ADD -> {
                     accuracyBonus += nvl(effect.intValue, 0);
                     accuracyAddEffects.add(effect);
@@ -545,12 +567,15 @@ public final class AbilityApplicator {
                     basePowerMultiplier *= nvl(effect.doubleValue, 1.0);
                     basePowerMultiplierEffects.add(effect);
                 }
+                case MOVE_BASE_POWER_SCALE_BY_STAT ->
+                    statScaledBasePowerEffects.add(effect);
                 case INCOMING_DAMAGE_MULTIPLY -> {
                     incomingDamageMultiplier *= nvl(effect.doubleValue, 1.0);
                     incomingDamageMultiplierEffects.add(effect);
                 }
                 case BF_CHANCE_ADD -> bfChanceBonus += nvl(effect.doubleValue, 0.0);
-                case BATTLE_STAT_ODDS_MULTIPLY -> passiveBattleStatEffects.add(effect.copy());
+                case BATTLE_STAT_ODDS_MULTIPLY, BATTLE_STAT_MODIFIER ->
+                    passiveBattleStatEffects.add(effect.copy());
                 case MODIFY_DEFENSE -> defenseMultiplier *= nvl(effect.doubleValue, 1.0);
                 case DEFENSE_FROM_DURABILITY ->
                     defenseFromDurabilityMultiplier = nvl(effect.doubleValue, 1.0);
@@ -573,6 +598,7 @@ public final class AbilityApplicator {
                 case UNLOCK_MOVE -> { if (effect.moveId != null) unlockedMoveIds.add(effect.moveId); }
                 case LOCK_MOVE_TAG -> { if (effect.moveTag != null) lockedMoveTags.add(effect.moveTag); }
                 case AUTO_STATUS_APPLY -> autoStatusEffects.add(effect);
+                case DEFINE_BOUNDED_RESOURCE -> boundedResourceDefinitions.add(effect.copy());
                 case POISON_IMMUNITY -> poisonImmune = true;
                 case SOUL_AWARE_ATTACKS -> soulAwareAttacks = true;
                 default -> { }
@@ -602,6 +628,7 @@ public final class AbilityApplicator {
             copy.soulAwareAttacks = soulAwareAttacks;
             copy.ceCostToMinimumEffects.addAll(ceCostToMinimumEffects);
             copy.ceCostMultiplierEffects.addAll(ceCostMultiplierEffects);
+            copy.ceCostWaiveByStatTotalEffects.addAll(ceCostWaiveByStatTotalEffects);
             for (CeCostAlteration alteration : ceCostAlterations) {
                 copy.addCeCostAlteration(alteration.effect, alteration.condition);
             }
@@ -613,12 +640,14 @@ public final class AbilityApplicator {
             copy.neverHitEffects.addAll(neverHitEffects);
             copy.damageMultiplierEffects.addAll(damageMultiplierEffects);
             copy.basePowerMultiplierEffects.addAll(basePowerMultiplierEffects);
+            copy.statScaledBasePowerEffects.addAll(statScaledBasePowerEffects);
             copy.incomingDamageMultiplier = incomingDamageMultiplier;
             copy.incomingDamageMultiplierEffects.addAll(incomingDamageMultiplierEffects);
             copy.grantedMoveIds.addAll(grantedMoveIds);
             copy.unlockedMoveIds.addAll(unlockedMoveIds);
             copy.lockedMoveTags.addAll(lockedMoveTags);
             copy.autoStatusEffects.addAll(autoStatusEffects);
+            copy.boundedResourceDefinitions.addAll(boundedResourceDefinitions);
             return copy;
         }
 
@@ -643,6 +672,21 @@ public final class AbilityApplicator {
                 if (appliesTo(effect, move)) multiplier *= nvl(effect.doubleValue, 1.0);
             }
             return multiplier;
+        }
+
+        /** Whether an authored base CE cost falls within a stat-total waiver threshold. */
+        public boolean waivesCeCostByStatTotal(
+            com.jjktbf.model.move.Move move,
+            int baseStatTotal
+        ) {
+            for (AbilityEffectData effect : ceCostWaiveByStatTotalEffects) {
+                if (!appliesTo(effect, move)) continue;
+                int divisor = nvl(effect.intValue, 0);
+                if (divisor <= 0) continue;
+                int threshold = Math.max(1, baseStatTotal / divisor);
+                if (move.getBaseCeCost() <= threshold) return true;
+            }
+            return false;
         }
 
         /** Apply ordered post-bound cost adjustments that match this current move. */
@@ -727,12 +771,44 @@ public final class AbilityApplicator {
             return multiplier;
         }
 
-        public double basePowerMultiplierFor(com.jjktbf.model.move.Move move) {
+        public double basePowerMultiplierFor(
+            com.jjktbf.model.move.Move move,
+            java.util.function.ToIntFunction<StatKey> currentScaledStat
+        ) {
             double multiplier = 1.0;
             for (AbilityEffectData effect : basePowerMultiplierEffects) {
                 if (appliesTo(effect, move)) multiplier *= nvl(effect.doubleValue, 1.0);
             }
+            for (AbilityEffectData effect : statScaledBasePowerEffects) {
+                if (!appliesTo(effect, move)) continue;
+                StatKey stat = resolveStatKey(effect.stat);
+                if (stat == null) continue;
+                multiplier *= statMultiplierAt(effect, currentScaledStat.applyAsInt(stat));
+            }
             return multiplier;
+        }
+
+        private static double statMultiplierAt(AbilityEffectData effect, int scaledStat) {
+            int minimum = StatScale.scale(CharacterStats.MIN_STAT);
+            int baseline = StatScale.scale(CharacterStats.BASELINE);
+            int maximum = StatScale.scale(CharacterStats.MAX_STAT);
+            double low = nvl(effect.minimumStatMultiplier, 1.0);
+            double high = nvl(effect.maximumStatMultiplier, 1.0);
+            if (scaledStat <= minimum) return low;
+            if (scaledStat < baseline) {
+                return interpolate(low, 1.0, scaledStat, minimum, baseline);
+            }
+            if (scaledStat < maximum) {
+                return interpolate(1.0, high, scaledStat, baseline, maximum);
+            }
+            return high;
+        }
+
+        private static double interpolate(
+            double startValue, double endValue, int value, int start, int end
+        ) {
+            double progress = (value - (double) start) / (end - (double) start);
+            return startValue + (endValue - startValue) * progress;
         }
 
         public double incomingDamageMultiplierFor(com.jjktbf.model.move.Move move) {
@@ -745,17 +821,19 @@ public final class AbilityApplicator {
 
         public boolean hasAnyEffect() {
             return ceCostToMinimum || ceCostMultiplier != 1.0 || !ceCostAlterations.isEmpty()
+                || !ceCostWaiveByStatTotalEffects.isEmpty()
                 || accuracyBonus != 0 || accuracyMultiplier != 1.0
                 || opponentAccuracyBonus != 0 || opponentAccuracyMultiplier != 1.0
                 || !neverMissEffects.isEmpty() || !neverHitEffects.isEmpty()
                 || damageMultiplier != 1.0 || basePowerMultiplier != 1.0 || defenseMultiplier != 1.0
+                || !statScaledBasePowerEffects.isEmpty()
                 || defenseFromDurabilityMultiplier != null
                 || incomingDamageMultiplier != 1.0
                 || bfChanceBonus != 0.0 || apBarBonus != 0 || ceCostPerRound != 0
                 || maxActiveSummons != null || summonCeUpkeepPerActiveTick != 0.0
                 || jujutsuArtSlots != null
                 || !grantedMoveIds.isEmpty() || !unlockedMoveIds.isEmpty() || !lockedMoveTags.isEmpty()
-                || !autoStatusEffects.isEmpty();
+                || !autoStatusEffects.isEmpty() || !boundedResourceDefinitions.isEmpty();
         }
     }
 }

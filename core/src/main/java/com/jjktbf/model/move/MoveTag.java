@@ -3,7 +3,7 @@ package com.jjktbf.model.move;
 import java.util.Set;
 
 /**
- * All possible tags a move can carry.
+ * All possible tags used by moves and their hit components.
  *
  * Tags serve three purposes:
  *  1. Determine the Power formula used during damage calculation.
@@ -167,9 +167,9 @@ public enum MoveTag {
      *
      * A modifier tag like {@link #ATTACK}: it does not affect the
      * Power formula, is not part of any {@link com.jjktbf.model.move.MoveCategory}'s
-     * tag set, and does not change Black Flash eligibility. It is stored as a dedicated
-     * flag on {@link com.jjktbf.model.move.Move} (see {@link Move#isGuardBreak()}),
-     * not derived from the category.
+     * tag set, and does not change Black Flash eligibility. It is stored as a
+     * per-hit tag queried through {@link HitComponent#isGuardBreak()}, not
+     * derived from the category.
      */
     GUARD_BREAK,
 
@@ -191,11 +191,23 @@ public enum MoveTag {
      * ignores all block reduction. Dodge, accuracy, ordinary Defense, and other
      * hit-negation mechanics are unaffected.
      *
-     * <p>This is a pure tag-set modifier with no dedicated flag on {@link Move}.
+     * <p>This is a pure per-hit tag-set modifier with no dedicated flag on {@link Move}.
      * It does not affect the Power formula, move category, or Black Flash
      * eligibility.
      */
-    INTANGIBLE;
+    INTANGIBLE,
+
+    /** Ice-element hit modifier. Ice hits can freeze, cure Burned, and react with Wet. */
+    ICE,
+
+    /** Electric-element hit modifier. Electric hits can stun and deal more damage to Wet targets. */
+    ELECTRIC,
+
+    /** Fire-element hit modifier. Fire hits can burn and cure Frozen and Wet. */
+    FIRE,
+
+    /** Water-element hit modifier. Water hits cure Burned and apply Wet. */
+    WATER;
 
     // -------------------------------------------------------------------------
     // Canonical groupings
@@ -207,6 +219,16 @@ public enum MoveTag {
 
     /** Range tags — only meaningful on ATTACK moves. */
     public static final Set<MoveTag> RANGE_TAGS = Set.of(MELEE, RANGED);
+
+    /** Elemental tags that belong to an individual hit component. */
+    public static final Set<MoveTag> ELEMENTAL_TAGS = Set.of(ICE, ELECTRIC, FIRE, WATER);
+
+    /** Tags that belong only to an individual attack hit, never the parent move. */
+    public static final Set<MoveTag> HIT_ONLY_TAGS = Set.of(
+        MELEE, RANGED, GUARD_BREAK, INTANGIBLE, ICE, ELECTRIC, FIRE, WATER);
+
+    /** Every tag that may be authored on a hit component. */
+    public static final Set<MoveTag> HIT_TAGS = hitTags();
 
     /**
      * Weapon-type tags. A character must have at least one corresponding weapon
@@ -233,5 +255,11 @@ public enum MoveTag {
      */
     public static MoveTag weaponTagIn(Set<MoveTag> tags) {
         return weaponTagsIn(tags).stream().findFirst().orElse(null);
+    }
+
+    private static Set<MoveTag> hitTags() {
+        java.util.EnumSet<MoveTag> tags = java.util.EnumSet.copyOf(TYPE_TAGS);
+        tags.addAll(HIT_ONLY_TAGS);
+        return java.util.Collections.unmodifiableSet(tags);
     }
 }

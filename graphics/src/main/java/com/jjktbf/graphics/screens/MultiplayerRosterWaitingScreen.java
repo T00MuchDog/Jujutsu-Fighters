@@ -7,6 +7,7 @@ import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.multiplayer.ChallengeService;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
+import com.jjktbf.multiplayer.protocol.MatchCharacterSelectionRequest;
 
 import java.util.List;
 import java.util.Objects;
@@ -27,7 +28,7 @@ public final class MultiplayerRosterWaitingScreen extends MultiplayerScreenBase 
     private final TextButton retryButton;
 
     private MatchSetup setup;
-    private List<String> charactersToSubmit;
+    private MatchCharacterSelectionRequest selectionToSubmit;
     private ScheduledFuture<?> pollTask;
     private volatile long pollCycle;
     private boolean submitting;
@@ -65,9 +66,13 @@ public final class MultiplayerRosterWaitingScreen extends MultiplayerScreenBase 
     }
 
     public void prepare(MatchSetup setup, List<String> charactersToSubmit) {
+        prepare(setup, charactersToSubmit == null
+            ? null : new MatchCharacterSelectionRequest(charactersToSubmit));
+    }
+
+    public void prepare(MatchSetup setup, MatchCharacterSelectionRequest selectionToSubmit) {
         this.setup = Objects.requireNonNull(setup, "setup");
-        this.charactersToSubmit = charactersToSubmit == null
-            ? null : List.copyOf(charactersToSubmit);
+        this.selectionToSubmit = selectionToSubmit;
     }
 
     @Override
@@ -76,10 +81,10 @@ public final class MultiplayerRosterWaitingScreen extends MultiplayerScreenBase 
         submitting = false;
         retryButton.setVisible(false);
         formatLabel.setText("FORMAT: " + setup.format());
-        List<String> selected = charactersToSubmit != null
-            ? charactersToSubmit : setup.playerCharacterIds();
+        List<String> selected = selectionToSubmit != null
+            ? selectionToSubmit.characterIds() : setup.playerCharacterIds();
         rosterLabel.setText("YOUR FIGHTERS: " + rosterSummary(selected));
-        if (charactersToSubmit != null) {
+        if (selectionToSubmit != null) {
             submitCharacters(generation);
         } else {
             setStatus(statusLabel,
@@ -90,11 +95,11 @@ public final class MultiplayerRosterWaitingScreen extends MultiplayerScreenBase 
     }
 
     private void submitCharacters(long expectedGeneration) {
-        if (submitting || charactersToSubmit == null) return;
+        if (submitting || selectionToSubmit == null) return;
         submitting = true;
         retryButton.setVisible(false);
         setStatus(statusLabel, "Locking in your fighters...", StatusTone.NORMAL);
-        challengeService.selectMatchCharacters(setup.matchId(), charactersToSubmit)
+        challengeService.selectMatchCharacters(setup.matchId(), selectionToSubmit)
             .whenComplete((fresh, failure) -> postIfCurrent(expectedGeneration, () -> {
                 submitting = false;
                 if (failure != null) {
@@ -103,7 +108,7 @@ public final class MultiplayerRosterWaitingScreen extends MultiplayerScreenBase 
                     retryButton.setVisible(true);
                     return;
                 }
-                charactersToSubmit = null;
+                selectionToSubmit = null;
                 handleSetup(expectedGeneration, fresh);
             }));
     }
@@ -154,7 +159,7 @@ public final class MultiplayerRosterWaitingScreen extends MultiplayerScreenBase 
 
     private void retry() {
         retryButton.setVisible(false);
-        if (charactersToSubmit != null) submitCharacters(generation());
+        if (selectionToSubmit != null) submitCharacters(generation());
         else startPolling(generation());
     }
 

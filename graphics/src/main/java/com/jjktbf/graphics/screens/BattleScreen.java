@@ -20,6 +20,7 @@ import com.jjktbf.graphics.multiplayer.MatchWebSocketClient;
 import com.jjktbf.graphics.multiplayer.MultiplayerMatchService;
 import com.jjktbf.graphics.multiplayer.MultiplayerSession;
 import com.jjktbf.graphics.ui.CombatantPanel;
+import com.jjktbf.graphics.ui.AbilityStateMeter;
 import com.jjktbf.graphics.ui.MiraclesMeter;
 import com.jjktbf.graphics.ui.RatioMeter;
 import com.jjktbf.graphics.ui.battle.BattleUiAssets;
@@ -30,6 +31,7 @@ import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.model.character.Character;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.character.coded.MiraclesAbility;
@@ -43,9 +45,14 @@ import com.jjktbf.model.combat.CeEfficiencyCalculator;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.TeamBattlePlan;
+import com.jjktbf.model.domain.DomainClash;
+import com.jjktbf.model.domain.DomainInstance;
 import com.jjktbf.model.move.HitComponent;
+import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
+import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.multiplayer.protocol.BattleEventState;
@@ -54,6 +61,9 @@ import com.jjktbf.multiplayer.protocol.BattlePhase;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
 import com.jjktbf.multiplayer.protocol.ActionSegmentStatus;
 import com.jjktbf.multiplayer.protocol.CharacterState;
+import com.jjktbf.multiplayer.protocol.DomainBattlefieldState;
+import com.jjktbf.multiplayer.protocol.DomainClashState;
+import com.jjktbf.multiplayer.protocol.DomainState;
 import com.jjktbf.multiplayer.protocol.ErrorResponse;
 import com.jjktbf.multiplayer.protocol.HitComponentState;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
@@ -112,6 +122,7 @@ public class BattleScreen implements Screen, BattleView {
     private static final float LOG_LINE_SPACING = 1.7f;
     /** Per-tick hold during resolution, in milliseconds. */
     private static final int   TICK_DURATION_MS        = 100;
+    private static final long  PLANNING_AUTO_SUBMIT_LEAD_MILLIS = 250L;
     private static final float FAST_FORWARD_MULTIPLIER = 2f;
     private static final float SKIP_ACTIVE_FLASH_SECONDS = 0.16f;
     private static final float SPEED_CONTROL_GAP = 8f;
@@ -249,6 +260,7 @@ public class BattleScreen implements Screen, BattleView {
     private List<CombatantPanel> enemyPanels = List.of();
     private final MiraclesMeter miraclesMeter = new MiraclesMeter();
     private final RatioMeter ratioMeter = new RatioMeter();
+    private final AbilityStateMeter abilityStateMeter = new AbilityStateMeter();
     private Texture playerSprite;
     private Texture enemySprite;
     /** Per-side execution sprites in the same order as the local or online render roster. */
@@ -263,6 +275,8 @@ public class BattleScreen implements Screen, BattleView {
     private List<CharacterState> renderOnlineEnemyTeam = List.of();
     /** Event-synchronised local HP snapshots, keyed by combatant identity. */
     private final Map<BattleCombatant, LocalHpState> localHpStates =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<BattleCombatant, List<CodedAbilityState>> localAbilityStates =
         new java.util.concurrent.ConcurrentHashMap<>();
     private final Rectangle logBounds = new Rectangle();
     private final Rectangle nextRoundBounds = new Rectangle();
@@ -298,6 +312,16 @@ public class BattleScreen implements Screen, BattleView {
      * as soon as dialogue resumes.
      */
     private float logScrollOffset = 0f;
+
+    // ── Active Domain banners ────────────────────────────────────────────────
+    /**
+     * One status line per active Domain/anti-Domain, kept in step with playback
+     * events during resolution and re-synced from the authoritative battlefield
+     * (local {@code BattleState} or server {@code MatchState}) after each round
+     * and on reconnect. Updated on the battle thread as immutable snapshots so
+     * the render thread always sees a consistent list.
+     */
+    private volatile List<DomainBanner> domainBanners = List.of();
     /**
      * Wheel listener installed as the input processor only while awaiting the
      * next round, so the log scrolls on actual scroll-wheel events (LibGDX has
@@ -403,6 +427,10 @@ public class BattleScreen implements Screen, BattleView {
     private final Set<String> loggedOnlineEventIds = new HashSet<>();
     private final Set<String> soundedOnlineEventIds = new HashSet<>();
     private boolean onlineCommandPending;
+    private long onlinePlanningDeadline = -1L;
+    private long onlinePlanningDeadlineNanos;
+    private long onlinePlanningServerTimestamp = -1L;
+    private boolean onlinePlanningTimedOut;
     private boolean preserveMultiplayerSession;
     private long multiplayerRun;
 
@@ -419,6 +447,9 @@ public class BattleScreen implements Screen, BattleView {
     private CodedAbilityState onlinePlayerRatio;
     /** Multiplayer resource playback for every displayed fighter, not just roster slot zero. */
     private final Map<OnlineCombatantKey, OnlineResourceState> onlineResourceStates =
+        new HashMap<>();
+    /** Event-synchronised ability states for multiplayer playback. */
+    private final Map<OnlineCombatantKey, List<CodedAbilityState>> onlineAbilityStates =
         new HashMap<>();
 
     public BattleScreen(JJKGame game, AssetLoader assets) {
@@ -451,7 +482,9 @@ public class BattleScreen implements Screen, BattleView {
         renderOnlinePlayerTeam = List.of();
         renderOnlineEnemyTeam = List.of();
         localHpStates.clear();
+        localAbilityStates.clear();
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         playerPanels = List.of();
         enemyPanels = List.of();
         playerTeamSprites = java.util.List.of();
@@ -477,7 +510,9 @@ public class BattleScreen implements Screen, BattleView {
         renderOnlinePlayerTeam = List.of();
         renderOnlineEnemyTeam = List.of();
         localHpStates.clear();
+        localAbilityStates.clear();
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
     }
 
     /** Associates local controller callbacks with the current battle run. */
@@ -557,7 +592,9 @@ public class BattleScreen implements Screen, BattleView {
         entranceAnimations.clear();
         presentedLocalFaints.clear();
         localHpStates.clear();
+        localAbilityStates.clear();
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         playbackEvents = List.of();
         playbackActionTicks = List.of();
         playbackRound = -1;
@@ -571,7 +608,9 @@ public class BattleScreen implements Screen, BattleView {
         soundedOnlineRound = -1;
         loggedOnlineEventIds.clear();
         soundedOnlineEventIds.clear();
+        domainBanners = List.of();
         onlineCommandPending = false;
+        resetMultiplayerPlanningCountdown();
         battleEntranceStarted = false;
         battleIntroLogged = false;
         preserveMultiplayerSession = false;
@@ -611,7 +650,10 @@ public class BattleScreen implements Screen, BattleView {
         } else {
             updateTyping(presentationDelta);
         }
-        if (mode == BattleMode.MULTIPLAYER) updateMultiplayerPlayback(presentationDelta);
+        if (mode == BattleMode.MULTIPLAYER) {
+            updateMultiplayerPlanningTimeout();
+            updateMultiplayerPlayback(presentationDelta);
+        }
         clearScreen();
         // Escape aborts from any phase, including planning (where the
         // PlanningInputProcessor owns Gdx.input, so handleInput() never runs).
@@ -622,6 +664,7 @@ public class BattleScreen implements Screen, BattleView {
         }
         handleInput();
         drawAll();
+        drawMultiplayerPlanningCountdown();
     }
 
     /**
@@ -817,12 +860,14 @@ public class BattleScreen implements Screen, BattleView {
             if (playerPanel != null && faintAnimationFor(playerPanel) == null) {
                 miraclesMeter.draw(batch, assets.battleUi, assets.fontLarge);
                 ratioMeter.draw(batch, assets.battleUi, assets.fontLarge);
+                abilityStateMeter.draw(batch, assets.battleUi, assets.fontSmall);
             }
         }
         drawLog(sw, sh);
         if (speedControlsVisible()) drawSpeedControls();
         drawBattleActionButton();
         if (SHOW_TICK_COUNTER) drawTickCounter(sw, sh);
+        drawDomainBanners(sw, sh);
         drawMoveUnleashAnimation(sw, sh);
         drawHitFlashes(sw, sh);
         batch.end();
@@ -852,11 +897,13 @@ public class BattleScreen implements Screen, BattleView {
                 if (playerPanel != null && faintAnimationFor(playerPanel) == null) {
                     miraclesMeter.draw(batch, assets.battleUi, assets.fontLarge);
                     ratioMeter.draw(batch, assets.battleUi, assets.fontLarge);
+                    abilityStateMeter.draw(batch, assets.battleUi, assets.fontSmall);
                 }
             }
             if (SHOW_TICK_COUNTER) {
                 drawTickCounter(WindowsBattleCanvas.WIDTH, WindowsBattleCanvas.HEIGHT);
             }
+            drawDomainBanners(WindowsBattleCanvas.WIDTH, WindowsBattleCanvas.HEIGHT);
             if (!planningUiEditable()) {
                 drawMoveUnleashAnimation(
                     WINDOWS_EXECUTION_WIDTH, WINDOWS_EXECUTION_HEIGHT,
@@ -998,6 +1045,203 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     /** Temporary execution readout for checking timeline playback. */
+    // -------------------------------------------------------------------------
+    // Active Domain banners
+    // -------------------------------------------------------------------------
+
+    /** One immutable status line for an active Domain or anti-Domain. */
+    private static final class DomainBanner {
+        final String instanceId;
+        final String name;
+        final String ownerName;
+        final boolean antiDomain;
+        final String duration;
+        final boolean clashing;
+
+        DomainBanner(
+            String instanceId, String name, String ownerName,
+            boolean antiDomain, String duration, boolean clashing
+        ) {
+            this.instanceId = instanceId;
+            this.name = name;
+            this.ownerName = ownerName == null ? "" : ownerName;
+            this.antiDomain = antiDomain;
+            this.duration = duration == null ? "" : duration;
+            this.clashing = clashing;
+        }
+
+        DomainBanner withClash(boolean clashing) {
+            return clashing == this.clashing ? this
+                : new DomainBanner(instanceId, name, ownerName, antiDomain, duration, clashing);
+        }
+
+        String label() {
+            StringBuilder text = new StringBuilder(antiDomain ? "[ANTI-DOMAIN] " : "[DOMAIN] ");
+            text.append(name);
+            if (!ownerName.isBlank()) text.append(" - ").append(ownerName);
+            if (!duration.isEmpty()) text.append(" (").append(duration).append(')');
+            if (clashing) text.append("  <<CLASH>>");
+            return text.toString();
+        }
+    }
+
+    /** Track a local playback event so banners pace with the battle log. */
+    private void applyLocalDomainEvent(CombatEvent event) {
+        switch (event.getType()) {
+            case DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED -> addDomainBanner(
+                event.getDomainInstanceId(), event.getDomainName(),
+                event.getSource() == null || event.getSource().getCharacter() == null
+                    ? "" : event.getSource().getCharacter().getName(),
+                event.getType() == CombatEvent.Type.DOMAIN_COUNTER_ESTABLISHED);
+            case DOMAIN_COLLAPSED -> removeDomainBanner(event.getDomainInstanceId());
+            case DOMAIN_CLASH_STARTED -> {
+                setDomainClash(event.getDomainInstanceId(), true);
+                setDomainClash(event.getRelatedDomainInstanceId(), true);
+            }
+            case DOMAIN_CLASH_ENDED -> {
+                setDomainClash(event.getDomainInstanceId(), false);
+                setDomainClash(event.getRelatedDomainInstanceId(), false);
+            }
+            default -> { }
+        }
+    }
+
+    /** Track an online playback event so banners pace with the battle log. */
+    private void applyOnlineDomainEvent(BattleEventState event) {
+        switch (event.type()) {
+            case DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED -> addDomainBanner(
+                event.domainInstanceId(), event.domainName(),
+                event.sourceCharacterName() == null ? "" : event.sourceCharacterName(),
+                event.type() == BattleEventType.DOMAIN_COUNTER_ESTABLISHED);
+            case DOMAIN_COLLAPSED -> removeDomainBanner(event.domainInstanceId());
+            case DOMAIN_CLASH_STARTED -> {
+                setDomainClash(event.domainInstanceId(), true);
+                setDomainClash(event.relatedDomainInstanceId(), true);
+            }
+            case DOMAIN_CLASH_ENDED -> {
+                setDomainClash(event.domainInstanceId(), false);
+                setDomainClash(event.relatedDomainInstanceId(), false);
+            }
+            default -> { }
+        }
+    }
+
+    /** Rebuild banners from the authoritative local battlefield. */
+    private void syncLocalDomainBanners(BattleState state) {
+        if (state == null) return;
+        List<DomainBanner> banners = new ArrayList<>();
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            BattleCombatant owner = state.combatant(instance.ownerId());
+            banners.add(new DomainBanner(
+                instance.instanceId(), instance.definition().name(),
+                owner == null || owner.getCharacter() == null
+                    ? "" : owner.getCharacter().getName(),
+                instance.definition().antiDomain(),
+                domainDurationText(
+                    instance.remainingRounds(), instance.remainingTicks()),
+                false));
+        }
+        domainBanners = List.copyOf(banners);
+        for (DomainClash clash : state.domainBattlefield().clashes()) {
+            setDomainClash(clash.firstInstanceId(), true);
+            setDomainClash(clash.secondInstanceId(), true);
+        }
+    }
+
+    /** Rebuild banners from a server snapshot (also the reconnect path). */
+    private void syncOnlineDomainBanners(MatchState state) {
+        if (state == null) return;
+        DomainBattlefieldState battlefield = state.domainBattlefield();
+        List<DomainBanner> banners = new ArrayList<>();
+        for (DomainState domain : battlefield.activeDomains()) {
+            banners.add(new DomainBanner(
+                domain.instanceId(), domain.name(),
+                onlineDomainOwnerName(state, domain.ownerInstanceId()),
+                domain.antiDomain(),
+                domainDurationText(domain.remainingRounds(), domain.remainingTicks()),
+                false));
+        }
+        domainBanners = List.copyOf(banners);
+        for (DomainClashState clash : battlefield.clashes()) {
+            setDomainClash(clash.firstDomainInstanceId(), true);
+            setDomainClash(clash.secondDomainInstanceId(), true);
+        }
+    }
+
+    private static String onlineDomainOwnerName(MatchState state, String ownerInstanceId) {
+        if (ownerInstanceId == null) return "";
+        for (PlayerSide side : PlayerSide.values()) {
+            var player = state.player(side);
+            if (player.isEmpty()) continue;
+            for (CharacterState combatant : player.get().combatants()) {
+                if (ownerInstanceId.equals(combatant.instanceId())) {
+                    return combatant.name() == null ? "" : combatant.name();
+                }
+            }
+        }
+        return "";
+    }
+
+    private static String domainDurationText(int rounds, int ticks) {
+        if (rounds < 0) return "held";
+        if (rounds == 0) return ticks > 0 ? ticks + "t" : "";
+        return ticks <= 0 ? rounds + "r" : rounds + "r " + ticks + "t";
+    }
+
+    private void addDomainBanner(
+        String instanceId, String name, String ownerName, boolean antiDomain
+    ) {
+        if (instanceId == null || name == null) return;
+        List<DomainBanner> banners = new ArrayList<>(domainBanners);
+        banners.removeIf(banner -> instanceId.equals(banner.instanceId));
+        banners.add(new DomainBanner(instanceId, name, ownerName, antiDomain, "", false));
+        domainBanners = List.copyOf(banners);
+    }
+
+    private void removeDomainBanner(String instanceId) {
+        if (instanceId == null) return;
+        List<DomainBanner> banners = new ArrayList<>(domainBanners);
+        banners.removeIf(banner -> instanceId.equals(banner.instanceId));
+        domainBanners = List.copyOf(banners);
+    }
+
+    private void setDomainClash(String instanceId, boolean clashing) {
+        if (instanceId == null) return;
+        boolean present = domainBanners.stream()
+            .anyMatch(banner -> instanceId.equals(banner.instanceId)
+                && banner.clashing != clashing);
+        if (!present) return;
+        List<DomainBanner> banners = new ArrayList<>(domainBanners);
+        banners.replaceAll(banner -> instanceId.equals(banner.instanceId)
+            ? banner.withClash(clashing) : banner);
+        domainBanners = List.copyOf(banners);
+    }
+
+    /** Status strip under the top edge: one centered line per active Domain. */
+    private void drawDomainBanners(float screenWidth, float screenHeight) {
+        List<DomainBanner> banners = domainBanners;
+        if (banners.isEmpty()) return;
+        float y = screenHeight - 14f;
+        for (int index = 0; index < banners.size(); index++) {
+            DomainBanner banner = banners.get(index);
+            String label = banner.label();
+            GlyphLayout layout = new GlyphLayout(assets.fontSmall, label);
+            float x = (screenWidth - layout.width) / 2f;
+            Color text = banner.clashing
+                ? new Color(1f, 0.45f, 0.30f, 1f)
+                : banner.antiDomain
+                    ? new Color(0.50f, 0.85f, 1f, 1f)
+                    : new Color(0.72f, 0.55f, 1f, 1f);
+            assets.fontSmall.setColor(Color.BLACK);
+            assets.fontSmall.draw(batch, label, x + 1f, y - 1f);
+            assets.fontSmall.setColor(text);
+            assets.fontSmall.draw(batch, label, x, y);
+            y -= 18f;
+        }
+        // Restore a neutral color so later draws never inherit the banner tint.
+        assets.fontSmall.setColor(Color.WHITE);
+    }
+
     private void drawTickCounter(float screenWidth, float screenHeight) {
         String label = "TICK: " + currentExecutionTick;
         GlyphLayout layout = new GlyphLayout(assets.fontSmall, label);
@@ -1007,6 +1251,71 @@ public class BattleScreen implements Screen, BattleView {
         assets.fontSmall.draw(batch, label, x + 1f, y - 1f);
         assets.fontSmall.setColor(Color.YELLOW);
         assets.fontSmall.draw(batch, label, x, y);
+    }
+
+    private void drawMultiplayerPlanningCountdown() {
+        if (mode != BattleMode.MULTIPLAYER
+            || multiplayerState == null
+            || multiplayerState.phase() != BattlePhase.PLANNING
+            || multiplayerState.planningDeadline() == null
+            || isTerminal(multiplayerState.status())) {
+            return;
+        }
+
+        long remainingMillis = multiplayerPlanningRemainingMillis();
+        if (remainingMillis < 0L) {
+            return;
+        }
+
+        float screenWidth;
+        float screenHeight;
+        BitmapFont font;
+        if (windowsUnified()) {
+            applyUnifiedBatchTransform(WindowsBattleCanvas.Anchor.TOP);
+            screenWidth = WindowsBattleCanvas.WIDTH;
+            screenHeight = WindowsBattleCanvas.HEIGHT;
+            font = assets.fontSmall;
+        } else {
+            applyPhysicalBatchTransform();
+            screenWidth = Gdx.graphics.getWidth();
+            screenHeight = Gdx.graphics.getHeight();
+            font = assets.fontMedium;
+        }
+
+        String label = formatPlanningCountdown(remainingMillis);
+        GlyphLayout glyph = new GlyphLayout(font, label);
+        float x = (screenWidth - glyph.width) / 2f;
+        float baseline = screenHeight - (windowsUnified() ? 9f : 7f);
+        float paddingX = windowsUnified() ? 10f : 8f;
+        float paddingY = 5f;
+
+        batch.begin();
+        batch.setColor(0f, 0f, 0f, 0.62f);
+        batch.draw(
+            assets.battleUi.pixel,
+            x - paddingX,
+            baseline - glyph.height - paddingY,
+            glyph.width + paddingX * 2f,
+            glyph.height + paddingY * 2f
+        );
+        batch.setColor(Color.WHITE);
+        font.setColor(Color.BLACK);
+        font.draw(batch, label, x + 1f, baseline - 1f);
+        font.setColor(BattleUiAssets.YELLOW);
+        font.draw(batch, label, x, baseline);
+        font.setColor(Color.WHITE);
+        batch.end();
+
+        if (windowsUnified()) {
+            applyPhysicalBatchTransform();
+        }
+    }
+
+    static String formatPlanningCountdown(long remainingMillis) {
+        long totalSeconds = remainingMillis <= 0L
+            ? 0L : (remainingMillis + 999L) / 1000L;
+        long seconds = totalSeconds % 60L;
+        return totalSeconds / 60L + ":" + (seconds < 10L ? "0" : "") + seconds;
     }
 
     /**
@@ -1871,6 +2180,7 @@ public class BattleScreen implements Screen, BattleView {
         postLocal(() -> {
             syncLocalBattlefield(state);
             syncLocalHpFromModel();
+            syncLocalAbilityStatesFromModel();
             initPanels();
             updatePanels();
             showLocalPreBattlePlanner(state);
@@ -1956,7 +2266,7 @@ public class BattleScreen implements Screen, BattleView {
         int gridLength = com.jjktbf.model.combat.Timeline.gridLengthForStrongestAp(
             Math.max(combatant.getMaxApBar(), opponent.getMaxApBar()));
         if (abortRequested || !isCurrentLocalBattleThread()) {
-            return new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+            return BattlePlan.forCombatant(combatant, gridLength);
         }
         // This must happen on the controller thread before its wait loop. If it
         // only happens in the posted render callback, a prior round's confirmed
@@ -1967,6 +2277,7 @@ public class BattleScreen implements Screen, BattleView {
                 List.of(combatant),
                 opponent == null ? List.of() : List.of(opponent));
             syncLocalHpFromModel();
+            syncLocalAbilityStatesFromModel();
             initPanels();
             awaitingBattleStart = false;
             awaitingNextRound = false;
@@ -1997,7 +2308,7 @@ public class BattleScreen implements Screen, BattleView {
         // On abort, return an empty plan immediately — the controller will see
         // isAborted() and unwind without ever running this plan.
         if (abortRequested || !isCurrentLocalBattleThread()) {
-            return new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+            return BattlePlan.forCombatant(combatant, gridLength);
         }
 
         // Read the plan on the render thread to avoid racing a drag-commit.
@@ -2028,7 +2339,7 @@ public class BattleScreen implements Screen, BattleView {
         BattlePlan result = holder.get();
         if (result == null) {
             // Fallback: empty plan (bank the round) — should not normally happen.
-            result = new BattlePlan(combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength);
+            result = BattlePlan.forCombatant(combatant, gridLength);
         }
         return result;
     }
@@ -2049,6 +2360,7 @@ public class BattleScreen implements Screen, BattleView {
         postLocal(() -> {
             syncLocalBattlefield(state);
             syncLocalHpFromModel();
+            syncLocalAbilityStatesFromModel();
             initPanels();
             awaitingBattleStart = false;
             awaitingNextRound = false;
@@ -2115,8 +2427,8 @@ public class BattleScreen implements Screen, BattleView {
         TeamBattlePlan plan = new TeamBattlePlan(teamId, gridLength);
         if (controlled != null) {
             for (BattleCombatant combatant : controlled) {
-                plan.put(combatant.getInstanceId(), new BattlePlan(
-                    combatant.getMaxApBar(), combatant.getCurrentCe(), gridLength));
+                plan.put(combatant.getInstanceId(),
+                    BattlePlan.forCombatant(combatant, gridLength));
             }
         }
         return plan;
@@ -2136,6 +2448,7 @@ public class BattleScreen implements Screen, BattleView {
             if (e.getType() == CombatEvent.Type.BATTLE_OVER) {
                 playMissingLocalFaints(state);
             }
+            applyLocalDomainEvent(e);
             if (!skipRoundRequested) {
                 BattleAudioRouter.cueFor(e)
                     .ifPresent(cue -> postLocal(() -> game.audio().play(cue)));
@@ -2199,6 +2512,20 @@ public class BattleScreen implements Screen, BattleView {
                     }
                 });
             }
+            if (e.getType() == CombatEvent.Type.COMBATANT_SWITCHED
+                || e.getType() == CombatEvent.Type.COMBATANT_REPLACED) {
+                BattleCombatant incoming = e.getTarget();
+                postLocal(() -> {
+                    syncLocalBattlefield(state);
+                    initPanels();
+                    updatePanels();
+                    if (!skipRoundRequested && incoming != null) {
+                        startLocalPanelEntrance(
+                            incoming, localSummonIsOnPlayerSide(state, incoming));
+                    }
+                });
+            }
+            applyLocalAbilityEvent(e);
             if (hasLocalPlaybackEffect(e)) {
                 final CombatEvent ev = e;
                 // Apply this event's resource delta and enqueue any log line ON
@@ -2221,6 +2548,8 @@ public class BattleScreen implements Screen, BattleView {
                 // battle thread behind a blank screen. The lines still type
                 // out, they just don't block (see displayMessage).
                 if (executionUiActive && shouldLog(e)) waitForLogLine();
+            } else if (e.getCodedAbilityState() != null && !skipRoundRequested) {
+                postLocal(this::updatePanels);
             }
             if (e.getType() == CombatEvent.Type.COMBATANT_DEFEATED) {
                 if (skipRoundRequested) {
@@ -2235,6 +2564,11 @@ public class BattleScreen implements Screen, BattleView {
                     removeLocalCombatantAndWait(e.getTarget());
                 }
             }
+        }
+        // Authoritative re-sync: playback banner updates pace with the log,
+        // this corrects any drift (durations, barriers, clashes) after the round.
+        if (!abortRequested && isCurrentLocalBattleThread()) {
+            syncLocalDomainBanners(state);
         }
     }
 
@@ -2275,7 +2609,8 @@ public class BattleScreen implements Screen, BattleView {
         return switch (type) {
             case CE_DRAINED, CE_RESTORED,
                  HP_RESTORED, MAX_HP_CHANGED, MAX_CE_CHANGED,
-                 MOVE_SUMMON, BFS_EXPIRED -> false;
+                 MOVE_SUMMON, BFS_EXPIRED,
+                 DOMAIN_BARRIER_DAMAGED -> false;
             case CE_DEPLETED -> move != null;
             case DAMAGE_DEALT, DAMAGE_IGNORED -> move != null && source != target;
             default -> true;
@@ -2291,7 +2626,8 @@ public class BattleScreen implements Screen, BattleView {
         return switch (type) {
             case CE_DRAINED, CE_RESTORED,
                  HP_RESTORED, MAX_HP_CHANGED, MAX_CE_CHANGED,
-                 MOVE_SUMMON, BFS_ENTERED, BFS_EXPIRED -> false;
+                 MOVE_SUMMON, BFS_ENTERED, BFS_EXPIRED,
+                 DOMAIN_BARRIER_DAMAGED -> false;
             case CE_DEPLETED -> moveId != null;
             case DAMAGE_DEALT, DAMAGE_IGNORED -> moveId != null
                 && (sourceId == null || !sourceId.equals(targetId));
@@ -2626,6 +2962,8 @@ public class BattleScreen implements Screen, BattleView {
         multiplayerState = state;
         onlinePlayer = local;
         onlineEnemy = opponent;
+        syncOnlineDomainBanners(state);
+        syncMultiplayerPlanningCountdown(state);
         initOnlineMoves(local, opponent);
 
         if (state.phase() == BattlePhase.PRE_BATTLE && !isTerminal(state.status())) {
@@ -2749,6 +3087,19 @@ public class BattleScreen implements Screen, BattleView {
                 "SUMMON".equalsIgnoreCase(combatant.role())))
             .toList();
         List<TeamPlanningPanel.PageSpec> pages = new ArrayList<>();
+        List<TeamPlanningPanel.PartyMember> party = local.combatants().stream()
+            .filter(character -> "FIGHTER".equalsIgnoreCase(character.role()))
+            .map(character -> new TeamPlanningPanel.PartyMember(
+                character.instanceId(),
+                character.name(),
+                character.currentHp(),
+                character.maxHp(),
+                isActiveCombatant(character),
+                "RESERVE".equalsIgnoreCase(character.lifecycle()),
+                character.currentHp() <= 0
+                    || "DEFEATED".equalsIgnoreCase(character.lifecycle()),
+                character.rosterOrder()))
+            .toList();
         for (CharacterState character : local.combatants()) {
             if (!isActiveCombatant(character)) continue;
             List<PlanningPanel.TargetOption> allies = local.combatants().stream()
@@ -2760,16 +3111,14 @@ public class BattleScreen implements Screen, BattleView {
                     "SUMMON".equalsIgnoreCase(combatant.role())))
                 .toList();
             Map<String, Integer> ceCosts = new HashMap<>();
-            Map<String, String> moveRestrictions = new HashMap<>();
             List<Move> availableMoves = new ArrayList<>();
             for (MoveState moveState : character.knownMoves()) {
-                Move move = onlineMoves.get(moveState.moveId());
-                if (move != null) {
+                try {
+                    Move move = toDisplayMove(moveState);
                     availableMoves.add(move);
                     ceCosts.put(move.getId(), moveState.effectiveCeCost());
-                    if (!moveState.available()) {
-                        moveRestrictions.put(move.getId(), moveState.restrictionReason());
-                    }
+                } catch (RuntimeException failure) {
+                    addLogLine("Could not display move " + moveState.name() + ".");
                 }
             }
             int apBudget = character.plan() == null
@@ -2785,15 +3134,10 @@ public class BattleScreen implements Screen, BattleView {
                 ceBudget,
                 character.maxCe(),
                 findMiraclesState(character.codedAbilities()),
-                character.maxActiveSummons(),
-                (int) local.combatants().stream()
-                    .filter(BattleScreen::isActiveCombatant)
-                    .filter(candidate -> character.instanceId().equals(candidate.summonerId()))
-                    .count(),
-                moveRestrictions,
                 targets,
                 character.plan(),
-                allies));
+                allies,
+                character.codedAbilities()));
         }
         if (pages.isEmpty()) return;
         clearTransientAnimations();
@@ -2802,6 +3146,7 @@ public class BattleScreen implements Screen, BattleView {
             BattleTeamId.PLAYER,
             gridLength,
             pages,
+            party,
             assets.battleUi,
             Gdx.graphics.getWidth(),
             Gdx.graphics.getHeight()
@@ -2817,6 +3162,14 @@ public class BattleScreen implements Screen, BattleView {
     private void configureOnlinePlannerAvailability(PlayerState local, boolean readOnly) {
         if (teamPlanningPanel == null) return;
         if (readOnly) {
+            teamPlanningPanel.lock();
+            teamPlanningPanel.setReadOnly(true);
+            Gdx.input.setInputProcessor(null);
+            logScrollInputAttached = false;
+            return;
+        }
+        if (onlinePlanningTimedOut
+            || shouldAutoLockPlanning(multiplayerPlanningRemainingMillis())) {
             teamPlanningPanel.lock();
             teamPlanningPanel.setReadOnly(true);
             Gdx.input.setInputProcessor(null);
@@ -2892,16 +3245,40 @@ public class BattleScreen implements Screen, BattleView {
                 null,
                 Map.of(),
                 null));
+        List<MoveEffectData> planningEffects = new ArrayList<>();
+        for (var transaction : state.boundedResourceTransactions()) {
+            MoveEffectData effect = AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+                .createDefaultMoveEffect();
+            effect.effectId = "online-resource-" + planningEffects.size();
+            effect.trigger = MoveEffectTrigger.ON_START.name();
+            effect.sourceResourceKey = transaction.sourceResourceKey();
+            effect.sourceResourceAmount = transaction.sourceResourceAmount();
+            effect.targetResourceKey = transaction.targetResourceKey();
+            effect.targetResourceAmount = transaction.targetResourceAmount();
+            planningEffects.add(effect);
+        }
+        for (String definitionId : state.summonedCharacterIds()) {
+            MoveEffectData effect = AbilityEffectType.SUMMON_CHARACTER.createDefaultMoveEffect();
+            effect.effectId = "online-summon-" + planningEffects.size();
+            effect.trigger = MoveEffectTrigger.ON_FIRE.name();
+            effect.characterId = definitionId;
+            planningEffects.add(effect);
+        }
 
+        Set<MoveTag> builderTags = EnumSet.copyOf(tags);
+        if (!state.hitComponents().isEmpty()) {
+            builderTags.removeAll(MoveTag.HIT_ONLY_TAGS);
+        }
         Move.Builder builder = new Move.Builder(state.moveId())
             .name(state.name())
             .description(state.description())
             .category(category)
-            .tags(tags)
+            .tags(builderTags)
             .basePower(state.basePower())
             .baseAccuracy(state.baseAccuracy())
             .neverMiss(state.neverMiss())
-            .guardBreak(tags.contains(MoveTag.GUARD_BREAK))
+            .guardBreak(state.hitComponents().isEmpty()
+                && tags.contains(MoveTag.GUARD_BREAK))
             .heavy(tags.contains(MoveTag.HEAVY))
             .apCost(state.apCost())
             .unleashPoint(state.unleashPoint())
@@ -2917,7 +3294,11 @@ public class BattleScreen implements Screen, BattleView {
                 .toList())
             .onHitEffects(commandEffects)
             .prerequisites(prerequisites)
+            .defenseTargeting(TargetListSupport.moveStateDefenseTargeting(state))
+            .defenseTargetCount(TargetListSupport.moveStateDefenseTargetCount(state))
+            .targeting(TargetListSupport.moveStateTargeting(state))
             .freeMove(true);
+        if (!planningEffects.isEmpty()) builder.effects(planningEffects);
         if (TargetListSupport.moveStateAoeType(state) != null) {
             builder.aoeType(TargetListSupport.moveStateAoeType(state))
                 .aoeTargetCount(TargetListSupport.moveStateAoeTargetCount(state));
@@ -2926,6 +3307,11 @@ public class BattleScreen implements Screen, BattleView {
             builder.hitComponents(state.hitComponents().stream()
                 .map(component -> toDisplayHitComponent(component, commandEffects))
                 .toList());
+        }
+        AttackLaunchMode launchMode = AttackLaunchMode.fromName(state.attackLaunchMode());
+        if (launchMode != null) {
+            builder.attackLaunchMode(launchMode)
+                .attackLaunchMoveId(state.attackLaunchMoveId());
         }
         if (innateTechnique) {
             String requiredTechniqueId = state.requiredTechniqueId();
@@ -2943,9 +3329,9 @@ public class BattleScreen implements Screen, BattleView {
         for (String tagName : state.tags()) {
             try {
                 MoveTag tag = MoveTag.valueOf(tagName);
-                if (MoveTag.TYPE_TAGS.contains(tag)) tags.add(tag);
+                if (MoveTag.HIT_TAGS.contains(tag)) tags.add(tag);
             } catch (IllegalArgumentException ignored) {
-                // Unknown future damage tags can fall back to the wire category.
+                // Unknown future hit tags can fall back to the wire category.
             }
         }
         if (!tags.isEmpty()) {
@@ -2961,22 +3347,106 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void submitOnlinePlan() {
+        submitOnlinePlan(false);
+    }
+
+    private void submitOnlinePlan(boolean timedOut) {
         if (!canSubmitOnlinePlan() || teamPlanningPanel == null) {
-            if (teamPlanningPanel != null) teamPlanningPanel.unlock();
-            game.audio().play(SoundCue.UI_DENIED);
+            if (!timedOut && teamPlanningPanel != null) teamPlanningPanel.unlock();
+            if (!timedOut) game.audio().play(SoundCue.UI_DENIED);
             return;
         }
         MultiplayerMatchService.PlanSubmission submission =
-            multiplayerMatchService.submitPlan(teamPlanningPanel.getPlacements());
+            multiplayerMatchService.submitPlan(
+                teamPlanningPanel.getPlacements(), teamPlanningPanel.getSwitches());
         if (!submission.sent()) {
-            teamPlanningPanel.unlock();
-            game.audio().play(SoundCue.UI_DENIED);
+            if (!timedOut) teamPlanningPanel.unlock();
+            if (!timedOut) game.audio().play(SoundCue.UI_DENIED);
             addLogLine(submissionMessage(submission.status()));
             return;
         }
         onlineCommandPending = true;
         game.audio().play(SoundCue.UI_PLAN_LOCK);
-        addLogLine("Plan locked. Waiting for the opponent.");
+        addLogLine(timedOut
+            ? "Time expired. Plan locked."
+            : "Plan locked. Waiting for the opponent.");
+    }
+
+    private void syncMultiplayerPlanningCountdown(MatchState state) {
+        Long deadline = state.planningDeadline();
+        if (state.phase() != BattlePhase.PLANNING || deadline == null
+            || isTerminal(state.status())) {
+            resetMultiplayerPlanningCountdown();
+            return;
+        }
+
+        boolean changed = onlinePlanningDeadline != deadline;
+        if (!changed && state.serverTimestamp() <= onlinePlanningServerTimestamp) {
+            return;
+        }
+
+        long remainingMillis = Math.max(0L, deadline - state.serverTimestamp());
+        long remainingNanos = remainingMillis > Long.MAX_VALUE / 1_000_000L
+            ? Long.MAX_VALUE : remainingMillis * 1_000_000L;
+        long now = System.nanoTime();
+        long candidateDeadlineNanos = remainingNanos == Long.MAX_VALUE
+            || now > Long.MAX_VALUE - remainingNanos
+                ? Long.MAX_VALUE : now + remainingNanos;
+        onlinePlanningDeadlineNanos = changed
+            ? candidateDeadlineNanos
+            : Math.min(onlinePlanningDeadlineNanos, candidateDeadlineNanos);
+        onlinePlanningDeadline = deadline;
+        onlinePlanningServerTimestamp = state.serverTimestamp();
+        if (changed) {
+            onlinePlanningTimedOut = false;
+        }
+    }
+
+    private void resetMultiplayerPlanningCountdown() {
+        onlinePlanningDeadline = -1L;
+        onlinePlanningDeadlineNanos = 0L;
+        onlinePlanningServerTimestamp = -1L;
+        onlinePlanningTimedOut = false;
+    }
+
+    private long multiplayerPlanningRemainingMillis() {
+        if (onlinePlanningDeadline < 0L) {
+            return -1L;
+        }
+        long remainingNanos = onlinePlanningDeadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0L) {
+            return 0L;
+        }
+        return Math.max(1L, (remainingNanos + 999_999L) / 1_000_000L);
+    }
+
+    private void updateMultiplayerPlanningTimeout() {
+        if (multiplayerState == null
+            || multiplayerState.phase() != BattlePhase.PLANNING
+            || multiplayerState.planningDeadline() == null
+            || !shouldAutoLockPlanning(multiplayerPlanningRemainingMillis())
+            || onlinePlanningTimedOut) {
+            return;
+        }
+        if (onlinePlayer != null && onlinePlayer.planSubmitted()) {
+            onlinePlanningTimedOut = true;
+            return;
+        }
+        if (teamPlanningPanel == null) {
+            return;
+        }
+
+        onlinePlanningTimedOut = true;
+        teamPlanningPanel.lock();
+        teamPlanningPanel.setReadOnly(true);
+        Gdx.input.setInputProcessor(null);
+        logScrollInputAttached = false;
+        submitOnlinePlan(true);
+    }
+
+    static boolean shouldAutoLockPlanning(long remainingMillis) {
+        return remainingMillis >= 0L
+            && remainingMillis <= PLANNING_AUTO_SUBMIT_LEAD_MILLIS;
     }
 
     private boolean canSubmitOnlinePlan() {
@@ -3128,6 +3598,9 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private boolean applyPlaybackEvent(BattleEventState event) {
+        // Domain banners track playback so the status strip paces with the log
+        // instead of snapping to the post-round snapshot.
+        applyOnlineDomainEvent(event);
         // The summon joins with an entrance animation; playback holds on it the
         // same way it holds on a faint (flag returned after the log line below
         // has been queued so the join message still types out first). A skipped
@@ -3141,6 +3614,19 @@ public class BattleScreen implements Screen, BattleView {
                 startedEntrance = startOnlineSummonEntrance(event.targetSide(),
                     onlineCombatantForEvent(event.targetSide(),
                         event.targetInstanceId(), event.targetCharacterId()));
+            }
+        }
+        if (event.type() == BattleEventType.COMBATANT_SWITCHED
+            || event.type() == BattleEventType.COMBATANT_REPLACED) {
+            CharacterState outgoing = onlineVisualForEvent(
+                event.sourceSide(), event.sourceInstanceId(), event.sourceCharacterId());
+            CharacterState incoming = onlineCombatantForEvent(
+                event.targetSide(), event.targetInstanceId(), event.targetCharacterId());
+            removeOnlineCombatantImmediately(event.sourceSide(), outgoing);
+            if (skipRoundRequested) {
+                addOnlineCombatantToField(event.targetSide(), incoming);
+            } else {
+                startedEntrance = startOnlineSummonEntrance(event.targetSide(), incoming);
             }
         }
         CharacterState target = onlineVisualForEvent(
@@ -3199,6 +3685,13 @@ public class BattleScreen implements Screen, BattleView {
         boolean displayedPrimarySource = sourceKey != null
             && sourceKey.equals(onlineKey(multiplayerSetup.playerSide(), displayedOnlinePrimary(true)));
         CodedAbilityState codedAbilityState = event.codedAbilityState();
+        OnlineCombatantKey abilityOwnerKey = event.type() == BattleEventType.RESOURCE_CHANGED
+            && targetKey != null ? targetKey : sourceKey;
+        if (codedAbilityState != null && abilityOwnerKey != null) {
+            onlineAbilityStates.put(abilityOwnerKey, withAbilityState(
+                onlineAbilityStates.getOrDefault(abilityOwnerKey, List.of()),
+                codedAbilityState));
+        }
         if (displayedPrimarySource && event.sourceSide() == multiplayerSetup.playerSide()
             && codedAbilityState != null
             && MiraclesAbility.KEY.equals(codedAbilityState.key())) {
@@ -3850,6 +4343,7 @@ public class BattleScreen implements Screen, BattleView {
         if (!playerTeamSprites.isEmpty()) playerSprite = playerTeamSprites.get(0);
         if (!enemyTeamSprites.isEmpty()) enemySprite = enemyTeamSprites.get(0);
         localHpStates.remove(defeated);
+        localAbilityStates.remove(defeated);
         for (BattleCombatant combatant : players) {
             localHpStates.putIfAbsent(combatant,
                 new LocalHpState(combatant.getCurrentHp(), combatant.getMaxHp()));
@@ -3900,6 +4394,7 @@ public class BattleScreen implements Screen, BattleView {
         }
         localHpStates.putIfAbsent(summon,
             new LocalHpState(summon.getCurrentHp(), summon.getMaxHp()));
+        localAbilityStates.putIfAbsent(summon, summon.abilityStates());
         layoutExecutionUi(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         return true;
     }
@@ -4059,6 +4554,7 @@ public class BattleScreen implements Screen, BattleView {
 
     private void seedOnlineResourcesFromCurrentState() {
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         seedOnlineResourcesFromCurrentState(
             multiplayerSetup.playerSide(), renderOnlinePlayerTeam);
         seedOnlineResourcesFromCurrentState(
@@ -4070,13 +4566,16 @@ public class BattleScreen implements Screen, BattleView {
         List<CharacterState> combatants
     ) {
         for (CharacterState combatant : combatants) {
-            onlineResourceStates.put(onlineKey(side, combatant),
+            OnlineCombatantKey key = onlineKey(side, combatant);
+            onlineResourceStates.put(key,
                 OnlineResourceState.from(combatant));
+            onlineAbilityStates.put(key, combatant.codedAbilities());
         }
     }
 
     private void seedOnlineResourcesFromRoundStart(MatchState state) {
         onlineResourceStates.clear();
+        onlineAbilityStates.clear();
         seedOnlineResourcesFromRoundStart(
             state, multiplayerSetup.playerSide(), renderOnlinePlayerTeam);
         seedOnlineResourcesFromRoundStart(
@@ -4103,7 +4602,24 @@ public class BattleScreen implements Screen, BattleView {
                 : new OnlineResourceState(
                     start.currentHp(), start.maxHp(), start.currentCe(), start.maxCe());
             onlineResourceStates.put(onlineKey(side, combatant), resources);
+            onlineAbilityStates.put(onlineKey(side, combatant), start == null
+                ? combatant.codedAbilities() : start.codedAbilities());
         }
+    }
+
+    private static List<CodedAbilityState> withAbilityState(
+        List<CodedAbilityState> states,
+        CodedAbilityState changed
+    ) {
+        List<CodedAbilityState> updated = new ArrayList<>(states == null ? List.of() : states);
+        for (int index = 0; index < updated.size(); index++) {
+            if (updated.get(index).key().equalsIgnoreCase(changed.key())) {
+                updated.set(index, changed);
+                return List.copyOf(updated);
+            }
+        }
+        updated.add(changed);
+        return List.copyOf(updated);
     }
 
     /** Restores pre-event resources when the server's tick-zero snapshot is post-resolution. */
@@ -4185,6 +4701,7 @@ public class BattleScreen implements Screen, BattleView {
 
         onlineResourceStates.put(onlineKey(side, combatant),
             OnlineResourceState.full(combatant));
+        onlineAbilityStates.put(onlineKey(side, combatant), combatant.codedAbilities());
         if (playerSide) {
             syncOnlineBattlefield(updated, renderOnlineEnemyTeam);
         } else {
@@ -4293,6 +4810,7 @@ public class BattleScreen implements Screen, BattleView {
             syncOnlineBattlefield(renderOnlinePlayerTeam, current);
         }
         onlineResourceStates.remove(defeated);
+        onlineAbilityStates.remove(defeated);
         clearTransientPanelReferences(oldPanel);
         if (playerSide) {
             CharacterState primary = displayedOnlinePrimary(true);
@@ -4622,6 +5140,7 @@ public class BattleScreen implements Screen, BattleView {
         playerPanel = playerPanels.isEmpty() ? null : playerPanels.get(0);
         remapFaintAnimationPanels();
         remapEntranceAnimationPanels();
+        updateDisplayedAbilityMeters();
 
         float miracleSize = Math.min(
             MiraclesMeter.sizeForViewport(height, textGeometryScale),
@@ -4642,6 +5161,22 @@ public class BattleScreen implements Screen, BattleView {
             ratioHeight,
             textGeometryScale
         );
+        float resourceWidth = Math.min(250f * textGeometryScale,
+            Math.max(170f * textGeometryScale, playerHud.width * 0.42f));
+        float resourceRowHeight = Math.min(38f * textGeometryScale,
+            Math.max(28f * textGeometryScale, playerHud.height * 0.24f));
+        float resourceHeight = abilityStateMeter.stateCount() == 0 ? 0f
+            : abilityStateMeter.stateCount() * (resourceRowHeight + 4f) - 4f;
+        float bespokeMeterWidth = 0f;
+        if (miraclesMeter.isVisible()) bespokeMeterWidth = miracleSize;
+        if (ratioMeter.isVisible()) bespokeMeterWidth = Math.max(bespokeMeterWidth, ratioWidth);
+        abilityStateMeter.setBounds(
+            Math.max(originX + margin, playerHud.x - bespokeMeterWidth
+                - (bespokeMeterWidth > 0f ? layout.meterHudGap : 0f)
+                - resourceWidth - layout.meterHudGap),
+            playerHud.y + (playerHud.height - resourceHeight) / 2f,
+            resourceWidth,
+            resourceRowHeight);
 
         if (unifiedWindows) {
             logBounds.set(windowsLogBounds());
@@ -5195,6 +5730,16 @@ public class BattleScreen implements Screen, BattleView {
         }
     }
 
+    private void syncLocalAbilityStatesFromModel() {
+        localAbilityStates.clear();
+        for (BattleCombatant combatant : renderPlayerTeam) {
+            localAbilityStates.put(combatant, combatant.abilityStates());
+        }
+        for (BattleCombatant combatant : renderEnemyTeam) {
+            localAbilityStates.put(combatant, combatant.abilityStates());
+        }
+    }
+
     /** Restores pre-batch HP when the field had to be bound after the model advanced. */
     private void rewindLocalHpEvents(List<CombatEvent> events) {
         for (int i = events.size() - 1; i >= 0; i--) {
@@ -5236,6 +5781,16 @@ public class BattleScreen implements Screen, BattleView {
                 new LocalHpState(Math.max(0, amount), current.maxHp());
             default -> current;
         });
+    }
+
+    private void applyLocalAbilityEvent(CombatEvent event) {
+        CodedAbilityState changed = event.getCodedAbilityState();
+        if (changed == null) return;
+        BattleCombatant owner = event.getType() == CombatEvent.Type.RESOURCE_CHANGED
+            && event.getTarget() != null ? event.getTarget() : event.getSource();
+        if (owner == null) return;
+        localAbilityStates.compute(owner, (ignored, states) ->
+            withAbilityState(states == null ? List.of() : states, changed));
     }
 
     private void refreshLocalFormSprite(CombatEvent event) {
@@ -5312,17 +5867,24 @@ public class BattleScreen implements Screen, BattleView {
         if (activePlannerStates != null) {
             miraclesMeter.setState(findMiraclesState(activePlannerStates));
             ratioMeter.setState(findRatioState(activePlannerStates));
+            abilityStateMeter.setStates(activePlannerStates);
             return;
         }
         if (mode == BattleMode.MULTIPLAYER) {
             miraclesMeter.setState(onlinePlayerMiracles);
             ratioMeter.setState(onlinePlayerRatio);
+            CharacterState displayedPlayer = displayedOnlinePrimary(true);
+            OnlineCombatantKey key = onlineKey(multiplayerSetup.playerSide(), displayedPlayer);
+            abilityStateMeter.setStates(displayedPlayer == null ? List.of()
+                : onlineAbilityStates.getOrDefault(key, displayedPlayer.codedAbilities()));
             return;
         }
         List<CodedAbilityState> primaryStates = renderPlayer == null
-            ? List.of() : renderPlayer.getCodedAbilities().states();
+            ? List.of() : localAbilityStates.getOrDefault(
+                renderPlayer, renderPlayer.abilityStates());
         miraclesMeter.setState(findMiraclesState(primaryStates));
         ratioMeter.setState(findRatioState(primaryStates));
+        abilityStateMeter.setStates(primaryStates);
     }
 
     /** Returns null outside Windows team planning so execution keeps its primary-fighter meters. */
@@ -5333,10 +5895,18 @@ public class BattleScreen implements Screen, BattleView {
 
         if (mode == BattleMode.MULTIPLAYER) {
             for (CharacterState combatant : renderOnlinePlayerTeam) {
-                if (actorId.equals(combatant.instanceId())) return combatant.codedAbilities();
+                if (actorId.equals(combatant.instanceId())) {
+                    return onlineAbilityStates.getOrDefault(
+                        onlineKey(multiplayerSetup.playerSide(), combatant),
+                        combatant.codedAbilities());
+                }
             }
             for (CharacterState combatant : renderOnlineEnemyTeam) {
-                if (actorId.equals(combatant.instanceId())) return combatant.codedAbilities();
+                if (actorId.equals(combatant.instanceId())) {
+                    PlayerSide enemySide = opposite(multiplayerSetup.playerSide());
+                    return onlineAbilityStates.getOrDefault(
+                        onlineKey(enemySide, combatant), combatant.codedAbilities());
+                }
             }
             return null;
         }
@@ -5344,13 +5914,13 @@ public class BattleScreen implements Screen, BattleView {
         for (BattleCombatant combatant : renderPlayerTeam) {
             CombatantId id = combatant.getInstanceId();
             if (id != null && actorId.equals(id.value())) {
-                return combatant.getCodedAbilities().states();
+                return localAbilityStates.getOrDefault(combatant, combatant.abilityStates());
             }
         }
         for (BattleCombatant combatant : renderEnemyTeam) {
             CombatantId id = combatant.getInstanceId();
             if (id != null && actorId.equals(id.value())) {
-                return combatant.getCodedAbilities().states();
+                return localAbilityStates.getOrDefault(combatant, combatant.abilityStates());
             }
         }
         return null;
@@ -5515,6 +6085,7 @@ public class BattleScreen implements Screen, BattleView {
 
     private void unlockPlannerIfPlanOpen() {
         if (teamPlanningPanel != null
+            && !onlinePlanningTimedOut
             && (onlinePlayer == null || !onlinePlayer.planSubmitted())) {
             teamPlanningPanel.unlock();
         }

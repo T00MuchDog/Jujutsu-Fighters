@@ -29,19 +29,18 @@ class CharacterSelectScreenLayoutTest {
     }
 
     @Test
-    void horizontalMoveStripUsesExplicitCardGeometry() {
-        assertEquals(244f, CharacterSelectScreen.horizontalMoveScrollMaximum(
-            3, 240f, 252f, 500f));
-        assertEquals(0f, CharacterSelectScreen.horizontalMoveScrollMaximum(
-            2, 240f, 252f, 500f));
+    void windowsProfileReservesTechniqueRowsAtTargetHeights() {
+        assertEquals(400f, CharacterSelectScreen.windowsTechniqueSectionHeight(1267f));
+        assertEquals(15, CharacterSelectScreen.windowsTechniqueVisibleRows(1267f));
+        assertEquals(297f, CharacterSelectScreen.windowsTechniqueSectionHeight(727f));
+        assertEquals(11, CharacterSelectScreen.windowsTechniqueVisibleRows(727f));
     }
 
     @Test
-    void windowsProfileReservesTechniqueRowsAtTargetHeights() {
-        assertEquals(193f, CharacterSelectScreen.windowsTechniqueSectionHeight(1267f));
-        assertEquals(6, CharacterSelectScreen.windowsTechniqueVisibleRows(1267f));
-        assertEquals(168f, CharacterSelectScreen.windowsTechniqueSectionHeight(727f));
-        assertEquals(6, CharacterSelectScreen.windowsTechniqueVisibleRows(727f));
+    void macProfileReservesTechniqueDetailsWithoutCrushingSummary() {
+        assertEquals(190f, CharacterSelectScreen.macTechniqueSectionHeight(644f));
+        assertEquals(106f, CharacterSelectScreen.macTechniqueSectionHeight(378f));
+        assertEquals(0f, CharacterSelectScreen.macTechniqueSectionHeight(350f));
     }
 
     @Test

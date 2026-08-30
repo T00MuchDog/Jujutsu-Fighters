@@ -2,6 +2,8 @@ package com.jjktbf;
 
 import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.CharacterStats;
+import com.jjktbf.model.character.AbilityEffectData;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.BattleCombatant;
@@ -85,10 +87,10 @@ class MultiHitMoveTest {
         assertThrows(IllegalStateException.class, () -> attackBuilder("EMPTY")
             .hitComponents(List.of())
             .build());
-        assertThrows(IllegalStateException.class, () -> attackBuilder("ZERO")
+        assertEquals(0, attackBuilder("ZERO")
             .hitComponents(List.of(component(
                 0, MoveCategory.PHYSICAL, 0, false, true)))
-            .build());
+            .build().getBasePower());
         assertThrows(IllegalStateException.class, () -> attackBuilder("FIRST_DEPENDENT")
             .hitComponents(List.of(component(
                 1, MoveCategory.PHYSICAL, 0, true, true)))
@@ -183,6 +185,72 @@ class MultiHitMoveTest {
             .filter(event -> event.getType() == CombatEvent.Type.MOVE_BLOCKED)
             .map(CombatEvent::getComponentIndex)
             .toList());
+    }
+
+    @Test
+    void nextAttackNeverMissTierCoversEveryHitComponent() {
+        Move move = attackBuilder("TEMPORARY_NEVER_MISS")
+            .baseAccuracy(0.01)
+            .neverMiss(false)
+            .hitComponents(List.of(
+                component(1, MoveCategory.PHYSICAL, 0, false, true),
+                component(1, MoveCategory.PHYSICAL, 0, false, true)))
+            .build();
+        BattleCombatant attacker = combatant("A", "Attacker", 120, List.of(move));
+        BattleCombatant defender = combatant("D", "Defender", 80, List.of());
+        AbilityEffectData tier = AbilityEffectType.APPLY_NEVER_MISS.createDefault();
+        tier.intValue = 3;
+        tier.accuracyDuration = AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name();
+        attacker.addRuntimeAbilityEffect(tier);
+
+        Timeline timeline = new Timeline(10);
+        assertNotNull(timeline.placeAt(move, 1, 0));
+        attacker.setTimeline(timeline);
+        defender.setTimeline(new Timeline(10));
+        BattleState state = new BattleState(attacker, defender);
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+
+        List<CombatEvent> events = new CombatResolver(new FixedRandom(1.0)).resolveRound(state);
+
+        assertEquals(2, damageEvents(events, move).size());
+        assertEquals(0, attacker.consumeNeverMissTier(),
+            "the temporary tier must be consumed after the complete attack");
+    }
+
+    @Test
+    void nextAttackTierBelongsToTheFirstLaunchedDelayedAttack() {
+        Move delayed = attackBuilder("DELAYED_TIER_ATTACK")
+            .baseAccuracy(0.01)
+            .neverMiss(false)
+            .hitComponents(List.of(
+                component(1, MoveCategory.PHYSICAL, 4, false, true)))
+            .build();
+        Move later = attackBuilder("LATER_INSTANT_ATTACK")
+            .baseAccuracy(0.01)
+            .neverMiss(false)
+            .basePower(1)
+            .build();
+        BattleCombatant attacker = combatant(
+            "A", "Attacker", 120, List.of(delayed, later));
+        BattleCombatant defender = combatant("D", "Defender", 80, List.of());
+        AbilityEffectData tier = AbilityEffectType.APPLY_NEVER_MISS.createDefault();
+        tier.intValue = 3;
+        tier.accuracyDuration = AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name();
+        attacker.addRuntimeAbilityEffect(tier);
+
+        Timeline timeline = new Timeline(10);
+        assertNotNull(timeline.placeAt(delayed, 1, 0));
+        assertNotNull(timeline.placeAt(later, 3, 0));
+        attacker.setTimeline(timeline);
+        defender.setTimeline(new Timeline(10));
+        BattleState state = new BattleState(attacker, defender);
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+
+        List<CombatEvent> events = new CombatResolver(new FixedRandom(1.0)).resolveRound(state);
+
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_MISSED && event.getMove() == later));
+        assertEquals(1, damageEvents(events, delayed).size());
     }
 
     @Test
@@ -281,6 +349,82 @@ class MultiHitMoveTest {
         assertTrue(events.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.DAMAGE_DEALT
                 && Objects.equals(event.getComponentIndex(), 1)));
+    }
+
+    @Test
+    void hitSpecificTagsRoundTripAndResolvePerComponent() {
+        HitComponent guardBreakingMelee = new HitComponent(
+            10, Set.of(MoveTag.PHYSICAL, MoveTag.MELEE, MoveTag.GUARD_BREAK),
+            0, false, true);
+        HitComponent intangibleRanged = new HitComponent(
+            10, Set.of(MoveTag.PHYSICAL, MoveTag.RANGED, MoveTag.INTANGIBLE),
+            0, false, true);
+        Move move = attackBuilder("PER_HIT_TAGS")
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK))
+            .hitComponents(List.of(guardBreakingMelee, intangibleRanged))
+            .build();
+
+        MoveData data = MoveData.fromMove(move);
+        Move restored = data.toMove();
+
+        assertFalse(data.tags.contains(MoveTag.MELEE.name()));
+        assertFalse(data.tags.contains(MoveTag.GUARD_BREAK.name()));
+        assertEquals(Set.of(MoveTag.PHYSICAL, MoveTag.MELEE, MoveTag.GUARD_BREAK),
+            restored.getHitComponents().get(0).getTags());
+        assertEquals(Set.of(MoveTag.PHYSICAL, MoveTag.RANGED, MoveTag.INTANGIBLE),
+            restored.getHitComponents().get(1).getTags());
+        assertTrue(restored.isMelee());
+        assertTrue(restored.isRanged());
+        assertTrue(restored.isGuardBreak());
+        assertTrue(restored.isIntangible());
+
+        HitComponent plain = new HitComponent(
+            10, Set.of(MoveTag.PHYSICAL, MoveTag.RANGED), 0, false, true);
+        Move defensiveTest = attackBuilder("PER_HIT_DEFENSES")
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK))
+            .hitComponents(List.of(guardBreakingMelee, intangibleRanged, plain))
+            .build();
+        Move block = fullBlock("PER_HIT_BLOCK", null);
+        assertTrue(resolveDamageAgainstDefense(
+            defensiveTest, guardBreakingMelee, block).isHit());
+        assertTrue(resolveDamageAgainstDefense(
+            defensiveTest, intangibleRanged, block).isHit());
+        assertTrue(resolveDamageAgainstDefense(defensiveTest, plain, block).isBlocked());
+
+        Move rangedDodge = new Move.Builder("RANGED_DODGE")
+            .name("Ranged Dodge")
+            .category(MoveCategory.DEFENSIVE)
+            .defenseType(DefenseType.DODGE)
+            .dodgeScope("RANGED")
+            .dodgeChance(100)
+            .apCost(2)
+            .unleashPoint(1)
+            .build();
+        assertTrue(resolveDamageAgainstDefense(
+            defensiveTest, guardBreakingMelee, rangedDodge).isHit());
+        assertTrue(resolveDamageAgainstDefense(
+            defensiveTest, intangibleRanged, rangedDodge).isDodged());
+    }
+
+    @Test
+    void legacyMoveHitTagsMigrateOntoSingleHitAndOffNonAttacks() {
+        MoveData attack = new MoveData();
+        attack.tags = new java.util.ArrayList<>(List.of(
+            "PHYSICAL", "ATTACK", "MELEE", "INTANGIBLE", "GUARD_BREAK"));
+        attack.basePower = 10;
+        attack.guardBreak = true;
+
+        assertTrue(attack.migrateLegacyHitTags());
+        assertEquals(List.of("PHYSICAL", "ATTACK"), attack.tags);
+        assertEquals(Set.of("PHYSICAL", "MELEE", "GUARD_BREAK", "INTANGIBLE"),
+            Set.copyOf(attack.hitComponents.get(0).tags));
+        assertFalse(attack.guardBreak);
+
+        MoveData utility = new MoveData();
+        utility.tags = new java.util.ArrayList<>(List.of("UTILITY", "RANGED"));
+        assertTrue(utility.migrateLegacyHitTags());
+        assertEquals(List.of("UTILITY"), utility.tags);
+        assertNull(utility.hitComponents);
     }
 
     @Test

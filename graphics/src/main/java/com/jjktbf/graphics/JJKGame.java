@@ -39,6 +39,7 @@ import com.jjktbf.graphics.screens.MultiplayerRosterWaitingScreen;
 import com.jjktbf.graphics.screens.editors.AbilityEditorScreen;
 import com.jjktbf.graphics.screens.editors.CharacterEditorScreen;
 import com.jjktbf.graphics.screens.editors.CursedToolEditorScreen;
+import com.jjktbf.graphics.screens.editors.DomainEditorScreen;
 import com.jjktbf.graphics.screens.editors.MoveEditorScreen;
 import com.jjktbf.graphics.screens.editors.TechniqueEditorScreen;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
@@ -50,7 +51,9 @@ import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.move.MoveRepository;
 import com.jjktbf.model.technique.TechniqueRepository;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
+import com.jjktbf.multiplayer.protocol.MatchCharacterSelectionRequest;
 
 import java.io.IOException;
 import java.util.List;
@@ -146,6 +149,7 @@ public class JJKGame extends Game {
     private AbilityEditorScreen    abilityEditorScreen;
     private TechniqueEditorScreen  techniqueEditorScreen;
     private CursedToolEditorScreen cursedToolEditorScreen;
+    private DomainEditorScreen      domainEditorScreen;
     private MultiplayerMenuScreen multiplayerMenuScreen;
     private HostChallengeScreen hostChallengeScreen;
     private ChallengeBrowserScreen challengeBrowserScreen;
@@ -218,6 +222,7 @@ public class JJKGame extends Game {
         abilityEditorScreen   = new AbilityEditorScreen(this, assets);
         techniqueEditorScreen = new TechniqueEditorScreen(this, assets);
         cursedToolEditorScreen = new CursedToolEditorScreen(this, assets);
+        domainEditorScreen      = new DomainEditorScreen(this, assets);
         multiplayerMenuScreen = new MultiplayerMenuScreen(
             this, assets, guestAccountService);
         hostChallengeScreen = new HostChallengeScreen(
@@ -314,6 +319,7 @@ public class JJKGame extends Game {
         if (abilityEditorScreen != null) abilityEditorScreen.dispose();
         if (techniqueEditorScreen != null) techniqueEditorScreen.dispose();
         if (cursedToolEditorScreen != null) cursedToolEditorScreen.dispose();
+        if (domainEditorScreen != null) domainEditorScreen.dispose();
         if (multiplayerMenuScreen != null) multiplayerMenuScreen.dispose();
         if (hostChallengeScreen != null) hostChallengeScreen.dispose();
         if (challengeBrowserScreen != null) challengeBrowserScreen.dispose();
@@ -396,13 +402,13 @@ public class JJKGame extends Game {
         setSelectedMultiplayerFormat(setup.format());
         setSelectedMultiplayerStatMode(BattleStatMode.fromRuleset(setup.ruleset()));
         if (!setup.playerCharacterIds().isEmpty()) {
-            showMultiplayerRosterWaiting(setup, null);
+            showMultiplayerRosterWaiting(setup, (MatchCharacterSelectionRequest) null);
             return;
         }
         characterSelectScreen.prepareMultiplayer(
             setup.format(),
             BattleStatMode.fromRuleset(setup.ruleset()),
-            characterIds -> showMultiplayerRosterWaiting(setup, characterIds),
+            selection -> showMultiplayerRosterWaiting(setup, selection),
             this::showMultiplayerMenu
         );
         showScreen(characterSelectScreen, MusicTrack.MENU);
@@ -410,9 +416,9 @@ public class JJKGame extends Game {
 
     private void showMultiplayerRosterWaiting(
         MatchSetup setup,
-        List<String> characterIds
+        MatchCharacterSelectionRequest selection
     ) {
-        multiplayerRosterWaitingScreen.prepare(setup, characterIds);
+        multiplayerRosterWaitingScreen.prepare(setup, selection);
         showScreen(multiplayerRosterWaitingScreen, MusicTrack.MENU);
     }
 
@@ -457,6 +463,12 @@ public class JJKGame extends Game {
         cursedToolEditorScreen.dispose();
         cursedToolEditorScreen = new CursedToolEditorScreen(this, assets);
         showScreen(cursedToolEditorScreen, MusicTrack.MENU);
+    }
+
+    public void showDomainEditor() {
+        domainEditorScreen.dispose();
+        domainEditorScreen = new DomainEditorScreen(this, assets);
+        showScreen(domainEditorScreen, MusicTrack.MENU);
     }
 
     /**
@@ -677,6 +689,21 @@ public class JJKGame extends Game {
                             TechniqueRepository techniqueRepo,
                             BattleController.ControlMode controlMode,
                             BattleStatMode statMode) {
+        startBattle(playerData, null, cpuData, null,
+            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode);
+    }
+
+    public void startBattle(
+        CharacterData playerData,
+        java.util.List<String> playerMoveSetIds,
+        CharacterData cpuData,
+        java.util.List<String> cpuMoveSetIds,
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        BattleController.ControlMode controlMode,
+        BattleStatMode statMode
+    ) {
         requireAuthorControlMode(controlMode);
         battleScreen.prepareLocal();
         battleScreen.setCombatantSprites(
@@ -688,17 +715,22 @@ public class JJKGame extends Game {
             try {
                 com.jjktbf.model.weapon.CursedToolRepository cursedToolRepo =
                     loadCursedToolRepo();
+                DomainRepository domainRepo = new DomainRepository("data/domains");
+                domainRepo.load();
                 Character player = playerData.toCharacter(
-                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                    playerMoveSetIds);
                 Character cpu    = cpuData.toCharacter(
-                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                    cpuMoveSetIds);
                 BattleController controller = new BattleController(
                     battleScreen,
                     characterId -> multiplayerCharacterRepository.findById(characterId)
                         .map(data -> data.toCharacter(
                             moveRepo, abilityRepo, techniqueRepo, cursedToolRepo)),
                     controlMode
-                );
+                ).withDomainLookup(domainId -> domainRepo.findById(domainId)
+                    .map(data -> data.toDomain()));
                 controller.runBattle(player, cpu, statMode);
             } catch (Throwable t) {
                 // The battle runs on a daemon thread; an uncaught throw would
@@ -758,6 +790,41 @@ public class JJKGame extends Game {
         BattleController.ControlMode controlMode,
         BattleStatMode statMode
     ) {
+        startTeamBattle(playerTeam, null, cpuTeam, null,
+            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode,
+            playerTeam.size() == BattleFormat.SIX_V_SIX.fightersPerSide()
+                ? BattleFormat.SIX_V_SIX : BattleFormat.TWO_V_TWO);
+    }
+
+    public void startTeamBattle(
+        java.util.List<CharacterData> playerTeam,
+        java.util.List<java.util.List<String>> playerMoveSets,
+        java.util.List<CharacterData> cpuTeam,
+        java.util.List<java.util.List<String>> cpuMoveSets,
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        BattleController.ControlMode controlMode,
+        BattleStatMode statMode
+    ) {
+        startTeamBattle(playerTeam, playerMoveSets, cpuTeam, cpuMoveSets,
+            moveRepo, abilityRepo, techniqueRepo, controlMode, statMode,
+            playerTeam.size() == BattleFormat.SIX_V_SIX.fightersPerSide()
+                ? BattleFormat.SIX_V_SIX : BattleFormat.TWO_V_TWO);
+    }
+
+    public void startTeamBattle(
+        java.util.List<CharacterData> playerTeam,
+        java.util.List<java.util.List<String>> playerMoveSets,
+        java.util.List<CharacterData> cpuTeam,
+        java.util.List<java.util.List<String>> cpuMoveSets,
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        BattleController.ControlMode controlMode,
+        BattleStatMode statMode,
+        BattleFormat format
+    ) {
         requireAuthorControlMode(controlMode);
         battleScreen.prepareLocal();
         // Set sprites per side (front fighter per side for now; full 4-fighter
@@ -775,24 +842,34 @@ public class JJKGame extends Game {
             try {
                 com.jjktbf.model.weapon.CursedToolRepository cursedToolRepo =
                     loadCursedToolRepo();
-                java.util.List<BattleCombatant> playerFighters = playerTeam.stream()
-                    .map(d -> d.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo))
+                DomainRepository domainRepo = new DomainRepository("data/domains");
+                domainRepo.load();
+                java.util.List<BattleCombatant> playerFighters = java.util.stream.IntStream
+                    .range(0, playerTeam.size())
+                    .mapToObj(index -> playerTeam.get(index).toCharacter(
+                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                        moveSetAt(playerMoveSets, index)))
                     .map(c -> new BattleCombatant(c, c.getAbilities(), statMode))
                     .toList();
-                java.util.List<BattleCombatant> cpuFighters = cpuTeam.stream()
-                    .map(d -> d.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo))
+                java.util.List<BattleCombatant> cpuFighters = java.util.stream.IntStream
+                    .range(0, cpuTeam.size())
+                    .mapToObj(index -> cpuTeam.get(index).toCharacter(
+                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                        moveSetAt(cpuMoveSets, index)))
                     .map(c -> new BattleCombatant(c, c.getAbilities(), statMode))
                     .toList();
                 BattleState state = new BattleState(
                     BattleState.teamOfFighters(BattleTeamId.PLAYER, playerFighters),
-                    BattleState.teamOfFighters(BattleTeamId.ENEMY, cpuFighters));
+                    BattleState.teamOfFighters(BattleTeamId.ENEMY, cpuFighters),
+                    format);
                 BattleController controller = new BattleController(
                     battleScreen,
                     characterId -> multiplayerCharacterRepository.findById(characterId)
                         .map(data -> data.toCharacter(
                             moveRepo, abilityRepo, techniqueRepo, cursedToolRepo)),
                     controlMode
-                );
+                ).withDomainLookup(domainId -> domainRepo.findById(domainId)
+                    .map(data -> data.toDomain()));
                 controller.runTeamBattle(state);
             } catch (Throwable t) {
                 try {
@@ -809,6 +886,14 @@ public class JJKGame extends Game {
         battleScreen.setLocalBattleThread(battleThread);
         battleThread.setDaemon(true);
         battleThread.start();
+    }
+
+    private static java.util.List<String> moveSetAt(
+        java.util.List<java.util.List<String>> moveSets,
+        int index
+    ) {
+        return moveSets == null || index < 0 || index >= moveSets.size()
+            ? null : moveSets.get(index);
     }
 
     private static void requireAuthorControlMode(BattleController.ControlMode controlMode) {

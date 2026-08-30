@@ -186,8 +186,17 @@ public final class ChallengeService {
         String matchId,
         List<String> characterIds
     ) {
+        return selectMatchCharacters(matchId,
+            new MatchCharacterSelectionRequest(characterIds));
+    }
+
+    public CompletableFuture<MatchSetup> selectMatchCharacters(
+        String matchId,
+        MatchCharacterSelectionRequest request
+    ) {
+        Objects.requireNonNull(request, "request");
         return withToken(token -> api.selectMatchCharacters(
-            token, matchId, new MatchCharacterSelectionRequest(characterIds)));
+            token, matchId, request));
     }
 
     private <T> CompletableFuture<T> withToken(

@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -165,6 +166,32 @@ class CharacterTypeTest {
 
         assertThrows(IllegalArgumentException.class, () -> new SorcererCharacter(
             "000022", "Sorcerer", stats, null, java.util.List.of(shikigamiMove)));
+
+        assertDoesNotThrow(() -> new ShikigamiCharacter(
+            "000023", "Shikigami", stats, null, java.util.List.of(shikigamiMove)));
+        assertThrows(IllegalArgumentException.class, () -> new ShikigamiCharacter(
+            "000023", "Shikigami", stats, null, java.util.List.of(sorcererMove)));
+    }
+
+    @Test
+    void moveCanBeLearnedByMultipleCharacterTypes() {
+        Move sharedMove = new Move.Builder("SHARED_MOVE")
+            .name("Shared Move")
+            .moveTypes(java.util.EnumSet.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT))
+            .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
+            .freeMove(true)
+            .build();
+        var stats = new CharacterData().toCharacterStats();
+
+        assertDoesNotThrow(() -> new SorcererCharacter(
+            "000024", "Sorcerer", stats, null, java.util.List.of(sharedMove)));
+        assertDoesNotThrow(() -> new CursedSpiritCharacter(
+            "000025", "Curse", stats, null, java.util.List.of(sharedMove)));
+        assertThrows(IllegalArgumentException.class, () -> new ShikigamiCharacter(
+            "000026", "Shikigami", stats, null, java.util.List.of(sharedMove)));
     }
 
     @Test
@@ -188,6 +215,40 @@ class CharacterTypeTest {
     }
 
     @Test
+    void cursedSpiritSourcesExposeOptionalAbilitiesAndAssignMandatoryAbilities() {
+        AbilityData mandatory = new AbilityData();
+        mandatory.id = "MANDATORY";
+        mandatory.name = "Cursed Spirit Physiology";
+        mandatory.category = "PASSIVE";
+        mandatory.sourceType = "CURSED_SPIRIT";
+        mandatory.automaticallyAssigned = true;
+
+        AbilityData optional = new AbilityData();
+        optional.id = "OPTIONAL";
+        optional.name = "Amorphous Anatomy";
+        optional.category = "PASSIVE";
+        optional.sourceType = "CURSED_SPIRIT";
+
+        CharacterData cursedSpirit = new CharacterData();
+        cursedSpirit.type = CharacterType.CURSED_SPIRIT.name();
+        cursedSpirit.abilityIds = java.util.List.of();
+        CharacterData sorcerer = new CharacterData();
+        sorcerer.abilityIds = java.util.List.of();
+
+        AbilityResolver.Result spiritResult = AbilityResolver.resolve(
+            cursedSpirit, java.util.List.of(optional, mandatory));
+        assertTrue(spiritResult.availableAbilityIds().containsAll(
+            java.util.Set.of(mandatory.id, optional.id)));
+        assertTrue(spiritResult.containsAbility(mandatory.id));
+        assertFalse(spiritResult.containsAbility(optional.id));
+
+        AbilityResolver.Result sorcererResult = AbilityResolver.resolve(
+            sorcerer, java.util.List.of(optional, mandatory));
+        assertFalse(sorcererResult.availableAbilityIds().contains(mandatory.id));
+        assertFalse(sorcererResult.availableAbilityIds().contains(optional.id));
+    }
+
+    @Test
     void moveTypeSupportsCanonicalAndLegacyStoredValues() throws Exception {
         MoveData legacyShikigami = new MoveData();
         legacyShikigami.shikigamiMove = true;
@@ -198,6 +259,104 @@ class CharacterTypeTest {
         String json = mapper.writeValueAsString(cursedSpirit);
         MoveData roundTrip = mapper.readValue(json, MoveData.class);
         assertEquals(MoveType.CURSED_SPIRIT, roundTrip.effectiveMoveType());
+
+        MoveData shared = new MoveData();
+        shared.id = "000027";
+        shared.apCost = 1;
+        shared.unleashPoint = 1;
+        shared.moveTypes = java.util.List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name());
+        shared.tags = java.util.List.of("UTILITY", "CURSED_ENERGY");
+        Move sharedMove = shared.toMove();
+        assertEquals(java.util.Set.of(MoveType.SORCERER, MoveType.CURSED_SPIRIT),
+            sharedMove.getMoveTypes());
+
+        MoveData canonical = MoveData.fromMove(sharedMove);
+        assertEquals(java.util.List.of(
+            MoveType.SORCERER.name(), MoveType.CURSED_SPIRIT.name()), canonical.moveTypes);
+        assertNull(canonical.moveType);
+    }
+
+    @Test
+    void techniqueMovesAreLearnableByAnyCharacterTypeWithTheTechnique() {
+        Move techniqueMove = new Move.Builder("TECHNIQUE_MOVE")
+            .name("Technique Move")
+            .requiredTechniqueId("Disaster Plants")
+            .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
+            .freeMove(true)
+            .build();
+        assertTrue(techniqueMove.isTechniqueMove());
+        assertTrue(techniqueMove.getMoveTypes().isEmpty());
+        var stats = new CharacterData().toCharacterStats();
+
+        // Technique moves carry no class: every character type that possesses
+        // the technique may learn them.
+        assertDoesNotThrow(() -> new SorcererCharacter(
+            "000030", "Sorcerer", stats, "Disaster Plants", java.util.List.of(techniqueMove)));
+        assertDoesNotThrow(() -> new CursedSpiritCharacter(
+            "000031", "Curse", stats, "Disaster Plants", java.util.List.of(techniqueMove)));
+        assertDoesNotThrow(() -> new ShikigamiCharacter(
+            "000032", "Shikigami", stats, "Disaster Plants", java.util.List.of(techniqueMove)));
+
+        // Possession of the technique is still required.
+        assertThrows(IllegalArgumentException.class, () -> new SorcererCharacter(
+            "000033", "Sorcerer", stats, null, java.util.List.of(techniqueMove)));
+    }
+
+    @Test
+    void techniqueMovesDropAuthoredClassTypes() {
+        Move move = new Move.Builder("TECHNIQUE_CLASSY")
+            .name("Classy Technique Move")
+            .moveType(MoveType.SHIKIGAMI)
+            .requiredTechniqueId("Ten Shadows")
+            .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
+            .freeMove(true)
+            .build();
+
+        assertTrue(move.isTechniqueMove());
+        assertTrue(move.getMoveTypes().isEmpty());
+    }
+
+    @Test
+    void techniqueMoveDataCarriesNoClassFields() throws Exception {
+        MoveData data = new MoveData();
+        data.id = "000028";
+        data.name = "Technique Move";
+        data.apCost = 1;
+        data.unleashPoint = 1;
+        data.requiredTechniqueId = "Ten Shadows";
+        data.moveTypes = java.util.List.of(MoveType.SORCERER.name());
+        data.tags = java.util.List.of("UTILITY", "CURSED_ENERGY");
+
+        assertTrue(data.isTechniqueMove());
+        assertTrue(data.effectiveMoveTypes().isEmpty());
+        Move built = data.toMove();
+        assertTrue(built.getMoveTypes().isEmpty());
+
+        MoveData saved = MoveData.fromMove(built);
+        assertNull(saved.moveTypes);
+        assertFalse(mapper.writeValueAsString(saved).contains("moveTypes"));
+
+        // Classed moves keep requiring a class.
+        MoveData classed = new MoveData();
+        classed.id = "000029";
+        classed.name = "Classed Move";
+        classed.apCost = 1;
+        classed.unleashPoint = 1;
+        classed.tags = java.util.List.of("UTILITY");
+        assertEquals(java.util.Set.of(MoveType.SORCERER), classed.effectiveMoveTypes());
+        assertThrows(IllegalStateException.class, () -> new Move.Builder("NO_CLASS")
+            .name("No Class")
+            .moveTypes(java.util.Set.of())
+            .category(MoveCategory.UTILITY)
+            .freeMove(true)
+            .build());
     }
 
     @Test
@@ -240,12 +399,36 @@ class CharacterTypeTest {
             shikigami.toCharacterStats(), java.util.List.of(), java.util.List.of()));
     }
 
+    @Test
+    void cursedSpiritMovesRequireAnExplicitCursedEnergyTag() {
+        assertThrows(IllegalStateException.class, () -> new Move.Builder("UNCURSED")
+            .name("Uncursed")
+            .moveType(MoveType.CURSED_SPIRIT)
+            .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
+            .build());
+
+        assertDoesNotThrow(() -> new Move.Builder("CURSED")
+            .name("Cursed")
+            .moveType(MoveType.CURSED_SPIRIT)
+            .category(MoveCategory.UTILITY)
+            .tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY))
+            .freeMove(true)
+            .build());
+    }
+
     private static Move move(String id, MoveType type) {
-        return new Move.Builder(id)
+        Move.Builder builder = new Move.Builder(id)
             .name(id)
             .moveType(type)
             .category(MoveCategory.UTILITY)
-            .freeMove(true)
-            .build();
+            .freeMove(true);
+        if (type == MoveType.CURSED_SPIRIT) {
+            builder.tags(java.util.Set.of(
+                com.jjktbf.model.move.MoveTag.UTILITY,
+                com.jjktbf.model.move.MoveTag.CURSED_ENERGY));
+        }
+        return builder.build();
     }
 }

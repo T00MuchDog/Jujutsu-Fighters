@@ -1,6 +1,9 @@
 package com.jjktbf;
 
 import com.jjktbf.model.character.CharacterStats;
+import com.jjktbf.model.character.AbilityConditionActor;
+import com.jjktbf.model.character.AbilityConditionData;
+import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectTarget;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.ShikigamiCharacter;
@@ -17,6 +20,9 @@ import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.HitComponent;
+import com.jjktbf.model.move.AttackLaunchMode;
+import com.jjktbf.model.move.DefenseTiming;
+import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveTag;
@@ -224,12 +230,8 @@ class MultiCombatantResolverTest {
         BattleState state = new BattleState(
             BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
             BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(first, second)));
-        activateSimpleDomain(state, first);
-        activateSimpleDomain(state, second);
-        assertEquals(1, first.getCodedAbilities().state(NewShadowStyleAbility.KEY)
-            .orElseThrow().currentValue());
-        assertEquals(1, second.getCodedAbilities().state(NewShadowStyleAbility.KEY)
-            .orElseThrow().currentValue());
+        armSimpleDomain(first);
+        armSimpleDomain(second);
         Move rangedAoe = new Move.Builder("RANGED_AOE")
             .name("Ranged AOE").category(MoveCategory.PHYSICAL).neverMiss(true)
             .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.AOE, MoveTag.RANGED))
@@ -238,7 +240,7 @@ class MultiCombatantResolverTest {
                 20, Set.of(MoveTag.PHYSICAL), 0, false, true)))
             .build();
         BattlePlan plan = planFor(attacker);
-        plan.place(rangedAoe, 1, 0);
+        plan.place(rangedAoe, 5, 0);
         attacker.setTimeline(plan.toLegacyTimeline());
         int firstHp = first.getCurrentHp();
         int secondHp = second.getCurrentHp();
@@ -251,8 +253,10 @@ class MultiCombatantResolverTest {
             .orElseThrow().currentValue());
         assertEquals(0, second.getCodedAbilities().state(NewShadowStyleAbility.KEY)
             .orElseThrow().currentValue());
-        assertTrue(events.stream().anyMatch(event -> event.getSource() == first));
-        assertTrue(events.stream().anyMatch(event -> event.getSource() == second));
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_PARRIED && event.getTarget() == first));
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_PARRIED && event.getTarget() == second));
     }
 
     @Test
@@ -445,14 +449,25 @@ class MultiCombatantResolverTest {
             .hitComponents(List.of(new HitComponent(10,
                 Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY), 0, false, true)))
             .build();
+        AbilityConditionData meleeIncoming = AbilityConditionType.MOVE_TAG_USED.createDefault();
+        meleeIncoming.actor = AbilityConditionActor.ENEMY.name();
+        meleeIncoming.moveTag = MoveTag.MELEE.name();
+        MoveEffectData activation = AbilityEffectType.CODED_MOVE_ACTION.createDefaultMoveEffect();
+        activation.codedAbilityKey = NewShadowStyleAbility.KEY;
+        activation.codedAction = NewShadowStyleAbility.ACTIVATE_SIMPLE_DOMAIN;
+        activation.codedParameters = null;
+        activation.target = AbilityEffectTarget.SELF.name();
+        activation.trigger = MoveEffectTrigger.ON_FIRE.name();
         Move domain = new Move.Builder("000028")
-            .name(name + " Domain").category(MoveCategory.UTILITY)
-            .apCost(2).unleashPoint(1)
-            .selfEffects(List.of(StatusEffect.coded(
-                NewShadowStyleAbility.KEY,
-                NewShadowStyleAbility.ACTIVATE_SIMPLE_DOMAIN,
-                reactionId,
-                null)))
+            .name(name + " Domain").category(MoveCategory.DEFENSIVE)
+            .tags(Set.of(MoveTag.DEFENSIVE, MoveTag.ATTACK, MoveTag.UTILITY))
+            .apCost(2).unleashPoint(1).potency(1)
+            .defenseType(DefenseType.PARRY).blockDuration(1)
+            .defenseTiming(DefenseTiming.REACTION).defenseUses(1)
+            .attackLaunchMode(AttackLaunchMode.ON_DEFENCE)
+            .attackLaunchCondition(meleeIncoming)
+            .attackLaunchMoveId(reactionId).attackLaunchMove(reaction)
+            .effects(List.of(activation))
             .build();
         CharacterStats stats = new CharacterStats.Builder().vitality(300).speed(100).build();
         SorcererCharacter character = new SorcererCharacter(
@@ -467,12 +482,13 @@ class MultiCombatantResolverTest {
         return effect;
     }
 
-    private static void activateSimpleDomain(BattleState state, BattleCombatant combatant) {
-        StatusEffect activation = combatant.getCharacter().getKnownMoves().stream()
-            .flatMap(move -> move.getSelfEffects().stream())
+    private static void armSimpleDomain(BattleCombatant combatant) {
+        Move domain = combatant.getCharacter().getKnownMoves().stream()
+            .filter(move -> move.getId().equals("000028"))
             .findFirst().orElseThrow();
-        combatant.getCodedAbilities().onEffectFired(
-            state, activation, combatant, null, 0);
+        BattlePlan plan = planFor(combatant);
+        plan.place(domain, 1, 0);
+        combatant.setTimeline(plan.toLegacyTimeline());
     }
 
     private static Move physicalAttack(String id) {

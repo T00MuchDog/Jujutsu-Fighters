@@ -1,5 +1,8 @@
 package com.jjktbf.graphics.ui.editor;
 
+import com.jjktbf.model.character.AbilityEffectData;
+import com.jjktbf.model.character.AbilityEffectParameter;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterType;
 import org.junit.jupiter.api.Test;
@@ -10,6 +13,41 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EffectListEditorTest {
+
+    @Test
+    void cursedSpiritPhysiologyEffectsExposeGenericEditorControls() {
+        AbilityEffectData battleStat = AbilityEffectType.BATTLE_STAT_MODIFIER.createDefault();
+        assertTrue(AbilityEffectType.BATTLE_STAT_MODIFIER.uses(
+            AbilityEffectParameter.BATTLE_STAT, battleStat));
+        assertTrue(AbilityEffectType.BATTLE_STAT_MODIFIER.uses(
+            AbilityEffectParameter.STAT_OPERATION, battleStat));
+        assertTrue(AbilityEffectType.BATTLE_STAT_MODIFIER.uses(
+            AbilityEffectParameter.DECIMAL, battleStat));
+
+        AbilityEffectData waiver =
+            AbilityEffectType.CE_COST_WAIVE_BY_STAT_TOTAL.createDefault();
+        assertTrue(AbilityEffectType.CE_COST_WAIVE_BY_STAT_TOTAL.uses(
+            AbilityEffectParameter.MOVE_SCOPE, waiver));
+        assertTrue(AbilityEffectType.CE_COST_WAIVE_BY_STAT_TOTAL.uses(
+            AbilityEffectParameter.INTEGER, waiver));
+    }
+
+    @Test
+    void flowerOfferingEffectsExposeResourceControls() {
+        AbilityEffectData transaction =
+            AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.createDefault();
+        assertTrue(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.uses(
+            AbilityEffectParameter.SOURCE_RESOURCE, transaction));
+        assertTrue(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.uses(
+            AbilityEffectParameter.TARGET_RESOURCE, transaction));
+
+        AbilityEffectData consumer =
+            AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.createDefault();
+        assertTrue(AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.uses(
+            AbilityEffectParameter.SOURCE_RESOURCE, consumer));
+        assertFalse(AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.uses(
+            AbilityEffectParameter.TARGET_RESOURCE, consumer));
+    }
 
     @Test
     void summonSelectorOnlyRecognizesShikigamiDefinitions() {

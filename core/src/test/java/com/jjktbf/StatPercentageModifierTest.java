@@ -15,8 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies the percentage stat primitives ({@link AbilityEffectType#TEMP_STAT_PERCENT}
- * and {@link AbilityEffectType#BATTLE_STAT_PERCENT}) apply to the scaled value and
+ * Verifies percentage modes on {@link AbilityEffectType#TIMED_STAT_MODIFIER} apply to the scaled value and
  * stack additively with each other rather than multiplying.
  */
 class StatPercentageModifierTest {
@@ -73,7 +72,7 @@ class StatPercentageModifierTest {
     void percentAppliesAfterFlatAdditionsAndMultipliers() {
         BattleCombatant combatant = combatant();
 
-        AbilityEffectData flat = AbilityEffectType.TEMP_STAT_ADD.createDefault();
+        AbilityEffectData flat = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
         flat.stat = StatKey.STRENGTH.fieldName;
         flat.intValue = 20; // 80 -> 100 before the percentage
         combatant.addRuntimeAbilityEffect(flat);
@@ -87,29 +86,53 @@ class StatPercentageModifierTest {
     @Test
     void newPrimitivesAreActivationRequiredAndCleanUpUnusedFields() {
         // Both primitives must be selectable/active in moves and abilities.
-        assertTrue(AbilityEffectType.TEMP_STAT_PERCENT.requiresActivation());
-        assertTrue(AbilityEffectType.BATTLE_STAT_PERCENT.requiresActivation());
+        assertTrue(AbilityEffectType.TIMED_STAT_MODIFIER.requiresActivation());
 
-        AbilityEffectData base = AbilityEffectType.TEMP_STAT_PERCENT.createDefault();
+        AbilityEffectData base = statPercent(StatKey.STRENGTH, 0.20);
         assertNull(base.intValue);
         assertNull(base.magnitude);
 
-        AbilityEffectData battle = AbilityEffectType.BATTLE_STAT_PERCENT.createDefault();
+        AbilityEffectData battle = battlePercent(BattleStatKey.ACCURACY, 0.20);
         assertEquals(BattleStatKey.ACCURACY.name(), battle.stringValue);
         assertEquals(0.20, battle.doubleValue);
         assertNull(battle.intValue);
         assertNull(battle.magnitude);
     }
 
+    @Test
+    void oneRoundSpeedPercentBuffSurvivesUntilTheNextRoundCompletes() {
+        BattleCombatant combatant = combatant();
+        int baseSpeed = combatant.getEffectiveStats().getSpeed();
+        AbilityEffectData effect = statPercent(StatKey.SPEED, 0.20);
+        effect.durationRounds = 1;
+        effect.durationTicks = 0;
+
+        combatant.addRuntimeAbilityEffect(
+            effect, 1, com.jjktbf.model.combat.BattleState.Phase.RESOLUTION,
+            "SPEED_REFRESH");
+        int boostedSpeed = combatant.getEffectiveStats().getSpeed();
+        assertTrue(boostedSpeed > baseSpeed);
+
+        combatant.tickRoundEffects(1);
+        assertEquals(boostedSpeed, combatant.getEffectiveStats().getSpeed());
+        combatant.tickRoundEffects(2);
+        assertEquals(baseSpeed, combatant.getEffectiveStats().getSpeed());
+    }
+
     private static AbilityEffectData statPercent(StatKey stat, double fraction) {
-        AbilityEffectData effect = AbilityEffectType.TEMP_STAT_PERCENT.createDefault();
+        AbilityEffectData effect = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        effect.valueMode = AbilityEffectType.ValueMode.PERCENT.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(effect);
         effect.stat = stat.fieldName;
         effect.doubleValue = fraction;
         return effect;
     }
 
     private static AbilityEffectData battlePercent(BattleStatKey stat, double fraction) {
-        AbilityEffectData effect = AbilityEffectType.BATTLE_STAT_PERCENT.createDefault();
+        AbilityEffectData effect = AbilityEffectType.TIMED_STAT_MODIFIER.createDefault();
+        effect.statType = AbilityEffectType.StatType.BATTLE.name();
+        effect.valueMode = AbilityEffectType.ValueMode.PERCENT.name();
+        AbilityEffectType.TIMED_STAT_MODIFIER.prepare(effect);
         effect.stringValue = stat.name();
         effect.doubleValue = fraction;
         return effect;

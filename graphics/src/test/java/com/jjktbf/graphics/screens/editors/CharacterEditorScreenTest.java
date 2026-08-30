@@ -1,9 +1,14 @@
 package com.jjktbf.graphics.screens.editors;
 
 import com.jjktbf.graphics.ui.editor.AssignmentPanel;
+import com.jjktbf.model.character.Ability;
+import com.jjktbf.model.character.AbilityApplicator;
 import com.jjktbf.model.character.AbilityData;
 import com.jjktbf.model.character.AbilityEffectData;
+import com.jjktbf.model.character.AbilityEffectType;
+import com.jjktbf.model.character.BattleStatKey;
 import com.jjktbf.model.character.CharacterData;
+import com.jjktbf.model.character.CombatStats;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MovePool;
@@ -24,14 +29,46 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class CharacterEditorScreenTest {
 
     @Test
-    void fullPoolRetainsOtherwiseAvailableMoveAsLocked() {
+    void derivedPreviewIncludesPermanentCeModifiersAndWaiverThreshold() {
+        CharacterData character = namedCharacter("Curse", 80);
+        AbilityEffectData maxCe = AbilityEffectType.BATTLE_STAT_MODIFIER.createDefault();
+        maxCe.stringValue = BattleStatKey.MAX_CE.name();
+        maxCe.statOperation = AbilityEffectType.StatOperation.MULTIPLY.name();
+        maxCe.doubleValue = 5.0;
+        AbilityEffectData regeneration =
+            AbilityEffectType.BATTLE_STAT_MODIFIER.createDefault();
+        regeneration.stringValue = BattleStatKey.CE_REGENERATION.name();
+        regeneration.statOperation = AbilityEffectType.StatOperation.CHANGE.name();
+        regeneration.doubleValue = 0.95;
+        AbilityEffectData waiver =
+            AbilityEffectType.CE_COST_WAIVE_BY_STAT_TOTAL.createDefault();
+        waiver.intValue = 100;
+        AbilityData physiology = new AbilityData();
+        physiology.id = "PHYSIOLOGY";
+        physiology.name = "Cursed Spirit Physiology";
+        physiology.category = "PASSIVE";
+        physiology.effects = List.of(maxCe, regeneration, waiver);
+        AbilityApplicator.ApplicationResult application = AbilityApplicator.apply(
+            character.toCharacterStats(), List.of(new Ability(physiology)));
+        CombatStats combatStats = new CombatStats(application.modifiedStats);
+
+        assertEquals(combatStats.getMaxCursedEnergy() * 5.0,
+            CharacterEditorScreen.previewBattleStat(
+                application, BattleStatKey.MAX_CE, combatStats.getMaxCursedEnergy()));
+        assertEquals(1.0, CharacterEditorScreen.previewBattleStat(
+            application, BattleStatKey.CE_REGENERATION,
+            com.jjktbf.model.combat.BattleCombatant
+                .DEFAULT_CURSED_ENERGY_REGENERATION_PER_TICK));
+        assertEquals(8, CharacterEditorScreen.ceWaiverThreshold(character, application));
+    }
+
+    @Test
+    void grantErrorsDoNotCreateLearnableRows() {
         AssignmentPanel.Item item = CharacterEditorScreen.availableMoveItem(
             move(), "PHYSICAL", MovePool.COMBAT_ARTS,
-            "No available COMBAT_ARTS slots");
+            "This move must be granted by an ability.");
 
-        assertEquals("000001", item.id);
-        assertTrue(item.locked);
-        assertEquals("No available COMBAT_ARTS slots", item.lockReason);
+        assertNull(item);
     }
 
     @Test

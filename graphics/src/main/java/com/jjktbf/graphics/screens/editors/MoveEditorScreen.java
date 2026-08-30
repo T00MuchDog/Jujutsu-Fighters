@@ -42,9 +42,12 @@ import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.NewShadowStyleAbility;
 import com.jjktbf.model.character.coded.RatioAbility;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.AoeType;
 import com.jjktbf.model.move.AttackLaunchMode;
+import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.BlockStyle;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseTargeting;
 import com.jjktbf.model.move.DefenseTiming;
 import com.jjktbf.model.move.DefenseType;
@@ -61,6 +64,9 @@ import com.jjktbf.model.move.StatusEffectType;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.TechniqueRepository;
+import com.jjktbf.model.text.ContentNameTokens;
+import com.jjktbf.model.text.KeywordDescriptionCatalog;
+import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.model.weapon.CursedToolData;
 import com.jjktbf.model.weapon.CursedToolRepository;
 import com.jjktbf.model.weapon.WeaponType;
@@ -96,17 +102,33 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     private static final List<String> MOVE_PURPOSE_SECTIONS = List.of(
         "DEFENSE", "ATTACK", "UTILITY");
 
-    private static final List<MoveTag> COMPONENT_DAMAGE_TAGS = List.of(
+    private static final List<MoveTag> COMPONENT_TYPE_TAGS = List.of(
         MoveTag.PHYSICAL,
         MoveTag.CURSED_ENERGY,
         MoveTag.INNATE_TECHNIQUE,
         MoveTag.NON_INNATE_TECHNIQUE);
+    private static final List<MoveTag> COMPONENT_ATTACK_TAGS = List.of(
+        MoveTag.PHYSICAL,
+        MoveTag.CURSED_ENERGY,
+        MoveTag.INNATE_TECHNIQUE,
+        MoveTag.NON_INNATE_TECHNIQUE,
+        MoveTag.MELEE,
+        MoveTag.RANGED,
+        MoveTag.GUARD_BREAK,
+        MoveTag.INTANGIBLE,
+        MoveTag.ICE,
+        MoveTag.ELECTRIC,
+        MoveTag.FIRE,
+        MoveTag.WATER);
 
     private final MoveRepository repo;
     /** Character repo for the shikigami-summon selector and summon-reference remap on delete. */
     private final CharacterRepository charRepo;
+    /** Ability repo for validating *ability:id* description references on save. */
+    private final AbilityRepository abilityRepo;
     private final TechniqueRepository techniqueRepo;
     private final CursedToolRepository cursedToolRepo;
+    private final DomainRepository domainRepo;
 
     // Handles to dynamically-shown/hidden widgets, refreshed in rebuildDetail.
     private Container<Actor> categorySectionsContainer;
@@ -122,8 +144,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         super(game, assets);
         repo = new MoveRepository("data/moves");
         charRepo = new CharacterRepository("data/characters");
+        abilityRepo = new AbilityRepository("data/abilities");
         techniqueRepo = new TechniqueRepository("data/techniques");
         cursedToolRepo = new CursedToolRepository("data/tools");
+        domainRepo = new DomainRepository("data/domains");
     }
 
     // =========================================================================
@@ -136,7 +160,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         MoveData m = new MoveData();
         m.name = "New Move";
         m.description = "";
-        m.moveType = MoveType.SORCERER.name();
+        m.moveTypes = new ArrayList<>(List.of(MoveType.SORCERER.name()));
         m.tags = new ArrayList<>();
         m.basePower = 0;
         m.baseAccuracy = 1.0;
@@ -150,6 +174,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         m.defenseType = DefenseType.NONE.name();
         m.blockStyle = BlockStyle.PERCENTAGE.name();
         m.blockDuration = 0;
+        m.blockAttackTypes = null;
+        m.blockRanges = null;
+        m.blockElementalTags = null;
         m.blockAffectedTags = null;
         m.blockDamageReduction = 100;
         m.blockFlatReduction = 0;
@@ -179,6 +206,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         // (e.g. an Attack + Innate Technique move would lose its tags).
         MoveData draft = deepCopy(stored);
         draft.migrateLegacyEffects();
+        draft.migrateLegacyHitTags();
+        draft.migrateLegacyBlockCoverage();
         draft.migrateLegacyNeverMissTier();
         return draft;
     }
@@ -189,6 +218,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.id                    = s.id;
         d.name                  = s.name;
         d.description           = s.description;
+        d.moveTypes             = s.moveTypes != null ? new ArrayList<>(s.moveTypes) : null;
         d.moveType              = s.moveType;
         d.tags                  = s.tags != null ? new ArrayList<>(s.tags) : null;
         d.basePower             = s.basePower;
@@ -208,6 +238,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.defenseType           = s.defenseType;
         d.blockStyle            = s.blockStyle;
         d.blockDuration         = s.blockDuration;
+        d.blockAttackTypes      = s.blockAttackTypes != null
+                                  ? new ArrayList<>(s.blockAttackTypes) : null;
+        d.blockRanges           = s.blockRanges != null
+                                  ? new ArrayList<>(s.blockRanges) : null;
+        d.blockElementalTags    = s.blockElementalTags != null
+                                  ? new ArrayList<>(s.blockElementalTags) : null;
         d.blockAffectedTags     = s.blockAffectedTags != null
                                   ? new ArrayList<>(s.blockAffectedTags) : null;
         d.blockDamageReduction  = s.blockDamageReduction;
@@ -248,6 +284,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.aoeTargetCount        = s.aoeTargetCount;
         d.defenseTargeting      = s.defenseTargeting;
         d.defenseTargetCount    = s.defenseTargetCount;
+        d.targeting         = s.targeting;
         d.attackLaunchMode      = s.attackLaunchMode;
         d.attackLaunchCondition = s.attackLaunchCondition != null
                                   ? s.attackLaunchCondition.copy() : null;
@@ -398,13 +435,24 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     @Override protected String recordSection(MoveData record) {
-        String group = moveRecordGroup(record);
+        return canonicalRecordGroup(moveRecordGroup(record)) + "/" + moveRecordSection(record);
+    }
+
+    @Override protected List<String> recordSectionsFor(MoveData record) {
+        String purpose = moveRecordSection(record);
+        return moveRecordGroups(record).stream()
+            .map(this::canonicalRecordGroup)
+            .map(group -> group + "/" + purpose)
+            .toList();
+    }
+
+    private String canonicalRecordGroup(String group) {
         String techniquePrefix = CURSED_TECHNIQUES_SECTION + "/";
         if (group.startsWith(techniquePrefix)) {
             String requestedName = group.substring(techniquePrefix.length());
             group = techniquePrefix + canonicalTechniqueName(requestedName);
         }
-        return group + "/" + moveRecordSection(record);
+        return group;
     }
 
     @Override protected String recordSectionParent(String section) {
@@ -429,13 +477,29 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     static String moveRecordGroup(MoveData record) {
-        MoveType moveType = record.effectiveMoveType();
-        if (moveType == MoveType.CURSED_SPIRIT) return CURSED_SPIRIT_SECTION;
-        if (moveType == MoveType.SHIKIGAMI) return SHIKIGAMI_SECTION;
-        if (record.requiredTechniqueId != null && !record.requiredTechniqueId.isBlank()) {
-            return CURSED_TECHNIQUES_SECTION + "/" + record.requiredTechniqueId.trim();
+        return moveRecordGroups(record).get(0);
+    }
+
+    static List<String> moveRecordGroups(MoveData record) {
+        // Technique moves file under their technique alone: they carry no
+        // character class, so there is no class bucket they belong in.
+        if (record.isTechniqueMove()) {
+            return List.of(CURSED_TECHNIQUES_SECTION + "/"
+                + record.requiredTechniqueId.trim());
         }
-        return SORCERER_SECTION;
+        List<String> groups = new ArrayList<>();
+        for (MoveType moveType : record.effectiveMoveTypes()) {
+            String group;
+            if (moveType == MoveType.CURSED_SPIRIT) {
+                group = CURSED_SPIRIT_SECTION;
+            } else if (moveType == MoveType.SHIKIGAMI) {
+                group = SHIKIGAMI_SECTION;
+            } else {
+                group = SORCERER_SECTION;
+            }
+            if (!groups.contains(group)) groups.add(group);
+        }
+        return List.copyOf(groups);
     }
 
     private static String moveTypeLabel(MoveType type) {
@@ -444,15 +508,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             case CURSED_SPIRIT -> "Cursed Spirit";
             case SHIKIGAMI -> "Shikigami";
         };
-    }
-
-    private static MoveType moveTypeFromLabel(String label) {
-        if (label != null) {
-            for (MoveType type : MoveType.values()) {
-                if (moveTypeLabel(type).equalsIgnoreCase(label.trim())) return type;
-            }
-        }
-        return MoveType.SORCERER;
     }
 
     static List<String> moveRecordSections(List<String> techniqueNames) {
@@ -492,13 +547,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             }
         }
         for (MoveData move : records) {
-            if (move.effectiveMoveType() != MoveType.SORCERER
-                || move.requiredTechniqueId == null
-                || move.requiredTechniqueId.isBlank()) {
-                continue;
+            if (move.isTechniqueMove()) {
+                String name = move.requiredTechniqueId.trim();
+                names.putIfAbsent(name, name);
             }
-            String name = move.requiredTechniqueId.trim();
-            names.putIfAbsent(name, name);
         }
         return List.copyOf(names.values());
     }
@@ -510,6 +562,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .orElse(requestedName);
     }
 
+    /** Flags *move:id* / *ability:id* description references that match no content. */
+    private String descriptionNameTokenError(String description) {
+        return ContentNameTokens.validationError(description,
+            CharacterData.descriptionNameLookup(repo, abilityRepo));
+    }
+
     @Override protected boolean isNewDraft(MoveData draft) {
         return draft.id == null || draft.id.isEmpty()
             || repo.findById(draft.id).isEmpty();
@@ -519,8 +577,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     protected void reloadRecords() throws IOException {
         repo.load();
         charRepo.load();
+        abilityRepo.load();
         techniqueRepo.load();
         cursedToolRepo.load();
+        domainRepo.load();
         records.clear();
         records.addAll(repo.getAll());
     }
@@ -547,6 +607,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         if (d.effects != null) {
             for (int index = 0; index < d.effects.size(); index++) {
                 MoveEffectData effect = d.effects.get(index);
+                if (effect != null && AbilityEffectType.ESTABLISH_DOMAIN.name()
+                    .equalsIgnoreCase(effect.type)
+                    && domainRepo.findById(effect.domainId).isEmpty()) {
+                    return ValidationResult.error(
+                        "Effect " + (index + 1) + ": choose a Domain that still exists.");
+                }
                 if (effect == null || !AbilityEffectType.SUMMON_CHARACTER.name()
                     .equalsIgnoreCase(effect.type)) {
                     if (effect != null && AbilityEffectType.TRANSFORM_CHARACTER.name()
@@ -571,6 +637,16 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         // a copy so a failed save cannot erase details hidden by a temporary
         // tag toggle.
         MoveData toSave = normalizedCopyForSave(d);
+        AbilityData.ensureEffectIds(toSave.effects);
+        String descriptionVariableError = MoveDescriptionVariables.validationError(
+            toSave.description, toSave.effects);
+        if (descriptionVariableError != null) {
+            return ValidationResult.error("Description: " + descriptionVariableError);
+        }
+        String descriptionNameError = descriptionNameTokenError(toSave.description);
+        if (descriptionNameError != null) {
+            return ValidationResult.error("Description: " + descriptionNameError);
+        }
         boolean adding = isNewDraft(d);
         // New drafts need a non-blank id for the engine builder to validate.
         if (adding && (toSave.id == null || toSave.id.isBlank())) {
@@ -637,12 +713,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         // section's launch mode. UTILITY combines with either as before: the
         // hybrid keeps its base category and authors its on-fire effect rows
         // in the UTILITY section.
-        boolean hasAttackTargetingTag = List.of(
-            MoveTag.MELEE, MoveTag.RANGED, MoveTag.AOE, MoveTag.FRIENDLY_FIRE).stream()
-            .anyMatch(tag -> move.tags.contains(tag.name()));
-        if (!attack && hasAttackTargetingTag) {
-            return "Melee, Ranged, AOE, and Friendly Fire tags require Attack.";
-        }
+        // AOE is category-agnostic — a utility move with on-fire enemy rows
+        // fans out just like an attack — so only the friendly-fire dependency
+        // on AOE is validated here.
         if (move.tags.contains(MoveTag.FRIENDLY_FIRE.name())
             && !move.tags.contains(MoveTag.AOE.name())) {
             return "Friendly Fire requires AOE.";
@@ -696,13 +769,14 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 return ValidationResult.error(
                     "Cannot delete: ability \"" + dependent.name + "\" references this move.");
             }
-            MoveData codedDependent = repo.getAll().stream()
+            MoveData launchDependent = repo.getAll().stream()
                 .filter(move -> !id.equals(move.id))
-                .filter(move -> referencesCodedMoveTarget(move, id))
+                .filter(move -> id.equals(move.attackLaunchMoveId))
                 .findFirst().orElse(null);
-            if (codedDependent != null) {
+            if (launchDependent != null) {
                 return ValidationResult.error(
-                    "Cannot delete: move \"" + codedDependent.name + "\" references this move.");
+                    "Cannot delete: move \"" + launchDependent.name
+                        + "\" launches this move as an attack.");
             }
             MoveData conditionDependent = repo.getAll().stream()
                 .filter(move -> !id.equals(move.id))
@@ -752,7 +826,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     .forEach(effect -> effect.moveId = remappedIds.getOrDefault(
                         effect.moveId, effect.moveId));
             }
-            remapCodedMoveTargets(repo.getAll(), remappedIds);
+            remapAttackLaunchMoveTargets(repo.getAll(), remappedIds);
+            remapMoveEffectConditions(repo.getAll(), remappedIds);
 
             repo.delete(id);
             repo.save();
@@ -805,55 +880,22 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
-    static void remapCodedMoveTargets(List<MoveData> moves, Map<String, String> remappedIds) {
+    static void remapAttackLaunchMoveTargets(List<MoveData> moves, Map<String, String> remappedIds) {
         for (MoveData move : moves) {
-            for (MoveData.StatusEffectData effect : codedEffects(move)) {
-                if (effect.codedTarget != null) {
-                    effect.codedTarget = remappedIds.getOrDefault(
-                        effect.codedTarget, effect.codedTarget);
-                }
-            }
-            if (move.effects != null) {
-                move.effects.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .filter(effect -> AbilityEffectType.CODED_MOVE_ACTION.name()
-                        .equalsIgnoreCase(effect.type))
-                    .filter(effect -> effect.codedTarget != null)
-                    .forEach(effect -> effect.codedTarget = remappedIds.getOrDefault(
-                        effect.codedTarget, effect.codedTarget));
-                move.effects.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .forEach(effect -> remapConditionMoves(effect.condition, remappedIds));
+            if (move.attackLaunchMoveId != null) {
+                move.attackLaunchMoveId = remappedIds.getOrDefault(
+                    move.attackLaunchMoveId, move.attackLaunchMoveId);
             }
         }
     }
 
-    private static boolean referencesCodedMoveTarget(MoveData move, String id) {
-        boolean legacy = codedEffects(move).stream()
-            .anyMatch(effect -> id.equals(effect.codedTarget));
-        if (legacy || move.effects == null) return legacy;
-        return move.effects.stream()
-            .filter(java.util.Objects::nonNull)
-            .filter(effect -> AbilityEffectType.CODED_MOVE_ACTION.name()
-                .equalsIgnoreCase(effect.type))
-            .anyMatch(effect -> id.equals(effect.codedTarget));
-    }
-
-    private static List<MoveData.StatusEffectData> codedEffects(MoveData move) {
-        List<MoveData.StatusEffectData> effects = new ArrayList<>();
-        // On-hit coded effects live per hit component; scan each one.
-        if (move.hitComponents != null) {
-            for (MoveData.HitComponentData component : move.hitComponents) {
-                if (component == null || component.onHitEffects == null) continue;
-                component.onHitEffects.stream().filter(MoveData.StatusEffectData::isCoded)
-                    .forEach(effects::add);
-            }
+    static void remapMoveEffectConditions(List<MoveData> moves, Map<String, String> remappedIds) {
+        for (MoveData move : moves) {
+            if (move.effects == null) continue;
+            move.effects.stream()
+                .filter(java.util.Objects::nonNull)
+                .forEach(effect -> remapConditionMoves(effect.condition, remappedIds));
         }
-        if (move.selfEffects != null) {
-            move.selfEffects.stream().filter(MoveData.StatusEffectData::isCoded)
-                .forEach(effects::add);
-        }
-        return effects;
     }
 
     private static boolean conditionReferencesMove(AbilityConditionData condition, String moveId) {
@@ -893,6 +935,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         powerFieldsContainer = null;
         attackLaunchContainer = null;
 
+        AbilityData.ensureEffectIds(d.effects);
+
         if (d.hitComponents != null && hasTag(d, MoveTag.ATTACK)) {
             synchronizeParentDamageTags(d);
         }
@@ -905,7 +949,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         identity.add(labelledField("Name", d.name,
                 s -> { d.name = s; })).growX().row();
         identity.add(labelledKeywordField("Description", d.description,
-                s -> { d.description = s; })).growX().row();
+                s -> { d.description = s; },
+                () -> moveDescriptionVariableEntries(d))).growX().row();
 
         // ── Tags ───────────────────────────────────────────────────────────────
         Table tagsSection = formSection(form, "TAGS");
@@ -939,6 +984,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 }
                 enableHitComponentEditing(d);
             }
+            if (tags.contains(MoveTag.ATTACK) && d.hitComponents == null) {
+                enableHitComponentEditing(d);
+            }
             if (d.hitComponents != null && tags.contains(MoveTag.ATTACK)) {
                 if (typeTagsChanged && !selectedTypeTags.isEmpty()) {
                     applyMoveDamageTagsToComponents(d, selectedTypeTags);
@@ -946,9 +994,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     synchronizeParentDamageTags(d);
                 }
             }
-            // GUARD_BREAK/HEAVY are modifier tags backed by dedicated flags (not
-            // part of any MoveCategory), so keep them in sync with the tag selection.
-            d.guardBreak = tags.contains(MoveTag.GUARD_BREAK);
             d.heavy = tags.contains(MoveTag.HEAVY);
             ensureTechniqueStatPrerequisites(d, tags);
             previousTypeTags.clear();
@@ -967,7 +1012,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         }
         previousTypeTags.clear();
         previousTypeTags.addAll(typeTagsFromNames(d.tags));
-        d.guardBreak = tagPicker.getSelected().contains(MoveTag.GUARD_BREAK);
+        d.guardBreak = false;
         d.heavy = tagPicker.getSelected().contains(MoveTag.HEAVY);
         tagsSection.add(tagPicker).growX().row();
         // Derived TIMELINE marker: which battle board this move plans on.
@@ -984,10 +1029,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             timelineRow.add(new Label("derived — " + derivedTimelineName(d) + " board",
                 skin, "small")).padLeft(6f);
             tagsSection.add(timelineRow).left().row();
-        }
-        if (d.hitComponents != null && hasTag(d, MoveTag.ATTACK)) {
-            tagsSection.add(formHint(
-                "Move damage types apply to every hit; refine individual hits below.")).row();
         }
         // Derived MULTI-HIT marker: shown (read-only) whenever the move authors
         // more than one hit component. It is not a MoveTag, not persisted, and
@@ -1038,10 +1079,28 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
         // ── Content assignment ─────────────────────────────────────────────────
         Table technique = formSection(form, "CONTENT ASSIGNMENT");
-        technique.add(labelledField("Required Technique (name or blank)",
-                d.requiredTechniqueId,
-                s -> { d.requiredTechniqueId = (s == null || s.isBlank()) ? null : s; }))
-            .growX().row();
+        TextField techniqueField = new HoverTextField(
+            d.requiredTechniqueId == null ? "" : d.requiredTechniqueId, skin);
+        techniqueField.setTextFieldFilter((field, character) -> true);
+        techniqueField.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                applyRequiredTechnique(d, techniqueField.getText());
+                markDirty();
+            }
+        });
+        // The Move Types row only exists on classed moves; refresh the form
+        // once technique typing is done so it appears/disappears.
+        techniqueField.addListener(new FocusListener() {
+            @Override public void keyboardFocusChanged(
+                FocusEvent event, Actor actor, boolean focused
+            ) {
+                if (!focused) rebuildDetail();
+            }
+        });
+        Table techniqueRow = new Table(skin);
+        addFormLabel(techniqueRow, "Required Technique (name or blank)");
+        techniqueRow.add(techniqueField).growX();
+        technique.add(techniqueRow).growX().row();
         // Read-only hint: does the named technique exist in the TechniqueRepository?
         // Warns (does not block) — a move may legitimately predate its technique.
         if (d.requiredTechniqueId != null && !d.requiredTechniqueId.isBlank()) {
@@ -1087,23 +1146,39 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         });
         misc.add(freeCb).left().row();
 
-        SelectBox<String> moveTypeSelect = new DynamicSelectBox<>(skin, uiProfile);
-        moveTypeSelect.setItems(java.util.Arrays.stream(MoveType.values())
-            .map(MoveEditorScreen::moveTypeLabel)
-            .toList()
-            .toArray(new String[0]));
-        moveTypeSelect.setSelected(moveTypeLabel(d.effectiveMoveType()));
-        moveTypeSelect.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                game.audio().play(SoundCue.UI_TOGGLE);
-                d.moveType = moveTypeFromLabel(moveTypeSelect.getSelected()).name();
-                d.shikigamiMove = null;
-                markDirty();
+        // Technique moves carry no character class: there is nothing to assign,
+        // and any character with the technique may learn the move.
+        if (d.isTechniqueMove()) {
+            misc.add(formHint(
+                "Technique move: no character class — any character with the technique may learn it."))
+                .left().row();
+        } else {
+            Table moveTypes = new Table(skin);
+            moveTypes.defaults().left().pad(3f);
+            for (MoveType type : MoveType.values()) {
+                CheckBox typeToggle = new CheckBox(" " + moveTypeLabel(type), skin);
+                typeToggle.setChecked(d.effectiveMoveTypes().contains(type));
+                typeToggle.addListener(new ChangeListener() {
+                    @Override public void changed(ChangeEvent event, Actor actor) {
+                        if (!setMoveTypeSelected(d, type, typeToggle.isChecked())) {
+                            typeToggle.setChecked(true);
+                            return;
+                        }
+                        game.audio().play(SoundCue.UI_TOGGLE);
+                        markDirty();
+                    }
+                });
+                moveTypes.add(typeToggle);
             }
-        });
-        misc.add(labelledRow("Move Type", moveTypeSelect)).growX().row();
-        misc.add(formHint("Controls which character classes may learn this move."))
-            .left().row();
+            misc.add(labelledRow("Move Types", moveTypes)).growX().row();
+            misc.add(formHint("Any matching character class may learn this move; select at least one."))
+                .left().row();
+            if (d.effectiveMoveTypes().contains(MoveType.CURSED_SPIRIT)) {
+                misc.add(formHint(
+                    "Cursed Spirit moves must explicitly include the CURSED_ENERGY tag."))
+                    .left().row();
+            }
+        }
 
         CheckBox grantedCb = new CheckBox(" Must be granted", skin);
         grantedCb.setChecked(d.mustBeGranted);
@@ -1148,6 +1223,15 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         return form;
     }
 
+    private static List<KeywordDescriptionCatalog.Entry> moveDescriptionVariableEntries(
+        MoveData move
+    ) {
+        return MoveDescriptionVariables.variables(move.effects).stream()
+            .map(variable -> new KeywordDescriptionCatalog.Entry(
+                variable.token(), variable.description()))
+            .toList();
+    }
+
     // =========================================================================
     // Conditional sub-sections
     // =========================================================================
@@ -1161,6 +1245,29 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         defenseEffectsContainer = null;
         aoeFieldsContainer = null;
         attackLaunchContainer = null;
+
+        Table targeting = formSection(sections, "PAIR TARGETING");
+        Targeting currentPair =
+            Targeting.fromName(d.targeting);
+        d.targeting = currentPair.name();
+        targeting.add(labelledRow(
+            "Combatants (" + currentPair.displayName() + ")",
+            new EnumSelectBox<>(Targeting.class, currentPair.name(), false,
+                value -> {
+                    d.targeting = value;
+                    game.audio().play(SoundCue.UI_NAVIGATE);
+                    markDirty();
+                }, skin, uiProfile))).growX().row();
+
+        // AOE type sub-section: shown whenever the move carries the AOE tag,
+        // regardless of category — attacks, utility moves, and hybrids alike
+        // fan their on-fire/enemy rows out over the authored shape. Sits
+        // before the category cards so every category path sees it.
+        if (hasTag(d, MoveTag.AOE)) {
+            aoeFieldsContainer = new Container<>();
+            aoeFieldsContainer.setActor(buildAoeFields(d));
+            formSection(sections, "AREA OF EFFECT").add(aoeFieldsContainer).growX().row();
+        }
 
         // The DEFENSE card sits above the ATTACK card: defence wins over
         // attack, so a Defensive+Attack hybrid reads top-down as a defence
@@ -1205,6 +1312,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     return finishCategorySections(sections, d);
                 }
             }
+            if (d.hitComponents == null) enableHitComponentEditing(d);
 
             attack.add(new Label("POWER / ACCURACY", skin, "small")).left().row();
             powerFieldsContainer = new Container<>();
@@ -1217,12 +1325,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 "None uses normal accuracy. Never Miss wins against an equal or lower Never Hit tier."))
                 .left().row();
             // On-hit effects are authored per hit component below — no move-level section.
-
-            // AOE type sub-section: shown only when the move is both an ATTACK
-            // and AOE-tagged. Lets the author pick the targeting shape.
-            aoeFieldsContainer = new Container<>();
-            aoeFieldsContainer.setActor(hasTag(d, MoveTag.AOE) ? buildAoeFields(d) : new Table());
-            attack.add(aoeFieldsContainer).growX().row();
 
             // On-fire effects are authored only in the UTILITY section: tick
             // UTILITY alongside ATTACK to reveal it for a hybrid move.
@@ -1426,35 +1528,14 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     private Actor buildPowerFields(MoveData d) {
         Table t = new Table(skin);
         t.defaults().left().pad(4);
-        Label combinedPower = null;
-        if (d.hitComponents == null) {
-            t.add(labelledIntField("Combined Base Power", d.basePower, 0, 99999,
-                    v -> { d.basePower = v; })).growX().row();
-        } else {
-            combinedPower = new Label(String.valueOf(combinedBasePower(d)), skin);
-            t.add(labelledRow("Combined Base Power", combinedPower)).growX().row();
-            t.add(formHint(hitCountLabel(d.hitComponents.size())
-                + "; combined power is derived from the components below.")).row();
-        }
+        if (d.hitComponents == null) enableHitComponentEditing(d);
+        Label combinedPower = new Label(String.valueOf(combinedBasePower(d)), skin);
+        t.add(labelledRow("Combined Base Power", combinedPower)).growX().row();
+        t.add(formHint(hitCountLabel(d.hitComponents.size())
+            + "; combined power is derived from the components below.")).row();
 
         t.add(new Label("HIT COMPONENTS", skin, "small")).padTop(8f).left().row();
-        if (d.hitComponents == null) {
-            t.add(formHint(
-                "Legacy single hit: Base Power and the move's damage type remain authoritative."))
-                .row();
-            TextButton enableComponents = new TextButton("Use hit components", skin);
-            enableComponents.addListener(new ChangeListener() {
-                @Override public void changed(ChangeEvent event, Actor actor) {
-                    game.audio().play(SoundCue.UI_CONFIRM);
-                    enableHitComponentEditing(d);
-                    markDirty();
-                    rebuildDetail();
-                }
-            });
-            t.add(enableComponents).padTop(4f).left().row();
-        } else {
-            t.add(buildHitComponentsEditor(d, combinedPower)).growX().row();
-        }
+        t.add(buildHitComponentsEditor(d, combinedPower)).growX().row();
 
         // Potency gates which defensive moves can stop this attack (1–5).
         t.add(labelledIntField("Potency (1–5)", d.potency, 1, 5,
@@ -1546,7 +1627,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     synchronizeCombinedBasePower(d);
                     combinedPower.setText(String.valueOf(d.basePower));
                 })).growX().row();
-            card.add(new Label("Damage Types", skin)).padTop(3f).row();
+            card.add(new Label("Attack Tags", skin)).padTop(3f).row();
             card.add(buildHitComponentTagToggles(d, component)).growX().row();
 
             // Per-hit accuracy. A component with no authored accuracy (the legacy
@@ -1630,7 +1711,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     ) {
         Table toggles = new Table(skin);
         toggles.defaults().left().pad(3f);
-        Set<String> selected = COMPONENT_DAMAGE_TAGS.stream()
+        Set<String> selected = COMPONENT_ATTACK_TAGS.stream()
             .map(MoveTag::name)
             .filter(tag -> component.tags != null && component.tags.contains(tag))
             .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -1639,7 +1720,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         Map<MoveTag, CheckBox> checkBoxes = new LinkedHashMap<>();
 
         int column = 0;
-        for (MoveTag tag : COMPONENT_DAMAGE_TAGS) {
+        for (MoveTag tag : COMPONENT_ATTACK_TAGS) {
             CheckBox checkBox = new CheckBox(pretty(tag.name()), skin);
             checkBox.setProgrammaticChangeEvents(false);
             checkBox.setChecked(selected.contains(tag.name()));
@@ -1649,7 +1730,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     if (checkBox.isChecked()) {
                         selected.add(tag.name());
                         removeImpliedCursedEnergy(selected);
-                    } else if (selected.size() > 1) {
+                    } else if (!MoveTag.TYPE_TAGS.contains(tag)
+                        || selected.stream().map(MoveTag::valueOf)
+                            .filter(MoveTag.TYPE_TAGS::contains).count() > 1) {
                         selected.remove(tag.name());
                     } else {
                         checkBox.setChecked(true);
@@ -1701,6 +1784,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 .forEach(effect -> effect.hitComponentIndex = 0);
         }
         move.hitComponents = new ArrayList<>(List.of(component));
+        if (move.tags != null) {
+            move.tags = new ArrayList<>(move.tags);
+            move.tags.removeIf(MoveEditorScreen::isHitOnlyTagName);
+        }
+        move.guardBreak = false;
         synchronizeParentDamageTags(move);
         synchronizeCombinedBasePower(move);
     }
@@ -1787,7 +1875,14 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     private static void synchronizeParentDamageTags(MoveData move) {
-        if (move.tags == null || move.hitComponents == null) return;
+        // A move without authored hit components owns its type tags directly —
+        // e.g. a defence hybrid whose hit is a launched counter-move carries
+        // its own technique tags, not the launched hit's damage tags. There is
+        // nothing to derive, so the authored tags must survive untouched.
+        if (move.tags == null || move.hitComponents == null
+            || move.hitComponents.isEmpty()) {
+            return;
+        }
         move.tags = new ArrayList<>(move.tags);
         move.tags.removeIf(tag -> {
             try { return MoveTag.TYPE_TAGS.contains(MoveTag.valueOf(tag)); }
@@ -1797,7 +1892,13 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         for (MoveData.HitComponentData component : move.hitComponents) {
             if (component == null || component.tags == null) continue;
             component.tags = editableComponentTags(component.tags);
-            damageTags.addAll(component.tags);
+            for (String tag : component.tags) {
+                try {
+                    if (MoveTag.TYPE_TAGS.contains(MoveTag.valueOf(tag))) damageTags.add(tag);
+                } catch (IllegalArgumentException ignored) {
+                    // Invalid component tags are reported by engine validation.
+                }
+            }
         }
         move.tags.addAll(damageTags);
         if (damageTags.contains(MoveTag.INNATE_TECHNIQUE.name())
@@ -1812,14 +1913,17 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     static void applyMoveDamageTagsToComponents(MoveData move, Set<MoveTag> selectedTags) {
         if (move == null || move.hitComponents == null) return;
         Set<MoveTag> damageTypes = typeTags(selectedTags);
-        ArrayList<String> tags = COMPONENT_DAMAGE_TAGS.stream()
+        ArrayList<String> typeNames = COMPONENT_TYPE_TAGS.stream()
             .filter(damageTypes::contains)
             .map(MoveTag::name)
             .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-        tags = editableComponentTags(tags);
-        if (tags.isEmpty()) return;
+        if (typeNames.isEmpty()) return;
         for (MoveData.HitComponentData component : move.hitComponents) {
-            if (component != null) component.tags = new ArrayList<>(tags);
+            if (component == null) continue;
+            ArrayList<String> tags = editableComponentTags(component.tags);
+            tags.removeIf(name -> MoveTag.TYPE_TAGS.contains(MoveTag.valueOf(name)));
+            tags.addAll(0, typeNames);
+            component.tags = editableComponentTags(tags);
         }
         synchronizeParentDamageTags(move);
     }
@@ -1849,17 +1953,26 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     private static ArrayList<String> defaultComponentTags(MoveData move) {
-        MoveCategory category = move.derivedCategory();
         ArrayList<String> tags = new ArrayList<>();
-        for (MoveTag tag : COMPONENT_DAMAGE_TAGS) {
-            if (category.getTags().contains(tag)) tags.add(tag.name());
+        Set<MoveTag> moveTypes = typeTagsFromNames(move.tags);
+        if (moveTypes.isEmpty()) moveTypes = move.derivedCategory().getTags();
+        for (MoveTag tag : COMPONENT_TYPE_TAGS) {
+            if (moveTypes.contains(tag)) tags.add(tag.name());
+        }
+        if (move.tags != null) {
+            for (String name : move.tags) {
+                if (isHitOnlyTagName(name)) tags.add(name);
+            }
+        }
+        if (move.guardBreak && !tags.contains(MoveTag.GUARD_BREAK.name())) {
+            tags.add(MoveTag.GUARD_BREAK.name());
         }
         if (tags.isEmpty()) tags.add(MoveTag.PHYSICAL.name());
         return tags;
     }
 
     private static ArrayList<String> editableComponentTags(List<String> tags) {
-        LinkedHashSet<String> selected = COMPONENT_DAMAGE_TAGS.stream()
+        LinkedHashSet<String> selected = COMPONENT_ATTACK_TAGS.stream()
             .map(MoveTag::name)
             .filter(tag -> tags != null && tags.contains(tag))
             .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -1868,7 +1981,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     private static ArrayList<String> orderedComponentTags(Set<String> selected) {
-        return COMPONENT_DAMAGE_TAGS.stream()
+        return COMPONENT_ATTACK_TAGS.stream()
             .map(MoveTag::name)
             .filter(selected::contains)
             .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
@@ -1878,6 +1991,15 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         if (tags.contains(MoveTag.INNATE_TECHNIQUE.name())
             || tags.contains(MoveTag.NON_INNATE_TECHNIQUE.name())) {
             tags.remove(MoveTag.CURSED_ENERGY.name());
+        }
+    }
+
+    private static boolean isHitOnlyTagName(String name) {
+        if (name == null) return false;
+        try {
+            return MoveTag.HIT_ONLY_TAGS.contains(MoveTag.valueOf(name));
+        } catch (IllegalArgumentException ignored) {
+            return false;
         }
     }
 
@@ -1973,9 +2095,12 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         t.add(labelledIntField("Potency (1–5)", d.potency, 1, 5,
                 v -> { d.potency = v; })).growX().row();
 
-        // Affected tags — multi-toggle
-        t.add(new Label("Affected Tags (blank = all)", skin)).padTop(4).row();
-        t.add(buildBlockTagToggles(d)).growX().row();
+        addBlockCoverageFields(t, d);
+
+        t.add(new Label("CONDITIONAL BLOCK EFFECTIVENESS", skin, "small"))
+            .padTop(8f).row();
+        t.add(buildMoveEffectsEditor(
+            d, MoveEffectTrigger.BLOCK_CALCULATION, null)).growX().row();
 
         addDefenseTimingAndUsesFields(t, d);
         return t;
@@ -2002,8 +2127,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         t.add(labelledIntField("Potency (1–5)", d.potency, 1, 5,
                 v -> { d.potency = v; })).growX().row();
 
-        t.add(new Label("Affected Tags (blank = all)", skin)).padTop(4).row();
-        t.add(buildBlockTagToggles(d)).growX().row();
+        addBlockCoverageFields(t, d);
 
         // Stagger ticks applied to the attacker on a successful non-GUARD_BREAK parry.
         t.add(labelledIntField("Stagger Ticks on Attacker (0 = none)",
@@ -2083,26 +2207,50 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         };
     }
 
-    private Actor buildBlockTagToggles(MoveData d) {
+    private void addBlockCoverageFields(Table table, MoveData move) {
+        table.add(new Label("Attack Types (blank = all)", skin)).padTop(4).row();
+        table.add(buildBlockCoverageToggles(
+            move.blockAttackTypes,
+            java.util.Arrays.stream(BlockAttackType.values()).map(BlockAttackType::name).toList(),
+            value -> move.blockAttackTypes = value)).growX().row();
+
+        table.add(new Label("Ranges (blank = all)", skin)).padTop(4).row();
+        table.add(buildBlockCoverageToggles(
+            move.blockRanges,
+            List.of(MoveTag.MELEE.name(), MoveTag.RANGED.name()),
+            value -> move.blockRanges = value)).growX().row();
+
+        table.add(new Label("Blockable Elements (blank = all)", skin)).padTop(4).row();
+        table.add(buildBlockCoverageToggles(
+            move.blockElementalTags,
+            List.of(MoveTag.ICE.name(), MoveTag.ELECTRIC.name(),
+                MoveTag.FIRE.name(), MoveTag.WATER.name()),
+            value -> move.blockElementalTags = value)).growX().row();
+    }
+
+    private Actor buildBlockCoverageToggles(
+        List<String> current,
+        List<String> options,
+        Consumer<List<String>> setter
+    ) {
         Table grid = new Table(skin);
         grid.defaults().pad(3);
-        MoveTag[] affected = { MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY,
-                               MoveTag.INNATE_TECHNIQUE, MoveTag.NON_INNATE_TECHNIQUE };
         Set<String> selected = new LinkedHashSet<>();
-        if (d.blockAffectedTags != null) selected.addAll(d.blockAffectedTags);
+        if (current != null) selected.addAll(current);
 
         int col = 0;
-        for (MoveTag tag : affected) {
-            CheckBox cb = new CheckBox(pretty(tag.name()), skin);
-            cb.setChecked(selected.contains(tag.name()));
+        for (String option : options) {
+            String label = BlockAttackType.PHYSICAL_CURSED_ENERGY.name().equals(option)
+                ? BlockAttackType.PHYSICAL_CURSED_ENERGY.displayName() : pretty(option);
+            CheckBox cb = new CheckBox(label, skin);
+            cb.setChecked(selected.contains(option));
             cb.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     game.audio().play(SoundCue.UI_TOGGLE);
-                    Set<String> cur = new LinkedHashSet<>(
-                        d.blockAffectedTags == null ? List.of() : d.blockAffectedTags);
-                    if (cb.isChecked()) cur.add(tag.name());
-                    else                cur.remove(tag.name());
-                    d.blockAffectedTags = cur.isEmpty() ? null : new ArrayList<>(cur);
+                    if (cb.isChecked()) selected.add(option);
+                    else selected.remove(option);
+                    List<String> ordered = options.stream().filter(selected::contains).toList();
+                    setter.accept(ordered.isEmpty() ? null : new ArrayList<>(ordered));
                     markDirty();
                 }
             });
@@ -2244,6 +2392,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             List.of(),
             techniqueRepo.getAll(),
             charRepo.getAll(),
+            domainRepo.getAll(),
             this::markDirty,
             this::rebuildDetail,
             game.audio()::play,
@@ -2341,25 +2490,38 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         return list;
     }
 
-    private static List<AbilityEffectType> moveEffectTypes(MoveEffectTrigger trigger) {
+    static List<AbilityEffectType> moveEffectTypes(MoveEffectTrigger trigger) {
+        if (trigger == MoveEffectTrigger.BLOCK_CALCULATION) {
+            return List.of(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY);
+        }
         if (trigger == MoveEffectTrigger.AVAILABILITY) {
             return java.util.Arrays.stream(AbilityEffectType.values())
                 .filter(AbilityEffectType::isMoveAvailabilityConstraint)
                 .toList();
         }
+        if (trigger == MoveEffectTrigger.ON_START) {
+            return List.of(
+                AbilityEffectType.TRANSACT_BOUNDED_RESOURCE,
+                AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER);
+        }
         List<AbilityEffectType> preferred = List.of(
-            AbilityEffectType.TEMP_STAT_PERCENT,
-            AbilityEffectType.BATTLE_STAT_PERCENT,
+            AbilityEffectType.TIMED_STAT_MODIFIER,
             AbilityEffectType.APPLY_STATUS,
             AbilityEffectType.INSTANT_KILL,
             AbilityEffectType.SUMMON_CHARACTER,
             AbilityEffectType.DESUMMON_TARGET_SHIKIGAMI,
             AbilityEffectType.CODED_MOVE_ACTION);
         List<AbilityEffectType> types = new ArrayList<>(preferred);
+        if (trigger == MoveEffectTrigger.ON_FIRE) {
+            types.add(AbilityEffectType.TRANSACT_BOUNDED_RESOURCE);
+        }
         java.util.Arrays.stream(AbilityEffectType.values())
             .filter(AbilityEffectType::isMoveEffect)
             .filter(type -> !type.isAccuracyPriority())
             .filter(type -> !type.isMoveAvailabilityConstraint())
+            .filter(type -> !type.isBlockEffectivenessModifier())
+            .filter(type -> type != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE)
+            .filter(type -> type != AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
             .filter(type -> !types.contains(type))
             .forEach(types::add);
         return List.copyOf(types);
@@ -2886,29 +3048,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .colspan(2).row();
 
         if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)) {
-            List<MoveData> candidates = repo.getAll().stream()
-                .filter(MoveEditorScreen::isSimpleDomainReactionMove)
-                .toList();
-            if (candidates.isEmpty()) {
-                fields.add(formHint("Create an attacking move before linking this reaction."))
-                    .colspan(2).row();
-                return fields;
-            }
-            SelectBox<String> moveBox = new DynamicSelectBox<>(skin, uiProfile);
-            List<String> labels = candidates.stream().map(MoveEditorScreen::moveLabel).toList();
-            moveBox.setItems(labels.toArray(new String[0]));
-            String selected = candidates.stream()
-                .filter(move -> move.id.equals(effect.codedTarget))
-                .map(MoveEditorScreen::moveLabel)
-                .findFirst().orElse(labels.get(0));
-            moveBox.setSelected(selected);
-            moveBox.addListener(new ChangeListener() {
-                @Override public void changed(ChangeEvent event, Actor actor) {
-                    effect.codedTarget = moveIdFromLabel(moveBox.getSelected());
-                }
-            });
-            fields.add(new Label("Reaction move", skin)).padRight(8);
-            fields.add(moveBox).growX().row();
+            effect.codedTarget = null;
+            effect.codedStackCount = null;
+            fields.add(formHint(
+                "Configure Simple Domain's parry and counter in the Defense section."))
+                .colspan(2).row();
             return fields;
         }
 
@@ -3001,20 +3145,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 effect.codedStackCount = null;
             }
         } else if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)) {
+            effect.codedTarget = null;
             effect.codedStackCount = null;
-            boolean validTarget = effect.codedTarget != null && repo.findById(effect.codedTarget)
-                .filter(MoveEditorScreen::isSimpleDomainReactionMove)
-                .isPresent();
-            if (!validTarget) {
-                effect.codedTarget = repo.getAll().stream()
-                    .filter(move -> "Batto Sword Drawing".equals(move.name))
-                    .findFirst()
-                    .or(() -> repo.getAll().stream()
-                        .filter(MoveEditorScreen::isSimpleDomainReactionMove)
-                        .findFirst())
-                    .map(move -> move.id)
-                    .orElse(null);
-            }
         } else {
             effect.codedTarget = null;
             effect.codedStackCount = null;
@@ -3118,14 +3250,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         return separator < 0 ? label.trim() : label.substring(0, separator).trim();
     }
 
-    private static boolean isSimpleDomainReactionMove(MoveData move) {
-        try {
-            return NewShadowStyleAbility.isValidReactionMove(move.toMove());
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
     // =========================================================================
     // Conditional refresh
     // =========================================================================
@@ -3135,8 +3259,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         markDirty();
         if (categorySectionsContainer != null) {
             categorySectionsContainer.setActor(buildCategorySections(d));
-            // buildCategorySections creates (but does not populate) the AOE and
-            // other conditional containers — populate them now.
+            // buildCategorySections creates but does not populate the
+            // conditional containers inside the category cards — populate now.
             refreshConditionalFields(d);
         }
     }
@@ -3154,12 +3278,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         if (ceMinMaxContainer  != null) ceMinMaxContainer.setActor(buildCeMinMax(d));
         if (powerFieldsContainer != null) powerFieldsContainer.setActor(buildPowerFields(d));
         if (aoeFieldsContainer != null) {
-            // The AOE sub-section only exists for ATTACK + AOE-tagged moves.
-            if (hasTag(d, MoveTag.AOE) && hasTag(d, MoveTag.ATTACK)) {
-                aoeFieldsContainer.setActor(buildAoeFields(d));
-            } else {
-                aoeFieldsContainer.setActor(new Table());
-            }
+            // The AOE sub-section exists for any AOE-tagged move, whatever its
+            // category; a tag toggle rebuilds the section list entirely.
+            aoeFieldsContainer.setActor(buildAoeFields(d));
         }
     }
 
@@ -3167,8 +3288,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
      * Build the defensive targeting sub-section (inside the DEFENSE card): whose
      * timeline the active-defense window is conferred to (Self / Single Ally /
      * Multiple Allies / All Allies Except Self / All Allies Including Self), and
-     * for MULTIPLE_ALLIES a target-count field. Mirrors {@link #buildAoeFields}
-     * for attacks.
+     * for MULTIPLE_ALLIES a target-count field. Mirrors {@link #buildAoeFields}.
      */
     private Actor buildDefenseTargetingFields(MoveData d) {
         Table t = new Table(skin);
@@ -3196,9 +3316,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     /**
-     * Build the AOE targeting sub-section (inside the ATTACK card): the shape
-     * dropdown (Multiple Targets / All Enemies / All Others) and, for the
-     * MULTIPLE shape, a target-count field.
+     * Build the AOE targeting sub-section (its own AREA OF EFFECT card, shown
+     * for any AOE-tagged move): the shape dropdown (Multiple Targets /
+     * All Enemies / All Others) and, for the MULTIPLE shape, a target-count
+     * field.
      */
     private Actor buildAoeFields(MoveData d) {
         Table t = new Table(skin);
@@ -3276,6 +3397,43 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         setWeaponTags(d, updated);
     }
 
+/**
+ * Toggle one move type while requiring every classed move to retain at least
+ * one. Technique moves carry no class, so there is nothing to toggle.
+ */
+static boolean setMoveTypeSelected(MoveData d, MoveType moveType, boolean selected) {
+    if (d.isTechniqueMove()) return false;
+    Set<MoveType> updated = EnumSet.copyOf(d.effectiveMoveTypes());
+    if (selected) updated.add(moveType);
+    else updated.remove(moveType);
+    if (updated.isEmpty()) return false;
+    d.moveTypes = updated.stream().map(MoveType::name)
+        .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    d.moveType = null;
+    d.shikigamiMove = null;
+    return true;
+}
+
+/**
+ * Set the draft's required technique while keeping the class fields
+ * consistent: a technique move carries no character class, and a move that
+ * stops being a technique move needs a default class to stay learnable.
+ */
+static void applyRequiredTechnique(MoveData d, String text) {
+    String technique = text == null ? "" : text.trim();
+    boolean wasTechniqueMove = d.isTechniqueMove();
+    d.requiredTechniqueId = technique.isEmpty() ? null : technique;
+    if (d.isTechniqueMove()) {
+        d.moveTypes = null;
+        d.moveType = null;
+        d.shikigamiMove = null;
+    } else if (wasTechniqueMove) {
+        d.moveTypes = new ArrayList<>(List.of(MoveType.SORCERER.name()));
+        d.moveType = null;
+        d.shikigamiMove = null;
+    }
+}
+
     private static boolean hasTag(MoveData d, MoveTag tag) {
         return d.tags != null && d.tags.contains(tag.name());
     }
@@ -3316,6 +3474,15 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
     static MoveData normalizedCopyForSave(MoveData draft) {
         MoveData copy = deepCopy(draft);
+        // Technique moves carry no class; strip any stale authored classes so
+        // they can never be saved back as a class restriction.
+        copy.moveTypes = copy.isTechniqueMove() ? null
+            : copy.effectiveMoveTypes().stream().map(MoveType::name)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        copy.moveType = null;
+        copy.shikigamiMove = null;
+        copy.migrateLegacyBlockCoverage();
+        copy.migrateLegacyHitTags();
         if (copy.hitComponents != null && hasTag(copy, MoveTag.ATTACK)) {
             synchronizeParentDamageTags(copy);
         }
@@ -3344,6 +3511,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             }
         }
         if (!hasTag(d, MoveTag.ATTACK)) {
+            if (d.tags != null) d.tags.removeIf(MoveEditorScreen::isHitOnlyTagName);
+            d.guardBreak = false;
             d.basePower = 0;
             d.hitComponents = new ArrayList<>();
             d.baseAccuracy = 1.0;
@@ -3360,6 +3529,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             d.defenseType = DefenseType.NONE.name();
             d.blockStyle = BlockStyle.PERCENTAGE.name();
             d.blockDuration = 0;
+            d.blockAttackTypes = null;
+            d.blockRanges = null;
+            d.blockElementalTags = null;
             d.blockAffectedTags = null;
             d.blockDamageReduction = 100;
             d.blockFlatReduction = 0;
@@ -3375,7 +3547,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 d.effects.removeIf(effect -> effect != null
                     && (MoveEffectTrigger.ON_BLOCK.name().equalsIgnoreCase(effect.trigger)
                         || MoveEffectTrigger.ON_PARRY.name().equalsIgnoreCase(effect.trigger)
-                        || MoveEffectTrigger.ON_DODGE.name().equalsIgnoreCase(effect.trigger)));
+                        || MoveEffectTrigger.ON_DODGE.name().equalsIgnoreCase(effect.trigger)
+                        || MoveEffectTrigger.BLOCK_CALCULATION.name()
+                            .equalsIgnoreCase(effect.trigger)));
             }
         } else if (d.effects != null) {
             if (!DefenseType.DODGE.name().equals(d.defenseType)) {
@@ -3388,8 +3562,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 default -> null;
             };
             d.effects.removeIf(effect -> effect != null
-                && isDefenseTrigger(effect.trigger)
-                && (active == null || !active.name().equalsIgnoreCase(effect.trigger)));
+                && ((isDefenseTrigger(effect.trigger)
+                        && (active == null || !active.name().equalsIgnoreCase(effect.trigger)))
+                    || (MoveEffectTrigger.BLOCK_CALCULATION.name()
+                        .equalsIgnoreCase(effect.trigger)
+                        && active != MoveEffectTrigger.ON_BLOCK)));
         }
     }
 

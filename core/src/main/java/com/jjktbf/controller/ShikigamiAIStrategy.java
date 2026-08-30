@@ -47,7 +47,7 @@ public class ShikigamiAIStrategy implements AIStrategy {
     public BattlePlan selectPlan(BattleCombatant ai, BattleCombatant opponent, RandomSource rng) {
         int gridLength = Timeline.gridLengthForStrongestAp(
             Math.max(ai.getMaxApBar(), opponent == null ? 0 : opponent.getMaxApBar()));
-        BattlePlan plan = new BattlePlan(ai.getMaxApBar(), ai.getCurrentCe(), gridLength);
+        BattlePlan plan = BattlePlan.forCombatant(ai, gridLength);
 
         // Partition the move pool. Defensive moves are dropped on purpose.
         Move desummon = null;
@@ -90,10 +90,11 @@ public class ShikigamiAIStrategy implements AIStrategy {
                 bailForDesummon = true;
                 break;
             }
-            Move pick = weightedPick(attacks, ai, defenses, remainingAp, remainingCe, uses, rng);
+            Move pick = weightedPick(
+                attacks, ai, plan, defenses, remainingAp, remainingCe, uses, rng);
             if (pick == null) break;
             picked.add(pick);
-            remainingAp -= pick.getApCost();
+            remainingAp -= plan.effectiveApCost(pick);
             remainingCe -= ai.computeMoveCeCost(pick);
             uses.merge(pick.getId(), 1, Integer::sum);
         }
@@ -131,7 +132,7 @@ public class ShikigamiAIStrategy implements AIStrategy {
             if (plan.canPlace(desummon, ceCost)) {
                 int start = picked.isEmpty()
                     ? 1
-                    : Math.max(1, gridLength - desummon.getApCost() + 1);
+                    : Math.max(1, gridLength - plan.effectiveApCost(desummon) + 1);
                 if (plan.place(desummon, start, ceCost) == null) {
                     plan.placeFirstFit(desummon, ceCost);
                 }
@@ -151,15 +152,22 @@ public class ShikigamiAIStrategy implements AIStrategy {
      * harder-hitting, effect-bearing, defense-aware attacks are chosen more
      * often without the pick ever becoming deterministic.
      */
-    private static Move weightedPick(List<Move> attacks, BattleCombatant ai, OpponentDefenses defenses,
-                                     int remainingAp, int remainingCe, Map<String, Integer> uses,
-                                     RandomSource rng) {
+    private static Move weightedPick(
+        List<Move> attacks,
+        BattleCombatant ai,
+        BattlePlan plan,
+        OpponentDefenses defenses,
+        int remainingAp,
+        int remainingCe,
+        Map<String, Integer> uses,
+        RandomSource rng
+    ) {
         List<Move> pool = new ArrayList<>();
         List<Double> weights = new ArrayList<>();
         for (Move m : attacks) {
             if (m.getMoveCap() != 0 && uses.getOrDefault(m.getId(), 0) >= m.getMoveCap()) continue;
             int ceCost = ai.computeMoveCeCost(m);
-            if (m.getApCost() > remainingAp || ceCost > remainingCe) continue;
+            if (plan.effectiveApCost(m) > remainingAp || ceCost > remainingCe) continue;
             pool.add(m);
             weights.add(Math.max(MIN_WEIGHT, scoreAttack(m, ai, defenses)));
         }

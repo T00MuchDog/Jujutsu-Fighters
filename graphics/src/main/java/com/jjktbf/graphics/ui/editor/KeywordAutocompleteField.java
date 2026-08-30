@@ -21,8 +21,10 @@ import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.graphics.ui.text.KeywordTextLayout;
 import com.jjktbf.model.text.KeywordDescriptionCatalog;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /** Text field that suggests documented keywords for uppercase input. */
 public final class KeywordAutocompleteField extends HoverTextField {
@@ -34,9 +36,11 @@ public final class KeywordAutocompleteField extends HoverTextField {
     private static final int MAX_VISIBLE_ITEMS = 7;
 
     private final List<KeywordDescriptionCatalog.Entry> catalogEntries;
+    private final Supplier<List<KeywordDescriptionCatalog.Entry>> extraCatalogEntries;
     private final Table popup;
     private final HoverList<String> suggestionList;
     private final ScrollPane suggestionScroll;
+    private final Label heading;
     private final Label selectedTerm;
     private final Label description;
     private final Cell<Label> headingCell;
@@ -63,7 +67,17 @@ public final class KeywordAutocompleteField extends HoverTextField {
     private boolean suppressNextCompletionCharacter;
 
     public KeywordAutocompleteField(String text, Skin skin, UiProfile uiProfile) {
-        this(text, skin, KeywordDescriptionCatalog.getDefault().entries(), uiProfile);
+        this(text, skin, KeywordDescriptionCatalog.getDefault().entries(), List::of, uiProfile);
+    }
+
+    public KeywordAutocompleteField(
+        String text,
+        Skin skin,
+        UiProfile uiProfile,
+        Supplier<List<KeywordDescriptionCatalog.Entry>> extraCatalogEntries
+    ) {
+        this(text, skin, KeywordDescriptionCatalog.getDefault().entries(),
+            extraCatalogEntries, uiProfile);
     }
 
     KeywordAutocompleteField(
@@ -71,7 +85,7 @@ public final class KeywordAutocompleteField extends HoverTextField {
         Skin skin,
         List<KeywordDescriptionCatalog.Entry> catalogEntries
     ) {
-        this(text, skin, catalogEntries, UiProfile.MAC);
+        this(text, skin, catalogEntries, List::of, UiProfile.MAC);
     }
 
     KeywordAutocompleteField(
@@ -80,8 +94,19 @@ public final class KeywordAutocompleteField extends HoverTextField {
         List<KeywordDescriptionCatalog.Entry> catalogEntries,
         UiProfile uiProfile
     ) {
+        this(text, skin, catalogEntries, List::of, uiProfile);
+    }
+
+    private KeywordAutocompleteField(
+        String text,
+        Skin skin,
+        List<KeywordDescriptionCatalog.Entry> catalogEntries,
+        Supplier<List<KeywordDescriptionCatalog.Entry>> extraCatalogEntries,
+        UiProfile uiProfile
+    ) {
         super(text, skin);
         this.catalogEntries = List.copyOf(catalogEntries == null ? List.of() : catalogEntries);
+        this.extraCatalogEntries = extraCatalogEntries == null ? List::of : extraCatalogEntries;
         boolean windowsLayout = Objects.requireNonNull(uiProfile, "uiProfile") == UiProfile.WINDOWS;
         contentWidth = windowsLayout ? WINDOWS_CONTENT_WIDTH : CONTENT_WIDTH;
         viewportMargin = windowsLayout ? WINDOWS_VIEWPORT_MARGIN : VIEWPORT_MARGIN;
@@ -94,7 +119,7 @@ public final class KeywordAutocompleteField extends HoverTextField {
         popup.pad(popupPadding);
         popup.setClip(true);
 
-        Label heading = new Label("KEYWORDS", skin);
+        heading = new Label("KEYWORDS", skin);
         heading.setColor(KeywordTextLayout.KEYWORD_ORANGE);
         headingCell = popup.add(heading).left();
         popup.row();
@@ -242,13 +267,14 @@ public final class KeywordAutocompleteField extends HoverTextField {
 
     private void refreshSuggestions(Stage stage) {
         KeywordAutocomplete.Query next = KeywordAutocomplete.query(
-            getText(), getCursorPosition(), catalogEntries);
+            getText(), getCursorPosition(), currentCatalogEntries());
         if (next == null) {
             hideSuggestions();
             return;
         }
 
         query = next;
+        heading.setText(next.variable() ? "MOVE VARIABLES" : "KEYWORDS");
         suggestions = next.matches();
         previewIndex = -1;
         suggestionList.setItems(suggestions.stream()
@@ -452,5 +478,15 @@ public final class KeywordAutocompleteField extends HoverTextField {
         previewIndex = -1;
         packedStageWidth = -1f;
         packedStageHeight = -1f;
+    }
+
+    private List<KeywordDescriptionCatalog.Entry> currentCatalogEntries() {
+        List<KeywordDescriptionCatalog.Entry> extra = extraCatalogEntries.get();
+        if (extra == null || extra.isEmpty()) return catalogEntries;
+        List<KeywordDescriptionCatalog.Entry> combined = new ArrayList<>(
+            catalogEntries.size() + extra.size());
+        combined.addAll(catalogEntries);
+        extra.stream().filter(Objects::nonNull).forEach(combined::add);
+        return List.copyOf(combined);
     }
 }

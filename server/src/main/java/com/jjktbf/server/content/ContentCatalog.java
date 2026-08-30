@@ -16,13 +16,17 @@ import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.Equipment;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
-import com.jjktbf.model.character.coded.NewShadowStyleAbility;
+import com.jjktbf.model.combat.BattleCharacterLookup;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
+import com.jjktbf.model.domain.DomainData;
+import com.jjktbf.model.domain.DomainDefinition;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.technique.InnateTechniqueData;
 import com.jjktbf.model.technique.SkillTreeNodeData;
 import com.jjktbf.model.technique.TechniqueSkillTree;
+import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.weapon.CursedToolData;
 
 import java.io.IOException;
@@ -39,24 +43,28 @@ import java.util.Set;
 import java.util.function.BiPredicate;
 
 /** Server-owned canonical content loaded only from immutable classpath resources. */
-public final class ContentCatalog {
+public final class ContentCatalog implements BattleCharacterLookup, DomainDefinitionLookup {
     public static final String MOVES_RESOURCE = "/data/moves/all_moves.json";
     public static final String CHARACTERS_RESOURCE = "/data/characters/all_characters.json";
     public static final String ABILITIES_RESOURCE = "/data/abilities/all_abilities.json";
     public static final String TECHNIQUES_RESOURCE = "/data/techniques/all_techniques.json";
+    public static final String DOMAINS_RESOURCE = "/data/domains/all_domains.json";
     public static final String CURSED_TOOLS_RESOURCE = "/data/tools/all_tools.json";
 
     private final Map<String, Character> charactersById;
     private final List<CharacterSummary> characterSummaries;
     private final Set<String> selectableCharacterIds;
+    private final Map<String, DomainDefinition> domainsById;
 
     private ContentCatalog(
         Map<String, Character> charactersById,
-        List<CharacterSummary> characterSummaries
+        List<CharacterSummary> characterSummaries,
+        Map<String, DomainDefinition> domainsById
     ) {
         this.charactersById = Collections.unmodifiableMap(
             new LinkedHashMap<>(charactersById));
         this.characterSummaries = List.copyOf(characterSummaries);
+        this.domainsById = Collections.unmodifiableMap(new LinkedHashMap<>(domainsById));
         LinkedHashSet<String> selectableIds = new LinkedHashSet<>();
         characterSummaries.stream()
             .map(CharacterSummary::characterId)
@@ -76,7 +84,9 @@ public final class ContentCatalog {
             mapper, TECHNIQUES_RESOURCE, new TypeReference<>() { });
         List<CursedToolData> cursedTools = read(
             mapper, CURSED_TOOLS_RESOURCE, new TypeReference<>() { });
-        return build(moves, characters, abilities, techniques, cursedTools);
+        List<DomainData> domains = read(
+            mapper, DOMAINS_RESOURCE, new TypeReference<>() { });
+        return build(moves, characters, abilities, techniques, cursedTools, domains);
     }
 
     /** Creates a minimal catalog for focused service tests and future embedding. */
@@ -110,7 +120,7 @@ public final class ContentCatalog {
                 summaries.add(new CharacterSummary(character.getId(), character.getName(), ""));
             }
         }
-        return new ContentCatalog(byId, summaries);
+        return new ContentCatalog(byId, summaries, Map.of());
     }
 
     /**
@@ -128,6 +138,16 @@ public final class ContentCatalog {
             return Optional.empty();
         }
         return Optional.ofNullable(charactersById.get(characterId));
+    }
+
+    @Override
+    public Optional<DomainDefinition> findDomain(String domainId) {
+        if (domainId == null) return Optional.empty();
+        return Optional.ofNullable(domainsById.get(domainId));
+    }
+
+    public List<DomainDefinition> domains() {
+        return List.copyOf(domainsById.values());
     }
 
     /**
@@ -148,12 +168,24 @@ public final class ContentCatalog {
         return character.getType() != CharacterType.SHIKIGAMI;
     }
 
-    private static ContentCatalog build(
+    static ContentCatalog build(
         List<MoveData> moveDefinitions,
         List<CharacterData> characterDefinitions,
         List<AbilityData> abilityDefinitions,
         List<InnateTechniqueData> techniqueDefinitions,
         List<CursedToolData> cursedToolDefinitions
+    ) {
+        return build(moveDefinitions, characterDefinitions, abilityDefinitions,
+            techniqueDefinitions, cursedToolDefinitions, List.of());
+    }
+
+    static ContentCatalog build(
+        List<MoveData> moveDefinitions,
+        List<CharacterData> characterDefinitions,
+        List<AbilityData> abilityDefinitions,
+        List<InnateTechniqueData> techniqueDefinitions,
+        List<CursedToolData> cursedToolDefinitions,
+        List<DomainData> domainDefinitions
     ) {
         requireNonEmpty(moveDefinitions, MOVES_RESOURCE);
         requireNonEmpty(characterDefinitions, CHARACTERS_RESOURCE);
@@ -165,6 +197,43 @@ public final class ContentCatalog {
         }
         if (cursedToolDefinitions == null) {
             throw invalid(CURSED_TOOLS_RESOURCE, "top-level JSON value must be an array");
+        }
+        if (domainDefinitions == null) {
+            throw invalid(DOMAINS_RESOURCE, "top-level JSON value must be an array");
+        }
+        Set<String> techniqueNames = new LinkedHashSet<>();
+        for (InnateTechniqueData technique : techniqueDefinitions) {
+            if (technique != null && technique.name != null && !technique.name.isBlank()) {
+                techniqueNames.add(technique.name.trim().toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        Map<String, DomainData> domainDataById = new LinkedHashMap<>();
+        Map<String, DomainDefinition> domainsById = new LinkedHashMap<>();
+        Set<String> domainNames = new LinkedHashSet<>();
+        for (DomainData domain : domainDefinitions) {
+            if (domain == null) {
+                throw invalid(DOMAINS_RESOURCE, "contains a null Domain definition");
+            }
+            try {
+                domain.validate();
+            } catch (IllegalArgumentException exception) {
+                throw invalid(DOMAINS_RESOURCE,
+                    "invalid Domain " + String.valueOf(domain.id) + ": "
+                        + exception.getMessage(), exception);
+            }
+            if (domainDataById.putIfAbsent(domain.id, domain) != null) {
+                throw invalid(DOMAINS_RESOURCE, "duplicate Domain ID " + domain.id);
+            }
+            String normalizedName = domain.name.trim().toLowerCase(java.util.Locale.ROOT);
+            if (!domainNames.add(normalizedName)) {
+                throw invalid(DOMAINS_RESOURCE, "duplicate Domain name " + domain.name);
+            }
+            if (!domain.antiDomain && !techniqueNames.contains(
+                domain.requiredTechniqueName.trim().toLowerCase(java.util.Locale.ROOT))) {
+                throw invalid(DOMAINS_RESOURCE, "Domain " + domain.id
+                    + " references unknown technique " + domain.requiredTechniqueName);
+            }
+            domainsById.put(domain.id, domain.toDomain());
         }
         Map<String, CursedToolData> toolsById = new LinkedHashMap<>();
         for (CursedToolData tool : cursedToolDefinitions) {
@@ -182,30 +251,58 @@ public final class ContentCatalog {
             }
         }
         techniqueDefinitions.forEach(technique -> TechniqueSkillTree.synchronize(
-            technique, moveDefinitions, abilityDefinitions));
+            technique, moveDefinitions, abilityDefinitions, domainDefinitions));
 
-        Map<String, Move> movesById = new LinkedHashMap<>();
         Map<String, MoveData> moveDataById = new LinkedHashMap<>();
-        Map<String, List<MoveEffectData>> codedEffectsByMoveId =
-            new LinkedHashMap<>();
         for (MoveData definition : moveDefinitions) {
             if (definition == null) {
                 throw invalid(MOVES_RESOURCE, "contains a null move definition");
             }
             requireIdentifier(definition.id, "move ID");
             requireText(definition.name, "move name for " + definition.id);
+            if (moveDataById.putIfAbsent(definition.id, definition) != null) {
+                throw invalid(MOVES_RESOURCE, "duplicate move ID " + definition.id);
+            }
+        }
+
+        Map<String, Move> movesById = new LinkedHashMap<>();
+        Map<String, String> moveNamesById = new LinkedHashMap<>();
+        for (MoveData definition : moveDefinitions) {
+            moveNamesById.put(definition.id, definition.name);
+        }
+        Map<String, String> abilityNamesById = new LinkedHashMap<>();
+        for (AbilityData definition : abilityDefinitions) {
+            if (definition != null) {
+                abilityNamesById.put(definition.id, definition.name);
+            }
+        }
+        ContentNameTokens.NameLookup descriptionNames =
+            ContentNameTokens.of(moveNamesById, abilityNamesById);
+        for (MoveData definition : moveDefinitions) {
             if (definition.requiredCursedToolId != null
                 && !definition.requiredCursedToolId.isBlank()
                 && !toolsById.containsKey(definition.requiredCursedToolId)) {
                 throw invalid(MOVES_RESOURCE, "move " + definition.id
                     + " references unknown cursed tool " + definition.requiredCursedToolId);
             }
+            if (definition.isDefenceAttackHybrid()
+                && definition.attackLaunchMoveId != null
+                && !definition.attackLaunchMoveId.isBlank()) {
+                String launchMoveId = definition.attackLaunchMoveId.trim();
+                if (definition.id.equals(launchMoveId)) {
+                    throw invalid(MOVES_RESOURCE, "move " + definition.id
+                        + " cannot launch itself as its attack");
+                }
+                if (!moveDataById.containsKey(launchMoveId)) {
+                    throw invalid(MOVES_RESOURCE, "move " + definition.id
+                        + " references unknown attack launch move " + launchMoveId);
+                }
+            }
             definition.migrateLegacyEffects();
             // Coded bindings now live on effect rows (self or on-hit), not on the
             // move. Validate every coded effect row against the registry allow-list.
             // Keep these rows because legacy on-hit migration clears the DTO field.
             List<MoveEffectData> codedEffects = codedEffectRows(definition);
-            codedEffectsByMoveId.put(definition.id, codedEffects);
             for (MoveEffectData effect : codedEffects) {
                 if (!CodedAbilityRegistry.supportsEffect(
                     effect.codedAbilityKey,
@@ -215,27 +312,24 @@ public final class ContentCatalog {
                     throw invalid(MOVES_RESOURCE, "invalid coded action on move " + definition.id);
                 }
             }
-            try {
-                Move move = definition.toMove();
-                if (movesById.putIfAbsent(definition.id, move) != null) {
-                    throw invalid(MOVES_RESOURCE, "duplicate move ID " + definition.id);
+            for (MoveEffectData effect : definition.effects == null
+                ? List.<MoveEffectData>of() : definition.effects) {
+                if (effect == null || !AbilityEffectType.ESTABLISH_DOMAIN.name()
+                    .equalsIgnoreCase(effect.type)) continue;
+                if (!domainDataById.containsKey(effect.domainId)) {
+                    throw invalid(MOVES_RESOURCE, "move " + definition.id
+                        + " references unknown Domain " + effect.domainId);
                 }
-                moveDataById.put(definition.id, definition);
+            }
+            try {
+                Move move = definition.toMoveResolved(moveDataById::get, descriptionNames);
+                movesById.put(definition.id, move);
             } catch (IllegalArgumentException exception) {
                 throw invalid(MOVES_RESOURCE,
                     "invalid move " + definition.id + ": " + exception.getMessage(), exception);
             }
         }
         for (MoveData definition : moveDefinitions) {
-            for (MoveEffectData effect : codedEffectsByMoveId.get(definition.id)) {
-                if (NewShadowStyleAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)
-                    && NewShadowStyleAbility.ACTIVATE_SIMPLE_DOMAIN.equalsIgnoreCase(effect.codedAction)
-                        && !NewShadowStyleAbility.isValidReactionMove(
-                            movesById.get(effect.codedTarget))) {
-                        throw invalid(MOVES_RESOURCE, "Simple Domain move " + definition.id
-                            + " must reference a physical, reinforced, stunning melee KATANA move");
-                    }
-            }
             for (MoveEffectData effect : definition.effects == null
                 ? List.<MoveEffectData>of() : definition.effects) {
                 if (effect == null) continue;
@@ -344,6 +438,8 @@ public final class ContentCatalog {
             verifyReferences(definition.abilityIds, abilityIds, "ability", definition.id);
             verifyReferences(definition.availableAbilityIds, abilityIds,
                 "available ability", definition.id);
+            verifyReferences(definition.availableDomainIds, domainsById.keySet(),
+                "available Domain", definition.id);
             verifyReferences(definition.equippedCursedToolIds, toolsById.keySet(),
                 "equipped cursed tool", definition.id);
             Equipment prerequisiteEquipment;
@@ -397,7 +493,8 @@ public final class ContentCatalog {
                     learnedToolMoveIds -> AbilityResolver.resolve(
                         definition, abilityDefinitions, movesById::containsKey,
                         techniqueDefinitions, learnedToolMoveIds,
-                        equipment.grantedMoveIds()));
+                        equipment.grantedMoveIds()),
+                    descriptionNames);
             } catch (IllegalArgumentException exception) {
                 throw invalid(CHARACTERS_RESOURCE,
                     "invalid character " + definition.id + ": " + exception.getMessage(),
@@ -431,7 +528,26 @@ public final class ContentCatalog {
                             + " learns unavailable grant-only move " + moveId);
                 }
             }
+            for (String domainId : definition.availableDomainIds == null
+                ? List.<String>of() : definition.availableDomainIds) {
+                DomainData domain = domainDataById.get(domainId);
+                if (domain != null && !domain.antiDomain && !TechniqueSkillTree.allowsDomain(
+                    techniqueDefinitions, domain.requiredTechniqueName, domain.id, definition)) {
+                    throw invalid(CHARACTERS_RESOURCE, "character " + definition.id
+                        + " does not meet technique-tree prerequisites for Domain " + domain.id);
+                }
+            }
             Character character = resolvedContent.character();
+            if (definition.moveSetIds != null) {
+                try {
+                    character = character.withMoveSet(definition.moveSetIds);
+                } catch (IllegalArgumentException exception) {
+                    throw invalid(CHARACTERS_RESOURCE,
+                        "invalid saved move set for character " + definition.id + ": "
+                            + exception.getMessage(), exception);
+                }
+            }
+            character = character.withAccessibleDomains(definition.availableDomainIds);
             charactersById.put(definition.id, character);
             // Only directly-selectable definitions appear in fighter rosters
             // / multiplayer summaries / challenge create+accept. Hidden
@@ -441,13 +557,57 @@ public final class ContentCatalog {
                 summaries.add(new CharacterSummary(
                     definition.id,
                     definition.name,
-                    Objects.requireNonNullElse(definition.description, "")
+                    ContentNameTokens.resolve(
+                        Objects.requireNonNullElse(definition.description, ""),
+                        descriptionNames)
                 ));
             }
         }
 
         validateSummonReferences(moveDefinitions, abilityDefinitions, charactersById);
-        return new ContentCatalog(charactersById, summaries);
+        validateDomainEffectReferences(
+            domainDefinitions, moveDataById.keySet(), abilityIds, charactersById.keySet());
+        return new ContentCatalog(charactersById, summaries, domainsById);
+    }
+
+    private static void validateDomainEffectReferences(
+        List<DomainData> domains,
+        Set<String> moveIds,
+        Set<String> abilityIds,
+        Set<String> characterIds
+    ) {
+        for (DomainData domain : domains) {
+            List<AbilityEffectData> effects = new ArrayList<>();
+            effects.addAll(domain.sureHitEffects == null ? List.of() : domain.sureHitEffects);
+            effects.addAll(domain.fieldEffects == null ? List.of() : domain.fieldEffects);
+            effects.addAll(domain.casterEffects == null ? List.of() : domain.casterEffects);
+            effects.addAll(domain.barrierEffects == null ? List.of() : domain.barrierEffects);
+            effects.addAll(domain.procedureEffects == null ? List.of() : domain.procedureEffects);
+            for (AbilityEffectData effect : effects) {
+                if (effect == null) continue;
+                AbilityEffectType type = AbilityEffectType.fromName(effect.type);
+                if (type.uses(com.jjktbf.model.character.AbilityEffectParameter.MOVE_ID)
+                    && !moveIds.contains(effect.moveId)) {
+                    throw invalid(DOMAINS_RESOURCE, "Domain " + domain.id
+                        + " references unknown move " + effect.moveId);
+                }
+                if (type.uses(com.jjktbf.model.character.AbilityEffectParameter.ABILITY_ID)
+                    && !abilityIds.contains(effect.abilityId)) {
+                    throw invalid(DOMAINS_RESOURCE, "Domain " + domain.id
+                        + " references unknown ability " + effect.abilityId);
+                }
+                if (type.uses(com.jjktbf.model.character.AbilityEffectParameter.CHARACTER_ID)
+                    && !characterIds.contains(effect.characterId)) {
+                    throw invalid(DOMAINS_RESOURCE, "Domain " + domain.id
+                        + " references unknown character " + effect.characterId);
+                }
+                String missingMove = missingConditionMove(effect.domainCondition, moveIds);
+                if (missingMove != null) {
+                    throw invalid(DOMAINS_RESOURCE, "Domain " + domain.id
+                        + " condition references unknown move " + missingMove);
+                }
+            }
+        }
     }
 
     static void validateSummonReferences(

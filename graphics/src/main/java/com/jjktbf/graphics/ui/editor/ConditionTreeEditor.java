@@ -298,6 +298,15 @@ public class ConditionTreeEditor extends Table {
             box.addListener(change(() -> condition.moveId = moveId(box.getSelected())));
             addRow(fields, "Move", box);
         }
+        if (type.uses(AbilityConditionParameter.CHARACTER_ID)) {
+            TextField field = new TextField(
+                condition.characterId == null ? "" : condition.characterId, skin);
+            field.addListener(change(() -> {
+                String value = field.getText();
+                condition.characterId = value == null || value.isBlank() ? null : value.trim();
+            }));
+            addRow(fields, "Character ID", field);
+        }
         if (type.uses(AbilityConditionParameter.MOVE_TAG)) {
             SelectBox<String> box = prettyEnumBox(MoveTag.values(), condition.moveTag,
                 value -> condition.moveTag = enumName(value));
@@ -354,20 +363,13 @@ public class ConditionTreeEditor extends Table {
             addRow(fields, "Status", box);
         }
         if (type.uses(AbilityConditionParameter.CODED_ABILITY)) {
-            List<CodedAbilityRegistry.StateKey> states = CodedAbilityRegistry.stateKeys();
-            SelectBox<String> box = new DynamicSelectBox<>(skin, uiProfile);
-            box.setItems(states.stream()
-                .map(CodedAbilityRegistry.StateKey::label)
-                .toArray(String[]::new));
-            box.setSelected(states.stream()
-                .filter(state -> state.key().equalsIgnoreCase(condition.codedAbilityKey))
-                .map(CodedAbilityRegistry.StateKey::label)
-                .findFirst().orElse(states.get(0).label()));
-            box.addListener(change(() -> condition.codedAbilityKey = states.stream()
-                .filter(state -> state.label().equals(box.getSelected()))
-                .map(CodedAbilityRegistry.StateKey::key)
-                .findFirst().orElse(states.get(0).key())));
-            addRow(fields, "Coded state", box);
+            TextField field = new TextField(
+                condition.codedAbilityKey == null ? "" : condition.codedAbilityKey, skin);
+            field.addListener(change(() -> {
+                String value = field.getText().trim();
+                condition.codedAbilityKey = value.isEmpty() ? null : value;
+            }));
+            addRow(fields, "State / resource key", field);
         }
         if (type.uses(AbilityConditionParameter.TICK)) {
             TextField field = integerField(condition.tick);
@@ -472,6 +474,9 @@ public class ConditionTreeEditor extends Table {
         }
         if (type.uses(AbilityConditionParameter.AMOUNT)) result.append(" | ").append(condition.amount);
         if (type.uses(AbilityConditionParameter.MOVE_ID)) result.append(" | ").append(moveLabel(condition.moveId));
+        if (type.uses(AbilityConditionParameter.CHARACTER_ID)) {
+            result.append(" | character ").append(condition.characterId);
+        }
         if (type.uses(AbilityConditionParameter.MOVE_TAG)) result.append(" | ").append(pretty(condition.moveTag));
         if (type.uses(AbilityConditionParameter.MOVE_TAGS) && condition.moveTags != null) {
             result.append(" | ").append(condition.moveTags.stream()

@@ -6,18 +6,19 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Persisted layout and unlock metadata for one move or ability in a technique. */
+/** Persisted layout and unlock metadata for one move, ability, or Domain. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SkillTreeNodeData {
 
     public static final String MOVE = "MOVE";
     public static final String ABILITY = "ABILITY";
+    public static final String DOMAIN = "DOMAIN";
 
     /** Stable, technique-local id used by node prerequisites. */
     public String id;
 
-    /** {@link #MOVE} or {@link #ABILITY}. */
+    /** {@link #MOVE}, {@link #ABILITY}, or {@link #DOMAIN}. */
     public String contentType;
 
     /** MoveData or AbilityData repository id. */

@@ -14,7 +14,7 @@ import java.util.List;
  * inside a battle: a shikigami definition becomes a {@code SUMMON} combatant
  * when summoned, but nothing about the definition forces that role.
  *
- * <p>A shikigami may learn sorcerer and shikigami moves. Its separate type also
+ * <p>A shikigami may learn only shikigami moves. Its separate type also
  * lets content tooling and roster filtering treat summonable definitions
  * differently from directly-selectable fighters.
  */
@@ -79,6 +79,27 @@ public class ShikigamiCharacter extends Character {
               knownMoves, abilities, accessibleTechniques, equipment);
         if (!Double.isFinite(baseCeDrainPerTick) || baseCeDrainPerTick < 0.0) {
             throw new IllegalArgumentException("Base CE drain per tick cannot be negative or non-finite");
+        }
+        this.baseCeDrainPerTick = baseCeDrainPerTick;
+    }
+
+    ShikigamiCharacter(
+        String id,
+        String name,
+        CharacterStats baseStats,
+        String innateTechniqueName,
+        List<Move> learnedMoves,
+        List<Move> moveSet,
+        List<Ability> abilities,
+        java.util.Set<String> accessibleTechniques,
+        Equipment equipment,
+        double baseCeDrainPerTick
+    ) {
+        super(id, name, CharacterType.SHIKIGAMI, baseStats, innateTechniqueName,
+            learnedMoves, moveSet, abilities, accessibleTechniques, equipment);
+        if (!Double.isFinite(baseCeDrainPerTick) || baseCeDrainPerTick < 0.0) {
+            throw new IllegalArgumentException(
+                "Base CE drain per tick cannot be negative or non-finite");
         }
         this.baseCeDrainPerTick = baseCeDrainPerTick;
     }

@@ -60,6 +60,27 @@ public class AbilityEffectData {
     /** Double parameter: multiply factor, BF chance addition, damage factor. */
     public Double doubleValue;
 
+    /** FLAT or PERCENT for effects that support both amount forms. */
+    public String valueMode;
+
+    /** CORE or BATTLE for the combined timed stat modifier. */
+    public String statType;
+
+    /** CHANGE or MULTIPLY for the combined timed stat modifier. */
+    public String statOperation;
+
+    /** NEXT_ATTACK or DURATION for temporary Never Miss/Never Hit tiers. */
+    public String accuracyDuration;
+
+    /** INSTANT or OVER_TIME for the configurable Cursed Energy drain effect. */
+    public String ceDrainMode;
+
+    /** Multiplier at the game's minimum scaled stat for a stat-scaling curve. */
+    public Double minimumStatMultiplier;
+
+    /** Multiplier at the game's maximum scaled stat for a stat-scaling curve. */
+    public Double maximumStatMultiplier;
+
     // ── Move filtering ────────────────────────────────────────────────────────
     /** Move tag name to filter on (e.g. "PHYSICAL", "INNATE_TECHNIQUE"). Null = all moves. */
     public String moveTag;
@@ -69,6 +90,9 @@ public class AbilityEffectData {
 
     /** Ability ID (6-digit) for GRANT_ABILITY. */
     public String abilityId;
+
+    /** Domain definition ID used by Domain-establishment effects. */
+    public String domainId;
 
     /** Canonical character id used by summon and transformation effects. */
     public String characterId;
@@ -109,11 +133,69 @@ public class AbilityEffectData {
     /** Chance in [0, 1] to remove an applied status on each resolution tick. */
     public Double perTickRemovalChance;
 
+    /**
+     * Base cursed energy drained from the holder each resolution tick while an
+     * applied status remains active. Scaled by the holder's CE Efficiency at
+     * runtime; null means the status has no upkeep.
+     */
+    public Double ceUpkeepPerTick;
+
     /** Number of times a consumable effect may be used. -1 means unlimited. */
     public Integer uses;
 
+    /** Optional key that replaces an existing timed effect from the same group. */
+    public String refreshGroup;
+
+    // ── Generic bounded resources ─────────────────────────────────────────────
+    /** Stable case-insensitive key for a resource definition. */
+    public String resourceKey;
+
+    /** Player-facing name for a resource definition. */
+    public String resourceLabel;
+
+    /** Maximum value for a resource definition. */
+    public Integer resourceCapacity;
+
+    /** Initial value for a resource definition. */
+    public Integer resourceStartValue;
+
+    /** Resource consumed by an atomic transaction. */
+    public String sourceResourceKey;
+
+    /** Amount consumed from {@link #sourceResourceKey}. */
+    public Integer sourceResourceAmount;
+
+    /** Resource increased by an atomic transaction. */
+    public String targetResourceKey;
+
+    /** Amount added to {@link #targetResourceKey}. */
+    public Integer targetResourceAmount;
+
     /** Optional per-field CTM formulas or benchmark tables. */
     public Map<String, TechniqueMasteryProgressionData> masteryProgression;
+
+    /** Optional per-field Cursed Energy Efficiency formulas for over-time CE drain. */
+    public Map<String, TechniqueMasteryProgressionData> ceEfficiencyProgression;
+
+    // ── Domain channel metadata ───────────────────────────────────────────────
+    /** DomainTrigger name; used only when this row belongs to a Domain definition. */
+    public String domainTrigger;
+    /** DomainAudience name; used only when this row belongs to a Domain definition. */
+    public String domainAudience;
+    /** DomainDeliveryClass name; used only when this row belongs to a Domain definition. */
+    public String domainDeliveryClass;
+    /** Cadence for EACH_TICK rows. One means every active tick. */
+    public Integer domainIntervalTicks;
+    /** Optional condition evaluated for a Domain audience member. */
+    public AbilityConditionData domainCondition;
+    /** Whether the Domain row rolls domainActivationChance. */
+    public Boolean domainActivationChanceEnabled;
+    /** Domain row activation chance in [0, 1]. */
+    public Double domainActivationChance;
+
+    /** Runtime-only source lease used to remove persistent effects atomically. */
+    @JsonIgnore
+    public String runtimeLease;
 
     @JsonIgnore
     public boolean isCoded() {
@@ -140,9 +222,17 @@ public class AbilityEffectData {
         this.stat = source.stat;
         this.intValue = source.intValue;
         this.doubleValue = source.doubleValue;
+        this.valueMode = source.valueMode;
+        this.statType = source.statType;
+        this.statOperation = source.statOperation;
+        this.accuracyDuration = source.accuracyDuration;
+        this.ceDrainMode = source.ceDrainMode;
+        this.minimumStatMultiplier = source.minimumStatMultiplier;
+        this.maximumStatMultiplier = source.maximumStatMultiplier;
         this.moveTag = source.moveTag;
         this.moveId = source.moveId;
         this.abilityId = source.abilityId;
+        this.domainId = source.domainId;
         this.characterId = source.characterId;
         this.transformationHpMode = source.transformationHpMode;
         this.returnCondition = source.returnCondition == null
@@ -154,8 +244,103 @@ public class AbilityEffectData {
         this.durationTicks = source.durationTicks;
         this.magnitude = source.magnitude;
         this.perTickRemovalChance = source.perTickRemovalChance;
+        this.ceUpkeepPerTick = source.ceUpkeepPerTick;
         this.uses = source.uses;
+        this.refreshGroup = source.refreshGroup;
+        this.resourceKey = source.resourceKey;
+        this.resourceLabel = source.resourceLabel;
+        this.resourceCapacity = source.resourceCapacity;
+        this.resourceStartValue = source.resourceStartValue;
+        this.sourceResourceKey = source.sourceResourceKey;
+        this.sourceResourceAmount = source.sourceResourceAmount;
+        this.targetResourceKey = source.targetResourceKey;
+        this.targetResourceAmount = source.targetResourceAmount;
         this.masteryProgression = TechniqueMasteryProgressions.copy(source.masteryProgression);
+        this.ceEfficiencyProgression = TechniqueMasteryProgressions.copy(
+            source.ceEfficiencyProgression);
+        this.domainTrigger = source.domainTrigger;
+        this.domainAudience = source.domainAudience;
+        this.domainDeliveryClass = source.domainDeliveryClass;
+        this.domainIntervalTicks = source.domainIntervalTicks;
+        this.domainCondition = source.domainCondition == null
+            ? null : source.domainCondition.copy();
+        this.domainActivationChanceEnabled = source.domainActivationChanceEnabled;
+        this.domainActivationChance = source.domainActivationChance;
+        this.runtimeLease = source.runtimeLease;
+    }
+
+    /** Translate retired persisted primitive names to the canonical configurable effects. */
+    public boolean migrateLegacyType() {
+        if (type == null) return false;
+        switch (type.trim().toUpperCase()) {
+            case "HEAL_HP_PERCENT" -> migratePercentAmount(AbilityEffectType.HEAL_HP);
+            case "RESTORE_CE_PERCENT" -> migratePercentAmount(AbilityEffectType.RESTORE_CE);
+            case "DRAIN_CE_PERCENT" -> migratePercentAmount(AbilityEffectType.DRAIN_CE);
+            case "DEAL_MAX_HP_DAMAGE" ->
+                migratePercentAmount(AbilityEffectType.DEAL_DIRECT_DAMAGE);
+            case "TEMP_STAT_ADD" -> migrateTimedStat(
+                AbilityEffectType.StatType.CORE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.FLAT);
+            case "TEMP_STAT_MULTIPLY" -> migrateTimedStat(
+                AbilityEffectType.StatType.CORE,
+                AbilityEffectType.StatOperation.MULTIPLY,
+                AbilityEffectType.ValueMode.FLAT);
+            case "TEMP_STAT_PERCENT" -> migrateTimedStat(
+                AbilityEffectType.StatType.CORE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.PERCENT);
+            case "BATTLE_STAT_ADD" -> migrateTimedStat(
+                AbilityEffectType.StatType.BATTLE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.FLAT);
+            case "BATTLE_STAT_MULTIPLY" -> migrateTimedStat(
+                AbilityEffectType.StatType.BATTLE,
+                AbilityEffectType.StatOperation.MULTIPLY,
+                AbilityEffectType.ValueMode.FLAT);
+            case "BATTLE_STAT_PERCENT" -> migrateTimedStat(
+                AbilityEffectType.StatType.BATTLE,
+                AbilityEffectType.StatOperation.CHANGE,
+                AbilityEffectType.ValueMode.PERCENT);
+            case "GUARANTEE_NEXT_HIT" -> migrateGuaranteedAccuracy(
+                AbilityEffectType.APPLY_NEVER_MISS);
+            case "GUARANTEE_NEXT_DODGE" -> migrateGuaranteedAccuracy(
+                AbilityEffectType.APPLY_NEVER_HIT);
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void migratePercentAmount(AbilityEffectType replacement) {
+        type = replacement.name();
+        valueMode = AbilityEffectType.ValueMode.PERCENT.name();
+    }
+
+    private void migrateTimedStat(
+        AbilityEffectType.StatType selectedStatType,
+        AbilityEffectType.StatOperation operation,
+        AbilityEffectType.ValueMode selectedValueMode
+    ) {
+        type = AbilityEffectType.TIMED_STAT_MODIFIER.name();
+        statType = selectedStatType.name();
+        statOperation = operation.name();
+        valueMode = operation == AbilityEffectType.StatOperation.CHANGE
+            ? selectedValueMode.name() : null;
+    }
+
+    private void migrateGuaranteedAccuracy(AbilityEffectType replacement) {
+        type = replacement.name();
+        intValue = 5;
+        if (uses == null || uses > 0) {
+            int legacyUses = uses == null ? 1 : uses;
+            accuracyDuration = AbilityEffectType.AccuracyDuration.NEXT_ATTACK.name();
+            uses = legacyUses;
+        } else {
+            accuracyDuration = AbilityEffectType.AccuracyDuration.DURATION.name();
+            uses = null;
+        }
     }
 
     // ── Convenience constructors for editor use ───────────────────────────────
@@ -169,7 +354,7 @@ public class AbilityEffectData {
     }
 
     /**
-     * Timed percentage stat modifier ({@code TEMP_STAT_PERCENT}). The percent is
+     * Timed percentage stat modifier. The percent is
      * additive (0.20 = +20%); percentage effects stack additively with each other.
      * {@code rounds}/{@code ticks} follow the standard duration model — a tick-only
      * duration ({@code rounds == 0, ticks > 0}) persists across round boundaries.
@@ -178,7 +363,10 @@ public class AbilityEffectData {
         String stat, double percent, int rounds, int ticks
     ) {
         AbilityEffectData e = new AbilityEffectData();
-        e.type           = AbilityEffectType.TEMP_STAT_PERCENT.name();
+        e.type           = AbilityEffectType.TIMED_STAT_MODIFIER.name();
+        e.statType       = AbilityEffectType.StatType.CORE.name();
+        e.statOperation  = AbilityEffectType.StatOperation.CHANGE.name();
+        e.valueMode      = AbilityEffectType.ValueMode.PERCENT.name();
         e.stat           = stat;
         e.target         = "SELF";
         e.doubleValue    = percent;
@@ -262,6 +450,13 @@ public class AbilityEffectData {
             + (stat        != null ? " stat=" + stat : "")
             + (intValue    != null ? " int=" + intValue : "")
             + (doubleValue != null ? " dbl=" + doubleValue : "")
+            + (valueMode != null ? " valueMode=" + valueMode : "")
+            + (statType != null ? " statType=" + statType : "")
+            + (statOperation != null ? " statOperation=" + statOperation : "")
+            + (accuracyDuration != null ? " accuracyDuration=" + accuracyDuration : "")
+            + (ceDrainMode != null ? " ceDrainMode=" + ceDrainMode : "")
+            + (minimumStatMultiplier != null ? " minStat=x" + minimumStatMultiplier : "")
+            + (maximumStatMultiplier != null ? " maxStat=x" + maximumStatMultiplier : "")
             + (moveTag     != null ? " tag=" + moveTag : "")
             + (moveId      != null ? " move=" + moveId : "")
             + (abilityId   != null ? " ability=" + abilityId : "")
@@ -272,9 +467,10 @@ public class AbilityEffectData {
             + (timing      != null ? " time=" + timing : "")
             + (durationRounds != null ? " rounds=" + durationRounds : "")
             + (durationTicks != null ? " ticks=" + durationTicks : "")
-            + (magnitude   != null ? " mag=" + magnitude : "")
-            + (perTickRemovalChance != null ? " remove/tick=" + perTickRemovalChance : "")
-            + (uses        != null ? " uses=" + uses : "")
+                + (magnitude   != null ? " mag=" + magnitude : "")
+                + (perTickRemovalChance != null ? " remove/tick=" + perTickRemovalChance : "")
+                + (ceUpkeepPerTick != null ? " ceUpkeep/tick=" + ceUpkeepPerTick : "")
+                + (uses        != null ? " uses=" + uses : "")
             + " }";
     }
 }

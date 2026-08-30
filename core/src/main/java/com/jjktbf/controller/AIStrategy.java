@@ -4,11 +4,13 @@ import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
 import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.TeamBattlePlan;
 import com.jjktbf.model.move.Move;
+import com.jjktbf.model.move.Targeting;
 
 import java.util.List;
 import java.util.Random;
@@ -30,6 +32,20 @@ import java.util.Random;
  * interface — the controller does not need to change.
  */
 public interface AIStrategy {
+
+    /**
+     * Supply the immutable Domain catalog so Domain-opening and anti-Domain
+     * moves can be valued and pruned during team planning. Strategies that do
+     * not plan around Domains ignore the lookup.
+     */
+    default AIStrategy withDomainLookup(DomainDefinitionLookup lookup) {
+        return this;
+    }
+
+    /** The injected Domain catalog, or null when the strategy ignores Domains. */
+    default DomainDefinitionLookup domainLookup() {
+        return null;
+    }
 
     /**
      * Build the AI's complete round plan: which moves to commit and where to
@@ -67,6 +83,9 @@ public interface AIStrategy {
         for (BattleCombatant ai : aiTeam) {
             BattleCombatant opponent = state.firstActiveEnemyOf(ai);
             BattlePlan plan = selectPlan(ai, opponent, rng);
+            plan = SmartAIScoring.pruneRestrictedDomainOpenings(
+                domainLookup(), state, ai, plan);
+            plan = SmartAIScoring.promoteDomainOpenings(domainLookup(), state, ai, plan);
             java.util.List<Move> alreadyPlannedMoves = new java.util.ArrayList<>();
             for (com.jjktbf.model.combat.ActionSegment segment
                 : new java.util.ArrayList<>(plan.allSegments())) {
@@ -80,7 +99,8 @@ public interface AIStrategy {
             }
             if (plan.gridLength() != commonGridLength) {
                 BattlePlan normalized = new BattlePlan(
-                    plan.apBudget(), plan.ceBudget(), commonGridLength);
+                    plan.apBudget(), plan.ceBudget(), commonGridLength,
+                    plan.actionTickDelay());
                 for (com.jjktbf.model.combat.ActionSegment segment : plan.allSegments()) {
                     com.jjktbf.model.combat.ActionSegment normalizedSegment = normalized.place(
                         segment.getMove(), segment.getStartTick(), segment.getActualCeCost());
@@ -118,7 +138,7 @@ public interface AIStrategy {
     ) {
         if (plan == null) return;
         List<BattleCombatant> enemies = state.activeEnemiesOf(ai);
-        if (enemies.isEmpty()) return;
+        List<BattleCombatant> allies = state.activeAlliesOf(ai);
         for (com.jjktbf.model.combat.ActionSegment segment
             : new java.util.ArrayList<>(plan.allSegments())) {
             Move move = segment.getMove();
@@ -126,6 +146,27 @@ public interface AIStrategy {
             List<BattleCombatant> eligibleEnemies = enemies.stream()
                 .filter(enemy -> CursedSpeechAbility.canTarget(move, enemy))
                 .toList();
+            Targeting pair = move.getTargeting();
+            if (pair != Targeting.DEFAULT) {
+                boolean needsAlly = pair == Targeting.SELF_AND_ALLY
+                    || pair == Targeting.ALLY_AND_ENEMY;
+                boolean needsEnemy = pair == Targeting.SELF_AND_ENEMY
+                    || pair == Targeting.ALLY_AND_ENEMY;
+                if ((needsAlly && allies.isEmpty())
+                    || (needsEnemy && eligibleEnemies.isEmpty())) {
+                    plan.remove(segment);
+                    continue;
+                }
+                java.util.List<com.jjktbf.model.combat.CombatantId> selected =
+                    new java.util.ArrayList<>();
+                if (needsAlly) selected.add(allies.get(0).getInstanceId());
+                if (needsEnemy) {
+                    selected.add(SmartAIScoring.weightedRandomTarget(
+                        move, ai, eligibleEnemies, rng).getInstanceId());
+                }
+                segment.setTargets(selected);
+                continue;
+            }
             if (eligibleEnemies.isEmpty()) {
                 if (targeting == MoveTargeting.SINGLE_ENEMY
                     || targeting == MoveTargeting.MULTIPLE_ENEMIES) {

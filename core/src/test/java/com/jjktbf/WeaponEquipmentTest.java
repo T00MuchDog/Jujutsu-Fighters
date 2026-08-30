@@ -178,7 +178,7 @@ class WeaponEquipmentTest {
             tools.load();
             characters.load();
 
-            CharacterData haruta = characters.findById("000000").orElseThrow();
+            CharacterData haruta = canonicalCharacter(characters, "Haruta Shigemo");
             haruta.moveIds = new ArrayList<>(haruta.moveIds);
             haruta.moveIds.add("000022");
 
@@ -192,12 +192,59 @@ class WeaponEquipmentTest {
         }
     }
 
+    @Test
+    void canonicalMiwaCanLearnSwordQuickDrawThroughNewShadowStyle() throws Exception {
+        String previousAuthoring = System.getProperty(AppPaths.AUTHORING_SYSTEM_PROPERTY);
+        String previousRoot = System.getProperty(AppPaths.AUTHORING_ROOT_SYSTEM_PROPERTY);
+        try {
+            System.setProperty(AppPaths.AUTHORING_SYSTEM_PROPERTY, "true");
+            System.setProperty(AppPaths.AUTHORING_ROOT_SYSTEM_PROPERTY,
+                System.getProperty("user.dir"));
+
+            MoveRepository moves = new MoveRepository("data/moves");
+            AbilityRepository abilities = new AbilityRepository("data/abilities");
+            TechniqueRepository techniques = new TechniqueRepository("data/techniques");
+            CursedToolRepository tools = new CursedToolRepository("data/tools");
+            CharacterRepository characters = new CharacterRepository("data/characters");
+            moves.load();
+            abilities.load();
+            techniques.load();
+            tools.load();
+            characters.load();
+
+            Character miwa = assertDoesNotThrow(() -> canonicalCharacter(
+                characters, "Miwa Kasumi").toCharacter(moves, abilities, techniques, tools));
+            assertTrue(miwa.getLearnedMoves().stream()
+                .anyMatch(move -> "000025".equals(move.getId())));
+            assertDoesNotThrow(() -> new BattleCombatant(miwa.withMoveSet(List.of())));
+        } finally {
+            restoreProperty(AppPaths.AUTHORING_SYSTEM_PROPERTY, previousAuthoring);
+            restoreProperty(AppPaths.AUTHORING_ROOT_SYSTEM_PROPERTY, previousRoot);
+        }
+    }
+
     private static void restoreProperty(String name, String value) {
         if (value == null) {
             System.clearProperty(name);
         } else {
             System.setProperty(name, value);
         }
+    }
+
+    /**
+     * Canonical-data tests must locate fighters by name: repository IDs are
+     * positional and resequence whenever entries are reordered or deleted in
+     * the character editor.
+     */
+    private static CharacterData canonicalCharacter(
+        CharacterRepository characters,
+        String name
+    ) {
+        return characters.getAll().stream()
+            .filter(data -> name.equals(data.name))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(
+                "No canonical character named '" + name + "'"));
     }
 
     @Test

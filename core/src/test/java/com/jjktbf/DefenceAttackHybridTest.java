@@ -16,6 +16,7 @@ import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.BlockStyle;
+import com.jjktbf.model.move.DefenseTiming;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
@@ -191,6 +192,68 @@ class DefenceAttackHybridTest {
                     && event.getMove() != null
                     && "Riposte Strike".equals(event.getMove().getName())),
             "A CE_DRAINED event for the referenced move should be emitted.");
+    }
+
+    @Test
+    void reactiveParryCounterLaunchesReferencedMoveAgainstMeleeOnParryTick() {
+        BattleCombatant defender = fighter("Defender", 200);
+        BattleCombatant attacker = fighter("Attacker", 50);
+        BattleState state = battle(defender, attacker);
+        Move quickDraw = referencedQuickDraw();
+
+        BattlePlan defensePlan = planFor(defender);
+        defensePlan.place(reactiveParryCounter(quickDraw), 1, 0);
+        defender.setTimeline(defensePlan.toLegacyTimeline());
+        Move incoming = incomingAttack("MELEE_INCOMING", MoveTag.MELEE, 1, 5);
+        BattlePlan attackPlan = planFor(attacker);
+        attackPlan.place(incoming, 1, 0, defender.getInstanceId());
+        attacker.setTimeline(attackPlan.toLegacyTimeline());
+
+        int defenderBefore = defender.getCurrentHp();
+        int attackerBefore = attacker.getCurrentHp();
+        List<CombatEvent> events = resolveRoundEvents(state);
+
+        assertEquals(defenderBefore, defender.getCurrentHp(),
+            "The potency-1 reactive parry should negate the incoming attack.");
+        assertTrue(attacker.getCurrentHp() < attackerBefore,
+            "A melee parry should immediately launch the referenced counter.");
+        assertTrue(events.stream().anyMatch(event ->
+                event.getType() == CombatEvent.Type.MOVE_PARRIED
+                    && event.getMove() == incoming && event.getTick() == 5),
+            "The incoming move should resolve as a parry.");
+        assertTrue(events.stream().anyMatch(event ->
+                event.getType() == CombatEvent.Type.MOVE_FIRED
+                    && event.getMove() == quickDraw && event.getTick() == 5),
+            "The referenced counter must fire on the same tick as the parry.");
+    }
+
+    @Test
+    void reactiveParryCounterDoesNotLaunchAgainstRangedAttack() {
+        BattleCombatant defender = fighter("Defender", 200);
+        BattleCombatant attacker = fighter("Attacker", 50);
+        BattleState state = battle(defender, attacker);
+        Move quickDraw = referencedQuickDraw();
+
+        BattlePlan defensePlan = planFor(defender);
+        defensePlan.place(reactiveParryCounter(quickDraw), 1, 0);
+        defender.setTimeline(defensePlan.toLegacyTimeline());
+        Move incoming = incomingAttack("RANGED_INCOMING", MoveTag.RANGED, 1, 5);
+        BattlePlan attackPlan = planFor(attacker);
+        attackPlan.place(incoming, 1, 0, defender.getInstanceId());
+        attacker.setTimeline(attackPlan.toLegacyTimeline());
+
+        int defenderBefore = defender.getCurrentHp();
+        int attackerBefore = attacker.getCurrentHp();
+        List<CombatEvent> events = resolveRoundEvents(state);
+
+        assertEquals(defenderBefore, defender.getCurrentHp(),
+            "The potency-1 reactive parry should cover a ranged attack too.");
+        assertEquals(attackerBefore, attacker.getCurrentHp(),
+            "The linked melee counter must not launch after a ranged parry.");
+        assertTrue(events.stream().anyMatch(event ->
+                event.getType() == CombatEvent.Type.MOVE_PARRIED && event.getMove() == incoming));
+        assertTrue(events.stream().noneMatch(event ->
+                event.getType() == CombatEvent.Type.MOVE_FIRED && event.getMove() == quickDraw));
     }
 
     /** A launch condition that fails suppresses the counter (the block still works). */
@@ -445,6 +508,41 @@ class DefenceAttackHybridTest {
             builder.hitComponents(List.of(component(25, 0)));
         }
         return builder.build();
+    }
+
+    private static Move reactiveParryCounter(Move referenced) {
+        AbilityConditionData meleeIncoming = AbilityConditionType.MOVE_TAG_USED.createDefault();
+        meleeIncoming.actor = AbilityConditionActor.ENEMY.name();
+        meleeIncoming.moveTag = MoveTag.MELEE.name();
+        return new Move.Builder("REACTIVE_PARRY_COUNTER")
+            .name("Reactive Parry Counter").category(MoveCategory.DEFENSIVE)
+            .tags(Set.of(MoveTag.DEFENSIVE, MoveTag.ATTACK, MoveTag.CURSED_ENERGY))
+            .apCost(2).unleashPoint(1).potency(1)
+            .defenseType(DefenseType.PARRY).blockDuration(1)
+            .defenseTiming(DefenseTiming.REACTION).defenseUses(1)
+            .attackLaunchMode(AttackLaunchMode.ON_DEFENCE)
+            .attackLaunchCondition(meleeIncoming)
+            .attackLaunchMoveId(referenced.getId())
+            .attackLaunchMove(referenced)
+            .build();
+    }
+
+    private static Move referencedQuickDraw() {
+        return new Move.Builder("QUICK_DRAW")
+            .name("Quick Draw").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.MELEE, MoveTag.KATANA))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(component(25, 0)))
+            .build();
+    }
+
+    private static Move incomingAttack(String id, MoveTag range, int potency, int fireTick) {
+        return new Move.Builder(id)
+            .name(id).category(MoveCategory.PHYSICAL).neverMiss(true).potency(potency)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, range))
+            .apCost(fireTick).unleashPoint(fireTick)
+            .hitComponents(List.of(component(20, 0)))
+            .build();
     }
 
     private static MoveData referencedAttackData(String id) {

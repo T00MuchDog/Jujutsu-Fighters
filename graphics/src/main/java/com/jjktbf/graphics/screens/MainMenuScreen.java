@@ -61,8 +61,8 @@ public class MainMenuScreen implements Screen {
     private static final float WINDOWS_MENU_TOP_INSET = 128.8f;
     private static final float WINDOWS_MENU_HALF_WIDTH = 567f;
     private static final float WINDOWS_MENU_FIXED_HEIGHT = 70f;
-    private static final float WINDOWS_MENU_SCALED_HEIGHT = 970.1f;
-    private static final float WINDOWS_AUTHOR_MENU_SCALED_HEIGHT = 1083.9f;
+    private static final float WINDOWS_MENU_SCALED_HEIGHT = 1075.1f;
+    private static final float WINDOWS_AUTHOR_MENU_SCALED_HEIGHT = 1188.9f;
     private static final float WINDOWS_MENU_SIDE_CLEARANCE_BASE = 74f;
     private static final float WINDOWS_MENU_SIDE_CLEARANCE_SCALED = 322f;
     private static final float WINDOWS_MENU_MIN_HALF_WIDTH = 99f;
@@ -160,6 +160,7 @@ public class MainMenuScreen implements Screen {
         MenuButton charEd    = makeButton("CHARACTER EDITOR", game::showCharacterEditor);
         MenuButton abilityEd = makeButton("ABILITY EDITOR", game::showAbilityEditor);
         MenuButton techEd    = makeButton("TECHNIQUE EDITOR", game::showTechniqueEditor);
+        MenuButton domainEd  = makeButton("DOMAIN EDITOR", game::showDomainEditor);
         MenuButton toolEd    = makeButton("CURSED TOOL EDITOR", game::showCursedToolEditor);
         MenuButton quit      = makeButton("QUIT", this::exitApplication);
 
@@ -167,7 +168,7 @@ public class MainMenuScreen implements Screen {
         if (authoringMenu) {
             buttons.add(makeButton("AUTHOR BATTLE (CONTROL BOTH SIDES)", game::showAuthorBattle));
         }
-        buttons.addAll(List.of(charEd, moveEd, abilityEd, techEd, toolEd, quit));
+        buttons.addAll(List.of(charEd, moveEd, abilityEd, techEd, domainEd, toolEd, quit));
         for (MenuButton button : buttons) {
             menuButtons.add(button);
             menuButtonCells.add(commands.add(button).growX().height(46).pad(4));

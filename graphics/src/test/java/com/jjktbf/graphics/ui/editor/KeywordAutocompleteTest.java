@@ -7,6 +7,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KeywordAutocompleteTest {
 
@@ -105,6 +106,32 @@ class KeywordAutocompleteTest {
     @Test
     void trailingSpaceClosesSuggestionsUntilTheNextWordStarts() {
         assertNull(KeywordAutocomplete.query("Use GUARD ", 10, ENTRIES));
+    }
+
+    @Test
+    void colonOpensMoveVariableSuggestionsAndCompletionAddsBothDelimiters() {
+        List<KeywordDescriptionCatalog.Entry> variables = List.of(
+            entry(":effect-000000.codedStackCount:"),
+            entry(":effect-000000.stackDurationTicks:"));
+        String text = "Add :coded";
+        KeywordAutocomplete.Query query = KeywordAutocomplete.query(
+            text, text.length(), variables);
+
+        assertTrue(query.variable());
+        assertEquals(List.of(":effect-000000.codedStackCount:"), query.matches().stream()
+            .map(KeywordAutocomplete::insertionText).toList());
+        assertEquals("Add :effect-000000.codedStackCount:",
+            KeywordAutocomplete.complete(
+                text, query, KeywordAutocomplete.insertionText(query.matches().get(0))));
+    }
+
+    @Test
+    void closingVariableColonDoesNotReopenSuggestions() {
+        KeywordDescriptionCatalog.Entry variable = entry(
+            ":effect-000000.codedStackCount:");
+        String text = "Add " + variable.term();
+
+        assertNull(KeywordAutocomplete.query(text, text.length(), List.of(variable)));
     }
 
     private static KeywordDescriptionCatalog.Entry entry(String term) {

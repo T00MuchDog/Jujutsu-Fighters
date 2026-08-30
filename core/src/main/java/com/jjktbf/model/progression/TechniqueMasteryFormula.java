@@ -14,11 +14,18 @@ final class TechniqueMasteryFormula {
     }
 
     static Expression parse(String source) {
+        return parse(source, TechniqueMasteryProgressions.CTM_VARIABLE);
+    }
+
+    static Expression parse(String source, String variableName) {
         if (source == null) throw new FormulaException("Formula is required");
         if (source.length() > MAX_LENGTH) {
             throw new FormulaException("Formula exceeds " + MAX_LENGTH + " characters");
         }
-        return new Parser(source).parse();
+        if (variableName == null || variableName.isBlank()) {
+            throw new FormulaException("Formula variable is required");
+        }
+        return new Parser(source, variableName).parse();
     }
 
     interface Expression {
@@ -181,11 +188,13 @@ final class TechniqueMasteryFormula {
 
     private static final class Parser {
         private final String source;
+        private final String variableName;
         private int position;
         private int depth;
 
-        private Parser(String source) {
+        private Parser(String source, String variableName) {
             this.source = source;
+            this.variableName = variableName;
         }
 
         private Expression parse() {
@@ -267,7 +276,7 @@ final class TechniqueMasteryFormula {
             String identifier = source.substring(start, position);
             skipWhitespace();
             if (!take('(')) {
-                if ("ctm".equalsIgnoreCase(identifier)) return new VariableExpression();
+                if (variableName.equalsIgnoreCase(identifier)) return new VariableExpression();
                 throw error("Unknown identifier '" + identifier + "'");
             }
             return parseFunction(identifier);

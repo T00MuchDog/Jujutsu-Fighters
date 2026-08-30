@@ -7,6 +7,7 @@ import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.DamageCalculator;
 import com.jjktbf.model.combat.Timeline;
+import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.BlockStyle;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.Move;
@@ -31,8 +32,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *       (outcome DODGED, distinct from MISS). Scope filters by range.</li>
  *   <li>PARRY negates a hit entirely (outcome PARRIED) when
  *       {@code parry.potency >= attack.potency}; otherwise the parry is ignored.</li>
- *   <li>A successful parry of a non-GUARD_BREAK attack flags the attacker to be
- *       staggered; a GUARD_BREAK attack is parried (no damage) but NOT staggered.</li>
+ *   <li>A successful parry of a non-GUARD_BREAK, non-RANGED attack flags the
+ *       attacker to be staggered; GUARD_BREAK and RANGED attacks are parried
+ *       (no damage) but NOT staggered — and a perfect read of a RANGED attack
+ *       reflects it, dealing its damage back to the attacker.</li>
  *   <li>BLOCK is potency-gated; a higher-potency attack ignores a lower-potency block.</li>
  *   <li>GUARD_BREAK bypasses BLOCK but NOT PARRY/DODGE.</li>
  * </ul>
@@ -163,8 +166,9 @@ public class ParryDodgeTest {
 
         assertTrue(resolve(combatant(physical), combatantWithDefense(parry), physical).isParried());
         assertTrue(resolve(combatant(cursedEnergy), combatantWithDefense(parry), cursedEnergy).isParried());
-        assertFalse(resolve(
-            combatant(nonInnate), combatantWithDefense(parry), nonInnate).isParried());
+        assertTrue(resolve(
+            combatant(nonInnate), combatantWithDefense(parry), nonInnate).isParried(),
+            "Technique attacks count as cursed energy for parry coverage.");
     }
 
     @Test
@@ -194,6 +198,90 @@ public class ParryDodgeTest {
         assertTrue(result.isParried(), "Parry still negates a GUARD_BREAK attack's damage.");
         assertEquals(0, result.getFinalDamage(), "Parried guard-break deals no damage.");
         assertFalse(result.staggersAttacker(), "GUARD_BREAK attack must not be staggered by parry.");
+    }
+
+    @Test
+    void parryDoesNotStaggerRangedAttack() {
+        // A RANGED attack is parried (no damage) but its user is never staggered —
+        // the attacker is out of reach of the riposte.
+        Move attack = rangedAttack("RANGED");
+        Move parry = parry("PARRY", 1, 3);
+
+        BattleCombatant attacker = combatant(attack);
+        BattleCombatant defender = combatantWithDefense(parry);
+
+        DamageCalculator.DamageResult result = resolve(attacker, defender, attack);
+        assertTrue(result.isParried(), "Parry still negates a RANGED attack's damage.");
+        assertEquals(0, result.getFinalDamage(), "Parried ranged attack deals no damage.");
+        assertFalse(result.staggersAttacker(), "RANGED attack must not be staggered by parry.");
+        assertEquals(0, result.getParryStaggerTicks(), "No stagger ticks for a ranged attack.");
+    }
+
+    @Test
+    void parryStillStaggersMeleeAttack() {
+        Move attack = meleeAttack("MELEE");
+        Move parry = parry("PARRY", 1, 3);
+
+        BattleCombatant attacker = combatant(attack);
+        BattleCombatant defender = combatantWithDefense(parry);
+
+        DamageCalculator.DamageResult result = resolve(attacker, defender, attack);
+        assertTrue(result.isParried(), "Melee attack should be parried.");
+        assertTrue(result.staggersAttacker(), "MELEE attack is still staggered by parry.");
+        assertEquals(3, result.getParryStaggerTicks(), "Stagger ticks come from the parry move.");
+    }
+
+    @Test
+    void perfectParryOfRangedAttackSendsItBack() {
+        // A perfect read (exact fire tick) of a RANGED attack reflects it: the
+        // attacker takes damage instead of being staggered.
+        Move attack = rangedAttack("RANGED");
+        Move parry = parry("PARRY", 1, 3);
+
+        BattleCombatant attacker = combatant(attack);
+        BattleCombatant defender = combatantWithDefense(parry);
+
+        DamageCalculator.DamageResult result = resolveAtTick(attacker, defender, attack, 1);
+        assertTrue(result.isParried(), "Perfect-read parry still negates the attack.");
+        assertTrue(result.isPerfectRead(), "Fire tick 1 == impact tick 1 is a perfect read.");
+        assertTrue(result.reflectsAttack(), "A perfect parry of a ranged attack reflects it.");
+        assertTrue(result.getReflectedDamage() > 0,
+            "The reflected attack deals its own damage back to the attacker.");
+        assertFalse(result.staggersAttacker(), "A reflected ranged attack does not stagger.");
+    }
+
+    @Test
+    void offTickParryOfRangedAttackDoesNotReflect() {
+        // Reflection requires the perfect read; an ordinary parry just negates.
+        Move attack = rangedAttack("RANGED");
+        Move parry = parry("PARRY", 1, 3);
+
+        BattleCombatant attacker = combatant(attack);
+        BattleCombatant defender = combatantWithDefense(parry);
+
+        DamageCalculator.DamageResult result = resolve(attacker, defender, attack);
+        assertTrue(result.isParried());
+        assertFalse(result.isPerfectRead());
+        assertFalse(result.reflectsAttack(), "Only a perfect read reflects a ranged attack.");
+        assertEquals(0, result.getReflectedDamage());
+    }
+
+    @Test
+    void perfectParryOfMeleeAttackDoesNotReflect() {
+        // Reflection is reserved for ranged attacks; a perfect melee parry
+        // escalates to the longer stagger instead.
+        Move attack = meleeAttack("MELEE");
+        Move parry = parry("PARRY", 1, 3);
+
+        BattleCombatant attacker = combatant(attack);
+        BattleCombatant defender = combatantWithDefense(parry);
+
+        DamageCalculator.DamageResult result = resolveAtTick(attacker, defender, attack, 1);
+        assertTrue(result.isParried());
+        assertTrue(result.isPerfectRead());
+        assertFalse(result.reflectsAttack(), "Melee attacks are never reflected.");
+        assertEquals(5, result.getParryStaggerTicks(),
+            "Authored 3 stagger ticks + 2 perfect-read bonus ticks.");
     }
 
     @Test
@@ -306,7 +394,10 @@ public class ParryDodgeTest {
             .tags(java.util.Set.of(MoveTag.DEFENSIVE, MoveTag.PHYSICAL, MoveTag.KATANA))
             .defenseType(DefenseType.PARRY)
             .parryStaggerTicks(4)
-            .blockAffectedTags(List.of("PHYSICAL", "CURSED_ENERGY"))
+            .blockAttackTypes(java.util.Set.of(
+                BlockAttackType.PHYSICAL,
+                BlockAttackType.PHYSICAL_CURSED_ENERGY,
+                BlockAttackType.CURSED_ENERGY))
             .potency(2)
             .apCost(10)
             .unleashPoint(1)
@@ -316,7 +407,11 @@ public class ParryDodgeTest {
         assertEquals(DefenseType.PARRY.name(), dto.defenseType);
         assertEquals(4, dto.parryStaggerTicks);
         assertEquals(2, dto.potency);
-        assertEquals(List.of("PHYSICAL", "CURSED_ENERGY"), dto.blockAffectedTags);
+        assertEquals(List.of(
+            BlockAttackType.PHYSICAL.name(),
+            BlockAttackType.PHYSICAL_CURSED_ENERGY.name(),
+            BlockAttackType.CURSED_ENERGY.name()), dto.blockAttackTypes);
+        assertNull(dto.blockAffectedTags);
         assertTrue(dto.tags.contains(MoveTag.KATANA.name()),
             "The weapon tag should round-trip through MoveData.");
 
@@ -324,7 +419,10 @@ public class ParryDodgeTest {
         assertTrue(restored.isParry());
         assertEquals(4, restored.getParryStaggerTicks());
         assertEquals(2, restored.getPotency());
-        assertEquals(List.of("PHYSICAL", "CURSED_ENERGY"), restored.getBlockAffectedTags());
+        assertEquals(java.util.Set.of(
+            BlockAttackType.PHYSICAL,
+            BlockAttackType.PHYSICAL_CURSED_ENERGY,
+            BlockAttackType.CURSED_ENERGY), restored.getBlockAttackTypes());
         assertEquals(MoveTag.KATANA, restored.weaponTag());
     }
 
@@ -382,7 +480,12 @@ public class ParryDodgeTest {
         BattleCombatant attacker, BattleCombatant defender, Move attack) {
         // Tick 2: one after the defence's fire tick, so the ordinary dodge/parry
         // rules apply (an exact tick match would escalate via a perfect read).
-        return DamageCalculator.resolve(attacker, defender, attack, 2, new FixedRandom(0.0), 1);
+        return resolveAtTick(attacker, defender, attack, 2);
+    }
+
+    private static DamageCalculator.DamageResult resolveAtTick(
+        BattleCombatant attacker, BattleCombatant defender, Move attack, int tick) {
+        return DamageCalculator.resolve(attacker, defender, attack, tick, new FixedRandom(0.0), 1);
     }
 
     private static Move rangedAttack(String id) {

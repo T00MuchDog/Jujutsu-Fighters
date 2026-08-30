@@ -92,6 +92,7 @@ class AppPathsOverrideTest {
         writeResource(resourceRoot, "data/moves/all_moves.json", "[]");
         writeResource(resourceRoot, "data/abilities/all_abilities.json", "[]");
         writeResource(resourceRoot, "data/techniques/all_techniques.json", "[]");
+        writeResource(resourceRoot, "data/domains/all_domains.json", "[]");
         writeResource(resourceRoot, "data/characters/all_characters.json", "[]");
         writeResource(resourceRoot, "data/keyword_descriptions.json", "[]");
     }

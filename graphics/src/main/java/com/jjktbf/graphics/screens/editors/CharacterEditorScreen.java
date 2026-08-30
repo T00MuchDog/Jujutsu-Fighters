@@ -34,15 +34,16 @@ import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.AbilityResolver;
+import com.jjktbf.model.character.BattleStatKey;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.CombatStats;
 import com.jjktbf.model.character.CharacterRepository;
-import com.jjktbf.model.character.SlotBudgetEnforcer;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.StatTier;
 import com.jjktbf.model.combat.PowerCalculator;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MovePool;
@@ -75,7 +76,7 @@ import java.util.function.BiPredicate;
  *   - Name / Innate Technique fields
  *   - 10× {@link StatField} sliders (with Manual / Point-Buy mode toggle)
  *   - Live derived-stat preview (HP, AP bar, Accuracy, Evasion, CE pool, per-category slots)
- *   - Move assignment panel (slot-gated, technique/prerequisite-filtered, DnD)
+ *   - Uncapped learned-move assignment panel (technique/prerequisite-filtered, DnD)
  *   - Ability assignment panel filtered by source and grant availability
  *
  * Save validates via {@link CharacterData#toCharacter(MoveRepository, AbilityRepository)}.
@@ -108,6 +109,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
     private final AbilityRepository   abilityRepo;
     private final TechniqueRepository techniqueRepo;
     private final CursedToolRepository cursedToolRepo;
+    private final DomainRepository domainRepo;
 
     // Form handles (refreshed on selection change)
     private StatField[] statFields;
@@ -156,7 +158,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         List<String> availableMoveIds,
         List<String> abilityIds,
         boolean availableAbilityIdsDefined,
-        List<String> availableAbilityIds
+        List<String> availableAbilityIds,
+        List<String> availableDomainIds
     ) { }
 
     private record CharacterEvaluation(
@@ -187,6 +190,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         abilityRepo = new AbilityRepository("data/abilities");
         techniqueRepo = new TechniqueRepository("data/techniques");
         cursedToolRepo = new CursedToolRepository("data/tools");
+        domainRepo = new DomainRepository("data/domains");
         wireStatKeyInput();
     }
 
@@ -243,6 +247,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         cd.availableMoveIds = new ArrayList<>();
         cd.abilityIds = new ArrayList<>();
         cd.availableAbilityIds = new ArrayList<>();
+        cd.availableDomainIds = new ArrayList<>();
         return cd;
     }
 
@@ -264,11 +269,15 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         for (StatKey sk : STAT_ORDER) sk.set(d, sk.get(stored));
         if (d.innateTechniqueName == null) d.cursedTechniqueMastery = 0;
         d.moveIds    = stored.moveIds    != null ? new ArrayList<>(stored.moveIds)    : new ArrayList<>();
+        d.moveSetIds = stored.moveSetIds != null
+            ? new ArrayList<>(stored.moveSetIds) : null;
         d.availableMoveIds = stored.availableMoveIds != null
             ? new ArrayList<>(stored.availableMoveIds) : new ArrayList<>(d.moveIds);
         d.abilityIds = stored.abilityIds != null ? new ArrayList<>(stored.abilityIds) : new ArrayList<>();
         d.availableAbilityIds = stored.availableAbilityIds != null
             ? new ArrayList<>(stored.availableAbilityIds) : null;
+        d.availableDomainIds = stored.availableDomainIds != null
+            ? new ArrayList<>(stored.availableDomainIds) : new ArrayList<>();
         return d;
     }
 
@@ -332,6 +341,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         abilityRepo.load();
         techniqueRepo.load();
         cursedToolRepo.load();
+        domainRepo.load();
         records.clear();
         records.addAll(charRepo.getAll());
     }
@@ -384,6 +394,17 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
                         + " before saving.");
             }
         }
+        if (d.availableDomainIds != null) {
+            String missingDomain = d.availableDomainIds.stream()
+                .filter(domainId -> domainId == null || domainRepo.findById(domainId).isEmpty())
+                .map(String::valueOf)
+                .findFirst().orElse(null);
+            if (missingDomain != null) {
+                return ValidationResult.error(
+                    "Remove missing available Domain reference " + missingDomain
+                        + " before saving.");
+            }
+        }
         if (d.equippedCursedToolIds != null) {
             String missingTool = d.equippedCursedToolIds.stream()
                 .filter(toolId -> toolId == null || cursedToolRepo.findById(toolId).isEmpty())
@@ -424,7 +445,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             d.id = charRepo.nextId();
         }
         try {
-            d.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+            normalizeSavedMoveSet(d);
         } catch (Exception e) {
             return ValidationResult.error("Invalid character: " + e.getMessage());
         }
@@ -938,6 +959,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
                 technique,
                 moveRepo.getAll(),
                 abilityRepo.getAll(),
+                domainRepo.getAll(),
                 character,
                 false,
                 () -> onTreeSelectionChanged(character, displayedNames),
@@ -986,6 +1008,10 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
                 : moveAssignmentError(character, resolvedAbilities(character), move,
                     false, false);
         }
+        if (SkillTreeNodeData.DOMAIN.equalsIgnoreCase(node.contentType)) {
+            return domainRepo.findById(node.contentId).isEmpty()
+                ? "This Domain no longer exists." : null;
+        }
         AbilityData ability = abilityRepo.findById(node.contentId).orElse(null);
         return ability == null ? "This ability no longer exists." : null;
     }
@@ -1023,7 +1049,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
                 .map(SkillTreeNodeData::copy)
                 .forEach(copy.skillTree::add);
         }
-        TechniqueSkillTree.synchronize(copy, moveRepo.getAll(), abilityRepo.getAll());
+        TechniqueSkillTree.synchronize(
+            copy, moveRepo.getAll(), abilityRepo.getAll(), domainRepo.getAll());
         return copy;
     }
 
@@ -1229,17 +1256,40 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             AbilityApplicator.ApplicationResult application = evaluation(cd).application();
             CombatStats cs = new CombatStats(
                 application.modifiedStats, application.flags.jujutsuArtSlots);
+            int maxHp = roundedPreviewStat(
+                application, BattleStatKey.MAX_HP, cs.getMaxHp(), 1);
+            int maxAp = roundedPreviewStat(application, BattleStatKey.MAX_AP,
+                Math.max(0, cs.getMaxApBar() + application.flags.apBarBonus), 0);
+            int accuracy = roundedPreviewStat(
+                application, BattleStatKey.ACCURACY, cs.getAccuracy(), 0);
+            int evasion = roundedPreviewStat(
+                application, BattleStatKey.EVASION, cs.getEvasion(), 0);
+            int maxCe = roundedPreviewStat(
+                application, BattleStatKey.MAX_CE, cs.getMaxCursedEnergy(), 0);
+            double ceRegeneration = Math.max(0.0, previewBattleStat(application,
+                BattleStatKey.CE_REGENERATION,
+                com.jjktbf.model.combat.BattleCombatant
+                    .DEFAULT_CURSED_ENERGY_REGENERATION_PER_TICK));
             // Compute slot usage per category.
             StringBuilder sb = new StringBuilder();
-            sb.append("HP: ").append(cs.getMaxHp());
-            sb.append("  |  AP bar: ").append(Math.max(0,
-                cs.getMaxApBar() + application.flags.apBarBonus));
-            sb.append("  |  Acc: ").append(cs.getAccuracy());
-            sb.append("  |  Eva: ").append(cs.getEvasion());
-            sb.append("  |  CE pool: ").append(cs.getMaxCursedEnergy());
+            sb.append("HP: ").append(maxHp);
+            sb.append("  |  AP bar: ").append(maxAp);
+            sb.append("  |  Acc: ").append(accuracy);
+            sb.append("  |  Eva: ").append(evasion);
+            sb.append("  |  CE pool: ").append(maxCe);
             sb.append('\n');
-            sb.append("Phys power: ").append(PowerCalculator.physical(application.modifiedStats));
-            sb.append("  |  CE power: ").append(PowerCalculator.cursedEnergyBase(application.modifiedStats));
+            sb.append("CE regen: ").append(formatPreviewNumber(ceRegeneration)).append(" / tick");
+            int waiverThreshold = ceWaiverThreshold(cd, application);
+            if (waiverThreshold > 0) {
+                sb.append("  |  Free CE base cost: <= ").append(waiverThreshold);
+                sb.append(" (raw BST ").append(cd.toCharacterStats().baseStatTotal()).append(')');
+            }
+            sb.append('\n');
+            sb.append("Phys power: ").append(roundedPreviewStat(application,
+                BattleStatKey.POWER, PowerCalculator.physical(application.modifiedStats), 0));
+            sb.append("  |  CE power: ").append(roundedPreviewStat(application,
+                BattleStatKey.POWER,
+                PowerCalculator.cursedEnergyBase(application.modifiedStats), 0));
             sb.append('\n');
             CombatStats baseCombatStats = new CombatStats(
                 cd.toCharacterStats(), application.flags.jujutsuArtSlots);
@@ -1250,6 +1300,63 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         } catch (Exception e) {
             derivedPreview.setText("(compute error: " + e.getMessage() + ")");
         }
+    }
+
+    static double previewBattleStat(
+        AbilityApplicator.ApplicationResult application,
+        BattleStatKey key,
+        double baseValue
+    ) {
+        double additions = 0.0;
+        double multiplier = 1.0;
+        for (AbilityEffectData effect : application.flags.passiveBattleStatEffects) {
+            if (!AbilityEffectType.BATTLE_STAT_MODIFIER.name().equalsIgnoreCase(effect.type)) {
+                continue;
+            }
+            BattleStatKey effectKey;
+            try {
+                effectKey = BattleStatKey.fromString(effect.stringValue);
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+            if (effectKey != key) continue;
+            if (AbilityEffectType.statOperation(effect)
+                == AbilityEffectType.StatOperation.MULTIPLY) {
+                multiplier *= effect.doubleValue == null ? 1.0 : effect.doubleValue;
+            } else {
+                additions += effect.doubleValue == null ? 0.0 : effect.doubleValue;
+            }
+        }
+        return (baseValue + additions) * multiplier;
+    }
+
+    private static int roundedPreviewStat(
+        AbilityApplicator.ApplicationResult application,
+        BattleStatKey key,
+        double baseValue,
+        int minimum
+    ) {
+        return Math.max(minimum, (int) Math.round(previewBattleStat(application, key, baseValue)));
+    }
+
+    static int ceWaiverThreshold(
+        CharacterData character,
+        AbilityApplicator.ApplicationResult application
+    ) {
+        int rawStatTotal = character.toCharacterStats().baseStatTotal();
+        int threshold = 0;
+        for (AbilityEffectData effect : application.flags.ceCostWaiveByStatTotalEffects) {
+            int divisor = effect.intValue == null ? 0 : effect.intValue;
+            if (divisor > 0) threshold = Math.max(threshold, Math.max(1, rawStatTotal / divisor));
+        }
+        return threshold;
+    }
+
+    private static String formatPreviewNumber(double value) {
+        if (value == Math.rint(value)) return String.valueOf((long) value);
+        return String.format(Locale.ROOT, "%.2f", value)
+            .replaceAll("0+$", "")
+            .replaceAll("\\.$", "");
     }
 
     // =========================================================================
@@ -1331,6 +1438,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             @Override public void onForget(String moveId) {
                 applyPendingStatModelChanges();
                 if (cd.moveIds != null) cd.moveIds.remove(moveId);
+                if (cd.moveSetIds != null) cd.moveSetIds.remove(moveId);
                 markDirty();
                 refreshDerivedPreview(cd);
                 refreshBudgetLabel(cd);
@@ -1343,14 +1451,34 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             }
 
             @Override public int learnedCount(MovePool pool) {
-                return SlotBudgetEnforcer.countUsage(getAssignedMovePoolList(cd))
-                    .getOrDefault(pool, 0);
-            }
-
-            @Override public int learnedLimit(MovePool pool) {
-                return SlotBudgetEnforcer.slotBudgetFor(combatStatsWithAbilitySlots(cd), pool);
+                return (int) learnedItems(pool).stream().count();
             }
         }, game.audio()::play, uiProfile, skin);
+    }
+
+    private void normalizeSavedMoveSet(CharacterData character) {
+        if (character.moveSetIds == null) {
+            character.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+            return;
+        }
+        List<String> requestedMoveSet = new ArrayList<>(character.moveSetIds);
+        character.moveSetIds = null;
+        com.jjktbf.model.character.Character base;
+        try {
+            base = character.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+        } catch (RuntimeException exception) {
+            character.moveSetIds = requestedMoveSet;
+            throw exception;
+        }
+        com.jjktbf.model.character.Character configured;
+        try {
+            configured = base.withMoveSet(requestedMoveSet);
+        } catch (IllegalArgumentException invalidSavedMoveSet) {
+            configured = base;
+        }
+        character.moveSetIds = new ArrayList<>(configured.getMoveSet().stream()
+            .map(Move::getId)
+            .toList());
     }
 
     private void reorderLearnedMoves(
@@ -1455,10 +1583,17 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             && !abilities.availableMoveIds().contains(move.id)) {
             return "This move must be granted by an ability.";
         }
-        CharacterType characterType = character.effectiveType();
-        if (!characterType.canLearn(built.getMoveType())) {
-            return labelForMoveType(built.getMoveType()) + " moves cannot be learned by "
-                + labelForCharacterType(characterType) + " characters.";
+        // Technique moves carry no class — the technique-requirement check
+        // below alone decides who may learn them.
+        if (!move.isTechniqueMove()) {
+            CharacterType characterType = character.effectiveType();
+            if (built.getMoveTypes().stream().noneMatch(characterType::canLearn)) {
+                String moveTypes = built.getMoveTypes().stream()
+                    .map(CharacterEditorScreen::labelForMoveType)
+                    .collect(java.util.stream.Collectors.joining(" or "));
+                return moveTypes + " moves cannot be learned by "
+                    + labelForCharacterType(characterType) + " characters.";
+            }
         }
         // A GRANT_MOVE-granted move bypasses all requirements, mirroring
         // Character.validateAndBuildMoveList. UNLOCK_MOVE-granted moves are
@@ -1501,22 +1636,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             }
         }
 
-        if (move.isFreeMove || automaticToolGrant) return null;
-        try {
-            MovePool pool = move.derivedPool();
-            int budget = SlotBudgetEnforcer.slotBudgetFor(
-                combatStatsWithAbilitySlots(character), pool);
-            int used = SlotBudgetEnforcer.countUsage(
-                getAssignedMovePoolList(character)).getOrDefault(pool, 0);
-            boolean withinBudget = alreadyAssigned ? used <= budget : used < budget;
-            return withinBudget ? null : noAvailableSlotsError(pool);
-        } catch (Exception ex) {
-            return "Move configuration is invalid: " + ex.getMessage();
-        }
-    }
-
-    private static String noAvailableSlotsError(MovePool pool) {
-        return "No available " + pool + " slots";
+        return null;
     }
 
     private static String labelForCharacterType(CharacterType type) {
@@ -1534,8 +1654,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         String error
     ) {
         if (error == null) return new AssignmentPanel.Item(move.id, move.name, sublabel);
-        return noAvailableSlotsError(pool).equals(error)
-            ? new AssignmentPanel.Item(move.id, move.name, sublabel, true, error) : null;
+        return null;
     }
 
     // =========================================================================
@@ -1699,7 +1818,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
         if (candidateMoveIds.isEmpty()) return Set.of();
         try {
             return character.toCharacter(moveRepo, abilityRepo, techniqueRepo, cursedToolRepo)
-                .getKnownMoves().stream()
+                .getLearnedMoves().stream()
                 .map(Move::getId)
                 .filter(candidateMoveIds::contains)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -1841,7 +1960,7 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
     private void ensureTechniqueTreesSynchronized() {
         if (techniqueTreesSynchronized) return;
         techniqueRepo.getAll().forEach(technique -> TechniqueSkillTree.synchronize(
-            technique, moveRepo.getAll(), abilityRepo.getAll()));
+            technique, moveRepo.getAll(), abilityRepo.getAll(), domainRepo.getAll()));
         techniqueTreesSynchronized = true;
     }
 
@@ -1887,7 +2006,8 @@ public class CharacterEditorScreen extends EditorScreenBase<CharacterData> {
             copyForKey(character.availableMoveIds),
             copyForKey(character.abilityIds),
             character.availableAbilityIds != null,
-            copyForKey(character.availableAbilityIds));
+            copyForKey(character.availableAbilityIds),
+            copyForKey(character.availableDomainIds));
     }
 
     private static List<String> copyForKey(List<String> values) {

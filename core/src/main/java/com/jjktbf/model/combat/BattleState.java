@@ -7,6 +7,7 @@ import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.domain.DomainBattlefield;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,6 +53,7 @@ public class BattleState {
 
     private final BattleTeam playerTeam;
     private final BattleTeam enemyTeam;
+    private final BattleFormat battleFormat;
     private final boolean legacySingleCombatantConstruction;
     private long instanceIdSeq;
 
@@ -74,6 +76,10 @@ public class BattleState {
     private final Map<CombatantId, Set<String>> destroyedSummonsByOwner = new LinkedHashMap<>();
     private final Map<CombatantId, Map<String, Integer>> summonCooldownsByOwner = new LinkedHashMap<>();
     private final List<BattleCombatant> pendingLifecycleChanges = new ArrayList<>();
+    private final Map<BattleTeamId, Map<CombatantId, CombatantId>> pendingSwitches =
+        new LinkedHashMap<>();
+    private final TargetExchangeRegistry targetExchanges = new TargetExchangeRegistry();
+    private final DomainBattlefield domainBattlefield = new DomainBattlefield();
 
     public record AutomaticStatusApplication(
         BattleCombatant source,
@@ -93,6 +99,15 @@ public class BattleState {
         boolean innateTechniqueBased
     ) { }
 
+    /** One field-slot change, either manually requested or forced by defeat. */
+    public record FighterSwitch(
+        BattleTeamId teamId,
+        int slot,
+        BattleCombatant outgoing,
+        BattleCombatant incoming,
+        boolean automatic
+    ) { }
+
     // -------------------------------------------------------------------------
     // Construction
     // -------------------------------------------------------------------------
@@ -106,9 +121,12 @@ public class BattleState {
     public BattleState(BattleCombatant playerCombatant, BattleCombatant enemyCombatant) {
         this.playerTeam = new BattleTeam(BattleTeamId.PLAYER);
         this.enemyTeam  = new BattleTeam(BattleTeamId.ENEMY);
+        this.battleFormat = BattleFormat.ONE_V_ONE;
         this.legacySingleCombatantConstruction = true;
         registerInitialFighter(playerTeam, playerCombatant);
         registerInitialFighter(enemyTeam, enemyCombatant);
+        playerTeam.configureActiveFighters(1);
+        enemyTeam.configureActiveFighters(1);
         this.currentPhase    = Phase.PLANNING;
         this.roundNumber     = 1;
         this.currentTick     = 0;
@@ -137,7 +155,10 @@ public class BattleState {
         validateInitialTeams(playerTeam, enemyTeam);
         this.playerTeam = playerTeam;
         this.enemyTeam  = enemyTeam;
+        this.battleFormat = null;
         this.legacySingleCombatantConstruction = false;
+        configureAllRosterFighters(playerTeam);
+        configureAllRosterFighters(enemyTeam);
         seedInstanceIdSequence();
         this.currentPhase    = Phase.PLANNING;
         this.roundNumber     = 1;
@@ -148,6 +169,55 @@ public class BattleState {
         applyAutomaticStatuses(AbilityEffectTiming.FIGHT_START);
         applyAutomaticStatuses(AbilityEffectTiming.ROUND_START);
         recomputeTimelineGridLength();
+    }
+
+    /** Construct a battle whose roster and field limits are fixed by a format. */
+    public BattleState(
+        BattleTeam playerTeam,
+        BattleTeam enemyTeam,
+        BattleFormat battleFormat
+    ) {
+        Objects.requireNonNull(playerTeam, "playerTeam");
+        Objects.requireNonNull(enemyTeam, "enemyTeam");
+        this.battleFormat = Objects.requireNonNull(battleFormat, "battleFormat");
+        if (!BattleTeamId.PLAYER.equals(playerTeam.id())) {
+            throw new IllegalArgumentException("playerTeam must have id PLAYER");
+        }
+        if (!BattleTeamId.ENEMY.equals(enemyTeam.id())) {
+            throw new IllegalArgumentException("enemyTeam must have id ENEMY");
+        }
+        validateInitialTeams(playerTeam, enemyTeam);
+        validateFormatRoster(playerTeam, battleFormat);
+        validateFormatRoster(enemyTeam, battleFormat);
+        this.playerTeam = playerTeam;
+        this.enemyTeam = enemyTeam;
+        this.legacySingleCombatantConstruction = false;
+        playerTeam.configureActiveFighters(battleFormat.activeFightersPerSide());
+        enemyTeam.configureActiveFighters(battleFormat.activeFightersPerSide());
+        seedInstanceIdSequence();
+        this.currentPhase = Phase.PLANNING;
+        this.roundNumber = 1;
+        this.currentTick = 0;
+        this.winnerTeam = null;
+        this.winner = null;
+        this.roundEndMaintenanceComplete = false;
+        applyAutomaticStatuses(AbilityEffectTiming.FIGHT_START);
+        applyAutomaticStatuses(AbilityEffectTiming.ROUND_START);
+        recomputeTimelineGridLength();
+    }
+
+    private static void configureAllRosterFighters(BattleTeam team) {
+        int fighters = (int) team.all().stream().filter(BattleCombatant::isFighter).count();
+        if (fighters > 0) team.configureActiveFighters(fighters);
+    }
+
+    private static void validateFormatRoster(BattleTeam team, BattleFormat format) {
+        long fighters = team.all().stream().filter(BattleCombatant::isFighter).count();
+        if (fighters != format.fightersPerSide()) {
+            throw new IllegalArgumentException(
+                format + " requires exactly " + format.fightersPerSide()
+                    + " fighters per side");
+        }
     }
 
     /** Register a fighter as the first combatant of its team and assign identity. */
@@ -243,6 +313,7 @@ public class BattleState {
         CombatantId instanceId = nextInstanceId(teamId);
         fighter.assignIdentity(instanceId, teamId, team.size(), CombatantRole.FIGHTER, null);
         team.add(fighter);
+        if (battleFormat == null) configureAllRosterFighters(team);
         refreshUnfinalizedTimelineGridLength();
         return fighter;
     }
@@ -260,14 +331,24 @@ public class BattleState {
     }
 
     public void advanceTick() {
+        targetExchanges.advanceTick();
         currentTick++;
     }
 
     public void endRound() {
+        targetExchanges.endRound();
         roundNumber++;
         currentTick = 0;
         applyAutomaticStatuses(AbilityEffectTiming.ROUND_START);
         recomputeTimelineGridLength();
+    }
+
+    public TargetExchangeRegistry targetExchanges() {
+        return targetExchanges;
+    }
+
+    public DomainBattlefield domainBattlefield() {
+        return domainBattlefield;
     }
 
     /** Fix this round's shared timeline size after all round-start effects run. */
@@ -359,6 +440,12 @@ public class BattleState {
 
     public BattleTeam playerTeam() { return playerTeam; }
     public BattleTeam enemyTeam()  { return enemyTeam; }
+
+    public BattleFormat getBattleFormat() { return battleFormat; }
+
+    public boolean usesReserveRules() {
+        return battleFormat != null && battleFormat.hasReserves();
+    }
 
     public BattleTeam teamOf(BattleCombatant combatant) {
         if (combatant == null) return null;
@@ -457,6 +544,92 @@ public class BattleState {
             }
         }
         return strongest;
+    }
+
+    // -------------------------------------------------------------------------
+    // Fighter switching / reserve deployment
+    // -------------------------------------------------------------------------
+
+    /** Replace this team's queued switch intents with its validated round choices. */
+    public void queueSwitches(TeamBattlePlan plan) {
+        Objects.requireNonNull(plan, "plan");
+        BattleTeam team = teamOf(plan.teamId());
+        if (team == null) throw new IllegalArgumentException("Unknown team " + plan.teamId());
+        String error = plan.validationError(this);
+        if (error != null) throw new IllegalArgumentException(error);
+        pendingSwitches.put(plan.teamId(), Map.copyOf(plan.switches()));
+    }
+
+    /** Apply both teams' queued switches before the first action tick. */
+    public List<FighterSwitch> applyQueuedSwitches() {
+        if (pendingSwitches.isEmpty()) return List.of();
+        List<FighterSwitch> changes = new ArrayList<>();
+        Map<CombatantId, CombatantId> targetTransfers = new LinkedHashMap<>();
+        for (BattleTeam team : List.of(playerTeam, enemyTeam)) {
+            Map<CombatantId, CombatantId> choices = pendingSwitches.getOrDefault(
+                team.id(), Map.of());
+            List<Map.Entry<CombatantId, CombatantId>> ordered = new ArrayList<>(choices.entrySet());
+            ordered.sort(java.util.Comparator.comparingInt(entry ->
+                team.fighterSlotOf(combatant(entry.getKey()))));
+            for (Map.Entry<CombatantId, CombatantId> entry : ordered) {
+                BattleCombatant outgoing = combatant(entry.getKey());
+                BattleCombatant incoming = combatant(entry.getValue());
+                BattleTeam.FighterSlotChange change = team.switchFighter(outgoing, incoming);
+                changes.add(new FighterSwitch(
+                    team.id(), change.slot(), change.outgoing(), change.incoming(), false));
+                targetTransfers.put(outgoing.getInstanceId(), incoming.getInstanceId());
+            }
+        }
+        pendingSwitches.clear();
+        transferPlannedTargets(targetTransfers);
+        refreshUnfinalizedTimelineGridLength();
+        return List.copyOf(changes);
+    }
+
+    /** Fill defeated field slots from living reserves in deterministic roster order. */
+    public List<FighterSwitch> fillReserveVacancies() {
+        if (!usesReserveRules()) return List.of();
+        List<FighterSwitch> changes = new ArrayList<>();
+        for (BattleTeam team : List.of(playerTeam, enemyTeam)) {
+            for (BattleTeam.FighterSlotChange change : team.fillVacantFighterSlots()) {
+                changes.add(new FighterSwitch(
+                    team.id(), change.slot(), change.outgoing(), change.incoming(), true));
+            }
+        }
+        if (!changes.isEmpty()) recomputeTimelineGridLength();
+        return List.copyOf(changes);
+    }
+
+    private void transferPlannedTargets(Map<CombatantId, CombatantId> replacements) {
+        if (replacements.isEmpty()) return;
+        for (BattleCombatant combatant : allCombatants()) {
+            if (combatant.getPlan() != null) {
+                for (ActionSegment segment : combatant.getPlan().allSegments()) {
+                    segment.setTargets(replacedTargets(segment.getTargets(), replacements));
+                }
+            }
+            if (combatant.getTimeline() != null) {
+                for (ActionSegment segment : combatant.getTimeline().getSegments()) {
+                    segment.setTargets(replacedTargets(segment.getTargets(), replacements));
+                }
+            }
+        }
+    }
+
+    private static List<CombatantId> replacedTargets(
+        List<CombatantId> targets,
+        Map<CombatantId, CombatantId> replacements
+    ) {
+        return targets.stream().map(target -> replacements.getOrDefault(target, target)).toList();
+    }
+
+    /** True when a selected fighter has fallen and its field slot is still vacant. */
+    public boolean isVacantFighterSlotTarget(CombatantId selected) {
+        BattleCombatant target = combatant(selected);
+        if (target == null || !target.isFighter()) return false;
+        BattleTeam team = teamOf(target);
+        int slot = team == null ? -1 : team.fighterSlotOf(target);
+        return slot >= 0 && team.fighterAt(slot) == null;
     }
 
     // -------------------------------------------------------------------------
@@ -773,7 +946,8 @@ public class BattleState {
         recorded.addAll(changed);
         List<BattleCombatant> newlyDefeated = new ArrayList<>();
         for (BattleCombatant c : presentCombatants()) {
-            if (!c.isActive()) continue;
+            if (c.getLifecycle() != CombatantLifecycle.ACTIVE
+                && c.getLifecycle() != CombatantLifecycle.RESERVE) continue;
             if (c.isDefeated()) {
                 if (c.isSummon() && c.getSummonerId() != null) {
                     BattleCombatant owner = combatant(c.getSummonerId());

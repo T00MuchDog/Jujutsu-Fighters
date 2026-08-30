@@ -22,6 +22,8 @@ import java.util.List;
  * Priority rule for simultaneous fireTicks:
  *   Moves with unleashPoint == 1 (fireTick == startTick) are highest priority.
  *   All ties resolved by the combatant's Speed stat (higher Speed wins).
+ *   Within a single character's own moves firing on the same tick, defense
+ *   fires before offense regardless of unleash point.
  *
  * This ordering applies to defenses too: a defensive move only contests an
  * attack landing on its tick if it has already markFired() — i.e. it won the
@@ -32,7 +34,9 @@ public class ActionSegment {
 
     private final Move   move;
     private final int    startTick;
-    private final int    fireTick;       // absolute tick: startTick + unleashPoint - 1
+    private final int    apCost;
+    private final int    unleashPoint;
+    private final int    fireTick;       // absolute tick: startTick + effective unleashPoint - 1
     private boolean      stunned;        // set true when interrupted or hit by a stun effect
     private boolean      fired;          // set true once the resolver actually executes this move
     private boolean      transferred;    // set true when a defensive segment's protection has been conferred onto another combatant's timeline (ally targeting)
@@ -67,6 +71,8 @@ public class ActionSegment {
      * Stored here because CE is drained when the segment's startTick is reached.
      */
     private final int    actualCeCost;
+    /** Move-start snapshot applied to every hit component in this execution. */
+    private double       executionBasePowerMultiplier = 1.0;
 
     /**
      * Ordered target combatant instance ids for hostile selected-target moves.
@@ -106,9 +112,27 @@ public class ActionSegment {
         List<CombatantId> targets,
         boolean planned
     ) {
+        this(move, startTick, actualCeCost, targets, planned,
+            move.getApCost(), move.getUnleashPoint());
+    }
+
+    ActionSegment(
+        Move move,
+        int startTick,
+        int actualCeCost,
+        List<CombatantId> targets,
+        boolean planned,
+        int apCost,
+        int unleashPoint
+    ) {
+        if (apCost < 1 || unleashPoint < 1 || unleashPoint > apCost) {
+            throw new IllegalArgumentException("Invalid effective action timing");
+        }
         this.move          = move;
         this.startTick     = startTick;
-        this.fireTick      = startTick + move.getUnleashPoint() - 1;
+        this.apCost        = apCost;
+        this.unleashPoint = unleashPoint;
+        this.fireTick      = Math.addExact(startTick, unleashPoint - 1);
         this.actualCeCost  = actualCeCost;
         setTargets(targets);
         this.stunned       = false;
@@ -119,7 +143,9 @@ public class ActionSegment {
 
     public Move    getMove()          { return move; }
     public int     getStartTick()     { return startTick; }
-    public int     getEndTick()       { return startTick + move.getApCost() - 1; }
+    public int     getApCost()        { return apCost; }
+    public int     getUnleashPoint()  { return unleashPoint; }
+    public int     getEndTick()       { return startTick + apCost - 1; }
     public int     getFireTick()      { return fireTick; }
     public int     getComponentImpactTick(int componentIndex) {
         return fireTick + move.getHitComponents().get(componentIndex).getDelayTicks();
@@ -127,8 +153,15 @@ public class ActionSegment {
     public int     getFinalImpactTick() { return fireTick + move.getMaxHitDelayTicks(); }
     public int     getResolutionEndTick() { return Math.max(getEndTick(), getFinalImpactTick()); }
     public int     getActualCeCost()  { return actualCeCost; }
+    public double  getExecutionBasePowerMultiplier() { return executionBasePowerMultiplier; }
+    public void multiplyExecutionBasePower(double multiplier) {
+        if (!Double.isFinite(multiplier) || multiplier <= 0.0) {
+            throw new IllegalArgumentException("Execution base-power multiplier must be positive");
+        }
+        executionBasePowerMultiplier *= multiplier;
+    }
     public boolean isStunned()        { return stunned; }
-    public boolean isInstant()        { return move.getUnleashPoint() == 1; }
+    public boolean isInstant()        { return unleashPoint == 1; }
 
     /** Ordered, distinct combatant instance ids explicitly selected for this move. */
     public List<CombatantId> getTargets() { return targets; }
@@ -193,8 +226,10 @@ public class ActionSegment {
      * window and defense parameters.
      */
     public ActionSegment cloneFired() {
-        ActionSegment copy = new ActionSegment(move, startTick, actualCeCost);
+        ActionSegment copy = new ActionSegment(
+            move, startTick, actualCeCost, List.of(), false, apCost, unleashPoint);
         copy.fired = true;
+        copy.executionBasePowerMultiplier = executionBasePowerMultiplier;
         return copy;
     }
 
@@ -209,10 +244,12 @@ public class ActionSegment {
         // Anchor so fireTick == tick; clamping to tick 1 only shifts the
         // window start slightly earlier in the extreme early-tick edge case,
         // which is harmless for a defence that is already fired.
-        int start = Math.max(1, tick - move.getUnleashPoint() + 1);
-        ActionSegment copy = new ActionSegment(move, start, actualCeCost);
+        int start = Math.max(1, tick - unleashPoint + 1);
+        ActionSegment copy = new ActionSegment(
+            move, start, actualCeCost, List.of(), false, apCost, unleashPoint);
         copy.fired = true;
         copy.reactionTriggered = true;
+        copy.executionBasePowerMultiplier = executionBasePowerMultiplier;
         return copy;
     }
 

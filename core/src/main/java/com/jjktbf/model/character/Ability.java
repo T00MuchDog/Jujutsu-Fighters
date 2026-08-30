@@ -2,6 +2,7 @@ package com.jjktbf.model.character;
 
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.text.ContentNameTokens;
 
 import java.util.List;
 
@@ -28,10 +29,15 @@ public class Ability {
     private final List<AbilityConditionRuleData> activationConditions;
 
     public Ability(AbilityData data) {
+        this(data, null);
+    }
+
+    /** Builds player-facing ability text, resolving stable content IDs when a lookup is available. */
+    public Ability(AbilityData data, ContentNameTokens.NameLookup descriptionNames) {
         this.id               = data.id;
         this.name             = data.name;
-        this.flavourText      = data.flavourText  != null ? data.flavourText  : "";
-        this.mechanicText     = data.mechanicText != null ? data.mechanicText : "";
+        this.flavourText      = ContentNameTokens.resolve(data.flavourText, descriptionNames);
+        this.mechanicText     = ContentNameTokens.resolve(data.mechanicText, descriptionNames);
         this.category         = data.category     != null ? data.category     : "PASSIVE";
         this.sourceType       = data.sourceType   != null ? data.sourceType   : "CHARACTER";
         this.sourceValue      = data.sourceValue;
@@ -43,16 +49,17 @@ public class Ability {
             : new java.util.ArrayList<>();
         AbilityData.ensureEffectIds(copiedEffects);
         this.effects = List.copyOf(copiedEffects);
-        boolean techniqueSource = "TECHNIQUE".equalsIgnoreCase(sourceType);
+        boolean masterySource = "TECHNIQUE".equalsIgnoreCase(sourceType)
+            || "MOVE".equalsIgnoreCase(sourceType);
         for (AbilityEffectData effect : effects) {
             AbilityEffectType type;
             try { type = AbilityEffectType.fromName(effect.type); }
             catch (IllegalArgumentException ignored) { continue; }
-            if (!techniqueSource && ((effect.masteryProgression != null
+            if (!masterySource && ((effect.masteryProgression != null
                 && !effect.masteryProgression.isEmpty())
                 || hasMasteryProgression(effect.returnCondition))) {
                 throw new IllegalArgumentException(
-                    "Only TECHNIQUE abilities may use mastery progression.");
+                    "Only TECHNIQUE or MOVE abilities may use mastery progression.");
             }
             if (isPassive()
                 && StatKey.CURSED_TECHNIQUE_MASTERY.fieldName.equalsIgnoreCase(effect.stat)
@@ -69,10 +76,10 @@ public class Ability {
                 throw new IllegalArgumentException(
                     "Move-only effect in ability '" + name + "': " + type.displayName());
             }
-            if (!type.uses(AbilityEffectParameter.DURATION)) continue;
+            if (!type.uses(AbilityEffectParameter.DURATION, effect)) continue;
             int rounds = effect.durationRounds == null ? -1 : effect.durationRounds;
             int ticks = effect.durationTicks == null ? 0 : effect.durationTicks;
-            if (type.uses(AbilityEffectParameter.STATUS_TYPE)) {
+            if (type.uses(AbilityEffectParameter.STATUS_TYPE, effect)) {
                 StatusEffectType status;
                 try {
                     status = StatusEffectType.fromName(effect.stringValue);
@@ -87,10 +94,10 @@ public class Ability {
         }
         this.activationConditions = isActive()
             ? List.copyOf(data.resolvedActivationConditions()) : List.of();
-        if (!techniqueSource && activationConditions.stream().anyMatch(
+        if (!masterySource && activationConditions.stream().anyMatch(
             Ability::hasMasteryProgression)) {
             throw new IllegalArgumentException(
-                "Only TECHNIQUE abilities may use condition mastery progression.");
+                "Only TECHNIQUE or MOVE abilities may use condition mastery progression.");
         }
     }
 

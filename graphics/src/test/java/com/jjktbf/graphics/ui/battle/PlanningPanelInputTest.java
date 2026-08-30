@@ -5,13 +5,18 @@ import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
+import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.CombatantId;
 import com.jjktbf.model.move.AoeType;
+import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveData;
+import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
 import org.junit.jupiter.api.Test;
@@ -209,7 +214,7 @@ class PlanningPanelInputTest {
     }
 
     @Test
-    void multipleTargetSelectionTogglesUpToCapAndRequiresDoneBeforeLocking() {
+    void multipleTargetSelectionTogglesUpToCapAndLocksOnClickOff() {
         Move move = multipleMove("CURSED_SPEECH", 3);
         PlanningPanel panel = targetedPanel(move, List.of(
             new PlanningPanel.TargetOption("target-1", "First target"),
@@ -242,7 +247,25 @@ class PlanningPanelInputTest {
         }
 
         input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
-        assertFalse(panel.isConfirmed(), "the open multiple-target menu must be finished first");
+        assertTrue(panel.isConfirmed(), "clicking off the target menu locks in the selected targets");
+    }
+
+    @Test
+    void clickingOffAnIncompleteMultipleTargetSelectionBlocksLocking() {
+        Move move = multipleMove("INCOMPLETE", 3);
+        PlanningPanel panel = targetedPanel(move, List.of(
+            new PlanningPanel.TargetOption("target-1", "First target"),
+            new PlanningPanel.TargetOption("target-2", "Second target")
+        ));
+        PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
+
+        clickCard(input);
+        ActionSegment segment = panel.getPlan().offensiveTimeline().getSegments().get(0);
+
+        input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        assertFalse(panel.isConfirmed(), "an incomplete target selection must not lock");
+
+        assertTrue(panel.chooseTarget(segment, "target-1"));
         assertTrue(panel.confirmTargetSelection(segment));
         input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
         assertTrue(panel.isConfirmed());
@@ -275,6 +298,30 @@ class PlanningPanelInputTest {
         assertFalse(panel.chooseTarget(segment, "fighter"));
         assertTrue(panel.chooseTarget(segment, "summon"));
         assertEquals(List.of("summon"), panel.getSelectedTargetIds(segment));
+    }
+
+    @Test
+    void mixedPairSelectionChoosesAllyThenEnemyAndPreservesOrder() {
+        Move move = new Move.Builder("PAIR")
+            .name("Pair")
+            .category(MoveCategory.UTILITY)
+            .targeting(Targeting.ALLY_AND_ENEMY)
+            .apCost(5)
+            .unleashPoint(1)
+            .build();
+        PlanningPanel panel = targetedPanel(move, List.of(
+            new PlanningPanel.TargetOption("enemy", "Enemy")));
+        panel.setAllyOptions(List.of(new PlanningPanel.TargetOption("ally", "Ally")));
+        ActionSegment segment = panel.restorePlacement(move, 1, 0, List.of());
+
+        assertFalse(panel.chooseTarget(segment, "enemy"));
+        assertTrue(panel.chooseTarget(segment, "ally"));
+        assertEquals(List.of("ally"), panel.getSelectedTargetIds(segment));
+        assertFalse(panel.chooseTarget(segment, "ally"));
+        assertTrue(panel.chooseTarget(segment, "enemy"));
+        assertEquals(List.of("ally", "enemy"), panel.getSelectedTargetIds(segment));
+        assertEquals(List.of("ally", "enemy"),
+            TargetListSupport.targetIds(panel.getPlacements().get(0)));
     }
 
     @Test
@@ -363,6 +410,15 @@ class PlanningPanelInputTest {
         assertTrue(panel.getPlan().allSegments().isEmpty());
     }
 
+    @Test
+    void authoritativeRestoreBypassesPostResolutionResourceValidation() {
+        Move move = resourceSpendingMove();
+        PlanningPanel panel = panel(move, 150);
+        panel.setAbilityStates(List.of(new CodedAbilityState("SUPPLY", "Supply", 0, 3)));
+
+        assertNotNull(panel.restorePlacement(move, 1, 0, List.of()));
+    }
+
     private static PlanningPanel panel(Move move, int apBudget) {
         return panel(move, apBudget, apBudget);
     }
@@ -427,6 +483,25 @@ class PlanningPanelInputTest {
         data.aoeType = AoeType.MULTIPLE.name();
         data.aoeTargetCount = targetCount;
         return data.toMove();
+    }
+
+    private static Move resourceSpendingMove() {
+        MoveEffectData effect = AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            .createDefaultMoveEffect();
+        effect.effectId = "effect-000000";
+        effect.trigger = MoveEffectTrigger.ON_START.name();
+        effect.sourceResourceKey = "SUPPLY";
+        effect.sourceResourceAmount = 1;
+        effect.targetResourceKey = null;
+        effect.targetResourceAmount = 0;
+        return new Move.Builder("SPEND_RESOURCE")
+            .name("Spend Resource")
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY))
+            .apCost(1)
+            .unleashPoint(1)
+            .effects(List.of(effect))
+            .build();
     }
 
     private static Move returnCommand() {

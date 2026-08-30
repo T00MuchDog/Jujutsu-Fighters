@@ -1,6 +1,7 @@
 package com.jjktbf.controller;
 
 import com.jjktbf.model.character.CombatStats;
+import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.BattleStatKey;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
@@ -9,15 +10,20 @@ import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatantId;
+import com.jjktbf.model.combat.DomainDefinitionLookup;
 import com.jjktbf.model.combat.MoveAvailability;
 import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.model.combat.PowerCalculator;
 import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.Timeline;
+import com.jjktbf.model.domain.DomainDefinition;
+import com.jjktbf.model.domain.DomainInstance;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveTag;
+import com.jjktbf.model.move.StatusEffectType;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -98,17 +104,16 @@ final class SmartAIScoring {
     }
 
     /**
-     * Whether a block's affected-tags cover cursed energy. A block with no
-     * declared damage tags covers everything (per {@link Move#coveredByBlockTags}).
+     * Whether a block covers either cursed-energy attack category. A block with
+     * no declared attack categories covers all three.
      */
     static boolean blockCoversCursedEnergy(Move block) {
         if (block == null) return false;
-        List<String> tags = block.getBlockAffectedTags();
-        if (tags == null || tags.isEmpty()) return true;
-        for (String tag : tags) {
-            if ("CURSED_ENERGY".equalsIgnoreCase(tag)) return true;
-        }
-        return false;
+        var types = block.getBlockAttackTypes();
+        return types.isEmpty()
+            || types.contains(com.jjktbf.model.move.BlockAttackType.CURSED_ENERGY)
+            || types.contains(
+                com.jjktbf.model.move.BlockAttackType.PHYSICAL_CURSED_ENERGY);
     }
 
     private static boolean hasMeaningfulEffects(Move move) {
@@ -182,7 +187,7 @@ final class SmartAIScoring {
         if (intel.attacks.isEmpty()) return 0;
         boolean coversAny = false;
         for (Move attack : intel.attacks) {
-            if (attack.coveredByBlockTags(block.getBlockAffectedTags())) {
+            if (block.blocksAttack(attack)) {
                 coversAny = true;
                 break;
             }
@@ -315,13 +320,14 @@ final class SmartAIScoring {
             power = Math.max(0.0, attacker.modifyBattleStat(BattleStatKey.POWER, power));
 
             double attackValue = component.getBasePower()
-                * attacker.getAbilityFlags().basePowerMultiplierFor(move)
+                * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
                 * power;
             double defense = Math.max(1.0, target.computeCurrentDefense(1));
             int damage = (int) Math.round(
                 (attackValue / defense) * DAMAGE_SCALE * DAMAGE_ROLL_MIN
                     * attacker.getAbilityFlags().damageMultiplierFor(move)
-                    * target.getAbilityFlags().incomingDamageMultiplierFor(move));
+                    * target.getAbilityFlags().incomingDamageMultiplierFor(move)
+                    * elementalStatusDamageMultiplier(component, attacker, target));
             damage = attackValue <= 0.0 ? 0 : Math.max(1, damage);
             damage = Math.max(0, (int) Math.round(
                 attacker.modifyBattleStat(BattleStatKey.DAMAGE_DEALT, damage)));
@@ -330,6 +336,23 @@ final class SmartAIScoring {
             total = Math.min(Integer.MAX_VALUE, total + damage);
         }
         return (int) total;
+    }
+
+    private static double elementalStatusDamageMultiplier(
+        HitComponent component,
+        BattleCombatant attacker,
+        BattleCombatant target
+    ) {
+        double multiplier = 1.0;
+        if (component.hasTag(MoveTag.ELECTRIC)
+            && target.hasEffect(StatusEffectType.WET)) {
+            multiplier *= 2.0;
+        }
+        if (component.hasTag(MoveTag.MELEE)
+            && attacker.hasEffect(StatusEffectType.BURNED)) {
+            multiplier *= 0.5;
+        }
+        return multiplier;
     }
 
     /**
@@ -372,9 +395,9 @@ final class SmartAIScoring {
     }
 
     private static boolean fitsAsOpening(BattlePlan plan, Move move, int ceCost) {
-        if (move.getApCost() > plan.apBudget() || ceCost > plan.ceBudget()) return false;
-        Timeline board = new Timeline(plan.gridLength());
-        return board.placeAt(move, 1, ceCost) != null;
+        if (plan.effectiveApCost(move) > plan.apBudget() || ceCost > plan.ceBudget()) return false;
+        return plan.gridLength() >= plan.effectiveUnleashPoint(move)
+            + move.getMaxHitDelayTicks();
     }
 
     private static BattlePlan rebuildWithOpening(
@@ -386,7 +409,8 @@ final class SmartAIScoring {
             .thenComparingInt(ActionSegment::getStartTick));
 
         BattlePlan rebuilt = new BattlePlan(
-            original.apBudget(), original.ceBudget(), original.gridLength());
+            original.apBudget(), original.ceBudget(), original.gridLength(),
+            original.actionTickDelay());
         ActionSegment first = rebuilt.placeWithTargets(
             opening.move(), 1, opening.ceCost(), openingTargets(opening.move(), target, enemies, rng));
         if (first == null) return original;
@@ -401,7 +425,7 @@ final class SmartAIScoring {
             }
             Move move = segment.getMove();
             int earliestStart = Math.max(1,
-                first.getFireTick() - move.getUnleashPoint() + 2);
+                first.getFireTick() - rebuilt.effectiveUnleashPoint(move) + 2);
             ActionSegment retained = placeAtOrAfter(
                 rebuilt, move, segment.getActualCeCost(),
                 Math.max(segment.getStartTick(), earliestStart));
@@ -443,6 +467,182 @@ final class SmartAIScoring {
     ) { }
 
     // -------------------------------------------------------------------------
+    // Domain-opening valuation and planning
+    // -------------------------------------------------------------------------
+
+    /** Value of an answer (anti-Domain) opening while an enemy Domain stands. */
+    static final double DOMAIN_ANSWER_VALUE = 3.0;
+    /** Value of opening an ordinary Domain when the field is clear. */
+    static final double DOMAIN_OPENING_VALUE = 2.0;
+    /** Discount when an enemy anti-Domain can swallow our sure-hits. */
+    static final double COUNTERED_DOMAIN_FACTOR = 0.5;
+
+    /**
+     * Why this move's Domain declarations would be wasted this round, or null
+     * when every row is plannable. Mirrors the runtime admission rules of
+     * {@code DomainBattlefield.queueDeclaration} so the AI never burns a slot
+     * on a declaration the battlefield would reject.
+     *
+     * <p>Hybrid defensive moves (e.g. a parry that also carries a Domain row)
+     * are never restricted: their defense value stands on its own and the
+     * battlefield simply absorbs the declaration it cannot use.</p>
+     */
+    static String domainOpeningRestriction(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, Move move
+    ) {
+        if (lookup == null || state == null || ai == null || move == null) return null;
+        if (move.isDefensive()) return null;
+        boolean enemyDomainActive = activeEnemyDomain(state, ai) != null;
+        for (MoveEffectData effect : move.getEffects()) {
+            if (effect == null || !AbilityEffectType.ESTABLISH_DOMAIN.name()
+                    .equalsIgnoreCase(effect.type) || effect.domainId == null) {
+                continue;
+            }
+            DomainDefinition definition = lookup.findDomain(effect.domainId.trim())
+                .orElse(null);
+            if (definition == null) return "Unknown Domain";
+            if (definition.antiDomain()) {
+                if (!enemyDomainActive) return "No enemy Domain to answer";
+                continue;
+            }
+            if (!ai.getCharacter().canEstablishDomain(definition.id())) {
+                return "Domain not unlocked";
+            }
+            if (!ai.getCharacter().canUseTechnique(definition.requiredTechniqueName())) {
+                return "Required technique unavailable";
+            }
+            if (ai.isTechniqueLocked(definition.requiredTechniqueName())) {
+                return "Required technique locked";
+            }
+            if (ownsActiveDomain(state, ai, false)) return "Own Domain already active";
+        }
+        return null;
+    }
+
+    /**
+     * Tactical value of the Domain declarations on this move (0 when any row is
+     * restricted). Anti-Domain answers to a standing enemy Domain outrank fresh
+     * openings; an enemy anti-Domain that out-powers our clash pressure devalues
+     * an ordinary opening because its sure-hits will be swallowed.
+     */
+    static double domainMoveValue(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, Move move
+    ) {
+        if (domainOpeningRestriction(lookup, state, ai, move) != null) return 0.0;
+        if (lookup == null || state == null || ai == null || move == null) return 0.0;
+        double best = 0.0;
+        for (MoveEffectData effect : move.getEffects()) {
+            if (effect == null || !AbilityEffectType.ESTABLISH_DOMAIN.name()
+                    .equalsIgnoreCase(effect.type) || effect.domainId == null) {
+                continue;
+            }
+            DomainDefinition definition = lookup.findDomain(effect.domainId.trim())
+                .orElse(null);
+            if (definition == null) continue;
+            double value = definition.antiDomain()
+                ? DOMAIN_ANSWER_VALUE : DOMAIN_OPENING_VALUE;
+            if (!definition.antiDomain() && enemyCounterDominates(state, ai, definition)) {
+                value *= COUNTERED_DOMAIN_FACTOR;
+            }
+            best = Math.max(best, value);
+        }
+        return best;
+    }
+
+    /** Remove segments whose Domain declarations would be rejected or wasted. */
+    static BattlePlan pruneRestrictedDomainOpenings(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, BattlePlan plan
+    ) {
+        if (lookup == null || plan == null) return plan;
+        for (ActionSegment segment : new ArrayList<>(plan.allSegments())) {
+            if (domainOpeningRestriction(lookup, state, ai, segment.getMove()) != null) {
+                plan.remove(segment);
+            }
+        }
+        return plan;
+    }
+
+    /**
+     * Pull the most valuable plannable Domain opening to the head of the plan,
+     * so declarations land before the round's damage races them. Segments keep
+     * their targets; a placement that does not fit leaves the original intact.
+     */
+    static BattlePlan promoteDomainOpenings(
+        DomainDefinitionLookup lookup, BattleState state, BattleCombatant ai, BattlePlan plan
+    ) {
+        if (lookup == null || plan == null) return plan;
+        ActionSegment best = null;
+        double bestValue = 0.0;
+        for (ActionSegment segment : plan.allSegments()) {
+            Move candidate = segment.getMove();
+            // Defensive hybrids keep their threat-aligned placement — only
+            // pure Domain openers get pulled to the head of the plan.
+            if (candidate != null && candidate.isDefensive()) continue;
+            double value = domainMoveValue(lookup, state, ai, candidate);
+            if (value > bestValue) {
+                best = segment;
+                bestValue = value;
+            }
+        }
+        if (best == null) return plan;
+        int earliestFire = Integer.MAX_VALUE;
+        for (ActionSegment segment : plan.allSegments()) {
+            earliestFire = Math.min(earliestFire, segment.getFireTick());
+        }
+        if (best.getFireTick() <= earliestFire) return plan;
+
+        Move move = best.getMove();
+        List<CombatantId> targets = best.getTargets();
+        int ceCost = best.getActualCeCost();
+        plan.remove(best);
+        ActionSegment promoted = placeAtOrAfter(plan, move, ceCost, 1);
+        if (promoted == null) {
+            ActionSegment restored = placeAtOrAfter(
+                plan, move, ceCost, best.getStartTick());
+            if (restored != null) restored.setTargets(targets);
+            return plan;
+        }
+        promoted.setTargets(targets);
+        return plan;
+    }
+
+    private static DomainInstance activeEnemyDomain(BattleState state, BattleCombatant ai) {
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            if (instance.definition().antiDomain()) continue;
+            BattleCombatant owner = state.combatant(instance.ownerId());
+            if (owner != null && !owner.isAlliedWith(ai)) return instance;
+        }
+        return null;
+    }
+
+    private static boolean ownsActiveDomain(
+        BattleState state, BattleCombatant ai, boolean antiDomain
+    ) {
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            if (instance.definition().antiDomain() == antiDomain
+                && instance.ownerId().equals(ai.getInstanceId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when an enemy anti-Domain protects against this Domain's pressure. */
+    private static boolean enemyCounterDominates(
+        BattleState state, BattleCombatant ai, DomainDefinition definition
+    ) {
+        for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
+            if (!instance.definition().antiDomain()) continue;
+            BattleCombatant owner = state.combatant(instance.ownerId());
+            if (owner == null || owner.isAlliedWith(ai)) continue;
+            if (instance.definition().counterPotency() >= definition.clashPressurePerTick()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
     // Placement helpers
     // -------------------------------------------------------------------------
 
@@ -462,7 +662,7 @@ final class SmartAIScoring {
     static ActionSegment placeAtOrAfter(BattlePlan plan, Move move, int ceCost, int nearTick) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
         int grid = board.getGridLength();
-        int need = move.getApCost();
+        int need = plan.effectiveApCost(move);
         for (int start = Math.max(1, nearTick); start + need - 1 <= grid; start++) {
             if (board.isRangeFree(start, start + need - 1)) {
                 return plan.place(move, start, ceCost);
@@ -479,7 +679,7 @@ final class SmartAIScoring {
         BattlePlan plan, Move move, int ceCost, int gridLength, RandomSource rng
     ) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
-        int need = move.getApCost();
+        int need = plan.effectiveApCost(move);
         if (need > gridLength) return null;
         for (int attempt = 0; attempt < RANDOM_PLACE_TRIES; attempt++) {
             int start = 1 + rng.nextInt(gridLength - need + 1);
@@ -496,7 +696,7 @@ final class SmartAIScoring {
      */
     static ActionSegment placeBunchedAtEnd(BattlePlan plan, Move move, int ceCost, int gridLength) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
-        int need = move.getApCost();
+        int need = plan.effectiveApCost(move);
         for (int start = gridLength - need + 1; start >= 1; start--) {
             if (board.isRangeFree(start, start + need - 1)) {
                 return plan.place(move, start, ceCost);
@@ -520,7 +720,8 @@ final class SmartAIScoring {
             && ai.getRuntimeStat(StatKey.SPEED) < opponent.getRuntimeStat(StatKey.SPEED)) {
             return null;
         }
-        int start = Math.max(1, threatFireTick - defense.getUnleashPoint() + 1);
+        int start = Math.max(
+            1, threatFireTick - plan.effectiveUnleashPoint(defense) + 1);
         return plan.place(defense, start, ceCost);
     }
 }

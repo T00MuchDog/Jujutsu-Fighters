@@ -49,16 +49,20 @@ public final class HitComponent {
         if (basePower < 0) throw new IllegalArgumentException("component basePower must be nonnegative");
         if (delayTicks < 0) throw new IllegalArgumentException("component delayTicks must be nonnegative");
         if (tags == null || tags.isEmpty()) {
-            throw new IllegalArgumentException("component damage tags are required");
+            throw new IllegalArgumentException("component attack tags are required");
         }
 
         EnumSet<MoveTag> copy = EnumSet.noneOf(MoveTag.class);
         for (MoveTag tag : tags) {
-            if (tag == null || !MoveTag.TYPE_TAGS.contains(tag)) {
+            if (tag == null || !MoveTag.HIT_TAGS.contains(tag)) {
                 throw new IllegalArgumentException(
-                    "component tags may contain only damage-type tags: " + tags);
+                    "component tags contain a non-hit tag: " + tags);
             }
             copy.add(tag);
+        }
+        if (Collections.disjoint(copy, MoveTag.TYPE_TAGS)) {
+            throw new IllegalArgumentException(
+                "component tags require at least one damage type: " + tags);
         }
         if (copy.contains(MoveTag.INNATE_TECHNIQUE)
             || copy.contains(MoveTag.NON_INNATE_TECHNIQUE)) {
@@ -93,11 +97,17 @@ public final class HitComponent {
 
     public int getBasePower() { return basePower; }
     public Set<MoveTag> getTags() { return tags; }
+    public Set<MoveTag> getTypeTags() { return category.getTags(); }
     public MoveCategory getCategory() { return category; }
     public int getDelayTicks() { return delayTicks; }
     public boolean requiresPreviousConnection() { return requiresPreviousConnection; }
     public boolean isAvoidable() { return avoidable; }
     public boolean isBlackFlashEligible() { return category.isBlackFlashEligible(); }
+    public boolean hasTag(MoveTag tag) { return tag != null && tags.contains(tag); }
+    public boolean isMelee() { return hasTag(MoveTag.MELEE); }
+    public boolean isRanged() { return hasTag(MoveTag.RANGED); }
+    public boolean isGuardBreak() { return hasTag(MoveTag.GUARD_BREAK); }
+    public boolean isIntangible() { return hasTag(MoveTag.INTANGIBLE); }
 
     /**
      * Per-hit base accuracy as a fraction [0.0, 1.0], or

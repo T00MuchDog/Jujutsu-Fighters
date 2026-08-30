@@ -8,6 +8,7 @@ import com.jjktbf.model.character.coded.CodedMoveResponse;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectMessages;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveEffectData;
@@ -15,6 +16,8 @@ import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
+import com.jjktbf.model.domain.DomainBattlefield;
+import com.jjktbf.model.domain.DomainEffectExecutor;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,6 +41,7 @@ public final class AbilityActivationEngine {
 
     private final RandomSource rng;
     private BattleCharacterLookup characterLookup;
+    private DomainDefinitionLookup domainLookup;
 
     public AbilityActivationEngine(RandomSource rng) {
         this(rng, null);
@@ -50,7 +54,56 @@ public final class AbilityActivationEngine {
 
     public AbilityActivationEngine withCharacterLookup(BattleCharacterLookup lookup) {
         this.characterLookup = lookup;
+        if (lookup instanceof DomainDefinitionLookup domains) this.domainLookup = domains;
         return this;
+    }
+
+    public AbilityActivationEngine withDomainLookup(DomainDefinitionLookup lookup) {
+        this.domainLookup = lookup;
+        return this;
+    }
+
+    /** Shared primitive executor used by active Domain programs. */
+    public List<CombatEvent> executeDomainEffect(
+        BattleState state,
+        BattleCombatant owner,
+        BattleCombatant target,
+        AbilityEffectData authored,
+        int tick,
+        String sourceLease
+    ) {
+        if (state == null || owner == null || target == null || authored == null
+            || !owner.isActive() || !target.isActive()) {
+            return List.of();
+        }
+        int mastery = TechniqueMasteryResolver.masteryOf(owner);
+        AbilityEffectData effect = TechniqueMasteryResolver.resolve(authored, mastery);
+        AbilityConditionData condition = effect.domainCondition == null
+            ? AbilityConditionData.always()
+            : TechniqueMasteryResolver.resolve(effect.domainCondition, mastery);
+        AbilityTrigger trigger = new AbilityTrigger(
+            AbilityTrigger.Type.TIMELINE_TICK, owner, target, null, null,
+            0, tick, state.getCurrentPhase(), null, null);
+        if (!evaluateMoveCondition(
+            condition, owner, target, state, trigger, List.of(trigger))) {
+            return List.of();
+        }
+        double chance = Boolean.TRUE.equals(effect.domainActivationChanceEnabled)
+            ? Math.max(0.0, Math.min(1.0,
+                effect.domainActivationChance == null ? 0.0 : effect.domainActivationChance))
+            : 1.0;
+        if (chance <= 0.0 || (chance < 1.0 && rng.nextDouble() >= chance)) return List.of();
+
+        effect.runtimeLease = sourceLease;
+        effect.target = owner == target
+            ? AbilityEffectTarget.SELF.name() : AbilityEffectTarget.ENEMY.name();
+        List<CombatEvent> events = new ArrayList<>();
+        ArrayDeque<AbilityTrigger> followUps = new ArrayDeque<>();
+        applyEffect(
+            state, owner, target, effect, tick, events, followUps,
+            true, null, null, List.of(target), List.of(target), List.of());
+        while (!followUps.isEmpty()) events.addAll(process(state, followUps.removeFirst()));
+        return events;
     }
 
     public List<CombatEvent> process(BattleState state, AbilityTrigger initialTrigger) {
@@ -85,6 +138,29 @@ public final class AbilityActivationEngine {
         if (!triggers.isEmpty()) {
             System.err.println("[WARN] Ability activation chain exceeded "
                 + MAX_CHAINED_TRIGGERS + " events.");
+        }
+        return events;
+    }
+
+    /** Apply every active over-time CE drain before this tick's actions begin. */
+    public List<CombatEvent> processOverTimeCeDrains(BattleState state, int tick) {
+        if (state == null) return List.of();
+        List<CombatEvent> events = new ArrayList<>();
+        ArrayDeque<AbilityTrigger> followUps = new ArrayDeque<>();
+        for (BattleCombatant target : state.activeCombatants()) {
+            for (BattleCombatant.OverTimeCeDrain drain : target.getOverTimeCeDrains()) {
+                int requested = amount(drain.effect(), target.getMaxCursedEnergy());
+                int drained = target.drainCe(requested);
+                if (drained <= 0) continue;
+                events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
+                    .source(drain.source()).target(target).intValue(drained).tick(tick)
+                    .build());
+                followUps.add(AbilityTrigger.amount(
+                    AbilityTrigger.Type.CE_LOST, target, null, drained, tick));
+            }
+        }
+        while (!followUps.isEmpty()) {
+            events.addAll(process(state, followUps.removeFirst()));
         }
         return events;
     }
@@ -140,6 +216,22 @@ public final class AbilityActivationEngine {
         int tick,
         List<BattleCombatant> moveAllies
     ) {
+        return processMoveEffects(state, owner, currentTargets, move, moveTrigger,
+            componentIndex, tick, moveAllies, List.of());
+    }
+
+    /** Execute a move trigger with its ordered pair-target endpoints, when any. */
+    public List<CombatEvent> processMoveEffects(
+        BattleState state,
+        BattleCombatant owner,
+        List<BattleCombatant> currentTargets,
+        Move move,
+        MoveEffectTrigger moveTrigger,
+        int componentIndex,
+        int tick,
+        List<BattleCombatant> moveAllies,
+        List<BattleCombatant> pairTargets
+    ) {
         if (state == null || owner == null || move == null || !move.usesUnifiedEffects()) {
             return List.of();
         }
@@ -170,7 +262,8 @@ public final class AbilityActivationEngine {
                         authored, mastery);
                     selfEffect.target = AbilityEffectTarget.SELF.name();
                     applyEffect(state, owner, currentTarget, selfEffect,
-                        tick, events, followUps, true, move, component, List.of(), List.of());
+                        tick, events, followUps, true, move, component,
+                        List.of(), List.of(), pairTargets);
                 }
                 for (BattleCombatant target : moveTargets) {
                     AbilityTrigger targetTrigger = moveEffectTrigger(
@@ -182,7 +275,8 @@ public final class AbilityActivationEngine {
                         authored, mastery);
                     targetEffect.target = AbilityEffectTarget.ENEMY.name();
                     applyEffect(state, owner, target, targetEffect,
-                        tick, events, followUps, true, move, component, List.of(target), List.of());
+                        tick, events, followUps, true, move, component,
+                        List.of(target), List.of(), pairTargets);
                 }
                 continue;
             }
@@ -192,7 +286,7 @@ public final class AbilityActivationEngine {
 
             AbilityEffectData effect = TechniqueMasteryResolver.resolve(authored, mastery);
             applyEffect(state, owner, currentTarget, effect, tick, events, followUps,
-                true, move, component, moveTargets, moveAllies);
+                true, move, component, moveTargets, moveAllies, pairTargets);
         }
         while (!followUps.isEmpty()) {
             events.addAll(process(state, followUps.removeFirst()));
@@ -238,6 +332,23 @@ public final class AbilityActivationEngine {
         Move move,
         int tick
     ) {
+        return allowsAttackLaunch(state, owner, enemy, move, null, tick);
+    }
+
+    /**
+     * Evaluate a Defensive+Attack hybrid's attack-launch gate with the defended
+     * incoming move available to event conditions. This lets an ON_DEFENCE launch
+     * condition inspect the attack it just stopped, while preserving the wrapper
+     * move's existing MOVE_BLOCKED launch context for older authored conditions.
+     */
+    public boolean allowsAttackLaunch(
+        BattleState state,
+        BattleCombatant owner,
+        BattleCombatant enemy,
+        Move move,
+        Move incomingMove,
+        int tick
+    ) {
         if (move == null) return false;
         int mastery = TechniqueMasteryResolver.masteryOf(owner);
         AbilityConditionData resolved = move.getAttackLaunchCondition() == null
@@ -247,12 +358,45 @@ public final class AbilityActivationEngine {
             move.launchesAttackOnDefence()
                 ? AbilityTrigger.Type.MOVE_BLOCKED : AbilityTrigger.Type.MOVE_USED,
             owner, enemy, move, tick);
-        if (!evaluateMoveCondition(resolved, owner, enemy, state, trigger, List.of(trigger))) {
+        List<AbilityTrigger> launchContext = new ArrayList<>(List.of(trigger));
+        if (move.launchesAttackOnDefence() && incomingMove != null) {
+            launchContext.add(AbilityTrigger.move(
+                AbilityTrigger.Type.MOVE_USED, enemy, owner, incomingMove, tick));
+        }
+        if (!evaluateMoveCondition(resolved, owner, enemy, state, trigger, launchContext)) {
             return false;
         }
         if (!move.isAttackLaunchChanceEnabled()) return true;
         double chance = Math.max(0.0, Math.min(1.0, move.getAttackLaunchChance() / 100.0));
         return chance > 0.0 && (chance >= 1.0 || rng.nextDouble() < chance);
+    }
+
+    /** Resolve conditional calculation-only modifiers on an active block move. */
+    public double blockEffectivenessMultiplier(
+        BattleState state,
+        BattleCombatant blocker,
+        BattleCombatant attacker,
+        Move blockMove,
+        Move incomingMove,
+        HitComponent component,
+        int tick
+    ) {
+        if (blockMove == null || incomingMove == null || component == null) return 1.0;
+        AbilityTrigger trigger = AbilityTrigger.attackConnected(
+            attacker, blocker, incomingMove, component, tick);
+        double multiplier = 1.0;
+        int mastery = TechniqueMasteryResolver.masteryOf(blocker);
+        for (MoveEffectData authored
+                : blockMove.effectsFor(MoveEffectTrigger.BLOCK_CALCULATION, -1)) {
+            if (!AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY.name()
+                .equalsIgnoreCase(authored.type)) continue;
+            if (!activateMoveEffect(
+                state, blocker, attacker, blockMove, authored,
+                MoveEffectTrigger.BLOCK_CALCULATION, -1, trigger, tick)) continue;
+            AbilityEffectData resolved = TechniqueMasteryResolver.resolve(authored, mastery);
+            multiplier *= resolved.doubleValue == null ? 1.0 : resolved.doubleValue;
+        }
+        return multiplier;
     }
 
     private static AbilityTrigger moveEffectTrigger(
@@ -267,6 +411,7 @@ public final class AbilityActivationEngine {
             return AbilityTrigger.attackHit(owner, target, move, component, tick);
         }
         AbilityTrigger.Type type = trigger == MoveEffectTrigger.ON_FIRE
+            || trigger == MoveEffectTrigger.ON_START
             ? AbilityTrigger.Type.MOVE_USED : AbilityTrigger.Type.MOVE_BLOCKED;
         return AbilityTrigger.move(type, owner, target, move, tick);
     }
@@ -347,9 +492,62 @@ public final class AbilityActivationEngine {
         BattleCombatant owner = trigger.target();
         BattleCombatant enemy = relevantEnemy(state, trigger, owner);
         Map<RuleActivationKey, Boolean> activationCache = new HashMap<>();
-        return owner.getCodedAbilities().preventFatalDamage(
+        boolean prevented = owner.getCodedAbilities().preventFatalDamage(
             binding -> allowsCodedBinding(
                 binding, owner, enemy, state, trigger, activationCache));
+        if (!prevented) {
+            activateFatalSurvivalEffects(state, owner, enemy, trigger, activationCache);
+        }
+        return prevented;
+    }
+
+    /** Install generic fatal-survival effects in time for BattleCombatant to consume them. */
+    private void activateFatalSurvivalEffects(
+        BattleState state,
+        BattleCombatant owner,
+        BattleCombatant enemy,
+        AbilityTrigger trigger,
+        Map<RuleActivationKey, Boolean> activationCache
+    ) {
+        List<Ability> abilities = owner.getAbilities();
+        for (int abilityIndex = 0; abilityIndex < abilities.size(); abilityIndex++) {
+            Ability ability = abilities.get(abilityIndex);
+            if (ability == null || !ability.isActive()) continue;
+            List<AbilityConditionRuleData> rules = ability.getActivationConditions();
+            for (int ruleIndex = 0; ruleIndex < rules.size(); ruleIndex++) {
+                AbilityConditionRuleData rule = rules.get(ruleIndex);
+                if (rule == null) continue;
+                List<AbilityEffectData> survivalEffects = ability.getEffects().stream()
+                    .filter(effect -> effect != null
+                        && AbilityEffectType.SURVIVE_FATAL_DAMAGE.name()
+                            .equalsIgnoreCase(effect.type)
+                        && rule.targetsEffect(effect.effectId))
+                    .toList();
+                if (survivalEffects.isEmpty()) continue;
+                int currentAbility = abilityIndex;
+                int currentRule = ruleIndex;
+                RuleActivationKey cacheKey = new RuleActivationKey(
+                    owner, ability, currentAbility, currentRule);
+                boolean activated = activationCache.computeIfAbsent(cacheKey, ignored ->
+                    activateRule(ability, currentAbility, rule, currentRule,
+                        owner, enemy, state, trigger, false));
+                if (!activated) continue;
+                for (AbilityEffectData authored : survivalEffects) {
+                    AbilityEffectData effect = "TECHNIQUE".equalsIgnoreCase(
+                        ability.getSourceType())
+                            ? TechniqueMasteryResolver.resolve(
+                                authored, TechniqueMasteryResolver.masteryOf(owner))
+                            : authored;
+                    for (BattleCombatant target : targets(
+                        effect, owner, enemy, state, false,
+                        List.of(), List.of(), List.of())) {
+                        target.addRuntimeAbilityEffect(
+                            effect, state.getRoundNumber(), state.getCurrentPhase(),
+                            effect.refreshGroup, owner, trigger.tick());
+                    }
+                }
+            }
+        }
     }
 
     private List<CombatEvent> dispatchCodedTrigger(
@@ -587,6 +785,10 @@ public final class AbilityActivationEngine {
 
         return switch (type) {
             case ALWAYS -> true;
+            case CHARACTER_PRESENT -> anyActor(
+                condition, owner, enemy, state, targetLocal,
+                combatant -> combatant.getCharacter() != null
+                    && combatant.getCharacter().getId().equals(condition.characterId));
             case MANUAL_ACTIVATION, BATTLE_STARTED -> history.stream().anyMatch(candidate ->
                 eventLeafMatches(type, condition, owner, enemy, state, candidate, targetLocal));
             case HP_PERCENT_AT_OR_BELOW -> anyActor(condition, owner, enemy, state, targetLocal,
@@ -621,7 +823,8 @@ public final class AbilityActivationEngine {
                   ATTACK_HIT, ATTACK_MISSED, MOVE_BLOCKED, EVENT_TARGET,
                   TIMELINE_POINT_REACHED -> history.stream().anyMatch(candidate ->
                 eventLeafMatches(type, condition, owner, enemy, state, candidate, targetLocal));
-            case ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, FATAL_DAMAGE ->
+            case ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, INCOMING_HIT_HAS_TAG, FATAL_DAMAGE,
+                 INCOMING_HIT_LACKS_CURSED_ENERGY ->
                 eventLeafMatches(type, condition, owner, enemy, state, trigger, targetLocal);
             case ROUND_REACHED -> state.getRoundNumber() >= conditionRound(condition, owner);
             case TIMELINE_POINT_ON_ROUND, EVERY_N_ROUNDS, PHASE_REACHED, HEALED,
@@ -667,7 +870,7 @@ public final class AbilityActivationEngine {
         ArrayDeque<AbilityTrigger> followUps
     ) {
         applyEffect(state, owner, enemy, effect, tick, events, followUps,
-            false, null, null, List.of(), List.of());
+            false, null, null, List.of(), List.of(), List.of());
     }
 
     private void applyEffect(
@@ -682,19 +885,18 @@ public final class AbilityActivationEngine {
         Move move,
         HitComponent component,
         List<BattleCombatant> moveTargets,
-        List<BattleCombatant> moveAllies
+        List<BattleCombatant> moveAllies,
+        List<BattleCombatant> pairTargets
     ) {
         AbilityEffectType type = safeType(effect);
         Integer effectComponentIndex = move == null || component == null
             ? null : move.getHitComponents().indexOf(component);
         List<BattleCombatant> targets = targets(
-            effect, owner, enemy, state, moveContext, moveTargets, moveAllies);
+            effect, owner, enemy, state, moveContext, moveTargets, moveAllies, pairTargets);
         switch (type) {
-            case HEAL_HP, HEAL_HP_PERCENT -> {
+            case HEAL_HP -> {
                 for (BattleCombatant target : targets) {
-                    int requested = type == AbilityEffectType.HEAL_HP
-                        ? value(effect.intValue)
-                        : (int) Math.round(target.getMaxHp() * value(effect.doubleValue));
+                    int requested = amount(effect, target.getMaxHp());
                     int healed = target.heal(requested);
                     if (healed <= 0) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.HP_RESTORED)
@@ -704,11 +906,9 @@ public final class AbilityActivationEngine {
                     followUps.add(AbilityTrigger.amount(AbilityTrigger.Type.HEALED, target, null, healed, tick));
                 }
             }
-            case RESTORE_CE, RESTORE_CE_PERCENT -> {
+            case RESTORE_CE -> {
                 for (BattleCombatant target : targets) {
-                    int requested = type == AbilityEffectType.RESTORE_CE
-                        ? value(effect.intValue)
-                        : (int) Math.round(target.getMaxCursedEnergy() * value(effect.doubleValue));
+                    int requested = amount(effect, target.getMaxCursedEnergy());
                     int restored = target.restoreCe(requested);
                     if (restored <= 0) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.CE_RESTORED)
@@ -718,11 +918,17 @@ public final class AbilityActivationEngine {
                     followUps.add(AbilityTrigger.amount(AbilityTrigger.Type.CE_RESTORED, target, null, restored, tick));
                 }
             }
-            case DRAIN_CE, DRAIN_CE_PERCENT -> {
+            case DRAIN_CE -> {
+                if (AbilityEffectType.ceDrainMode(effect)
+                    == AbilityEffectType.CeDrainMode.OVER_TIME) {
+                    AbilityEffectData scaled = resolveCeDrainCeEfficiency(effect, owner);
+                    for (BattleCombatant target : targets) {
+                        addRuntimeEffect(state, owner, target, scaled, tick, events);
+                    }
+                    return;
+                }
                 for (BattleCombatant target : targets) {
-                    int requested = type == AbilityEffectType.DRAIN_CE
-                        ? value(effect.intValue)
-                        : (int) Math.round(target.getMaxCursedEnergy() * value(effect.doubleValue));
+                    int requested = amount(effect, target.getMaxCursedEnergy());
                     int drained = target.drainCe(requested);
                     if (drained <= 0) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
@@ -732,21 +938,23 @@ public final class AbilityActivationEngine {
                     followUps.add(AbilityTrigger.amount(AbilityTrigger.Type.CE_LOST, target, null, drained, tick));
                 }
             }
-            case DEAL_DIRECT_DAMAGE, DEAL_MAX_HP_DAMAGE, INSTANT_KILL -> {
+            case DEAL_DIRECT_DAMAGE, INSTANT_KILL -> {
                 for (BattleCombatant target : targets) {
                     int requested = switch (type) {
-                        case DEAL_DIRECT_DAMAGE -> value(effect.intValue);
-                        case DEAL_MAX_HP_DAMAGE -> (int) Math.round(target.getMaxHp() * value(effect.doubleValue));
+                        case DEAL_DIRECT_DAMAGE -> amount(effect, target.getMaxHp());
                         case INSTANT_KILL -> 0;
                         default -> 0;
                     };
+                    // Direct-damage and kill effects are not hits: their fatal
+                    // triggers must not inherit the surrounding hit component,
+                    // or effect damage is classified as an ordinary hit.
                     int damage = type == AbilityEffectType.INSTANT_KILL
                         ? target.receiveInstantKill(ignored -> preventFatalDamage(
                             state, AbilityTrigger.fatalDamage(
-                                owner, target, move, component, target.getCurrentHp(), tick)))
+                                owner, target, move, null, target.getCurrentHp(), tick)))
                         : target.receiveDamage(requested, fatalAmount -> preventFatalDamage(
                             state, AbilityTrigger.fatalDamage(
-                                owner, target, move, component, fatalAmount, tick)));
+                                owner, target, move, null, fatalAmount, tick)));
                     events.addAll(target.getCodedAbilities().drainPendingEvents(tick));
                     events.add(CombatEvent.of(damage == 0
                             ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
@@ -783,10 +991,13 @@ public final class AbilityActivationEngine {
                             effect.stringValue, effect.magnitude == null ? 0.0 : effect.magnitude),
                         effect.perTickRemovalChance == null
                             ? status.defaultPerTickRemovalChance()
-                            : effect.perTickRemovalChance);
+                            : effect.perTickRemovalChance,
+                        effect.ceUpkeepPerTick == null ? 0.0 : effect.ceUpkeepPerTick);
                     boolean accepted = extendStatusForCurrentPhase(state)
-                        ? target.addStatusEffect(applied, state.getCurrentPhase())
-                        : target.addStatusEffect(applied);
+                        ? target.addStatusEffect(
+                            applied, state.getCurrentPhase(), owner, effect.runtimeLease)
+                        : target.addStatusEffect(
+                            applied, null, owner, effect.runtimeLease);
                     if (!accepted) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
                         .source(owner).target(target).move(move)
@@ -841,14 +1052,14 @@ public final class AbilityActivationEngine {
                         owner, target, previousMaxHp, previousMaxCe, tick, events);
                 }
             }
-            case TEMP_STAT_ADD, TEMP_STAT_MULTIPLY, TEMP_STAT_SET_VALUE, TEMP_STAT_PERCENT,
-                 BATTLE_STAT_ADD, BATTLE_STAT_MULTIPLY, BATTLE_STAT_PERCENT,
+            case TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
                  IGNORE_DAMAGE, DAMAGE_SHIELD,
-                 SURVIVE_FATAL_DAMAGE, GUARANTEE_NEXT_HIT, GUARANTEE_NEXT_DODGE,
+                 SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS, APPLY_NEVER_HIT,
                  GUARANTEE_NEXT_BLACK_FLASH, CANCEL_NEXT_MOVE,
-                 TEMP_LOCK_MOVE_TAG -> {
+                 TEMP_LOCK_MOVE_TAG, TEMP_LOCK_TECHNIQUE -> {
                 for (BattleCombatant target : targets) {
-                    addRuntimeEffect(state, owner, target, effect, tick, events);
+                    addRuntimeEffect(
+                        state, owner, target, effect, tick, events, effect.refreshGroup);
                 }
             }
             case TAUNT -> {
@@ -857,6 +1068,68 @@ public final class AbilityActivationEngine {
                 for (BattleCombatant target : targets) {
                     addRuntimeEffect(state, owner, target, effect, tick, events, "TAUNT");
                 }
+            }
+            case EXCHANGE_ATTACK_TARGETS -> {
+                if (!moveContext || pairTargets == null || pairTargets.size() != 2) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).tick(tick)
+                        .message("The target exchange failed because both endpoints were not active.")
+                        .build());
+                    break;
+                }
+                boolean registered = state.targetExchanges().register(
+                    owner, pairTargets.get(0), pairTargets.get(1), effect.moveTag,
+                    effect.durationRounds == null ? 0 : effect.durationRounds,
+                    effect.durationTicks == null ? 0 : effect.durationTicks,
+                    effect.uses == null ? 1 : effect.uses);
+                if (!registered) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).tick(tick)
+                        .message("The target exchange failed because its endpoints were invalid.")
+                        .build());
+                }
+            }
+            case DEFINE_BOUNDED_RESOURCE -> {
+                for (BattleCombatant target : targets) {
+                    var resourceState = target.defineBoundedResource(
+                        effect.resourceKey,
+                        effect.resourceLabel,
+                        value(effect.resourceCapacity),
+                        value(effect.resourceStartValue));
+                    events.add(CombatEvent.of(CombatEvent.Type.RESOURCE_CHANGED)
+                        .source(owner).target(target).move(move)
+                        .componentIndex(effectComponentIndex).tick(tick)
+                        .codedAbilityState(resourceState)
+                        .message(resourceMessage(target, resourceState))
+                        .build());
+                }
+            }
+            case TRANSACT_BOUNDED_RESOURCE -> {
+                for (BattleCombatant target : targets) {
+                    BattleCombatant.BoundedResourceTransaction result =
+                        target.transactBoundedResources(
+                            effect.sourceResourceKey, value(effect.sourceResourceAmount),
+                            effect.targetResourceKey, value(effect.targetResourceAmount));
+                    if (!result.success()) {
+                        events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                            .source(owner).target(target).move(move)
+                            .componentIndex(effectComponentIndex).tick(tick)
+                            .message("The resource transaction failed.")
+                            .build());
+                        continue;
+                    }
+                    for (var resourceState : result.changedStates()) {
+                        events.add(CombatEvent.of(CombatEvent.Type.RESOURCE_CHANGED)
+                            .source(owner).target(target).move(move)
+                            .componentIndex(effectComponentIndex).tick(tick)
+                            .codedAbilityState(resourceState)
+                            .message(resourceMessage(target, resourceState))
+                            .build());
+                    }
+                }
+            }
+            case CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER -> {
+                // CombatResolver snapshots this move-start effect onto its action segment.
             }
             case STUN_CURRENT_ACTION -> {
                 for (BattleCombatant target : targets) {
@@ -874,7 +1147,7 @@ public final class AbilityActivationEngine {
                  CE_COST_TO_MINIMUM, CE_COST_MULTIPLY, MOVE_ACCURACY_ADD,
                  MOVE_ACCURACY_MULTIPLY, OPPONENT_ACCURACY_ADD,
                  OPPONENT_ACCURACY_MULTIPLY, NEVER_MISS, NEVER_HIT, DAMAGE_MULTIPLY,
-                  MOVE_BASE_POWER_MULTIPLY, BF_CHANCE_ADD,
+                  MOVE_BASE_POWER_MULTIPLY, MOVE_BASE_POWER_SCALE_BY_STAT, BF_CHANCE_ADD,
                  MODIFY_DEFENSE, MODIFY_AP_BAR, LOCK_MOVE_TAG, COST_CE_PER_ROUND ->
                 addRuntimeEffect(state, owner, owner, effect, tick, events);
             case AUTO_STATUS_APPLY -> {
@@ -883,9 +1156,11 @@ public final class AbilityActivationEngine {
                 for (BattleCombatant target : targets) {
                     int previousMaxHp = target.getMaxHp();
                     int previousMaxCe = target.getMaxCursedEnergy();
-                    boolean applied = extendStatusForCurrentPhase(state)
-                        ? target.addAutomaticStatusEffect(effect, state.getCurrentPhase())
-                        : target.addAutomaticStatusEffect(effect);
+                    boolean applied = target.addAutomaticStatusEffect(
+                        effect,
+                        extendStatusForCurrentPhase(state) ? state.getCurrentPhase() : null,
+                        owner,
+                        effect.runtimeLease);
                     if (!applied) continue;
                     events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)
                         .source(owner).target(target).move(move)
@@ -926,6 +1201,8 @@ public final class AbilityActivationEngine {
                                 : state.drainPendingSummons(characterLookup)) {
                             events.add(CombatEvent.summoned(
                                 state.combatant(summon.getSummonerId()), summon, tick));
+                            events.addAll(state.domainBattlefield().onCombatantEntered(
+                                state, summon, this::executeDomainEffect, tick));
                         }
                     }
                 }
@@ -970,6 +1247,36 @@ public final class AbilityActivationEngine {
                     }
                 }
             }
+            case ESTABLISH_DOMAIN -> {
+                if (!moveContext || effect.domainId == null || effect.domainId.isBlank()
+                    || domainLookup == null) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                        .message("The Domain could not be resolved.").build());
+                    break;
+                }
+                var definition = domainLookup.findDomain(effect.domainId.trim());
+                if (definition.isEmpty()) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                        .message("Unknown Domain " + effect.domainId + ".").build());
+                    break;
+                }
+                DomainBattlefield.DeclarationResult result = state.domainBattlefield()
+                    .queueDeclaration(state, definition.get(), owner, moveTargets, tick);
+                if (!result.accepted()) {
+                    events.add(CombatEvent.of(CombatEvent.Type.EFFECT_FAILED)
+                        .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                        .domainId(definition.get().id()).domainName(definition.get().name())
+                        .message(result.error()).build());
+                    break;
+                }
+                events.add(CombatEvent.of(CombatEvent.Type.DOMAIN_DECLARED)
+                    .source(owner).move(move).componentIndex(effectComponentIndex).tick(tick)
+                    .domainId(definition.get().id()).domainName(definition.get().name())
+                    .message(owner.getCharacter().getName() + " declares "
+                        + definition.get().name() + ".").build());
+            }
             case CODED_MOVE_ACTION -> {
                 StatusEffect coded = StatusEffect.coded(
                     effect.codedAbilityKey,
@@ -985,7 +1292,8 @@ public final class AbilityActivationEngine {
             }
             case MAX_ACTIVE_SUMMONS, SUMMON_CE_UPKEEP_PER_ACTIVE_TICK,
                    BATTLE_STAT_ODDS_MULTIPLY,
-                   MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE -> { }
+                   MOVE_UNAVAILABLE_WHILE_OWNED_SUMMON_ACTIVE,
+                   BLOCK_EFFECTIVENESS_MULTIPLY -> { }
         }
     }
 
@@ -1088,9 +1396,9 @@ public final class AbilityActivationEngine {
                   EVERY_N_ROUNDS, PHASE_REACHED, HEALED, DAMAGE_DEALT_AT_LEAST,
                   DAMAGE_TAKEN_AT_LEAST, CE_SPENT_AT_LEAST, CE_LOST_AT_LEAST,
                   CE_RESTORED_AT_LEAST,
-                  STATUS_APPLIED, STATUS_REMOVED, MANUAL_ACTIVATION, BATTLE_STARTED,
-                  ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG,
-                  FATAL_DAMAGE -> true;
+                   STATUS_APPLIED, STATUS_REMOVED, MANUAL_ACTIVATION, BATTLE_STARTED,
+                   ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, INCOMING_HIT_HAS_TAG,
+                   FATAL_DAMAGE, INCOMING_HIT_LACKS_CURSED_ENERGY -> true;
             default -> false;
         };
         return eventCondition && eventLeafMatches(type, condition, owner, enemy, state, trigger);
@@ -1148,8 +1456,15 @@ public final class AbilityActivationEngine {
                     || moveContext && trigger.type() == AbilityTrigger.Type.ATTACK_HIT)
                 && eventActorMatches(condition, owner, state, trigger.actor())
                 && connectedHitHasTag(trigger, condition.moveTag);
+            case INCOMING_HIT_HAS_TAG -> trigger.type() == AbilityTrigger.Type.ATTACK_CONNECTED
+                && trigger.target() == owner
+                && incomingHitHasTag(trigger, condition.moveTag);
             case FATAL_DAMAGE -> trigger.type() == AbilityTrigger.Type.FATAL_DAMAGE
                 && eventActorMatches(condition, owner, state, trigger.target());
+            case INCOMING_HIT_LACKS_CURSED_ENERGY ->
+                trigger.type() == AbilityTrigger.Type.FATAL_DAMAGE
+                    && eventActorMatches(condition, owner, state, trigger.target())
+                    && incomingHitLacksCursedEnergy(trigger);
             case TIMELINE_POINT_REACHED -> trigger.type() == AbilityTrigger.Type.TIMELINE_TICK
                 && trigger.tick() == conditionTick(condition, owner);
             case TIMELINE_POINT_ON_ROUND -> trigger.type() == AbilityTrigger.Type.TIMELINE_TICK
@@ -1206,7 +1521,8 @@ public final class AbilityActivationEngine {
         BattleState state,
         boolean moveContext,
         List<BattleCombatant> moveTargets,
-        List<BattleCombatant> moveAllies
+        List<BattleCombatant> moveAllies,
+        List<BattleCombatant> pairTargets
     ) {
         if (owner == null || state == null) return List.of();
         AbilityEffectTarget target;
@@ -1239,7 +1555,22 @@ public final class AbilityActivationEngine {
                     .forEach(out::add);
                 yield out;
             }
+            case PAIR_FIRST -> moveContext && pairTargets != null && !pairTargets.isEmpty()
+                ? List.of(pairTargets.get(0)) : List.of();
+            case PAIR_SECOND -> moveContext && pairTargets != null && pairTargets.size() > 1
+                ? List.of(pairTargets.get(1)) : List.of();
+            case PAIR_BOTH -> moveContext && pairTargets != null
+                ? pairTargets.stream().filter(java.util.Objects::nonNull).distinct().toList()
+                : List.of();
         };
+    }
+
+    private static String resourceMessage(
+        BattleCombatant target,
+        com.jjktbf.model.character.coded.CodedAbilityState resource
+    ) {
+        return target.getCharacter().getName() + "'s " + resource.displayName()
+            + " is now " + resource.currentValue() + "/" + resource.maximumValue() + ".";
     }
 
     private static boolean statusPredicate(
@@ -1267,7 +1598,7 @@ public final class AbilityActivationEngine {
         boolean atOrAbove
     ) {
         return anyActor(condition, owner, enemy, state, targetLocal, combatant ->
-            combatant.getCodedAbilities().state(condition.codedAbilityKey)
+            combatant.abilityState(condition.codedAbilityKey)
                 .map(codedState -> atOrAbove
                     ? codedState.currentValue() >= conditionAmount(condition, owner)
                     : codedState.currentValue() <= conditionAmount(condition, owner))
@@ -1312,6 +1643,41 @@ public final class AbilityActivationEngine {
         return trigger.move() != null && trigger.move().hasTag(tag.name());
     }
 
+    private static boolean incomingHitHasTag(AbilityTrigger trigger, String tagName) {
+        MoveTag tag;
+        try { tag = MoveTag.valueOf(tagName); }
+        catch (Exception exception) { return false; }
+        HitComponent component = trigger.hitComponent();
+        if (component == null) return false;
+        if (tag == MoveTag.CURSED_ENERGY) {
+            return BlockAttackType.from(component) != BlockAttackType.PHYSICAL;
+        }
+        return component.hasTag(tag)
+            || !MoveTag.HIT_TAGS.contains(tag)
+                && trigger.move() != null && trigger.move().hasTag(tag.name());
+    }
+
+    private static boolean incomingHitLacksCursedEnergy(AbilityTrigger trigger) {
+        HitComponent component = trigger.hitComponent();
+        if (component == null || !component.hasTag(MoveTag.PHYSICAL)) return false;
+        if (component.hasTag(MoveTag.CURSED_ENERGY)
+            || component.hasTag(MoveTag.INNATE_TECHNIQUE)
+            || component.hasTag(MoveTag.NON_INNATE_TECHNIQUE)) {
+            return false;
+        }
+        BattleCombatant attacker = trigger.actor();
+        if (attacker == null || attacker.getCharacter() == null) return true;
+        CharacterType attackerType = attacker.getCharacter().getType();
+        if (attackerType == CharacterType.CURSED_SPIRIT
+            || attackerType == CharacterType.CURSED_CORPSE
+            || attackerType == CharacterType.SHIKIGAMI) {
+            return false;
+        }
+        Move move = trigger.move();
+        return move == null || !attacker.getCharacter().getEquipment()
+            .coversWeaponTags(move.weaponTags());
+    }
+
     private static boolean extendStatusForCurrentPhase(BattleState state) {
         return state.getCurrentPhase() != BattleState.Phase.ROUND_END
             || !state.isRoundEndMaintenanceComplete();
@@ -1340,7 +1706,7 @@ public final class AbilityActivationEngine {
         int previousMaxHp = target.getMaxHp();
         int previousMaxCe = target.getMaxCursedEnergy();
         target.addRuntimeAbilityEffect(
-            effect, state.getRoundNumber(), state.getCurrentPhase(), refreshGroup);
+            effect, state.getRoundNumber(), state.getCurrentPhase(), refreshGroup, source, tick);
         appendResourceMaximumEvents(
             source, target, previousMaxHp, previousMaxCe, tick, events);
     }
@@ -1377,13 +1743,11 @@ public final class AbilityActivationEngine {
         AbilityConditionActor actor = actor(condition);
         return switch (actor) {
             case SELF -> predicate.test(owner);
+            case ALLY -> state.activeAlliesOf(owner).stream().anyMatch(predicate);
             case ENEMY -> targetLocal
                 ? enemy != null && predicate.test(enemy)
                 : state.activeEnemiesOf(owner).stream().anyMatch(predicate);
-            case ANY -> predicate.test(owner)
-                || (targetLocal
-                    ? enemy != null && predicate.test(enemy)
-                    : state.activeEnemiesOf(owner).stream().anyMatch(predicate));
+            case ANY -> state.activeCombatants().stream().anyMatch(predicate);
         };
     }
 
@@ -1396,8 +1760,11 @@ public final class AbilityActivationEngine {
         if (eventActor == null) return false;
         return switch (actor(condition)) {
             case SELF -> eventActor == owner;
+            case ALLY -> eventActor != owner && eventActor.isAlliedWith(owner);
             case ENEMY -> isOpponent(state, owner, eventActor);
-            case ANY -> eventActor == owner || isOpponent(state, owner, eventActor);
+            case ANY -> eventActor == owner
+                || eventActor.isAlliedWith(owner)
+                || isOpponent(state, owner, eventActor);
         };
     }
 
@@ -1433,6 +1800,31 @@ public final class AbilityActivationEngine {
 
     private static double ratio(int current, int maximum) {
         return maximum <= 0 ? 0.0 : (double) current / maximum;
+    }
+
+    private static int amount(AbilityEffectData effect, int maximum) {
+        return AbilityEffectType.valueMode(effect) == AbilityEffectType.ValueMode.FLAT
+            ? value(effect.intValue)
+            : (int) Math.round(maximum * value(effect.doubleValue));
+    }
+
+    private static AbilityEffectData resolveCeDrainCeEfficiency(
+        AbilityEffectData effect,
+        BattleCombatant source
+    ) {
+        if (effect.ceEfficiencyProgression == null || effect.ceEfficiencyProgression.isEmpty()) {
+            return effect;
+        }
+        // Match CTM progression's standard/equalized stat policy at application time.
+        int efficiency = source == null || source.getEffectiveStats() == null ? 0
+            : Math.max(0, Math.min(CharacterStats.MAX_STAT,
+                source.getStatMode().masteryForProgression(
+                    source.getEffectiveStats().getCursedEnergyEfficiency())));
+        AbilityEffectData resolved = TechniqueMasteryResolver.resolve(
+            effect, effect.ceEfficiencyProgression, efficiency,
+            TechniqueMasteryProgressions.CE_EFFICIENCY_VARIABLE);
+        resolved.ceEfficiencyProgression = null;
+        return resolved;
     }
 
     private static int value(Integer value) { return value == null ? 0 : value; }

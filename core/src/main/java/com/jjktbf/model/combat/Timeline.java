@@ -91,13 +91,26 @@ public class Timeline {
         int actualCeCost,
         List<CombatantId> targets
     ) {
-        long endTickLong = (long) startTick + move.getApCost() - 1L;
-        long fireTick = (long) startTick + move.getUnleashPoint() - 1L;
+        return placeAtWithTargets(
+            move, startTick, actualCeCost, targets, move.getApCost(), move.getUnleashPoint());
+    }
+
+    ActionSegment placeAtWithTargets(
+        Move move,
+        int startTick,
+        int actualCeCost,
+        List<CombatantId> targets,
+        int apCost,
+        int unleashPoint
+    ) {
+        long endTickLong = (long) startTick + apCost - 1L;
+        long fireTick = (long) startTick + unleashPoint - 1L;
         long finalImpactTick = fireTick + move.getMaxHitDelayTicks();
         if (startTick < 1 || endTickLong > gridLength || finalImpactTick > gridLength) return null;
         int endTick = (int) endTickLong;
         if (!isRangeFree(startTick, endTick)) return null;
-        ActionSegment segment = new ActionSegment(move, startTick, actualCeCost, targets);
+        ActionSegment segment = new ActionSegment(
+            move, startTick, actualCeCost, targets, true, apCost, unleashPoint);
         segments.add(segment);
         return segment;
     }
@@ -223,8 +236,8 @@ public class Timeline {
      *
      * <p>Coverage rules per defense type:
      * <ul>
-     *   <li>{@link com.jjktbf.model.move.DefenseType#BLOCK BLOCK} — uses
-     *       {@link Move#coveredByBlockTags(List)} (attack tags ⊆ block tags).</li>
+     *   <li>{@link com.jjktbf.model.move.DefenseType#BLOCK BLOCK} — matches the
+     *       incoming hit's attack category, range, and elemental tags.</li>
      *   <li>{@link com.jjktbf.model.move.DefenseType#PARRY PARRY} — uses the
      *       same affected-tag coverage as BLOCK.</li>
      *   <li>{@link com.jjktbf.model.move.DefenseType#DODGE DODGE} — uses
@@ -270,15 +283,14 @@ public class Timeline {
             if (incomingMove != null) {
                 if ((type == com.jjktbf.model.move.DefenseType.BLOCK
                         || type == com.jjktbf.model.move.DefenseType.PARRY)
-                        && !incomingMove.coveredByBlockTags(
-                            move.getBlockAffectedTags(), component)) continue;
+                        && !move.blocksAttack(incomingMove, component)) continue;
                 if (type == com.jjktbf.model.move.DefenseType.DODGE
-                        && !move.dodgeAppliesTo(incomingMove)) continue;
+                        && !move.dodgeAppliesTo(incomingMove, component)) continue;
             }
             int start = s.getFireTick();
             int end = switch (move.getBlockDuration()) {
                 case -1 -> gridLength;
-                case 0  -> start + move.getApCost() - 1;
+                case 0  -> start + s.getApCost() - 1;
                 default -> start + move.getBlockDuration() - 1;
             };
             if (tick >= start && tick <= end) return s;
@@ -301,14 +313,14 @@ public class Timeline {
                 com.jjktbf.model.move.DefenseType dt = move.getDefenseType();
                 if ((dt == com.jjktbf.model.move.DefenseType.BLOCK
                         || dt == com.jjktbf.model.move.DefenseType.PARRY)
-                        && !incomingMove.coveredByBlockTags(move.getBlockAffectedTags())) continue;
+                        && !move.blocksAttack(incomingMove)) continue;
                 if (dt == com.jjktbf.model.move.DefenseType.DODGE
                         && !move.dodgeAppliesTo(incomingMove)) continue;
             }
             int start = s.getFireTick();
             int end = switch (move.getBlockDuration()) {
                 case -1 -> gridLength;
-                case 0  -> start + move.getApCost() - 1;
+                case 0  -> start + s.getApCost() - 1;
                 default -> start + move.getBlockDuration() - 1;
             };
             if (tick >= start && tick <= end) return s;
@@ -334,6 +346,17 @@ public class Timeline {
      *         reaction matches
      */
     public ActionSegment triggerArmedReaction(int tick, Move incomingMove) {
+        com.jjktbf.model.move.HitComponent component = incomingMove == null
+            || incomingMove.getHitComponents().isEmpty()
+                ? null : incomingMove.getHitComponents().get(0);
+        return triggerArmedReaction(tick, incomingMove, component);
+    }
+
+    public ActionSegment triggerArmedReaction(
+        int tick,
+        Move incomingMove,
+        com.jjktbf.model.move.HitComponent component
+    ) {
         for (ActionSegment s : segments) {
             Move move = s.getMove();
             if (s.isStunned() || s.isTransferred() || !s.hasFired()
@@ -342,9 +365,9 @@ public class Timeline {
             if (incomingMove != null) {
                 if ((move.getDefenseType() == com.jjktbf.model.move.DefenseType.BLOCK
                         || move.getDefenseType() == com.jjktbf.model.move.DefenseType.PARRY)
-                        && !incomingMove.coveredByBlockTags(move.getBlockAffectedTags())) continue;
+                        && !move.blocksAttack(incomingMove, component)) continue;
                 if (move.getDefenseType() == com.jjktbf.model.move.DefenseType.DODGE
-                        && !move.dodgeAppliesTo(incomingMove)) continue;
+                        && !move.dodgeAppliesTo(incomingMove, component)) continue;
             }
             ActionSegment triggered = s.cloneTriggeredAt(tick);
             segments.remove(s);
@@ -352,6 +375,18 @@ public class Timeline {
             return triggered;
         }
         return null;
+    }
+
+    /**
+     * Remove an armed reaction that has not resolved yet. This is used by
+     * effects that explicitly end a readied defensive stance before it reacts.
+     */
+    public boolean cancelArmedReaction(String moveId) {
+        if (moveId == null || moveId.isBlank()) return false;
+        return segments.removeIf(segment -> segment.hasFired()
+            && !segment.isReactionTriggered()
+            && segment.getMove().isReactionDefense()
+            && moveId.equals(segment.getMove().getId()));
     }
 
     public ActionSegment activeBlockAt(
@@ -370,7 +405,7 @@ public class Timeline {
     /** Sum of every placed segment's AP cost (regardless of stun). */
     public int totalApUsed() {
         int sum = 0;
-        for (ActionSegment s : segments) sum += s.getMove().getApCost();
+        for (ActionSegment s : segments) sum += s.getApCost();
         return sum;
     }
 

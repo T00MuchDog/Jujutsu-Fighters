@@ -1020,7 +1020,7 @@
   "id" : "000045",
   "name" : "My Best Friend",
   "flavourText" : "Todo's certainty in his brother turns their shared momentum into overwhelming combat instinct.",
-  "mechanicText" : "At BATTLE START, when fighting alongside Aoi Todo or either Yuji Itadori, gain 10% COMBAT ABILITY for the battle.",
+  "mechanicText" : "At BATTLE START, when fighting alongside either Yuji Itadori, gain 10% COMBAT ABILITY for the battle.",
   "category" : "ACTIVE",
   "sourceType" : "CHARACTER",
   "activationConditions" : [ {
@@ -1037,11 +1037,7 @@
         }, {
           "type" : "CHARACTER_PRESENT",
           "actor" : "ALLY",
-          "characterId" : "000010"
-        }, {
-          "type" : "CHARACTER_PRESENT",
-          "actor" : "ALLY",
-          "characterId" : "000006"
+          "characterId" : "000009"
         } ]
       } ]
     },

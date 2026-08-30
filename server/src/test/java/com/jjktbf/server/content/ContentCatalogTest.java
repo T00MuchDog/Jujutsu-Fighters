@@ -80,12 +80,12 @@ class ContentCatalogTest {
     void loadsPandaAndHiddenGorillaCoreComposition() {
         ContentCatalog catalog = ContentCatalog.load();
         var panda = catalog.findCharacter("000004").orElseThrow();
-        var gorilla = catalog.findCharacter("000021").orElseThrow();
+        var gorilla = catalog.findCharacter("000020").orElseThrow();
 
         assertEquals(CharacterType.CURSED_CORPSE, panda.getType());
         assertEquals(CharacterType.CURSED_CORPSE, gorilla.getType());
         assertTrue(catalog.findSelectableCharacter("000004").isPresent());
-        assertFalse(catalog.findSelectableCharacter("000021").isPresent());
+        assertFalse(catalog.findSelectableCharacter("000020").isPresent());
         assertNull(panda.getInnateTechniqueName());
         assertTrue(new BattleCombatant(panda).isPoisonImmune());
         assertTrue(new BattleCombatant(gorilla).isPoisonImmune());
@@ -117,7 +117,7 @@ class ContentCatalogTest {
         var gorillaEvents = engine.process(state, AbilityTrigger.amount(
             AbilityTrigger.Type.DAMAGE, enemy, panda, 1, 1));
 
-        assertEquals("000021", panda.getCharacter().getId());
+        assertEquals("000020", panda.getCharacter().getId());
         assertEquals(panda.getMaxHp(), panda.getCurrentHp());
         assertTrue(gorillaEvents.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.CHARACTER_TRANSFORMED));
@@ -126,7 +126,7 @@ class ContentCatalogTest {
         var failedReturn = engine.process(state, AbilityTrigger.amount(
             AbilityTrigger.Type.DAMAGE, enemy, panda, 1, 2));
 
-        assertEquals("000021", panda.getCharacter().getId());
+        assertEquals("000020", panda.getCharacter().getId());
         assertEquals(0, panda.getCurrentHp());
         assertTrue(failedReturn.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.EFFECT_FAILED));
@@ -135,33 +135,33 @@ class ContentCatalogTest {
     }
 
     @Test
-    void myBestFriendBuffsOnlyPairedTodoAndYujiBearers() {
+    void myBestFriendBuffsOnlyPairedYujiBearers() {
         ContentCatalog catalog = ContentCatalog.load();
-        BattleCombatant todo = new BattleCombatant(
-            catalog.findCharacter("000006").orElseThrow());
-        BattleCombatant yuji = new BattleCombatant(
-            catalog.findCharacter("000010").orElseThrow());
-        BattleCombatant enemy = new BattleCombatant(
+        BattleCombatant firstYuji = new BattleCombatant(
             catalog.findCharacter("000000").orElseThrow());
+        BattleCombatant secondYuji = new BattleCombatant(
+            catalog.findCharacter("000009").orElseThrow());
+        BattleCombatant enemy = new BattleCombatant(
+            catalog.findCharacter("000010").orElseThrow());
         BattleState paired = new BattleState(
             BattleState.teamOfFighters(com.jjktbf.model.combat.BattleTeamId.PLAYER,
-                List.of(todo, yuji)),
+                List.of(firstYuji, secondYuji)),
             BattleState.teamOfFighters(com.jjktbf.model.combat.BattleTeamId.ENEMY,
                 List.of(enemy)));
-        int todoBase = todo.getEffectiveStats().getCombatAbility();
-        int yujiBase = yuji.getEffectiveStats().getCombatAbility();
+        int firstYujiBase = firstYuji.getEffectiveStats().getCombatAbility();
+        int secondYujiBase = secondYuji.getEffectiveStats().getCombatAbility();
 
         new CombatResolver(new SeededRandomSource(1L)).processRoundStart(paired);
 
-        assertTrue(todo.getEffectiveStats().getCombatAbility() > todoBase);
-        assertTrue(yuji.getEffectiveStats().getCombatAbility() > yujiBase);
+        assertTrue(firstYuji.getEffectiveStats().getCombatAbility() > firstYujiBase);
+        assertTrue(secondYuji.getEffectiveStats().getCombatAbility() > secondYujiBase);
 
-        BattleCombatant soloTodo = new BattleCombatant(
-            catalog.findCharacter("000006").orElseThrow());
-        BattleState solo = new BattleState(soloTodo, new BattleCombatant(
-            catalog.findCharacter("000000").orElseThrow()));
-        int soloBase = soloTodo.getEffectiveStats().getCombatAbility();
+        BattleCombatant soloYuji = new BattleCombatant(
+            catalog.findCharacter("000000").orElseThrow());
+        BattleState solo = new BattleState(soloYuji, new BattleCombatant(
+            catalog.findCharacter("000010").orElseThrow()));
+        int soloBase = soloYuji.getEffectiveStats().getCombatAbility();
         new CombatResolver(new SeededRandomSource(1L)).processRoundStart(solo);
-        assertEquals(soloBase, soloTodo.getEffectiveStats().getCombatAbility());
+        assertEquals(soloBase, soloYuji.getEffectiveStats().getCombatAbility());
     }
 }

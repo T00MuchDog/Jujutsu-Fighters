@@ -733,7 +733,7 @@ public final class TeamPlanningPanel {
         }
 
         @Override public boolean mouseMoved(int x, int y) {
-            if (readOnly || switchPanelOpen) return false;
+            if (switchPanelOpen) return false;
             return active().inputProcessor().mouseMoved(x, y);
         }
 

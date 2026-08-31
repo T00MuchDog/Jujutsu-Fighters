@@ -58,6 +58,16 @@ public class PlanningPanel {
         }
     }
 
+    record SegmentTargetDisplay(String compactLabel, List<String> details, boolean warning) {
+        private static final SegmentTargetDisplay NONE =
+            new SegmentTargetDisplay("", List.of(), false);
+
+        SegmentTargetDisplay {
+            compactLabel = compactLabel == null ? "" : compactLabel;
+            details = details == null ? List.of() : List.copyOf(details);
+        }
+    }
+
     /** Fixed gap between a timeline icon and the left edge of its bar. */
     private static final float LABEL_LEFT_GAP = 8f;
     private static final float TIMELINE_ICON_SIZE = 16f;
@@ -982,12 +992,16 @@ public class PlanningPanel {
         offensiveViews.clear();
         defensiveViews.clear();
         for (ActionSegment segment : plan.offensiveTimeline().getSegments()) {
-            offensiveViews.add(new ActionSegmentView(segment, 0f, 0f, 0f,
-                offensiveBar.getBounds().height - 12f));
+            ActionSegmentView view = new ActionSegmentView(segment, 0f, 0f, 0f,
+                offensiveBar.getBounds().height - 12f);
+            applyTargetDisplay(view);
+            offensiveViews.add(view);
         }
         for (ActionSegment segment : plan.defensiveTimeline().getSegments()) {
-            defensiveViews.add(new ActionSegmentView(segment, 0f, 0f, 0f,
-                defensiveBar.getBounds().height - 12f));
+            ActionSegmentView view = new ActionSegmentView(segment, 0f, 0f, 0f,
+                defensiveBar.getBounds().height - 12f);
+            applyTargetDisplay(view);
+            defensiveViews.add(view);
         }
         offensiveBar.layoutSegments(offensiveViews);
         defensiveBar.layoutSegments(defensiveViews);
@@ -1050,6 +1064,7 @@ public class PlanningPanel {
         drawPaletteScrollbar(batch);
         drawDragAvatar(batch, font);
         drawKeywordTooltip(batch, font, titleFont);
+        drawSegmentTargetTooltip(batch, font);
         drawTargetMenu(batch, font);
         if (readOnly && unifiedWindowsLayout) {
             batch.setColor(READ_ONLY_OVERLAY);
@@ -1236,6 +1251,177 @@ public class PlanningPanel {
             headerBounds.y - scaled(6f));
         font.getData().setScale(originalScaleX, originalScaleY);
         font.setColor(originalColor);
+    }
+
+    private void applyTargetDisplay(ActionSegmentView view) {
+        SegmentTargetDisplay display = targetDisplay(view.getSegment());
+        view.setTargetWarning(display.warning());
+    }
+
+    SegmentTargetDisplay targetDisplay(ActionSegment segment) {
+        if (segment == null) return SegmentTargetDisplay.NONE;
+        Move move = segment.getMove();
+        MoveTargetSelection.Requirements requirements = MoveTargetSelection.requirements(move);
+        if (requirements.maximumCount() == 0) return SegmentTargetDisplay.NONE;
+
+        List<CombatantId> selected = targetsOf(segment);
+        List<String> details = new ArrayList<>();
+        boolean warning = pendingTargetSelections.contains(segment)
+            || MoveTargetSelection.targetCountError(move, selected) != null;
+        boolean ordered = requirements.orderedRelationships().size() > 1;
+        boolean stale = false;
+        String compact;
+
+        if (ordered) {
+            List<String> slots = new ArrayList<>();
+            for (int index = 0; index < requirements.maximumCount(); index++) {
+                MoveTargetSelection.Relationship relationship = requirements.relationshipAt(index);
+                String slot = relationship == MoveTargetSelection.Relationship.ALLY ? "A" : "E";
+                if (index >= selected.size()) {
+                    slots.add(slot + ": ?");
+                    details.add(relationshipLabel(relationship) + " " + (index + 1) + ": NOT SELECTED");
+                    continue;
+                }
+                CombatantId targetId = selected.get(index);
+                TargetOption option = targetOption(relationship, targetId.value());
+                if (option == null) {
+                    stale = true;
+                    String fallback = targetLabelFromAnyOption(targetId.value());
+                    slots.add(slot + ": !" + fallback);
+                    details.add(relationshipLabel(relationship) + " " + (index + 1)
+                        + ": " + fallback + " (UNAVAILABLE)");
+                } else {
+                    slots.add(slot + ": " + option.label());
+                    details.add(relationshipLabel(relationship) + " " + (index + 1)
+                        + ": " + option.label());
+                }
+            }
+            compact = String.join(" | ", slots);
+        } else {
+            MoveTargetSelection.Relationship relationship = requirements.relationshipAt(0);
+            String marker = relationship == MoveTargetSelection.Relationship.ALLY ? "[A]" : "[E]";
+            String count = requirements.maximumCount() > 1
+                ? "[" + selected.size() + "/" + requirements.maximumCount() + "] " : "";
+            if (selected.isEmpty()) {
+                compact = count + marker + " TARGET?";
+            } else {
+                List<String> labels = new ArrayList<>();
+                for (int index = 0; index < selected.size(); index++) {
+                    CombatantId targetId = selected.get(index);
+                    TargetOption option = targetOption(relationship, targetId.value());
+                    String label;
+                    if (option == null) {
+                        stale = true;
+                        label = "!" + targetLabelFromAnyOption(targetId.value());
+                    } else {
+                        label = option.label();
+                    }
+                    labels.add(label);
+                    details.add(relationshipLabel(relationship) + " " + (index + 1)
+                        + ": " + label + (option == null ? " (UNAVAILABLE)" : ""));
+                }
+                compact = count + marker + " " + labels.get(0)
+                    + (labels.size() > 1 ? " +" + (labels.size() - 1) : "");
+            }
+        }
+
+        if (stale) {
+            warning = true;
+            details.add(0, "! TARGET NO LONGER AVAILABLE");
+        } else if (MoveTargetSelection.targetCountError(move, selected) != null) {
+            details.add(0, "! INCOMPLETE TARGETS");
+        } else if (pendingTargetSelections.contains(segment)) {
+            details.add(0, "! CONFIRM TARGETS");
+        }
+        if (requirements.maximumCount() > 1) {
+            details.add(0, "TARGETS " + selected.size() + "/" + requirements.maximumCount());
+        }
+        return new SegmentTargetDisplay(compact, details, warning);
+    }
+
+    private TargetOption targetOption(
+        MoveTargetSelection.Relationship relationship,
+        String targetId
+    ) {
+        List<TargetOption> options = relationship == MoveTargetSelection.Relationship.ALLY
+            ? allyOptions : targetOptions;
+        for (TargetOption option : options) {
+            if (option.instanceId().equals(targetId)) return option;
+        }
+        return null;
+    }
+
+    private String targetLabelFromAnyOption(String targetId) {
+        for (TargetOption option : allyOptions) {
+            if (option.instanceId().equals(targetId)) return option.label();
+        }
+        for (TargetOption option : targetOptions) {
+            if (option.instanceId().equals(targetId)) return option.label();
+        }
+        if (targetId == null || targetId.isBlank()) return "UNKNOWN";
+        return targetId.length() <= 12 ? targetId : targetId.substring(0, 12);
+    }
+
+    private static String relationshipLabel(MoveTargetSelection.Relationship relationship) {
+        return relationship == MoveTargetSelection.Relationship.ALLY ? "ALLY" : "ENEMY";
+    }
+
+    private void drawSegmentTargetTooltip(Batch batch, BitmapFont font) {
+        ActionSegment segment = hoveredSegment;
+        if (segment == null || segment == targetMenuSegment) return;
+        SegmentTargetDisplay display = targetDisplay(segment);
+        if (display.details().isEmpty()) return;
+        ActionSegmentView view = viewFor(segment);
+        if (view == null) return;
+
+        float padding = scaled(10f);
+        float width = Math.min(scaled(340f), Math.max(scaled(190f), screenWidth - scaled(20f)));
+        float textWidth = width - padding * 2f;
+        float planningTop = unifiedWindowsLayout ? UNIFIED_SECTION_HEIGHT : screenHeight;
+        float availableHeight = Math.max(1f, planningTop - scaled(20f));
+        float availableContentHeight = Math.max(1f, availableHeight - padding * 2f);
+        float originalScaleX = font.getData().scaleX;
+        float originalScaleY = font.getData().scaleY;
+        float tooltipScale = 1f;
+        float rowHeight = scaled(21f);
+        float contentHeight = 0f;
+        List<GlyphLayout> rows = List.of();
+        for (int attempt = 0; attempt < 3; attempt++) {
+            font.getData().setScale(
+                originalScaleX * tooltipScale, originalScaleY * tooltipScale);
+            rowHeight = scaled(21f) * tooltipScale;
+            rows = new ArrayList<>();
+            rows.add(new GlyphLayout(font, segment.getMove().getName() + " TARGETS",
+                Color.WHITE, textWidth, Align.left, true));
+            for (String line : display.details()) {
+                rows.add(new GlyphLayout(font, line,
+                    line.startsWith("!") ? BattleUiAssets.YELLOW : Color.WHITE,
+                    textWidth, Align.left, true));
+            }
+            contentHeight = 0f;
+            for (GlyphLayout row : rows) {
+                contentHeight += Math.max(rowHeight, row.height + scaled(3f) * tooltipScale);
+            }
+            if (contentHeight <= availableContentHeight) break;
+            tooltipScale *= availableContentHeight / contentHeight * 0.96f;
+        }
+        float height = Math.min(availableHeight, padding * 2f + contentHeight);
+        float x = clamp(view.getBounds().x, scaled(10f),
+            Math.max(scaled(10f), screenWidth - width - scaled(10f)));
+        float y = view.getBounds().y + view.getBounds().height + scaled(5f);
+        if (y + height > planningTop - scaled(10f)) {
+            y = Math.max(scaled(10f), view.getBounds().y - height - scaled(5f));
+        }
+        try {
+            ui.dialogue.draw(batch, x, y, width, height);
+            float rowY = y + height - padding;
+            for (GlyphLayout row : rows) {
+                font.draw(batch, row, x + padding, rowY);
+                rowY -= Math.max(rowHeight, row.height + scaled(3f) * tooltipScale);
+            }
+        } finally {
+            font.getData().setScale(originalScaleX, originalScaleY);
+        }
     }
 
     private void drawTargetMenu(Batch batch, BitmapFont font) {
@@ -1710,8 +1896,8 @@ public class PlanningPanel {
 
         @Override
         public boolean mouseMoved(int screenX, int screenY) {
-            if (readOnly) return false;
             updatePointer(screenX, screenY);
+            refresh();
             updateHover();
             return hoveredCard >= 0 || hoveredSegment != null || lockHovered;
         }

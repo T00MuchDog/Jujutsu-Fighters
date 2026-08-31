@@ -86,6 +86,16 @@ class TeamPlanningPanelTest {
     }
 
     @Test
+    void readOnlyTeamPlanStillDelegatesTargetHover() {
+        Move move = move("READ_ONLY");
+        TeamPlanningPanel panel = panel(move, move("SECOND"));
+        panel.activePlanningPanel().restorePlacement(move, 1, 0, "enemy-1");
+        panel.setReadOnly(true);
+
+        assertTrue(panel.inputProcessor().mouseMoved(160, HEIGHT - 580));
+    }
+
+    @Test
     void reconnectRestoresActorAndTargetIntentFromAuthoritativePlan() {
         Move move = multipleMove("RESTORED", 3);
         ActionSegmentState segment = restoredSegment(move);

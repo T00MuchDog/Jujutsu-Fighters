@@ -101,6 +101,10 @@ public class CharacterSelectScreen implements Screen {
     private static final float WINDOWS_MOVE_SET_SEGMENT_HEIGHT = 81f;
     private static final float MOVE_SET_SEGMENT_GAP = 8f;
     private static final float WINDOWS_MOVE_SET_SEGMENT_GAP = 12f;
+    private static final float MOVE_SET_ACTION_HEIGHT = 26f;
+    private static final float WINDOWS_MOVE_SET_ACTION_HEIGHT = 39f;
+    private static final float MOVE_SET_ACTION_GAP = 8f;
+    private static final float WINDOWS_MOVE_SET_ACTION_GAP = 12f;
     private static final float LEARNED_DRAWER_PADDING = 12f;
     private static final float WINDOWS_LEARNED_DRAWER_PADDING = 18f;
     private static final float LEARNED_DRAWER_HEADER_HEIGHT = 34f;
@@ -165,6 +169,9 @@ public class CharacterSelectScreen implements Screen {
     private final Rectangle learnedDrawerBounds = new Rectangle();
     private final Rectangle learnedDrawerViewportBounds = new Rectangle();
     private final Rectangle learnedDrawerToggleBounds = new Rectangle();
+    private final Rectangle recommendedMoveSetBounds = new Rectangle();
+    private final Rectangle customizeMoveSetBounds = new Rectangle();
+    private final Rectangle randomizeMoveSetBounds = new Rectangle();
     private final Color statBarFillColor = new Color();
     private final InputAdapter inputAdapter = new InputAdapter() {
         @Override
@@ -756,6 +763,7 @@ public class CharacterSelectScreen implements Screen {
 
     /** Blank detail page shown while the Random row is highlighted — no profile. */
     private void drawRandomPlaceholder() {
+        clearMoveSetActionBounds();
         assets.battleUi.card.draw(batch, detailBounds.x, detailBounds.y,
             detailBounds.width, detailBounds.height);
         String mark = "?";
@@ -942,7 +950,7 @@ public class CharacterSelectScreen implements Screen {
         float movePanelPadding = movePanelPadding();
         float movePanelHeaderHeight = movePanelHeaderHeight();
         float desiredMovesHeight = movePanelHeaderHeight + movePanelPadding * 2f
-            + moveSetSegmentHeight();
+            + moveSetSegmentHeight() + moveSetActionHeight() + moveSetActionGap();
         float minimumInfoHeight = Math.min(
             windowsLayout ? WINDOWS_MIN_CHARACTER_INFO_HEIGHT : MIN_CHARACTER_INFO_HEIGHT,
             contentHeight * 0.58f);
@@ -1666,8 +1674,8 @@ public class CharacterSelectScreen implements Screen {
         learnedMoveCeCosts = List.of();
         learnedDrawerCards = List.of();
         try {
-            com.jjktbf.model.character.Character resolved = character.toCharacter(
-                moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+            com.jjktbf.model.character.Character resolved = resolveProfileCharacter(
+                character, moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
             profileCharacter = resolved;
             learnedMoves = resolved.getLearnedMoves();
             profileAbilities = resolved.getAbilities();
@@ -1704,6 +1712,28 @@ public class CharacterSelectScreen implements Screen {
         return learnedMoves;
     }
 
+    static com.jjktbf.model.character.Character resolveProfileCharacter(
+        CharacterData character,
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        com.jjktbf.model.weapon.CursedToolRepository cursedToolRepo
+    ) {
+        try {
+            return character.toCharacter(
+                moveRepo, abilityRepo, techniqueRepo, cursedToolRepo);
+        } catch (IllegalArgumentException savedMoveSetFailure) {
+            if (character.moveSetIds == null) throw savedMoveSetFailure;
+            try {
+                return character.toCharacter(
+                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo, List.of());
+            } catch (IllegalArgumentException profileFailure) {
+                profileFailure.addSuppressed(savedMoveSetFailure);
+                throw profileFailure;
+            }
+        }
+    }
+
     private void rebuildLearnedDrawerCards() {
         float cardWidth = learnedDrawerCardWidth();
         float cardHeight = learnedDrawerCardHeight();
@@ -1726,24 +1756,59 @@ public class CharacterSelectScreen implements Screen {
         learnedMovesFor(character);
         if (profileCharacter == null) return List.of();
         return moveSetDrafts.computeIfAbsent(character.id, ignored ->
-            seedMoveSetDraft(character, learnedMoves));
+            seedMoveSetDraft(character, learnedMoves,
+                profileCharacter.getRecommendedMoveSet()));
     }
 
     /**
      * Draft move-set ids for a fighter whose detail page is opened for the first
-     * time this visit. Fighters ship with no authored move set, so an unchosen
-     * fighter drafts empty; a previously saved choice drafts from its persisted
-     * ids, in saved order, dropping ids no longer learnable.
+     * time this visit. A saved non-empty choice remains authoritative. Otherwise
+     * the fighter's deterministic legal recommendation is used, so setup never
+     * requires authoring a player or CPU loadout before play.
      */
-    static List<String> seedMoveSetDraft(CharacterData character, List<Move> learnedMoves) {
+    static List<String> seedMoveSetDraft(
+        CharacterData character,
+        List<Move> learnedMoves,
+        List<Move> recommendedMoves
+    ) {
         List<String> draft = new ArrayList<>();
-        if (character.moveSetIds == null) return draft;
         Set<String> learnedIds = new HashSet<>();
         for (Move move : learnedMoves) learnedIds.add(move.getId());
-        for (String moveId : character.moveSetIds) {
-            if (moveId != null && learnedIds.contains(moveId)) draft.add(moveId);
+        if (character.moveSetIds != null) {
+            for (String moveId : character.moveSetIds) {
+                if (moveId != null && learnedIds.contains(moveId)) draft.add(moveId);
+            }
+        }
+        if (!draft.isEmpty()) return draft;
+        if (recommendedMoves == null) return draft;
+        for (Move move : recommendedMoves) {
+            if (move != null && learnedIds.contains(move.getId())) draft.add(move.getId());
         }
         return draft;
+    }
+
+    private List<String> recommendedBattleMoveSet() {
+        if (profileCharacter == null) return List.of();
+        return profileCharacter.getRecommendedMoveSet().stream().map(Move::getId).toList();
+    }
+
+    private boolean replaceBattleMoveSetDraft(CharacterData character, List<String> moveIds) {
+        learnedMovesFor(character);
+        if (profileCharacter == null) return false;
+        try {
+            com.jjktbf.model.character.Character configured =
+                profileCharacter.withMoveSet(moveIds);
+            List<String> canonicalIds = configured.getMoveSet().stream()
+                .map(Move::getId)
+                .toList();
+            moveSetDrafts.put(character.id, new ArrayList<>(canonicalIds));
+            profileCharacter = configured;
+            moveSetRequiredWarning = null;
+            moveSetScrollOffset = 0f;
+            return true;
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 
     private List<Move> moveSetMovesFor(CharacterData character) {
@@ -1824,6 +1889,7 @@ public class CharacterSelectScreen implements Screen {
         moveSetViewportBounds.set(0f, 0f, 0f, 0f);
         moveSetViews = List.of();
         moveSetScrollMax = 0f;
+        clearMoveSetActionBounds();
         if (height <= 0f) return;
 
         assets.battleUi.palette.draw(batch, x, y, width, height);
@@ -1852,10 +1918,16 @@ public class CharacterSelectScreen implements Screen {
                 x + padding, y + height / 2f - (windowsLayout ? 22f : 15f));
         }
 
-        float viewportHeight = Math.min(
-            moveSetSegmentHeight(), Math.max(0f, height - headerHeight - padding * 2f));
+        float actionHeight = moveSetActionHeight();
+        float actionGap = moveSetActionGap();
+        float viewportHeight = Math.min(moveSetSegmentHeight(), Math.max(0f,
+            height - headerHeight - padding * 2f - actionHeight - actionGap));
         float viewportWidth = Math.max(0f, width - padding * 2f);
         moveSetViewportBounds.set(x + padding, y + padding, viewportWidth, viewportHeight);
+        layoutMoveSetActions(x + padding,
+            moveSetViewportBounds.y + viewportHeight + actionGap,
+            viewportWidth, actionHeight);
+        drawMoveSetActions();
         if (viewportWidth <= 0f || viewportHeight <= 0f) return;
         if (selected.isEmpty()) {
             assets.fontSmall.setColor(BattleUiAssets.MUTED);
@@ -1943,6 +2015,37 @@ public class CharacterSelectScreen implements Screen {
         assets.fontSmall.draw(batch, counters,
             x + width - padding - textWidth(assets.fontSmall, counters),
             y + height - (windowsLayout ? 12f : 8f));
+    }
+
+    private void layoutMoveSetActions(float x, float y, float width, float height) {
+        float gap = windowsLayout ? 9f : 6f;
+        float available = Math.max(0f, width - gap * 2f);
+        float recommendedWidth = available * 0.40f;
+        float customizeWidth = available * 0.30f;
+        float randomizeWidth = Math.max(0f, available - recommendedWidth - customizeWidth);
+        recommendedMoveSetBounds.set(x, y, recommendedWidth, height);
+        customizeMoveSetBounds.set(x + recommendedWidth + gap, y, customizeWidth, height);
+        randomizeMoveSetBounds.set(
+            customizeMoveSetBounds.x + customizeWidth + gap, y, randomizeWidth, height);
+    }
+
+    private void drawMoveSetActions() {
+        drawMoveSetAction(recommendedMoveSetBounds, "PLAY RECOMMENDED");
+        drawMoveSetAction(customizeMoveSetBounds,
+            learnedDrawerExpanded ? "CLOSE CUSTOMIZE" : "CUSTOMIZE");
+        drawMoveSetAction(randomizeMoveSetBounds, "RANDOMIZE");
+    }
+
+    private void drawMoveSetAction(Rectangle bounds, String label) {
+        boolean hovered = bounds.contains(movePointerX, movePointerY);
+        (hovered ? assets.battleUi.cardOver : assets.battleUi.card).draw(
+            batch, bounds.x, bounds.y, bounds.width, bounds.height);
+        String fitted = fitOrEllipsize(
+            assets.fontSmall, label, Math.max(1f, bounds.width - 12f));
+        assets.fontSmall.setColor(BattleUiAssets.TEXT);
+        assets.fontSmall.draw(batch, fitted,
+            bounds.x + (bounds.width - textWidth(assets.fontSmall, fitted)) / 2f,
+            bounds.y + bounds.height / 2f + assets.fontSmall.getCapHeight() / 2f);
     }
 
     private void layoutLearnedDrawer(float screenWidth, float screenHeight) {
@@ -2085,6 +2188,33 @@ public class CharacterSelectScreen implements Screen {
     private boolean handleMoveSetTouchDown(float x, float y, int button) {
         movePointerX = x;
         movePointerY = y;
+        if (button == Input.Buttons.LEFT && recommendedMoveSetBounds.contains(x, y)) {
+            moveUiConsumedPointer = true;
+            CharacterData detail = detailCharacter();
+            if (detail != null
+                && replaceBattleMoveSetDraft(detail, recommendedBattleMoveSet())) {
+                confirmSelection();
+            } else {
+                game.audio().play(SoundCue.UI_DENIED);
+            }
+            return true;
+        }
+        if (button == Input.Buttons.LEFT && customizeMoveSetBounds.contains(x, y)) {
+            moveUiConsumedPointer = true;
+            learnedDrawerExpanded = !learnedDrawerExpanded;
+            learnedDrawerScrollOffset = 0f;
+            clearLearnedMoveDrag();
+            game.audio().play(SoundCue.UI_TOGGLE);
+            return true;
+        }
+        if (button == Input.Buttons.LEFT && randomizeMoveSetBounds.contains(x, y)) {
+            moveUiConsumedPointer = true;
+            CharacterData detail = detailCharacter();
+            boolean replaced = detail != null
+                && replaceBattleMoveSetDraft(detail, randomBattleMoveSet());
+            game.audio().play(replaced ? SoundCue.UI_TOGGLE : SoundCue.UI_DENIED);
+            return true;
+        }
         if (button == Input.Buttons.LEFT && learnedDrawerToggleBounds.contains(x, y)) {
             moveUiConsumedPointer = true;
             learnedDrawerExpanded = !learnedDrawerExpanded;
@@ -2250,6 +2380,20 @@ public class CharacterSelectScreen implements Screen {
         return windowsLayout ? WINDOWS_MOVE_SET_SEGMENT_GAP : MOVE_SET_SEGMENT_GAP;
     }
 
+    private float moveSetActionHeight() {
+        return windowsLayout ? WINDOWS_MOVE_SET_ACTION_HEIGHT : MOVE_SET_ACTION_HEIGHT;
+    }
+
+    private float moveSetActionGap() {
+        return windowsLayout ? WINDOWS_MOVE_SET_ACTION_GAP : MOVE_SET_ACTION_GAP;
+    }
+
+    private void clearMoveSetActionBounds() {
+        recommendedMoveSetBounds.set(0f, 0f, 0f, 0f);
+        customizeMoveSetBounds.set(0f, 0f, 0f, 0f);
+        randomizeMoveSetBounds.set(0f, 0f, 0f, 0f);
+    }
+
     private float learnedDrawerPadding() {
         return windowsLayout ? WINDOWS_LEARNED_DRAWER_PADDING : LEARNED_DRAWER_PADDING;
     }
@@ -2376,7 +2520,8 @@ public class CharacterSelectScreen implements Screen {
 
     private static float windowsMoveSetPanelHeight() {
         return WINDOWS_MOVE_PANEL_HEADER_HEIGHT + WINDOWS_MOVE_PANEL_PADDING * 2f
-            + WINDOWS_MOVE_SET_SEGMENT_HEIGHT;
+            + WINDOWS_MOVE_SET_SEGMENT_HEIGHT + WINDOWS_MOVE_SET_ACTION_HEIGHT
+            + WINDOWS_MOVE_SET_ACTION_GAP;
     }
 
     static int windowsTechniqueVisibleRows(float detailHeight) {

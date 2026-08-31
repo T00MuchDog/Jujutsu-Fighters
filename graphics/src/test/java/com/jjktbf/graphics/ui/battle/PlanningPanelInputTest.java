@@ -199,6 +199,89 @@ class PlanningPanelInputTest {
     }
 
     @Test
+    void queuedSingleTargetShowsEnemyNameWithoutWarning() {
+        Move move = move("TARGET_DISPLAY", 10);
+        PlanningPanel panel = targetedPanel(move, List.of(
+            new PlanningPanel.TargetOption("target-1", "First target")));
+        ActionSegment segment = panel.restorePlacement(move, 1, 0, "target-1");
+
+        PlanningPanel.SegmentTargetDisplay display = panel.targetDisplay(segment);
+
+        assertEquals("[E] First target", display.compactLabel());
+        assertEquals(List.of("ENEMY 1: First target"), display.details());
+        assertFalse(display.warning());
+    }
+
+    @Test
+    void queuedMultipleTargetsShowCountAndConfirmationWarning() {
+        Move move = multipleMove("MULTI_DISPLAY", 3);
+        PlanningPanel panel = targetedPanel(move, List.of(
+            new PlanningPanel.TargetOption("target-1", "First target"),
+            new PlanningPanel.TargetOption("target-2", "Second target")));
+        ActionSegment segment = panel.restorePlacement(move, 1, 0, List.of());
+
+        assertEquals("[0/3] [E] TARGET?", panel.targetDisplay(segment).compactLabel());
+        assertTrue(panel.targetDisplay(segment).warning());
+
+        assertTrue(panel.chooseTarget(segment, "target-1"));
+        assertTrue(panel.chooseTarget(segment, "target-2"));
+        PlanningPanel.SegmentTargetDisplay pending = panel.targetDisplay(segment);
+        assertEquals("[2/3] [E] First target +1", pending.compactLabel());
+        assertTrue(pending.warning());
+        assertTrue(pending.details().contains("! CONFIRM TARGETS"));
+
+        assertTrue(panel.confirmTargetSelection(segment));
+        assertFalse(panel.targetDisplay(segment).warning());
+    }
+
+    @Test
+    void queuedOrderedPairShowsAllyAndEnemySlots() {
+        Move move = new Move.Builder("PAIR_DISPLAY")
+            .name("Pair")
+            .category(MoveCategory.UTILITY)
+            .targeting(Targeting.ALLY_AND_ENEMY)
+            .apCost(5)
+            .unleashPoint(1)
+            .build();
+        PlanningPanel panel = targetedPanel(move, List.of(
+            new PlanningPanel.TargetOption("enemy", "Enemy")));
+        panel.setAllyOptions(List.of(new PlanningPanel.TargetOption("ally", "Ally")));
+        ActionSegment segment = panel.restorePlacement(move, 1, 0, List.of());
+
+        assertTrue(panel.chooseTarget(segment, "ally"));
+        assertEquals("A: Ally | E: ?", panel.targetDisplay(segment).compactLabel());
+        assertTrue(panel.targetDisplay(segment).warning());
+
+        assertTrue(panel.chooseTarget(segment, "enemy"));
+        assertEquals("A: Ally | E: Enemy", panel.targetDisplay(segment).compactLabel());
+        assertFalse(panel.targetDisplay(segment).warning());
+    }
+
+    @Test
+    void queuedStaleTargetShowsShortIdAndWarning() {
+        Move move = move("STALE_DISPLAY", 10);
+        PlanningPanel panel = targetedPanel(move);
+        ActionSegment segment = panel.restorePlacement(
+            move, 1, 0, "removed-target-123456789");
+
+        PlanningPanel.SegmentTargetDisplay display = panel.targetDisplay(segment);
+
+        assertEquals("[E] !removed-targ", display.compactLabel());
+        assertTrue(display.warning());
+        assertTrue(display.details().contains("! TARGET NO LONGER AVAILABLE"));
+    }
+
+    @Test
+    void readOnlyQueuedTargetCanStillBeHoveredForDetails() {
+        Move move = move("READ_ONLY_TARGET", 10);
+        PlanningPanel panel = targetedPanel(move);
+        assertNotNull(panel.restorePlacement(move, 1, 0, "target-1"));
+        panel.setReadOnly(true);
+
+        assertTrue(panel.inputProcessor().mouseMoved(160, HEIGHT - 580));
+    }
+
+    @Test
     void relocatingSegmentPreservesItsSelectedTarget() {
         Move move = move("RELOCATE_TARGETED", 10);
         PlanningPanel panel = targetedPanel(move);

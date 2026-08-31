@@ -12,16 +12,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Visual for an action segment. A segment is intentionally spare: the coloured
- * left rail communicates move type, and the white body carries only the move
- * name so its AP width remains easy to read against the grid.
+ * Visual for an action segment. The coloured left rail communicates move type,
+ * and the body carries the move name while preserving the segment's AP-scaled
+ * width against the grid.
  */
 public class ActionSegmentView {
+
+    private static final Color TARGET_WARNING = new Color(0.820f, 0.180f, 0.120f, 1f);
 
     private final ActionSegment segment;
     private final Move move;
     private final Rectangle bounds;
     private boolean highlighted;
+    private boolean targetWarning;
 
     public ActionSegmentView(ActionSegment segment, float x, float y, float width, float height) {
         this.segment = segment;
@@ -39,7 +42,9 @@ public class ActionSegmentView {
     public ActionSegment getSegment()         { return segment; }
     public Move getMove()                     { return move; }
     public Rectangle getBounds()              { return bounds; }
+    public boolean hasTargetWarning()          { return targetWarning; }
     public void setHighlighted(boolean value) { highlighted = value; }
+    public void setTargetWarning(boolean warning) { targetWarning = warning; }
     public void setPosition(float x, float y) { bounds.x = x; bounds.y = y; }
     public void setWidth(float w)             { bounds.width = w; }
 
@@ -59,11 +64,45 @@ public class ActionSegmentView {
         batch.draw(ui.pixel, x + 5f, y + 5f, railW, Math.max(1f, h - 10f));
         batch.setColor(Color.WHITE);
 
-        if (w < 18f) return;
+        float warningSize = targetWarning
+            ? Math.max(0f, Math.min(Math.min(16f, Math.max(9f, h * 0.28f)), w - 4f))
+            : 0f;
+        if (w < 18f) {
+            drawTargetWarning(batch, font, ui, x, y, w, h, warningSize);
+            return;
+        }
         float labelX = x + railW + 9f;
-        float labelW = w - (labelX - x) - 4f;
+        float labelW = Math.max(1f, w - (labelX - x) - 4f
+            - (targetWarning ? warningSize + 3f : 0f));
         font.setColor(BattleUiAssets.TEXT);
         drawMoveName(batch, font, move.getName(), labelX, y, labelW, h);
+        drawTargetWarning(batch, font, ui, x, y, w, h, warningSize);
+    }
+
+    private void drawTargetWarning(
+        Batch batch,
+        BitmapFont font,
+        BattleUiAssets ui,
+        float x,
+        float y,
+        float width,
+        float height,
+        float size
+    ) {
+        if (!targetWarning || size <= 0f) return;
+        float badgeX = x + width - size - 4f;
+        float badgeY = y + height - size - 4f;
+        batch.setColor(TARGET_WARNING);
+        batch.draw(ui.pixel, badgeX, badgeY, size, size);
+        batch.setColor(Color.WHITE);
+        float originalScaleX = font.getData().scaleX;
+        float originalScaleY = font.getData().scaleY;
+        font.getData().setScale(originalScaleX * 0.75f, originalScaleY * 0.75f);
+        font.setColor(Color.WHITE);
+        float markWidth = textWidth(font, "!");
+        font.draw(batch, "!", badgeX + (size - markWidth) / 2f,
+            badgeY + size * 0.78f);
+        font.getData().setScale(originalScaleX, originalScaleY);
     }
 
     private static void drawMoveName(Batch batch, BitmapFont font, String value, float x, float y,

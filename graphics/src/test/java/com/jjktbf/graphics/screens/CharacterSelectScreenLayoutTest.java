@@ -30,10 +30,10 @@ class CharacterSelectScreenLayoutTest {
 
     @Test
     void windowsProfileReservesTechniqueRowsAtTargetHeights() {
-        assertEquals(400f, CharacterSelectScreen.windowsTechniqueSectionHeight(1267f));
-        assertEquals(15, CharacterSelectScreen.windowsTechniqueVisibleRows(1267f));
-        assertEquals(297f, CharacterSelectScreen.windowsTechniqueSectionHeight(727f));
-        assertEquals(11, CharacterSelectScreen.windowsTechniqueVisibleRows(727f));
+        assertEquals(349f, CharacterSelectScreen.windowsTechniqueSectionHeight(1267f));
+        assertEquals(13, CharacterSelectScreen.windowsTechniqueVisibleRows(1267f));
+        assertEquals(246f, CharacterSelectScreen.windowsTechniqueSectionHeight(727f));
+        assertEquals(9, CharacterSelectScreen.windowsTechniqueVisibleRows(727f));
     }
 
     @Test

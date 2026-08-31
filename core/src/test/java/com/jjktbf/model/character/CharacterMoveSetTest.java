@@ -34,6 +34,18 @@ class CharacterMoveSetTest {
     }
 
     @Test
+    void recommendationRemainsAvailableForAnExplicitlyEmptyLoadout() {
+        List<Move> learned = List.of(move("one"), move("two"), move("three"));
+        CharacterStats stats = new CharacterStats.Builder().combatAbility(10).build();
+        Character character = new SorcererCharacter(
+            "fighter", "Fighter", stats, null,
+            learned, List.of(), List.of(), Set.of(), Equipment.NONE);
+
+        assertEquals(List.of(), ids(character.getMoveSet()));
+        assertEquals(List.of("one", "two"), ids(character.getRecommendedMoveSet()));
+    }
+
+    @Test
     void explicitMoveSetKeepsLearnedOrderAndRejectsAnOverfilledPool() {
         List<Move> learned = List.of(move("one"), move("two"), move("three"));
         CharacterStats stats = new CharacterStats.Builder().combatAbility(10).build();

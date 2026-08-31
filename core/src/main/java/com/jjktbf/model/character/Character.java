@@ -508,6 +508,11 @@ public abstract class Character extends Entity {
     public String          getInnateTechniqueName()  { return innateTechniqueName; }
     /** Every move learned by the character, in authored order. */
     public List<Move>      getLearnedMoves()         { return learnedMoves; }
+    /** Deterministic legal loadout used by quick setup and recommendation UI. */
+    public List<Move>      getRecommendedMoveSet() {
+        return SlotBudgetEnforcer.defaultMoveSet(
+            learnedMoves, combatStats, moveSetSlotExemptIds);
+    }
     /** Moves equipped for the current battle. */
     public List<Move>      getMoveSet()              { return knownMoves; }
     /** Historical battle-facing alias for {@link #getMoveSet()}. */

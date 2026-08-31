@@ -3959,7 +3959,13 @@ public class BattleScreen implements Screen, BattleView {
             teamPlanningPanel.setReadOnly(true);
             teamPlanningPanel.setActionButtonShifted(true);
         }
-        Gdx.input.setInputProcessor(null);
+        if (teamPlanningPanel != null) {
+            Gdx.input.setInputProcessor(teamPlanningPanel.inputProcessor());
+        } else if (planningPanel != null) {
+            Gdx.input.setInputProcessor(planningPanel.inputProcessor());
+        } else {
+            Gdx.input.setInputProcessor(null);
+        }
         logScrollInputAttached = false;
     }
 

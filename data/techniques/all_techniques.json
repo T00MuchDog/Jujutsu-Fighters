@@ -1037,7 +1037,7 @@
   "skillTree" : [ {
     "id" : "node-000000",
     "contentType" : "ABILITY",
-    "contentId" : "000047",
+    "contentId" : "000046",
     "x" : 40.0,
     "y" : 325.0,
     "prerequisites" : [ ]
@@ -1192,7 +1192,7 @@
   }, {
     "id" : "node-000007",
     "contentType" : "ABILITY",
-    "contentId" : "000048",
+    "contentId" : "000047",
     "x" : 700.0,
     "y" : 75.0,
     "prerequisites" : [ {
@@ -1295,7 +1295,7 @@
   }, {
     "id" : "node-000006",
     "contentType" : "ABILITY",
-    "contentId" : "000060",
+    "contentId" : "000058",
     "x" : 700.0,
     "y" : 525.0,
     "prerequisites" : [ {
@@ -1337,7 +1337,7 @@
   }, {
     "id" : "node-000009",
     "contentType" : "ABILITY",
-    "contentId" : "000059",
+    "contentId" : "000057",
     "x" : 1040.0,
     "y" : 125.0,
     "prerequisites" : [ {

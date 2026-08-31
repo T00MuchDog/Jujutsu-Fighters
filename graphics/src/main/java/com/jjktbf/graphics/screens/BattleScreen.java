@@ -259,6 +259,10 @@ public class BattleScreen implements Screen, BattleView {
     /** All visible panels in roster order; index zero owns the side's shared plate. */
     private List<CombatantPanel> playerPanels = List.of();
     private List<CombatantPanel> enemyPanels = List.of();
+    /** Status occupancy that the current panel geometry was built for. */
+    private String executionHudStatusLayoutSignature = "";
+    /** Prevents the panel update at the end of layout from recursively rebuilding it. */
+    private boolean layingOutExecutionUi;
     private final MiraclesMeter miraclesMeter = new MiraclesMeter();
     private final RatioMeter ratioMeter = new RatioMeter();
     private final AbilityStateMeter abilityStateMeter = new AbilityStateMeter();
@@ -1797,7 +1801,7 @@ public class BattleScreen implements Screen, BattleView {
     /** One transient per-hit impact flash on a combatant's sprite. */
     private static final class HitFlash {
         final Texture icon;
-        final CombatantPanel targetPanel;
+        private CombatantPanel targetPanel;
         final float duration;
         float elapsed;
         HitFlash(Texture icon, CombatantPanel targetPanel, float duration) {
@@ -2597,7 +2601,8 @@ public class BattleScreen implements Screen, BattleView {
     private static boolean hasLocalPlaybackEffect(CombatEvent event) {
         return shouldLog(event) || switch (event.getType()) {
             case DAMAGE_DEALT, HP_RESTORED, MAX_HP_CHANGED,
-                 CE_DRAINED, CE_RESTORED, CE_DEPLETED, MAX_CE_CHANGED -> true;
+                 CE_DRAINED, CE_RESTORED, CE_DEPLETED, MAX_CE_CHANGED,
+                 STATUS_APPLIED, STATUS_EXPIRED -> true;
             default -> false;
         };
     }
@@ -4925,6 +4930,41 @@ public class BattleScreen implements Screen, BattleView {
         }
     }
 
+    /** Keeps short-lived effects anchored to the newly rebuilt status-aware cards. */
+    private void remapTransientEffectPanels(
+        List<CombatantPanel> previousPlayerPanels,
+        List<CombatantPanel> previousEnemyPanels
+    ) {
+        unleashedMoveTargetPanel = replacementPanel(
+            unleashedMoveTargetPanel, previousPlayerPanels, previousEnemyPanels);
+        java.util.Iterator<HitFlash> iterator = hitFlashes.iterator();
+        while (iterator.hasNext()) {
+            HitFlash flash = iterator.next();
+            flash.targetPanel = replacementPanel(
+                flash.targetPanel, previousPlayerPanels, previousEnemyPanels);
+            if (flash.targetPanel == null) iterator.remove();
+        }
+    }
+
+    private CombatantPanel replacementPanel(
+        CombatantPanel previousPanel,
+        List<CombatantPanel> previousPlayerPanels,
+        List<CombatantPanel> previousEnemyPanels
+    ) {
+        if (previousPanel == null) return null;
+        int playerIndex = previousPlayerPanels.size() == playerPanels.size()
+            ? previousPlayerPanels.indexOf(previousPanel) : -1;
+        if (playerIndex >= 0) {
+            return playerPanels.get(playerIndex);
+        }
+        int enemyIndex = previousEnemyPanels.size() == enemyPanels.size()
+            ? previousEnemyPanels.indexOf(previousPanel) : -1;
+        if (enemyIndex >= 0) {
+            return enemyPanels.get(enemyIndex);
+        }
+        return null;
+    }
+
     private void clearTransientPanelReferences(CombatantPanel panel) {
         if (panel == null) return;
         if (unleashedMoveTargetPanel == panel) unleashedMoveTargetPanel = null;
@@ -4966,6 +5006,14 @@ public class BattleScreen implements Screen, BattleView {
 
     /** Recreates all execution widgets from the live viewport after a resize. */
     private void layoutExecutionUi(float width, float height) {
+        layoutExecutionUi(width, height, false);
+    }
+
+    private void layoutExecutionUi(
+        float width,
+        float height,
+        boolean remapTransientEffects
+    ) {
         boolean unifiedWindows = windowsUnified();
         float originX = unifiedWindows ? WINDOWS_EXECUTION_X : 0f;
         float originY = unifiedWindows ? WINDOWS_EXECUTION_Y : 0f;
@@ -4980,6 +5028,10 @@ public class BattleScreen implements Screen, BattleView {
                 Math.min(width, height) * layout.outerMarginFraction));
         List<Texture> visibleEnemySprites = visibleTeamSprites(enemyTeamSprites);
         List<Texture> visiblePlayerSprites = visibleTeamSprites(playerTeamSprites);
+        List<Boolean> visibleEnemyStatuses = visibleStatusPresence(false);
+        List<Boolean> visiblePlayerStatuses = visibleStatusPresence(true);
+        executionHudStatusLayoutSignature = statusLayoutSignature(
+            visiblePlayerStatuses, visibleEnemyStatuses);
         int enemyCount = visibleEnemySprites.size();
         int playerCount = visiblePlayerSprites.size();
 
@@ -5159,14 +5211,21 @@ public class BattleScreen implements Screen, BattleView {
             playerSpriteY += originY;
         }
 
+        List<CombatantPanel> previousEnemyPanels = enemyPanels;
+        List<CombatantPanel> previousPlayerPanels = playerPanels;
         enemyPanels = buildCombatantPanels(
             visibleEnemySprites, enemyPlate, enemySpriteY, enemySpriteSize,
-            enemyHud, enemyFullHudWidth, enemyHudColumnGap, hudRowGap, true);
+            enemyHud, enemyFullHudWidth, enemyHudColumnGap, hudRowGap,
+            visibleEnemyStatuses, true);
         playerPanels = buildCombatantPanels(
             visiblePlayerSprites, playerPlate, playerSpriteY, playerSpriteSize,
-            playerHud, playerFullHudWidth, playerHudColumnGap, hudRowGap, false);
+            playerHud, playerFullHudWidth, playerHudColumnGap, hudRowGap,
+            visiblePlayerStatuses, false);
         enemyPanel = enemyPanels.isEmpty() ? null : enemyPanels.get(0);
         playerPanel = playerPanels.isEmpty() ? null : playerPanels.get(0);
+        if (remapTransientEffects) {
+            remapTransientEffectPanels(previousPlayerPanels, previousEnemyPanels);
+        }
         remapFaintAnimationPanels();
         remapEntranceAnimationPanels();
         updateDisplayedAbilityMeters();
@@ -5227,7 +5286,13 @@ public class BattleScreen implements Screen, BattleView {
             layoutSpeedControls(nextRoundBounds, logBounds.y + logBounds.height,
                 SPEED_CONTROL_SIZE_MAX, fastForwardBounds, skipBounds);
         }
-        updatePanels();
+        boolean wasLayingOut = layingOutExecutionUi;
+        layingOutExecutionUi = true;
+        try {
+            updatePanels();
+        } finally {
+            layingOutExecutionUi = wasLayingOut;
+        }
     }
 
     record WindowsExecutionGeometry(
@@ -5475,6 +5540,7 @@ public class BattleScreen implements Screen, BattleView {
         float fullHudWidth,
         float hudColumnGap,
         float hudRowGap,
+        List<Boolean> statusPresence,
         boolean opponent
     ) {
         List<CombatantPanel> panels = new ArrayList<>(teamSprites.size());
@@ -5482,8 +5548,8 @@ public class BattleScreen implements Screen, BattleView {
         float textGeometryScale = executionTextGeometryScale();
         float hudTextScale = windowsUnified() ? WINDOWS_HUD_TEXT_SCALE : 1f;
         float statusBandHeight = CombatantPanel.statusBandHeight(textGeometryScale);
-        Rectangle expandedPrimaryHud = expandedHudBounds(
-            primaryHud, statusBandHeight, opponent, teamSprites.size());
+        float upperRowStatusBandHeight = upperRowStatusBandHeight(
+            statusPresence, teamSprites.size(), opponent, statusBandHeight);
         for (int i = 0; i < teamSprites.size(); i++) {
             Texture spriteTexture = teamSprites.get(i);
             float fighterCenterX = windowsUnified()
@@ -5493,9 +5559,11 @@ public class BattleScreen implements Screen, BattleView {
                     + fighterOffset(i, teamSprites.size(), plate.width, opponent);
             Rectangle sprite = spriteBounds(
                 spriteTexture, fighterCenterX, spriteY, spriteSize, opponent);
-            Rectangle hud = combatantHudBounds(
-                i, teamSprites.size(), expandedPrimaryHud, fullHudWidth,
-                hudColumnGap, hudRowGap, opponent);
+            boolean hasStatus = i < statusPresence.size() && statusPresence.get(i);
+            Rectangle hud = statusAwareCombatantHudBounds(
+                i, teamSprites.size(), primaryHud, fullHudWidth,
+                hudColumnGap, hudRowGap, opponent, hasStatus,
+                statusBandHeight, upperRowStatusBandHeight);
             float barHeightScale = windowsUnified() ? WINDOWS_HUD_BAR_HEIGHT_SCALE : 1f;
             float barBorderScale = windowsUnified() ? WINDOWS_HUD_BAR_BORDER_SCALE : 1f;
             panels.add(new CombatantPanel(spriteTexture,
@@ -5506,21 +5574,61 @@ public class BattleScreen implements Screen, BattleView {
         return List.copyOf(panels);
     }
 
-    /** Grows a HUD downward; lower enemy rows shift so the expanded grid retains its gap. */
+    /** Grows a HUD downward and optionally moves it below an expanded upper row. */
     static Rectangle expandedHudBounds(
         Rectangle primaryHud,
         float extraHeight,
-        boolean opponent,
-        int combatantCount
+        float lowerRowShift
     ) {
         float safeExtra = Math.max(0f, extraHeight);
-        float downwardShift = safeExtra;
-        if (opponent && combatantCount > 1) downwardShift += safeExtra;
+        float safeShift = Math.max(0f, lowerRowShift);
         return new Rectangle(
             primaryHud.x,
-            primaryHud.y - downwardShift,
+            primaryHud.y - safeExtra - safeShift,
             primaryHud.width,
             primaryHud.height + safeExtra);
+    }
+
+    static Rectangle statusAwareCombatantHudBounds(
+        int fighterIndex,
+        int fighterCount,
+        Rectangle primaryHud,
+        float fullHudWidth,
+        float columnGap,
+        float rowGap,
+        boolean opponent,
+        boolean hasStatus,
+        float statusBandHeight,
+        float upperRowStatusBandHeight
+    ) {
+        Rectangle normalBounds = combatantHudBounds(
+            fighterIndex, fighterCount, primaryHud, fullHudWidth, columnGap, rowGap, opponent);
+        boolean upperRow = isUpperHudRow(fighterIndex % 2, opponent);
+        return expandedHudBounds(
+            normalBounds,
+            hasStatus ? statusBandHeight : 0f,
+            upperRow ? 0f : upperRowStatusBandHeight);
+    }
+
+    static float upperRowStatusBandHeight(
+        List<Boolean> statusPresence,
+        int fighterCount,
+        boolean opponent,
+        float statusBandHeight
+    ) {
+        if (statusPresence == null || fighterCount < 2) return 0f;
+        int count = Math.min(fighterCount, statusPresence.size());
+        for (int i = 0; i < count; i++) {
+            if (Boolean.TRUE.equals(statusPresence.get(i))
+                && isUpperHudRow(i % 2, opponent)) {
+                return Math.max(0f, statusBandHeight);
+            }
+        }
+        return 0f;
+    }
+
+    private static boolean isUpperHudRow(int row, boolean opponent) {
+        return opponent ? row == 1 : row == 0;
     }
 
     static float windowsCombatantCenterX(
@@ -5898,6 +6006,12 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void updatePanels() {
+        if (!layingOutExecutionUi
+            && (!playerPanels.isEmpty() || !enemyPanels.isEmpty())
+            && !Objects.equals(executionHudStatusLayoutSignature, statusLayoutSignature())) {
+            layoutExecutionUi(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+            return;
+        }
         updateDisplayedAbilityMeters();
         if (mode == BattleMode.MULTIPLAYER) {
             updateOnlineTeamPanels(
@@ -5910,6 +6024,34 @@ public class BattleScreen implements Screen, BattleView {
         // at a move's start tick, before that move fires.
         updateLocalTeamPanels(playerPanels, renderPlayerTeam);
         updateLocalTeamPanels(enemyPanels, renderEnemyTeam);
+    }
+
+    private List<Boolean> visibleStatusPresence(boolean playerSide) {
+        if (mode == BattleMode.MULTIPLAYER) {
+            List<CharacterState> combatants = playerSide
+                ? renderOnlinePlayerTeam : renderOnlineEnemyTeam;
+            return combatants.stream()
+                .limit(MAX_VISIBLE_COMBATANTS_PER_SIDE)
+                .map(combatant -> !combatant.statusEffects().isEmpty())
+                .toList();
+        }
+        List<BattleCombatant> combatants = playerSide ? renderPlayerTeam : renderEnemyTeam;
+        return combatants.stream()
+            .limit(MAX_VISIBLE_COMBATANTS_PER_SIDE)
+            .map(combatant -> !combatant.getActiveEffects().isEmpty())
+            .toList();
+    }
+
+    private String statusLayoutSignature() {
+        return statusLayoutSignature(
+            visibleStatusPresence(true), visibleStatusPresence(false));
+    }
+
+    private static String statusLayoutSignature(
+        List<Boolean> playerStatuses,
+        List<Boolean> enemyStatuses
+    ) {
+        return String.valueOf(playerStatuses) + ':' + enemyStatuses;
     }
 
     private void updateDisplayedAbilityMeters() {

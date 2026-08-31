@@ -974,11 +974,12 @@ public class CharacterSelectScreen implements Screen {
         boolean hasCursedTechnique = character.innateTechniqueName != null
             && !character.innateTechniqueName.isBlank();
         boolean showInlineTechniqueName = hasCursedTechnique && techniqueSectionHeight <= 0f;
-        float techniqueGap = showInlineTechniqueName ? 16f : 0f;
-        float techniqueHeight = showInlineTechniqueName ? assets.fontSmall.getCapHeight() * 2f : 0f;
         float barsAndSpacing = (windowsLayout ? 36f : 24f)
-            + barHeight * 2f + barGap + techniqueGap + techniqueHeight;
-        float spriteSize = Math.min(leftWidth, Math.max(0f, infoHeight - barsAndSpacing));
+            + barHeight * 2f + barGap;
+        // Technique details use the right column, leaving every portrait at the
+        // same size as Maki's technique-free profile.
+        float portraitHeight = contentTop - techniqueBottom;
+        float spriteSize = Math.min(leftWidth, Math.max(0f, portraitHeight - barsAndSpacing));
         spriteSize = Math.min(spriteSize, windowsLayout ? 504f : 336f);
         if (spriteSize > 0f) {
             float spriteX = leftCenterX - spriteSize / 2f;
@@ -1008,17 +1009,6 @@ public class CharacterSelectScreen implements Screen {
             ce.setBounds(barX, ceY, barWidth, barHeight);
             ce.setValues(maximumCe, maximumCe);
             ce.draw(batch, assets.fontMedium, assets.battleUi, true);
-            if (showInlineTechniqueName) {
-                assets.fontSmall.setColor(Color.BLACK);
-                float originalScaleX = assets.fontSmall.getData().scaleX;
-                float originalScaleY = assets.fontSmall.getData().scaleY;
-                assets.fontSmall.getData().setScale(originalScaleX * 2f, originalScaleY * 2f);
-                float techniqueX = leftCenterX - textWidth(assets.fontSmall,
-                    character.innateTechniqueName) / 2f;
-                assets.fontSmall.draw(batch, character.innateTechniqueName, techniqueX,
-                    ceY - techniqueGap);
-                assets.fontSmall.getData().setScale(originalScaleX, originalScaleY);
-            }
         }
 
         // Right column: compact stats leave the remaining vertical space for the description.
@@ -1035,13 +1025,21 @@ public class CharacterSelectScreen implements Screen {
         drawStats(character, rightX, rightWidth, contentTop, statsRowHeight, detailFont);
         float descriptionTop = contentTop - STAT_LABELS.length * statsRowHeight
             - (windowsLayout ? 21f : 14f);
+        if (showInlineTechniqueName) {
+            assets.fontSmall.setColor(Color.BLACK);
+            assets.fontSmall.draw(batch,
+                fitOrEllipsize(assets.fontSmall, character.innateTechniqueName, rightWidth),
+                rightX,
+                descriptionTop);
+            descriptionTop -= assets.fontSmall.getCapHeight() + 8f;
+        }
         drawDescription(displayDescription(character), rightX, rightWidth, descriptionTop, infoBottom, detailFont);
 
         if (techniqueSectionHeight > 0f) {
             drawMacTechniqueSection(
                 character,
-                innerLeft,
-                innerWidth,
+                rightX,
+                rightWidth,
                 techniqueBottom + techniqueSectionHeight,
                 techniqueBottom);
         }

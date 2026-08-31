@@ -6,6 +6,8 @@ import com.jjktbf.graphics.ui.CombatantPanel;
 import com.jjktbf.graphics.ui.battle.WindowsBattleCanvas;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -308,9 +310,9 @@ class BattleScreenSpriteBoundsTest {
     }
 
     @Test
-    void statusBandExpandsSingleHudDownwardWithoutMovingItsTop() {
+    void statusBandExpandsHudDownwardWithoutMovingItsTop() {
         Rectangle expanded = BattleScreen.expandedHudBounds(
-            new Rectangle(100f, 200f, 150f, 100f), 25f, false, 1);
+            new Rectangle(100f, 200f, 150f, 100f), 25f, 0f);
 
         assertEquals(new Rectangle(100f, 175f, 150f, 125f), expanded);
         assertEquals(300f, expanded.y + expanded.height, 0.0001f);
@@ -319,25 +321,46 @@ class BattleScreenSpriteBoundsTest {
     }
 
     @Test
-    void expandedHudRowsKeepTheirGapAndShiftTheLowerCardDown() {
+    void statusFreeHudKeepsItsOriginalBounds() {
         Rectangle base = new Rectangle(100f, 200f, 150f, 100f);
-        Rectangle playerPrimary = BattleScreen.expandedHudBounds(base, 25f, false, 2);
-        Rectangle playerTop = BattleScreen.combatantHudBounds(
-            0, 2, playerPrimary, 150f, 10f, 10f, false);
-        Rectangle playerBottom = BattleScreen.combatantHudBounds(
-            1, 2, playerPrimary, 150f, 10f, 10f, false);
+        Rectangle normal = BattleScreen.combatantHudBounds(
+            0, 2, base, 150f, 10f, 10f, false);
+        Rectangle statusFree = BattleScreen.statusAwareCombatantHudBounds(
+            0, 2, base, 150f, 10f, 10f, false, false, 25f, 0f);
 
+        assertEquals(normal, statusFree);
+    }
+
+    @Test
+    void playerStatusExpandsOnlyItsCardAndMovesTheLowerRow() {
+        Rectangle base = new Rectangle(100f, 200f, 150f, 100f);
+        float bandHeight = 25f;
+        float lowerRowShift = BattleScreen.upperRowStatusBandHeight(
+            List.of(true, false), 2, false, bandHeight);
+        Rectangle playerTop = BattleScreen.statusAwareCombatantHudBounds(
+            0, 2, base, 150f, 10f, 10f, false, true, bandHeight, lowerRowShift);
+        Rectangle playerBottom = BattleScreen.statusAwareCombatantHudBounds(
+            1, 2, base, 150f, 10f, 10f, false, false, bandHeight, lowerRowShift);
+
+        assertEquals(new Rectangle(100f, 175f, 150f, 125f), playerTop);
+        assertEquals(new Rectangle(100f, 65f, 150f, 100f), playerBottom);
         assertEquals(10f, playerTop.y - playerBottom.y - playerBottom.height, 0.0001f);
-        assertEquals(165f, playerBottom.y + playerBottom.height, 0.0001f);
+    }
 
-        Rectangle enemyPrimary = BattleScreen.expandedHudBounds(base, 25f, true, 2);
-        Rectangle enemyBottom = BattleScreen.combatantHudBounds(
-            0, 2, enemyPrimary, 150f, 10f, 10f, true);
-        Rectangle enemyTop = BattleScreen.combatantHudBounds(
-            1, 2, enemyPrimary, 150f, 10f, 10f, true);
+    @Test
+    void enemyStatusExpandsOnlyItsUpperCardAndMovesTheLowerRow() {
+        Rectangle base = new Rectangle(100f, 200f, 150f, 100f);
+        float bandHeight = 25f;
+        float lowerRowShift = BattleScreen.upperRowStatusBandHeight(
+            List.of(false, true), 2, true, bandHeight);
+        Rectangle enemyBottom = BattleScreen.statusAwareCombatantHudBounds(
+            0, 2, base, 150f, 10f, 10f, true, false, bandHeight, lowerRowShift);
+        Rectangle enemyTop = BattleScreen.statusAwareCombatantHudBounds(
+            1, 2, base, 150f, 10f, 10f, true, true, bandHeight, lowerRowShift);
 
+        assertEquals(new Rectangle(100f, 175f, 150f, 100f), enemyBottom);
+        assertEquals(new Rectangle(100f, 285f, 150f, 125f), enemyTop);
         assertEquals(10f, enemyTop.y - enemyBottom.y - enemyBottom.height, 0.0001f);
-        assertEquals(410f, enemyTop.y + enemyTop.height, 0.0001f);
     }
 
     @Test

@@ -52,6 +52,7 @@ import java.util.function.IntConsumer;
  */
 public class MainMenuScreen implements Screen {
 
+    private static final float MAC_MAX_RESPONSIVE_SCALE = 1.30f;
     private static final float WINDOWS_MAX_RESPONSIVE_SCALE = 1.75f;
     private static final float WINDOWS_HEADER_X = 49f;
     private static final float WINDOWS_HEADER_WIDTH_INSET = 98f;
@@ -534,7 +535,9 @@ public class MainMenuScreen implements Screen {
     }
 
     private void layoutMenu(int width, int height) {
-        float scale = Math.min(1.75f, Math.max(0.80f,
+        float maxResponsiveScale = windowsLayout
+            ? WINDOWS_MAX_RESPONSIVE_SCALE : MAC_MAX_RESPONSIVE_SCALE;
+        float scale = Math.min(maxResponsiveScale, Math.max(0.80f,
             Math.min(width / 1024f, height / 600f)));
         if (windowsLayout) {
             layoutWindowsMenu(width, height, scale);

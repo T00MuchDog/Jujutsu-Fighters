@@ -22,6 +22,7 @@ import com.jjktbf.model.move.Move;
 import com.jjktbf.multiplayer.protocol.ActionSegmentState;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
 import com.jjktbf.multiplayer.protocol.PlanState;
+import com.jjktbf.multiplayer.protocol.StatusEffectState;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -44,7 +45,8 @@ public final class TeamPlanningPanel {
         List<PlanningPanel.TargetOption> targets,
         PlanState restoredPlan,
         List<PlanningPanel.TargetOption> allies,
-        List<CodedAbilityState> abilityStates
+        List<CodedAbilityState> abilityStates,
+        List<StatusEffectState> statusEffects
     ) {
         public PageSpec(
             String actorId,
@@ -59,7 +61,7 @@ public final class TeamPlanningPanel {
             PlanState restoredPlan
         ) {
             this(actorId, name, moves, ceCosts, apBudget, ceBudget, maxCe, miraclesState,
-                targets, restoredPlan, List.of(), List.of());
+                targets, restoredPlan, List.of(), List.of(), List.of());
         }
     }
 
@@ -209,6 +211,7 @@ public final class TeamPlanningPanel {
                 screenHeight);
             panel.setAllyOptions(spec.allies());
             panel.setAbilityStates(spec.abilityStates());
+            panel.setStatusEffects(spec.statusEffects());
             restorePlan(panel, spec);
             addPage(spec.name(), panel,
                 this.party.stream().anyMatch(member -> member.actorId().equals(spec.actorId())

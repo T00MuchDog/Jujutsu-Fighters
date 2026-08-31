@@ -887,6 +887,11 @@ public class BattleCombatant {
         return Optional.empty();
     }
 
+    /** Source associated with this exact live status instance, if one was recorded. */
+    public Optional<BattleCombatant> statusSource(StatusEffect effect) {
+        return Optional.ofNullable(effect == null ? null : statusSources.get(effect));
+    }
+
     /**
      * Tick down duration of all effects, removing those that have expired.
      *

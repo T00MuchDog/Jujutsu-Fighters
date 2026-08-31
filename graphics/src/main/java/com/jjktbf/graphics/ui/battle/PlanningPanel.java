@@ -14,6 +14,7 @@ import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.graphics.ui.AbilityStateMeter;
 import com.jjktbf.graphics.ui.MiraclesMeter;
+import com.jjktbf.graphics.ui.StatusEffectStrip;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.graphics.ui.text.KeywordPopupPosition;
@@ -34,6 +35,7 @@ import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
 import com.jjktbf.model.text.MoveDescriptionVariables;
 import com.jjktbf.multiplayer.protocol.PlanPlacement;
+import com.jjktbf.multiplayer.protocol.StatusEffectState;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -117,6 +119,7 @@ public class PlanningPanel {
     private final BattleUiAssets ui;
     private final MiraclesMeter miraclesMeter = new MiraclesMeter();
     private final AbilityStateMeter abilityStateMeter = new AbilityStateMeter();
+    private final StatusEffectStrip statusStrip = new StatusEffectStrip();
     private BattleUiLayout.Planner layout = new BattleUiLayout.Planner();
     private boolean windowsTextGeometry;
 
@@ -241,6 +244,7 @@ public class PlanningPanel {
         this.localCombatant = combatant;
         this.ui = ui;
         setAbilityStates(combatant.abilityStates());
+        statusStrip.setEffects(combatant);
         knownMoves.addAll(combatant.getCharacter().getKnownMoves());
         createBars();
         resize(screenWidth, screenHeight);
@@ -330,6 +334,12 @@ public class PlanningPanel {
     public void setAbilityStates(List<CodedAbilityState> states) {
         abilityStates = states == null ? List.of() : List.copyOf(states);
         abilityStateMeter.setStates(abilityStates);
+    }
+
+    /** Supplies authoritative online statuses for this fighter's planning page. */
+    public void setStatusEffects(List<StatusEffectState> states) {
+        statusStrip.setEffects(states);
+        if (screenWidth > 0f && screenHeight > 0f) resize(screenWidth, screenHeight);
     }
 
     /** Applies profile metrics and immediately reflows the production planner. */
@@ -690,6 +700,9 @@ public class PlanningPanel {
             ? layout.shortActorNameReservedHeight
             : actorName.isBlank()
                 ? layout.emptyActorNameReservedHeight : layout.actorNameReservedHeight;
+        float plannerStatusWidth = headerBounds.width * 0.54f;
+        actorNameHeight = Math.max(actorNameHeight,
+            statusStrip.estimatedHeight(plannerStatusWidth, textGeometryScale()));
         float boardAreaTop = headerBounds.y - actorNameHeight;
         float miracleSize = 0f;
         boolean sideMiracles = windowsTextGeometry
@@ -1066,6 +1079,17 @@ public class PlanningPanel {
         drawKeywordTooltip(batch, font, titleFont);
         drawSegmentTargetTooltip(batch, font);
         drawTargetMenu(batch, font);
+        if (!unifiedWindowsLayout) {
+            drawStatusEffects(batch, font);
+            statusStrip.drawTooltip(
+                batch,
+                font,
+                ui,
+                screenWidth,
+                screenHeight,
+                textGeometryScale(),
+                0.9f);
+        }
         if (readOnly && unifiedWindowsLayout) {
             batch.setColor(READ_ONLY_OVERLAY);
             batch.draw(ui.pixel,
@@ -1240,7 +1264,9 @@ public class PlanningPanel {
     private void drawActorName(Batch batch, BitmapFont font) {
         if (actorName.isBlank()) return;
         GlyphLayout layout = new GlyphLayout(font, actorName);
-        float availableWidth = Math.max(1f, headerBounds.width - scaled(36f));
+        float availableWidth = statusStrip.isEmpty()
+            ? Math.max(1f, headerBounds.width - scaled(36f))
+            : Math.max(1f, headerBounds.width * 0.44f - scaled(18f));
         float scale = Math.min(ACTOR_NAME_SCALE, availableWidth / layout.width);
         float originalScaleX = font.getData().scaleX;
         float originalScaleY = font.getData().scaleY;
@@ -1251,6 +1277,23 @@ public class PlanningPanel {
             headerBounds.y - scaled(6f));
         font.getData().setScale(originalScaleX, originalScaleY);
         font.setColor(originalColor);
+    }
+
+    private void drawStatusEffects(Batch batch, BitmapFont font) {
+        if (statusStrip.isEmpty()) return;
+        float stripX = headerBounds.x + headerBounds.width * 0.46f;
+        statusStrip.draw(
+            batch,
+            font,
+            ui,
+            stripX,
+            headerBounds.y,
+            headerBounds.x + headerBounds.width - stripX,
+            false,
+            dragMouseX,
+            dragMouseY,
+            textGeometryScale(),
+            0.9f);
     }
 
     private void applyTargetDisplay(ActionSegmentView view) {

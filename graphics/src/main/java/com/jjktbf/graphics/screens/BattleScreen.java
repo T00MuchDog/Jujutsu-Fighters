@@ -874,6 +874,8 @@ public class BattleScreen implements Screen, BattleView {
         drawDomainBanners(sw, sh);
         drawMoveUnleashAnimation(sw, sh);
         drawHitFlashes(sw, sh);
+        drawCombatantStatusTooltips(enemyPanels);
+        drawCombatantStatusTooltips(playerPanels);
         batch.end();
 
     }
@@ -919,6 +921,8 @@ public class BattleScreen implements Screen, BattleView {
         } finally {
             endUnifiedClip();
         }
+        drawCombatantStatusTooltips(enemyPanels);
+        drawCombatantStatusTooltips(playerPanels);
         batch.end();
 
         applyUnifiedBatchTransform(WindowsBattleCanvas.Anchor.TOP);
@@ -989,6 +993,9 @@ public class BattleScreen implements Screen, BattleView {
         boolean playerSide
     ) {
         int count = Math.min(panels.size(), huds.size());
+        float pointerX = bottomInputX(Gdx.input.getX());
+        float pointerY = windowsUnified()
+            ? topInputY(Gdx.input.getY()) : bottomInputY(Gdx.input.getY());
         for (int i = 0; i < count; i++) {
             CombatantPanel panel = panels.get(i);
             if (faintAnimationFor(panel) == null) {
@@ -1000,9 +1007,20 @@ public class BattleScreen implements Screen, BattleView {
                         windowsUnified() ? WindowsBattleCanvas.WIDTH : Gdx.graphics.getWidth());
                 } else {
                     panel.drawHud(batch, assets.fontMedium, assets.fontSmall,
-                        hud.name(), frameDelta);
+                        hud.name(), frameDelta, pointerX, pointerY);
                 }
             }
+        }
+    }
+
+    private void drawCombatantStatusTooltips(List<CombatantPanel> panels) {
+        float viewportWidth = windowsUnified()
+            ? WindowsBattleCanvas.WIDTH : Gdx.graphics.getWidth();
+        float viewportHeight = windowsUnified()
+            ? WindowsBattleCanvas.HEIGHT : Gdx.graphics.getHeight();
+        for (CombatantPanel panel : panels) {
+            panel.drawStatusTooltip(
+                batch, assets.fontSmall, viewportWidth, viewportHeight);
         }
     }
 
@@ -3141,7 +3159,8 @@ public class BattleScreen implements Screen, BattleView {
                 targets,
                 character.plan(),
                 allies,
-                character.codedAbilities()));
+                character.codedAbilities(),
+                character.statusEffects()));
         }
         if (pages.isEmpty()) return;
         clearTransientAnimations();
@@ -5460,6 +5479,11 @@ public class BattleScreen implements Screen, BattleView {
     ) {
         List<CombatantPanel> panels = new ArrayList<>(teamSprites.size());
         float plateCenterX = plate.x + plate.width / 2f;
+        float textGeometryScale = executionTextGeometryScale();
+        float hudTextScale = windowsUnified() ? WINDOWS_HUD_TEXT_SCALE : 1f;
+        float statusBandHeight = CombatantPanel.statusBandHeight(textGeometryScale);
+        Rectangle expandedPrimaryHud = expandedHudBounds(
+            primaryHud, statusBandHeight, opponent, teamSprites.size());
         for (int i = 0; i < teamSprites.size(); i++) {
             Texture spriteTexture = teamSprites.get(i);
             float fighterCenterX = windowsUnified()
@@ -5470,17 +5494,33 @@ public class BattleScreen implements Screen, BattleView {
             Rectangle sprite = spriteBounds(
                 spriteTexture, fighterCenterX, spriteY, spriteSize, opponent);
             Rectangle hud = combatantHudBounds(
-                i, teamSprites.size(), primaryHud, fullHudWidth,
+                i, teamSprites.size(), expandedPrimaryHud, fullHudWidth,
                 hudColumnGap, hudRowGap, opponent);
-            float hudTextScale = windowsUnified() ? WINDOWS_HUD_TEXT_SCALE : 1f;
             float barHeightScale = windowsUnified() ? WINDOWS_HUD_BAR_HEIGHT_SCALE : 1f;
             float barBorderScale = windowsUnified() ? WINDOWS_HUD_BAR_BORDER_SCALE : 1f;
             panels.add(new CombatantPanel(spriteTexture,
                 i == 0 ? assets.stoneBasePlate : null,
                 assets.battleUi, plate, sprite, hud, uiLayout.execution.hudScale, !opponent,
-                executionTextGeometryScale(), hudTextScale, barHeightScale, barBorderScale));
+                textGeometryScale, hudTextScale, barHeightScale, barBorderScale));
         }
         return List.copyOf(panels);
+    }
+
+    /** Grows a HUD downward; lower enemy rows shift so the expanded grid retains its gap. */
+    static Rectangle expandedHudBounds(
+        Rectangle primaryHud,
+        float extraHeight,
+        boolean opponent,
+        int combatantCount
+    ) {
+        float safeExtra = Math.max(0f, extraHeight);
+        float downwardShift = safeExtra;
+        if (opponent && combatantCount > 1) downwardShift += safeExtra;
+        return new Rectangle(
+            primaryHud.x,
+            primaryHud.y - downwardShift,
+            primaryHud.width,
+            primaryHud.height + safeExtra);
     }
 
     static float windowsCombatantCenterX(
@@ -5952,6 +5992,7 @@ public class BattleScreen implements Screen, BattleView {
                 panels.get(i).update(
                     resources.hp, resources.maxHp, resources.ce, resources.maxCe);
             }
+            panels.get(i).updateStatusEffects(combatant.statusEffects());
         }
     }
 
@@ -5968,6 +6009,7 @@ public class BattleScreen implements Screen, BattleView {
             } else {
                 panels.get(i).update(hp.hp(), hp.maxHp(),
                     combatant.getCurrentCe(), combatant.getMaxCursedEnergy());
+                panels.get(i).updateStatusEffects(combatant);
             }
         }
     }

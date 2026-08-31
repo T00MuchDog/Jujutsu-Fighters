@@ -8,6 +8,9 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.math.Rectangle;
 import com.jjktbf.graphics.ui.battle.BattleUiAssets;
 import com.jjktbf.model.combat.BattleCombatant;
+import com.jjktbf.multiplayer.protocol.StatusEffectState;
+
+import java.util.List;
 
 /** Pokemon-style field sprite and separate resource card for one combatant. */
 public class CombatantPanel {
@@ -24,6 +27,7 @@ public class CombatantPanel {
     private final BattleUiAssets ui;
     private final StatusBar hpBar;
     private final StatusBar ceBar;
+    private final StatusEffectStrip statusStrip = new StatusEffectStrip();
     private final Rectangle plateBounds;
     private final Rectangle spriteBounds;
     private final Rectangle hudBounds;
@@ -104,6 +108,11 @@ public class CombatantPanel {
         return value * textGeometryScale;
     }
 
+    /** Extra card height reserved between the name and resource bars. */
+    public static float statusBandHeight(float textGeometryScale) {
+        return 25f * Math.max(1f, textGeometryScale);
+    }
+
     public void update(BattleCombatant combatant) {
         update(
             combatant.getCurrentHp(),
@@ -111,12 +120,23 @@ public class CombatantPanel {
             combatant.getCurrentCe(),
             combatant.getMaxCursedEnergy()
         );
+        statusStrip.setEffects(combatant);
     }
 
     /** Updates the shared HUD from an immutable authoritative snapshot. */
     public void update(int currentHp, int maxHp, int currentCe, int maxCe) {
         hpBar.setValues(currentHp, maxHp);
         ceBar.setValues(currentCe, maxCe);
+    }
+
+    /** Updates status badges from an authoritative online snapshot. */
+    public void updateStatusEffects(List<StatusEffectState> effects) {
+        statusStrip.setEffects(effects);
+    }
+
+    /** Updates status badges from the local combat model. */
+    public void updateStatusEffects(BattleCombatant combatant) {
+        statusStrip.setEffects(combatant);
     }
 
     /** Starts the rapid visible/invisible flicker used when this combatant takes damage. */
@@ -242,8 +262,22 @@ public class CombatantPanel {
 
     /** Draws only the resource card so it can be layered above a fighter pair. */
     public void drawHud(Batch batch, BitmapFont nameFont, BitmapFont barFont,
-                         String name, float delta) {
-        drawHud(batch, nameFont, barFont, name, delta, 0f);
+                          String name, float delta) {
+        drawHud(batch, nameFont, barFont, name, delta, 0f,
+            Float.NaN, Float.NaN);
+    }
+
+    /** Draws the HUD and updates status hover against logical canvas coordinates. */
+    public void drawHud(
+        Batch batch,
+        BitmapFont nameFont,
+        BitmapFont barFont,
+        String name,
+        float delta,
+        float pointerX,
+        float pointerY
+    ) {
+        drawHud(batch, nameFont, barFont, name, delta, 0f, pointerX, pointerY);
     }
 
     /** Slides this resource card in from the requested viewport edge. */
@@ -258,7 +292,8 @@ public class CombatantPanel {
         float viewportWidth
     ) {
         drawHud(batch, nameFont, barFont, name, delta,
-            entranceHudOffset(progress, fromRight, viewportWidth, hudBounds.x, hudBounds.width));
+            entranceHudOffset(progress, fromRight, viewportWidth, hudBounds.x, hudBounds.width),
+            Float.NaN, Float.NaN);
     }
 
     public static float entranceHudOffset(
@@ -275,7 +310,8 @@ public class CombatantPanel {
     }
 
     private void drawHud(Batch batch, BitmapFont nameFont, BitmapFont barFont,
-                         String name, float delta, float offsetX) {
+                          String name, float delta, float offsetX,
+                          float pointerX, float pointerY) {
         // Offset dark frame creates the hard lower-right shadow used by the reference HUD.
         ui.palette.draw(batch, hudBounds.x + offsetX + 7f * hudScale, hudBounds.y - 7f * hudScale,
             hudBounds.width, hudBounds.height);
@@ -296,9 +332,7 @@ public class CombatantPanel {
             nameLayout.setText(nameFont, name);
         }
         nameFont.setColor(BattleUiAssets.TEXT);
-        float originalNameY = hudBounds.y + hudBounds.height - scaled(10f) * hudScale;
-        float currentGap = originalNameY - nameFont.getCapHeight() - hpBarTop;
-        float nameY = currentGap > 0f ? originalNameY - currentGap / 2f : originalNameY;
+        float nameY = hudBounds.y + hudBounds.height - scaled(10f) * hudScale;
         nameFont.draw(batch, name, hudBounds.x + offsetX + scaled(15f) * hudScale, nameY);
         nameFont.getData().setScale(originalScaleX, originalScaleY);
 
@@ -312,5 +346,39 @@ public class CombatantPanel {
         hpBar.draw(batch, barFont, ui, showResourceValues, offsetX);
         ceBar.draw(batch, barFont, ui, showResourceValues, offsetX);
         barFont.getData().setScale(originalBarScaleX, originalBarScaleY);
+
+        float statusInset = Math.max(
+            scaled(8f) * hudScale * hudTextScale,
+            hudBounds.width * 0.025f);
+        statusStrip.draw(
+            batch,
+            barFont,
+            ui,
+            hudBounds.x + offsetX + statusInset,
+            hpBarTop + scaled(1f) * hudScale,
+            Math.max(1f, hudBounds.width - statusInset * 2f),
+            true,
+            pointerX,
+            pointerY,
+            textGeometryScale,
+            hudScale * hudTextScale * 0.78f,
+            false);
+    }
+
+    /** Draw status inspection after all HUD cards have been layered. */
+    public void drawStatusTooltip(
+        Batch batch,
+        BitmapFont font,
+        float viewportWidth,
+        float viewportHeight
+    ) {
+        statusStrip.drawTooltip(
+            batch,
+            font,
+            ui,
+            viewportWidth,
+            viewportHeight,
+            textGeometryScale,
+            hudScale * hudTextScale * 0.82f);
     }
 }

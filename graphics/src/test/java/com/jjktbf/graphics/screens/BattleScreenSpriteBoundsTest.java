@@ -308,6 +308,39 @@ class BattleScreenSpriteBoundsTest {
     }
 
     @Test
+    void statusBandExpandsSingleHudDownwardWithoutMovingItsTop() {
+        Rectangle expanded = BattleScreen.expandedHudBounds(
+            new Rectangle(100f, 200f, 150f, 100f), 25f, false, 1);
+
+        assertEquals(new Rectangle(100f, 175f, 150f, 125f), expanded);
+        assertEquals(300f, expanded.y + expanded.height, 0.0001f);
+        assertEquals(25f, CombatantPanel.statusBandHeight(1f), 0.0001f);
+        assertEquals(37.5f, CombatantPanel.statusBandHeight(1.5f), 0.0001f);
+    }
+
+    @Test
+    void expandedHudRowsKeepTheirGapAndShiftTheLowerCardDown() {
+        Rectangle base = new Rectangle(100f, 200f, 150f, 100f);
+        Rectangle playerPrimary = BattleScreen.expandedHudBounds(base, 25f, false, 2);
+        Rectangle playerTop = BattleScreen.combatantHudBounds(
+            0, 2, playerPrimary, 150f, 10f, 10f, false);
+        Rectangle playerBottom = BattleScreen.combatantHudBounds(
+            1, 2, playerPrimary, 150f, 10f, 10f, false);
+
+        assertEquals(10f, playerTop.y - playerBottom.y - playerBottom.height, 0.0001f);
+        assertEquals(165f, playerBottom.y + playerBottom.height, 0.0001f);
+
+        Rectangle enemyPrimary = BattleScreen.expandedHudBounds(base, 25f, true, 2);
+        Rectangle enemyBottom = BattleScreen.combatantHudBounds(
+            0, 2, enemyPrimary, 150f, 10f, 10f, true);
+        Rectangle enemyTop = BattleScreen.combatantHudBounds(
+            1, 2, enemyPrimary, 150f, 10f, 10f, true);
+
+        assertEquals(10f, enemyTop.y - enemyBottom.y - enemyBottom.height, 0.0001f);
+        assertEquals(410f, enemyTop.y + enemyTop.height, 0.0001f);
+    }
+
+    @Test
     void singleHudIsCenteredBetweenTwoFighterRows() {
         assertEquals(145f, BattleScreen.centeredHudY(200f, 100f, 10f), 0.0001f);
     }

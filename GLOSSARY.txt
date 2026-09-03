@@ -329,6 +329,26 @@ are the Move/MoveData field names.
     minCeCost             Floor: cost scaling cannot reduce cost below this.
     maxCeCost             Ceiling: cost scaling cannot raise cost above this.
 
+  Optional cursed-energy reinforcement
+    canBeReinforced       Whether a planned execution may opt into reinforcement.
+                          The actor must also possess the Cursed-Energy
+                          Reinforcement ability.
+    reinforcementBaseCeCost
+                          Additional CE cost before Efficiency/Output scaling.
+    reinforcementMinCeCost / reinforcementMaxCeCost
+                          Independent bounds for the reinforcement surcharge.
+    reinforcementEligible Per-hit flag. Only eligible PHYSICAL hits gain
+                          CURSED_ENERGY and reinforcementBonusPower while the
+                          execution is reinforced.
+    reinforcementBonusPower
+                          Power added to that hit only for a reinforced execution.
+    reinforcementDefenseType / reinforcementDefenseValue
+                          Optional PERCENTAGE_BLOCK, FLAT_BLOCK, or STAGGER_LENGTH
+                          bonus applied only to a reinforced defensive execution.
+    Reinforcement state belongs to ActionSegment, not Move. The source Move and
+    authored HitComponents remain unchanged. Intrinsic PHYSICAL + CURSED_ENERGY
+    attacks are not reinforcement and pay only their authored move CE cost.
+
   Defensive data (used only when defenseType != NONE; see §8)
     defenseType           NONE / BLOCK / PARRY / DODGE / SHIELD.
     blockStyle            PERCENTAGE / FLAT. Used only when defenseType = BLOCK.
@@ -341,13 +361,10 @@ are the Move/MoveData field names.
                           tick.
     defenseUses           Number of attacks the active defense may contest. 0 =
                           unlimited. The use cap does not shorten the time window.
-    blockAttackTypes      Accepted defensive attack categories: PHYSICAL,
-                          PHYSICAL_CURSED_ENERGY, CURSED_ENERGY. Empty = all.
     blockRanges           Accepted MELEE/RANGED hit tags. Empty = all, including
                           untagged hits.
     blockElementalTags    Accepted ICE/ELECTRIC/FIRE/WATER hit tags. Empty = all.
-                          These three per-hit profiles apply to BLOCK and PARRY;
-                          blockAffectedTags is a legacy migration field only.
+                          These per-hit profiles apply to BLOCK and PARRY.
     blockDamageReduction  0–100, PERCENTAGE block only; conditional effectiveness
                           determines whether the live reduction reaches 100.
     blockFlatReduction    FLAT block only. Subtracted from attack value before
@@ -584,9 +601,9 @@ Parent type tags are normally synchronized from the union of component type tags
                           The "heavy beats stun" half of the stun ↔ heavy
                           interaction. Backed by Move.isHeavy().
 
-  Black Flash eligibility rule (evaluated independently per hit): a component must
-    contain both PHYSICAL and CURSED_ENERGY, and must not contain
-    INNATE_TECHNIQUE or NON_INNATE_TECHNIQUE.
+  Black Flash eligibility rule (evaluated independently per hit): the current
+    execution must actively reinforce an eligible PHYSICAL component, and the
+    component must not contain INNATE_TECHNIQUE or NON_INNATE_TECHNIQUE.
 
 ================================================================================
   6. MOVE & HIT CATEGORIES  (MoveCategory.java, HitComponent.java)
@@ -603,7 +620,7 @@ categories rather than damaging hit categories.
   CURSED_ENERGY                           {CURSED_ENERGY}                   No   (raw CE attack)
   INNATE_TECHNIQUE                        {INNATE_TECHNIQUE}                No
   NON_INNATE_TECHNIQUE                    {NON_INNATE_TECHNIQUE}            No
-  PHYSICAL_CURSED_ENERGY                  {PHYSICAL, CURSED_ENERGY}         Yes
+  PHYSICAL_CURSED_ENERGY                  {PHYSICAL, CURSED_ENERGY}         Only when actively reinforced
   PHYSICAL_INNATE_TECHNIQUE               {PHYSICAL, INNATE_TECHNIQUE}      No
   PHYSICAL_NON_INNATE_TECHNIQUE           {PHYSICAL, NON_INNATE_TECHNIQUE}  No
   INNATE_NON_INNATE_TECHNIQUE             {INNATE_TECHNIQUE, NON_INNATE_TECHNIQUE}  No
@@ -611,8 +628,9 @@ categories rather than damaging hit categories.
   UTILITY                                 {UTILITY}                         No
   DEFENSIVE                               {DEFENSIVE}                       No
 
-  Black Flash eligible (the only category with PHYSICAL + CURSED_ENERGY and
-  no technique tag): PHYSICAL_CURSED_ENERGY.
+  Category alone never grants Black Flash eligibility. An intrinsic
+  PHYSICAL_CURSED_ENERGY hit remains ineligible unless it is the execution-only
+  projection of an actively reinforced eligible PHYSICAL hit.
 
   MoveData.derivedCategory() collapses DEFENSIVE and UTILITY first (regardless of
   any other tags) and falls back to UTILITY for unknown combinations.
@@ -676,21 +694,14 @@ DEFENSE USES
   fails. Spending all uses disables the defense without changing its time window.
 
 DEFENSE COVERAGE PROFILE — BLOCK and PARRY
-  Coverage is checked independently for every HitComponent. Three dimensions must
-  all accept the incoming hit; an empty dimension is unrestricted.
+  Coverage is checked independently for every HitComponent. Both supported
+  dimensions must accept the incoming hit; an empty dimension is unrestricted.
 
-    blockAttackTypes      Exact one-of-three defensive category membership:
-      PHYSICAL                  pure physical
-      PHYSICAL_CURSED_ENERGY    physical plus CE or either technique type
-      CURSED_ENERGY             non-physical raw CE, innate technique,
-                                non-innate technique, or mixed techniques
     blockRanges           Every MELEE/RANGED tag on the hit must be selected. A
                           nonempty range set rejects a hit with no range tag.
     blockElementalTags    Every ICE/ELECTRIC/FIRE/WATER tag on the hit must be
                           selected. A non-elemental hit remains accepted.
-
-  Technique simplification exists only for defensive coverage. It does not change
-  the hit's actual tags, Power category, prerequisites, or Black Flash rules.
+  Damage nature (PHYSICAL, CURSED_ENERGY, or technique) does not affect coverage.
 
 POTENCY GATE — attack vs defence
   Every attack and every BLOCK/PARRY move carries a potency (1–5). A BLOCK or
@@ -940,7 +951,8 @@ FINAL DAMAGE   Damage after all modifiers (block reduction, BF multiplier). What
 
 BLACK FLASH (BF)
   A rare critical hit rolled independently on eligible hit components. A hit must
-  contain PHYSICAL + CURSED_ENERGY and no technique tag (§6).
+  be an actively reinforced eligible PHYSICAL hit with no technique tag (§6).
+  Intrinsic PHYSICAL + CURSED_ENERGY hits do not qualify by themselves.
   BF_DAMAGE_MULTIPLIER = ×2.5, applied to raw damage.
 
 BLACK FLASH CHANCE

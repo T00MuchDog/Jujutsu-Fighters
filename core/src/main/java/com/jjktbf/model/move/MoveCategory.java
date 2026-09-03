@@ -58,7 +58,7 @@ public enum MoveCategory {
     /** Physical + CursedEnergy. 2:1 CE:Physical. */
     PHYSICAL_CURSED_ENERGY(
         EnumSet.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY),
-        true
+        false
     ),
 
     /** Physical + InnateT. 3:1 InnateT:Physical. */

@@ -7,16 +7,20 @@ import com.jjktbf.model.character.CombatStats;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.combat.BattleCombatant;
+import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
+import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.MoveCategory;
+import com.jjktbf.model.move.MoveTag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -102,17 +106,19 @@ class BlackFlashCeOutputBuffTest {
     void landingABlackFlashThroughTheResolverAppliesTheBuffToTheAttacker() {
         Move finisher = new Move.Builder("FINISHER")
             .name("Finisher")
-            .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
-            .basePower(10)
+            .category(MoveCategory.PHYSICAL)
+            .hitComponents(List.of(new HitComponent(10, Set.of(MoveTag.PHYSICAL),
+                0, false, true, HitComponent.INHERIT_MOVE_ACCURACY, List.of(), true, 0)))
+            .canBeReinforced(true)
             .neverMiss(true)
             .apCost(1)
             .unleashPoint(1)
             .build();
         BattleCombatant attacker = combatant("ATTACKER", List.of(finisher));
         BattleCombatant defender = combatant("DEFENDER");
-        Timeline timeline = new Timeline(1);
-        timeline.placeAt(finisher, 1, 0);
-        attacker.setTimeline(timeline);
+        BattlePlan plan = new BattlePlan(1, 0, 1);
+        assertTrue(plan.placeWithTargets(finisher, 1, 0, List.of(), true, 0) != null);
+        attacker.setTimeline(plan.toLegacyTimeline());
         defender.setTimeline(new Timeline(1));
         BattleState state = new BattleState(attacker, defender);
         state.transitionTo(BattleState.Phase.RESOLUTION);

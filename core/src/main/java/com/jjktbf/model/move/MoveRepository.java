@@ -9,8 +9,8 @@ import java.io.IOException;
 /**
  * Persistent repository for move definitions ({@code data/moves/all_moves.json}).
  *
- * ID scheme and behaviour are inherited from {@link BaseRepository}: 6-digit
- * zero-padded sequential ids, resequenced on delete.
+ * IDs are stable 6-digit authored identifiers. Deleting a move leaves a gap,
+ * and new moves are assigned after the highest existing numeric ID.
  *
  * On first run (no file), seeds from the bundled classpath default
  * ({@code data/moves/all_moves.json}).
@@ -32,7 +32,6 @@ public class MoveRepository extends BaseRepository<MoveData> {
             if (move != null) {
                 migrated |= move.migrateLegacyEffects();
                 migrated |= move.migrateLegacyHitTags();
-                migrated |= move.migrateLegacyBlockCoverage();
             }
         }
         if (migrated) save();
@@ -41,6 +40,20 @@ public class MoveRepository extends BaseRepository<MoveData> {
     @Override protected String idOf(MoveData d)            { return d.id; }
     @Override protected void assignId(MoveData d, String id){ d.id = id; }
     @Override protected String entityName()                 { return "move"; }
+
+    /** Move IDs are referenced throughout authored combat data and the network protocol. */
+    @Override protected void resequence() { }
+
+    @Override public String nextId() {
+        int next = getAll().stream()
+            .map(move -> move.id)
+            .filter(id -> id != null && id.matches("\\d{6}"))
+            .mapToInt(Integer::parseInt)
+            .max()
+            .orElse(-1) + 1;
+        return formatId(next);
+    }
+
     @Override protected TypeReference<List<MoveData>> typeReference() {
         return new TypeReference<>() {};
     }

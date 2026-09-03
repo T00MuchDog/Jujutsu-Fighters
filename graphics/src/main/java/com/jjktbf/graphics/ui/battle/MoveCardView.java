@@ -39,6 +39,7 @@ public class MoveCardView {
     private boolean disabled;
     private boolean hovered;
     private boolean dragging;
+    private boolean reinforced;
     private int displayedApCost;
     private int displayedUnleashPoint;
     private KeywordTextLayout descriptionLayout;
@@ -114,6 +115,8 @@ public class MoveCardView {
     public void setDisabled(boolean value)   { disabled = value; }
     public void setHovered(boolean value)    { hovered = value; }
     public void setDragging(boolean value)   { dragging = value; }
+    public boolean isReinforced()            { return reinforced; }
+    public void setReinforced(boolean value) { reinforced = value; }
     public void setDisplayedTiming(int apCost, int unleashPoint) {
         displayedApCost = apCost;
         displayedUnleashPoint = unleashPoint;
@@ -170,6 +173,13 @@ public class MoveCardView {
         if (isDefensiveRole(move)) return defensiveColorFor(nature);
         if (isUtilityRole(move)) return utilityColorFor(nature);
         return typeColorFor(nature);
+    }
+
+    public static Color typeColorFor(Move move, boolean reinforced) {
+        if (!reinforced) return typeColorFor(move);
+        return isDefensiveRole(move)
+            ? defensiveColorFor(MoveCategory.PHYSICAL_CURSED_ENERGY)
+            : typeColorFor(MoveCategory.PHYSICAL_CURSED_ENERGY);
     }
 
     private static Color defensiveColorFor(MoveCategory nature) {
@@ -233,7 +243,12 @@ public class MoveCardView {
 
     /** Returns the card's move-nature tag, excluding ATTACK, DEFENSIVE, and UTILITY. */
     public static String typeNameFor(Move move) {
+        return typeNameFor(move, false);
+    }
+
+    public static String typeNameFor(Move move, boolean reinforced) {
         if (move == null) return "UNKNOWN";
+        if (reinforced) return "REINFORCED";
         boolean physical = hasNatureTag(move, MoveTag.PHYSICAL);
         boolean innate = hasNatureTag(move, MoveTag.INNATE_TECHNIQUE);
         boolean nonInnate = hasNatureTag(move, MoveTag.NON_INNATE_TECHNIQUE);
@@ -247,7 +262,7 @@ public class MoveCardView {
         if (physical && nonInnate) return "PHYSICAL + NON-INNATE TECHNIQUE";
         if (innate && nonInnate) return "INNATE + NON-INNATE TECHNIQUE";
         if (nonInnate) return "NON-INNATE TECHNIQUE";
-        if (physical && cursedEnergy) return "REINFORCEMENT";
+        if (physical && cursedEnergy) return "PHYSICAL + CURSED ENERGY";
         if (physical) return "PHYSICAL";
         if (cursedEnergy) return "CURSED ENERGY";
         return "UNKNOWN";
@@ -297,7 +312,7 @@ public class MoveCardView {
             ui.card.draw(batch, x, y, w, h);
         }
 
-        Color type = typeColorFor(move);
+        Color type = typeColorFor(move, reinforced);
         if (disabled) type = new Color(type).lerp(Color.GRAY, 0.65f);
         batch.setColor(type);
         batch.draw(ui.pixel, x + scaled(10f), y + h / 2f,
@@ -309,12 +324,13 @@ public class MoveCardView {
         float textW = w - scaled(40f);
         float roleIconSize = scaled(ROLE_ICON_SIZE);
         font.setColor(ink);
-        drawFitted(batch, font, move.getName(), textX, y + h - scaled(24f),
+        drawFitted(batch, font, reinforced ? move.getName() + " +" : move.getName(),
+            textX, y + h - scaled(24f),
             textW - roleIconSize - scaled(4f), 1, minimumTextScale, strictTextFloor);
         drawRoleIcon(batch, ui, x + w - roleIconSize - scaled(10f),
             y + h - roleIconSize - scaled(18f), disabled);
         font.setColor(disabled ? BattleUiAssets.MUTED : type);
-        drawFitted(batch, font, typeNameFor(move), textX, y + h - scaled(48f),
+        drawFitted(batch, font, typeNameFor(move, reinforced), textX, y + h - scaled(48f),
             textW, 1, minimumTextScale, strictTextFloor);
 
         font.setColor(ink);
@@ -336,9 +352,9 @@ public class MoveCardView {
         statFont.setColor(ink);
         drawStatColumn(batch, statFont, textX, y + scaled(55f) + extraActionBarHeight,
             y + scaled(35f) + extraActionBarHeight,
-            accuracyLabel(move), powerLabel(move), geometryScale,
+            accuracyLabel(move), powerLabel(move, reinforced), geometryScale,
             minimumTextScale, strictTextFloor);
-        if (move.hasCeCost()) {
+        if (move.hasCeCost() || reinforced) {
             drawCeCostBar(batch, statFont, ui, x + w - scaled(48f),
                 y + scaled(24f) + extraActionBarHeight, actualCeCost,
                 geometryScale, minimumTextScale, strictTextFloor);
@@ -357,10 +373,30 @@ public class MoveCardView {
     }
 
     static String powerLabel(Move move) {
+        return powerLabel(move, false);
+    }
+
+    static String powerLabel(Move move, boolean reinforced) {
         if (move == null) return null;
+        if (reinforced && move.isBlock()) {
+            return switch (move.getReinforcementDefenseType()) {
+                case PERCENTAGE_BLOCK -> "BLOCK +" + move.getReinforcementDefenseValue() + "%";
+                case FLAT_BLOCK -> "BLOCK +" + move.getReinforcementDefenseValue();
+                default -> null;
+            };
+        }
+        if (reinforced && move.isParry()
+            && move.getReinforcementDefenseType()
+                == com.jjktbf.model.move.ReinforcementDefenseType.STAGGER_LENGTH) {
+            return "STAGGER +" + move.getReinforcementDefenseValue();
+        }
         int hitCount = move.getHitComponents().size();
         if (move.getBasePower() <= 0 && hitCount <= 1) return null;
-        return "PWR " + move.getBasePower()
+        int power = reinforced ? move.getHitComponents().stream()
+            .mapToInt(hit -> hit.getBasePower()
+                + (hit.isReinforcementEligible() ? hit.getReinforcementBonusPower() : 0))
+            .sum() : move.getBasePower();
+        return "PWR " + power
             + (hitCount > 1 ? " | " + hitCount + " HITS" : "");
     }
 

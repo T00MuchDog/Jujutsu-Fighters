@@ -49,7 +49,7 @@ class CursedSpeechAIStrategyTest {
     @Test
     void capsCursedSpeechMovesAtThree() {
         BattleCombatant cs = cs(move("000069"), move("000070"), move("000071"),
-            move("000072"), move("000073"), move("000000"), AIFixtures.dodge("dg", "BOTH"));
+            move("000072"), move("000075"), move("000000"), AIFixtures.dodge("dg", "BOTH"));
         BattleState state = state(cs, AIFixtures.lowCeSorcererEnemy("e"));
         for (long seed = 1; seed <= 10; seed++) {
             BattlePlan plan = strategy.buildPlan(state, cs, new SeededRandomSource(seed));

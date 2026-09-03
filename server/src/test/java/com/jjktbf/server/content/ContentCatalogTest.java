@@ -7,7 +7,6 @@ import com.jjktbf.model.combat.AbilityTrigger;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatEvent;
-import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.DefenseType;
@@ -134,34 +133,4 @@ class ContentCatalogTest {
             event.getType() == CombatEvent.Type.CHARACTER_REVERTED));
     }
 
-    @Test
-    void myBestFriendBuffsOnlyPairedYujiBearers() {
-        ContentCatalog catalog = ContentCatalog.load();
-        BattleCombatant firstYuji = new BattleCombatant(
-            catalog.findCharacter("000000").orElseThrow());
-        BattleCombatant secondYuji = new BattleCombatant(
-            catalog.findCharacter("000009").orElseThrow());
-        BattleCombatant enemy = new BattleCombatant(
-            catalog.findCharacter("000010").orElseThrow());
-        BattleState paired = new BattleState(
-            BattleState.teamOfFighters(com.jjktbf.model.combat.BattleTeamId.PLAYER,
-                List.of(firstYuji, secondYuji)),
-            BattleState.teamOfFighters(com.jjktbf.model.combat.BattleTeamId.ENEMY,
-                List.of(enemy)));
-        int firstYujiBase = firstYuji.getEffectiveStats().getCombatAbility();
-        int secondYujiBase = secondYuji.getEffectiveStats().getCombatAbility();
-
-        new CombatResolver(new SeededRandomSource(1L)).processRoundStart(paired);
-
-        assertTrue(firstYuji.getEffectiveStats().getCombatAbility() > firstYujiBase);
-        assertTrue(secondYuji.getEffectiveStats().getCombatAbility() > secondYujiBase);
-
-        BattleCombatant soloYuji = new BattleCombatant(
-            catalog.findCharacter("000000").orElseThrow());
-        BattleState solo = new BattleState(soloYuji, new BattleCombatant(
-            catalog.findCharacter("000010").orElseThrow()));
-        int soloBase = soloYuji.getEffectiveStats().getCombatAbility();
-        new CombatResolver(new SeededRandomSource(1L)).processRoundStart(solo);
-        assertEquals(soloBase, soloYuji.getEffectiveStats().getCombatAbility());
-    }
 }

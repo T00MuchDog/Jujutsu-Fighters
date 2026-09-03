@@ -45,7 +45,6 @@ import com.jjktbf.model.character.coded.RatioAbility;
 import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.AoeType;
 import com.jjktbf.model.move.AttackLaunchMode;
-import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.BlockStyle;
 import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseTargeting;
@@ -60,6 +59,7 @@ import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.MoveType;
+import com.jjktbf.model.move.ReinforcementDefenseType;
 import com.jjktbf.model.move.StatusEffectType;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.technique.InnateTechniqueData;
@@ -171,13 +171,17 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         m.hasCeCost = false;
         m.minCeCost = 0;
         m.maxCeCost = 0;
+        m.canBeReinforced = false;
+        m.reinforcementBaseCeCost = 0;
+        m.reinforcementMinCeCost = 0;
+        m.reinforcementMaxCeCost = 0;
+        m.reinforcementDefenseType = ReinforcementDefenseType.NONE.name();
+        m.reinforcementDefenseValue = 0;
         m.defenseType = DefenseType.NONE.name();
         m.blockStyle = BlockStyle.PERCENTAGE.name();
         m.blockDuration = 0;
-        m.blockAttackTypes = null;
         m.blockRanges = null;
         m.blockElementalTags = null;
-        m.blockAffectedTags = null;
         m.blockDamageReduction = 100;
         m.blockFlatReduction = 0;
         m.dodgeChance = 0;
@@ -207,7 +211,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         MoveData draft = deepCopy(stored);
         draft.migrateLegacyEffects();
         draft.migrateLegacyHitTags();
-        draft.migrateLegacyBlockCoverage();
         draft.migrateLegacyNeverMissTier();
         return draft;
     }
@@ -235,17 +238,19 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.hasCeCost             = s.hasCeCost != null ? s.hasCeCost : s.baseCeCost > 0;
         d.minCeCost             = s.minCeCost;
         d.maxCeCost             = s.maxCeCost;
+        d.canBeReinforced       = s.canBeReinforced;
+        d.reinforcementBaseCeCost = s.reinforcementBaseCeCost;
+        d.reinforcementMinCeCost = s.reinforcementMinCeCost;
+        d.reinforcementMaxCeCost = s.reinforcementMaxCeCost;
+        d.reinforcementDefenseType = s.reinforcementDefenseType;
+        d.reinforcementDefenseValue = s.reinforcementDefenseValue;
         d.defenseType           = s.defenseType;
         d.blockStyle            = s.blockStyle;
         d.blockDuration         = s.blockDuration;
-        d.blockAttackTypes      = s.blockAttackTypes != null
-                                  ? new ArrayList<>(s.blockAttackTypes) : null;
         d.blockRanges           = s.blockRanges != null
                                   ? new ArrayList<>(s.blockRanges) : null;
         d.blockElementalTags    = s.blockElementalTags != null
                                   ? new ArrayList<>(s.blockElementalTags) : null;
-        d.blockAffectedTags     = s.blockAffectedTags != null
-                                  ? new ArrayList<>(s.blockAffectedTags) : null;
         d.blockDamageReduction  = s.blockDamageReduction;
         d.blockFlatReduction    = s.blockFlatReduction;
         d.dodgeChance           = s.dodgeChance;
@@ -315,6 +320,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         copy.avoidable = source.avoidable;
         copy.baseAccuracy = source.baseAccuracy;
         copy.onHitEffects = copyEffectListOrNull(source.onHitEffects);
+        copy.reinforcementEligible = source.reinforcementEligible;
+        copy.reinforcementBonusPower = source.reinforcementBonusPower;
         return copy;
     }
 
@@ -791,11 +798,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             }
 
             Map<String, String> remappedIds = new LinkedHashMap<>();
-            int nextIndex = 0;
             for (MoveData move : repo.getAll()) {
                 if (id.equals(move.id)) continue;
-                remappedIds.put(move.id,
-                    com.jjktbf.model.repo.BaseRepository.formatId(nextIndex++));
+                remappedIds.put(move.id, move.id);
             }
 
             for (CharacterData character : characterRepo.getAll()) {
@@ -1065,6 +1070,17 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             }
         });
         cost.add(hasCeCostCb).left().row();
+
+        CheckBox canBeReinforcedCb = new CheckBox(" Can Be Reinforced", skin);
+        canBeReinforcedCb.setChecked(d.canBeReinforced);
+        canBeReinforcedCb.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                game.audio().play(SoundCue.UI_TOGGLE);
+                d.canBeReinforced = canBeReinforcedCb.isChecked();
+                refreshConditionalFields(d);
+            }
+        });
+        cost.add(canBeReinforcedCb).left().row();
 
         // CE amount and min/max (shown only when the move has a CE cost).
         ceMinMaxContainer = new Container<>();
@@ -1627,6 +1643,27 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     synchronizeCombinedBasePower(d);
                     combinedPower.setText(String.valueOf(d.basePower));
                 })).growX().row();
+
+            if (d.canBeReinforced) {
+                CheckBox reinforcementEligible = new CheckBox(
+                    " Eligible for reinforcement", skin);
+                reinforcementEligible.setChecked(component.reinforcementEligible);
+                reinforcementEligible.addListener(new ChangeListener() {
+                    @Override public void changed(ChangeEvent event, Actor actor) {
+                        game.audio().play(SoundCue.UI_TOGGLE);
+                        component.reinforcementEligible = reinforcementEligible.isChecked();
+                        markDirty();
+                    }
+                });
+                card.add(reinforcementEligible).left().row();
+                if (component.reinforcementEligible) {
+                    card.add(labelledIntField("Reinforcement Bonus Power",
+                        component.reinforcementBonusPower, 0, 99999,
+                        value -> component.reinforcementBonusPower = value))
+                        .growX().row();
+                }
+            }
+
             card.add(new Label("Attack Tags", skin)).padTop(3f).row();
             card.add(buildHitComponentTagToggles(d, component)).growX().row();
 
@@ -2012,14 +2049,31 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         t.defaults().left().pad(4);
         if (!Boolean.TRUE.equals(d.hasCeCost)) {
             t.add(formHint("(this move has no CE cost)")).row();
-            return t;
+        } else {
+            t.add(labelledIntField("Base CE Cost", d.baseCeCost, 0, 99999,
+                    v -> { d.baseCeCost = v; })).growX().row();
+            t.add(labelledIntField("Min CE Cost", d.minCeCost, 0, d.baseCeCost,
+                    v -> { d.minCeCost = v; })).growX().row();
+            t.add(labelledIntField("Max CE Cost", d.maxCeCost, d.baseCeCost, 99999,
+                    v -> { d.maxCeCost = v; })).growX().row();
         }
-        t.add(labelledIntField("Base CE Cost", d.baseCeCost, 0, 99999,
-                v -> { d.baseCeCost = v; })).growX().row();
-        t.add(labelledIntField("Min CE Cost", d.minCeCost, 0, d.baseCeCost,
-                v -> { d.minCeCost = v; })).growX().row();
-        t.add(labelledIntField("Max CE Cost", d.maxCeCost, d.baseCeCost, 99999,
-                v -> { d.maxCeCost = v; })).growX().row();
+
+        // Reinforcement has its own CE range and is independent of the move's
+        // intrinsic CE cost. Keep these fields hidden until the move-level
+        // toggle is enabled, without clearing authored values when hidden.
+        if (d.canBeReinforced) {
+            t.add(new Label("REINFORCEMENT CE COST", skin, "small"))
+                .padTop(8f).left().row();
+            t.add(labelledIntField("Base Reinforcement CE Cost",
+                d.reinforcementBaseCeCost, 0, 99999,
+                v -> { d.reinforcementBaseCeCost = v; })).growX().row();
+            t.add(labelledIntField("Min Reinforcement CE Cost",
+                d.reinforcementMinCeCost, 0, d.reinforcementBaseCeCost,
+                v -> { d.reinforcementMinCeCost = v; })).growX().row();
+            t.add(labelledIntField("Max Reinforcement CE Cost",
+                d.reinforcementMaxCeCost, d.reinforcementBaseCeCost, 99999,
+                v -> { d.reinforcementMaxCeCost = v; })).growX().row();
+        }
         return t;
     }
 
@@ -2097,6 +2151,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
         addBlockCoverageFields(t, d);
 
+        addReinforcementDefenseFields(t, d, List.of(
+            ReinforcementDefenseType.FLAT_BLOCK,
+            ReinforcementDefenseType.PERCENTAGE_BLOCK));
+
         t.add(new Label("CONDITIONAL BLOCK EFFECTIVENESS", skin, "small"))
             .padTop(8f).row();
         t.add(buildMoveEffectsEditor(
@@ -2128,6 +2186,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 v -> { d.potency = v; })).growX().row();
 
         addBlockCoverageFields(t, d);
+
+        addReinforcementDefenseFields(t, d, List.of(
+            ReinforcementDefenseType.STAGGER_LENGTH));
 
         // Stagger ticks applied to the attacker on a successful non-GUARD_BREAK parry.
         t.add(labelledIntField("Stagger Ticks on Attacker (0 = none)",
@@ -2208,12 +2269,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
     }
 
     private void addBlockCoverageFields(Table table, MoveData move) {
-        table.add(new Label("Attack Types (blank = all)", skin)).padTop(4).row();
-        table.add(buildBlockCoverageToggles(
-            move.blockAttackTypes,
-            java.util.Arrays.stream(BlockAttackType.values()).map(BlockAttackType::name).toList(),
-            value -> move.blockAttackTypes = value)).growX().row();
-
         table.add(new Label("Ranges (blank = all)", skin)).padTop(4).row();
         table.add(buildBlockCoverageToggles(
             move.blockRanges,
@@ -2228,6 +2283,57 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             value -> move.blockElementalTags = value)).growX().row();
     }
 
+    /**
+     * Add the reinforcement improvement that is meaningful for the selected
+     * BLOCK or PARRY defense. The move-level toggle owns whether these controls
+     * are shown; hidden values remain on the draft for round-trip safety.
+     */
+    private void addReinforcementDefenseFields(
+        Table table,
+        MoveData move,
+        List<ReinforcementDefenseType> allowed
+    ) {
+        if (!move.canBeReinforced) return;
+
+        ReinforcementDefenseType current = ReinforcementDefenseType.fromName(
+            move.reinforcementDefenseType);
+        if (!allowed.contains(current)) {
+            current = allowed.get(0);
+            move.reinforcementDefenseType = current.name();
+        }
+
+        SelectBox<String> typeSelect = new DynamicSelectBox<>(skin, uiProfile);
+        typeSelect.setItems(allowed.stream().map(ReinforcementDefenseType::name)
+            .toArray(String[]::new));
+        typeSelect.setSelected(current.name());
+        typeSelect.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                move.reinforcementDefenseType = typeSelect.getSelected();
+                game.audio().play(SoundCue.UI_NAVIGATE);
+                refreshConditionalFields(move);
+            }
+        });
+        table.add(new Label("REINFORCEMENT DEFENSE", skin, "small"))
+            .padTop(8f).left().row();
+        table.add(labelledRow("Improvement", typeSelect)).growX().row();
+
+        switch (current) {
+            case FLAT_BLOCK -> table.add(labelledIntField(
+                "Reinforcement Flat Block", move.reinforcementDefenseValue,
+                0, 99999, value -> move.reinforcementDefenseValue = value))
+                .growX().row();
+            case PERCENTAGE_BLOCK -> table.add(labelledIntField(
+                "Reinforcement Block Reduction %", move.reinforcementDefenseValue,
+                0, 100, value -> move.reinforcementDefenseValue = value))
+                .growX().row();
+            case STAGGER_LENGTH -> table.add(labelledIntField(
+                "Reinforcement Stagger Ticks", move.reinforcementDefenseValue,
+                0, 99999, value -> move.reinforcementDefenseValue = value))
+                .growX().row();
+            default -> { }
+        }
+    }
+
     private Actor buildBlockCoverageToggles(
         List<String> current,
         List<String> options,
@@ -2240,9 +2346,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
         int col = 0;
         for (String option : options) {
-            String label = BlockAttackType.PHYSICAL_CURSED_ENERGY.name().equals(option)
-                ? BlockAttackType.PHYSICAL_CURSED_ENERGY.displayName() : pretty(option);
-            CheckBox cb = new CheckBox(label, skin);
+            CheckBox cb = new CheckBox(pretty(option), skin);
             cb.setChecked(selected.contains(option));
             cb.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
@@ -3481,7 +3585,6 @@ static void applyRequiredTechnique(MoveData d, String text) {
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         copy.moveType = null;
         copy.shikigamiMove = null;
-        copy.migrateLegacyBlockCoverage();
         copy.migrateLegacyHitTags();
         if (copy.hitComponents != null && hasTag(copy, MoveTag.ATTACK)) {
             synchronizeParentDamageTags(copy);
@@ -3529,10 +3632,8 @@ static void applyRequiredTechnique(MoveData d, String text) {
             d.defenseType = DefenseType.NONE.name();
             d.blockStyle = BlockStyle.PERCENTAGE.name();
             d.blockDuration = 0;
-            d.blockAttackTypes = null;
             d.blockRanges = null;
             d.blockElementalTags = null;
-            d.blockAffectedTags = null;
             d.blockDamageReduction = 100;
             d.blockFlatReduction = 0;
             d.dodgeChance = 0;

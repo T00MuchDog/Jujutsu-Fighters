@@ -103,6 +103,20 @@ public class Timeline {
         int apCost,
         int unleashPoint
     ) {
+        return placeAtWithTargets(move, startTick, actualCeCost, targets, apCost,
+            unleashPoint, false, 0);
+    }
+
+    ActionSegment placeAtWithTargets(
+        Move move,
+        int startTick,
+        int actualCeCost,
+        List<CombatantId> targets,
+        int apCost,
+        int unleashPoint,
+        boolean reinforced,
+        int reinforcementCeCost
+    ) {
         long endTickLong = (long) startTick + apCost - 1L;
         long fireTick = (long) startTick + unleashPoint - 1L;
         long finalImpactTick = fireTick + move.getMaxHitDelayTicks();
@@ -110,7 +124,8 @@ public class Timeline {
         int endTick = (int) endTickLong;
         if (!isRangeFree(startTick, endTick)) return null;
         ActionSegment segment = new ActionSegment(
-            move, startTick, actualCeCost, targets, true, apCost, unleashPoint);
+            move, startTick, actualCeCost, targets, true, apCost, unleashPoint,
+            reinforced, reinforcementCeCost);
         segments.add(segment);
         return segment;
     }

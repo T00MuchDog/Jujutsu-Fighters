@@ -26,15 +26,15 @@ class OpponentIntelTest {
     }
 
     @Test
-    void notPhysicalOnlyWhenACursedEnergyAttackExists() {
+    void authoredReinforcementRemainsPhysicalOnlyUntilExecuted() {
         BattleCombatant opp = AIFixtures.sorcerer("opp",
             AIFixtures.meleeAttack("punch", 20, 10),
             AIFixtures.ceAttack("ceFist", 30, 10));
 
         OpponentIntel intel = OpponentIntel.forOpponent(opp);
 
-        assertFalse(intel.physicalOnly);
-        assertTrue(intel.hasCursedEnergy);
+        assertTrue(intel.physicalOnly);
+        assertFalse(intel.hasCursedEnergy);
     }
 
     @Test
@@ -49,25 +49,6 @@ class OpponentIntelTest {
 
         assertFalse(intel.physicalOnly);
         assertTrue(intel.hasCursedEnergy);
-    }
-
-    @Test
-    void blocksPhysicalOnlyWhenNoBlockCoversCursedEnergy() {
-        BattleCombatant physicalBlocker = AIFixtures.sorcerer("opp",
-            AIFixtures.block("phyBlock", List.of("PHYSICAL")),
-            AIFixtures.meleeAttack("punch", 20, 10));
-        assertTrue(OpponentIntel.forOpponent(physicalBlocker).blocksPhysicalOnly,
-            "a [PHYSICAL]-only block can't stop CE");
-
-        BattleCombatant ceBlocker = AIFixtures.sorcerer("opp",
-            AIFixtures.block("ceBlock", List.of("PHYSICAL", "CURSED_ENERGY")),
-            AIFixtures.meleeAttack("punch", 20, 10));
-        assertFalse(OpponentIntel.forOpponent(ceBlocker).blocksPhysicalOnly);
-
-        BattleCombatant blanketBlocker = AIFixtures.sorcerer("opp",
-            AIFixtures.block("blanket", List.of()), // empty = covers everything
-            AIFixtures.meleeAttack("punch", 20, 10));
-        assertFalse(OpponentIntel.forOpponent(blanketBlocker).blocksPhysicalOnly);
     }
 
     @Test

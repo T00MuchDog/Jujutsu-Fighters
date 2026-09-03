@@ -27,6 +27,7 @@ import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.AbilityResolver;
 import com.jjktbf.model.character.CharacterData;
+import com.jjktbf.model.character.ReinforcementAbility;
 import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.character.CharacterRepository;
 import com.jjktbf.model.character.CharacterType;
@@ -261,10 +262,11 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
         String sourceError = validateSource(ability);
         if (sourceError != null) return sourceError;
 
-        if (ability.effects == null || ability.effects.isEmpty()) {
+        if ((ability.effects == null || ability.effects.isEmpty())
+            && !ReinforcementAbility.is(ability)) {
             return "An ability needs at least one effect.";
         }
-        for (int i = 0; i < ability.effects.size(); i++) {
+        for (int i = 0; i < (ability.effects == null ? 0 : ability.effects.size()); i++) {
             AbilityEffectData effect = ability.effects.get(i);
             AbilityEffectType type;
             try {

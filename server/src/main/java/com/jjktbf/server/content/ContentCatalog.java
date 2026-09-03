@@ -14,6 +14,7 @@ import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.CharacterData;
 import com.jjktbf.model.character.CharacterType;
 import com.jjktbf.model.character.Equipment;
+import com.jjktbf.model.character.ReinforcementAbility;
 import com.jjktbf.model.character.StatKey;
 import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.combat.BattleCharacterLookup;
@@ -363,8 +364,9 @@ public final class ContentCatalog implements BattleCharacterLookup, DomainDefini
                     + " references an unknown cursed tool");
             }
             definition.migrateActivationData();
-            String effectIdError = AbilityConditionRuleData.effectIdValidationError(
-                definition.effects);
+            String effectIdError = ReinforcementAbility.is(definition)
+                ? null
+                : AbilityConditionRuleData.effectIdValidationError(definition.effects);
             if (effectIdError != null) {
                 throw invalid(ABILITIES_RESOURCE,
                     "invalid effects on ability " + definition.id + ": " + effectIdError);

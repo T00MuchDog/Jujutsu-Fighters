@@ -40,7 +40,8 @@ public record MoveState(
     String targeting,
     String attackLaunchMode,
     String attackLaunchMoveId,
-    List<BoundedResourceTransactionState> boundedResourceTransactions
+    List<BoundedResourceTransactionState> boundedResourceTransactions,
+    ReinforcementMoveState reinforcement
 ) {
     public MoveState {
         tags = tags == null ? List.of() : List.copyOf(tags);
@@ -95,7 +96,7 @@ public record MoveState(
             effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
             summonCharacterId, summonedCharacterIds, aoeType, aoeTargetCount, commandMode,
             requiredTechniqueId, defenseTargeting, defenseTargetCount, targeting,
-            attackLaunchMode, attackLaunchMoveId, List.of());
+            attackLaunchMode, attackLaunchMoveId, List.of(), null);
     }
 
     /** Source-compatible constructor for callers predating hybrid launch metadata. */
@@ -135,7 +136,7 @@ public record MoveState(
             effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
             summonCharacterId, summonedCharacterIds, aoeType, aoeTargetCount, commandMode,
             requiredTechniqueId, defenseTargeting, defenseTargetCount, targeting,
-            null, null);
+            null, null, List.of(), null);
     }
 
     /** Source-compatible constructor for callers predating pair targeting. */
@@ -171,7 +172,7 @@ public record MoveState(
             baseAccuracy, neverMiss, apCost, unleashPoint, hasCeCost, baseCeCost,
             effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
             summonCharacterId, summonedCharacterIds, aoeType, aoeTargetCount, commandMode,
-            requiredTechniqueId, "SELF", 2, "DEFAULT");
+            requiredTechniqueId, "SELF", 2, "DEFAULT", null, null, List.of(), null);
     }
 
     /** Source-compatible constructor for protocol-v12 callers. */
@@ -206,7 +207,7 @@ public record MoveState(
             baseAccuracy, neverMiss, apCost, unleashPoint, hasCeCost, baseCeCost,
             effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
             summonCharacterId, summonedCharacterIds, aoeType, aoeTargetCount, commandMode,
-            null, "SELF", 2, "DEFAULT");
+            null, "SELF", 2, "DEFAULT", null, null, List.of(), null);
     }
 
     /** Source-compatible constructor for early protocol-v12 callers. */
@@ -240,7 +241,7 @@ public record MoveState(
             baseAccuracy, neverMiss, apCost, unleashPoint, hasCeCost, baseCeCost,
             effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
             summonCharacterId, summonedCharacterIds, aoeType, aoeTargetCount, null, null,
-            "SELF", 2, "DEFAULT");
+            "SELF", 2, "DEFAULT", null, null, List.of(), null);
     }
 
     /** Source-compatible constructor for protocol-v11 callers with summon metadata. */
@@ -272,7 +273,7 @@ public record MoveState(
             baseAccuracy, neverMiss, apCost, unleashPoint, hasCeCost, baseCeCost,
             effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
             summonCharacterId, summonedCharacterIds, null, 0, null, null,
-            "SELF", 2, "DEFAULT");
+            "SELF", 2, "DEFAULT", null, null, List.of(), null);
     }
 
     /** Source-compatible constructor for protocol-v9 callers. */
@@ -301,7 +302,8 @@ public record MoveState(
         this(moveId, name, description, category, tags, board, basePower, hitComponents,
             baseAccuracy, neverMiss, apCost, unleashPoint, hasCeCost, baseCeCost,
             effectiveCeCost, minCeCost, maxCeCost, moveCap, available, restrictionReason,
-            null, List.of(), null, 0, null, null, "SELF", 2, "DEFAULT");
+            null, List.of(), null, 0, null, null, "SELF", 2, "DEFAULT", null,
+            null, List.of(), null);
     }
 
     /** Source-compatible constructor for protocol-v7 callers with hit components. */
@@ -329,7 +331,8 @@ public record MoveState(
         this(moveId, name, description, category, tags, board, basePower, hitComponents,
             baseAccuracy, neverMiss, apCost, unleashPoint, hasCeCost, baseCeCost,
             effectiveCeCost, minCeCost, maxCeCost, 0, available, restrictionReason,
-            null, List.of(), null, 0, null, null, "SELF", 2, "DEFAULT");
+            null, List.of(), null, 0, null, null, "SELF", 2, "DEFAULT", null,
+            null, List.of(), null);
     }
 
     /** Source-compatible constructor for protocol-v6 callers. */

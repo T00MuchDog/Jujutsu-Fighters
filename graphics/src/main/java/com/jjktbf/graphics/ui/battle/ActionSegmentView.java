@@ -49,7 +49,7 @@ public class ActionSegmentView {
     public void setWidth(float w)             { bounds.width = w; }
 
     public Color typeColor() {
-        return MoveCardView.typeColorFor(move);
+        return MoveCardView.typeColorFor(move, segment != null && segment.isReinforced());
     }
 
     public void draw(Batch batch, BitmapFont font, BattleUiAssets ui) {
@@ -75,7 +75,10 @@ public class ActionSegmentView {
         float labelW = Math.max(1f, w - (labelX - x) - 4f
             - (targetWarning ? warningSize + 3f : 0f));
         font.setColor(BattleUiAssets.TEXT);
-        drawMoveName(batch, font, move.getName(), labelX, y, labelW, h);
+        drawMoveName(batch, font,
+            segment != null && segment.isReinforced()
+                ? "REINFORCED " + move.getName() : move.getName(),
+            labelX, y, labelW, h);
         drawTargetWarning(batch, font, ui, x, y, w, h, warningSize);
     }
 

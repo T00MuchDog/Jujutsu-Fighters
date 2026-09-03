@@ -119,7 +119,7 @@ public final class RatioAbility implements CodedAbilityRuntime {
         // move-level self effects (cast-time Ratio) still apply move-wide.
         StatusEffect directEffect;
         if (move.usesUnifiedEffects()) {
-            int componentIndex = move.getHitComponents().indexOf(component);
+            int componentIndex = move.getHitComponents().indexOf(component.getAuthoredComponent());
             MoveEffectData directRow = ratioMoveEffect(
                 move.effectsFor(MoveEffectTrigger.ON_HIT, componentIndex), moveEffectActive);
             directEffect = directRow == null ? null : directRow.toCodedStatusEffect();
@@ -139,7 +139,8 @@ public final class RatioAbility implements CodedAbilityRuntime {
         boolean stackRatio = consumedStack
             && rng.nextDouble() < consumed.triggerChancePercent / 100.0;
 
-        boolean reinforcementRatio = featureActive.test(REINFORCEMENT_RATIO);
+        boolean reinforcementRatio = component.isActivelyReinforced()
+            && featureActive.test(REINFORCEMENT_RATIO);
 
         boolean ratioApplied = directRatio || stackRatio || reinforcementRatio;
         if (!ratioApplied && !consumedStack) return CodedHitModifiers.none();

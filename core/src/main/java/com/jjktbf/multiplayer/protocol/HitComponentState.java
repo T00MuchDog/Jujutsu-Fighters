@@ -10,9 +10,19 @@ public record HitComponentState(
     int delayTicks,
     boolean requiresPreviousConnection,
     boolean avoidable,
-    double baseAccuracy
+    double baseAccuracy,
+    boolean reinforcementEligible,
+    int reinforcementBonusPower
 ) {
     public HitComponentState {
         tags = tags == null ? List.of() : List.copyOf(tags);
+    }
+
+    public HitComponentState(
+        int basePower, String category, List<String> tags, int delayTicks,
+        boolean requiresPreviousConnection, boolean avoidable, double baseAccuracy
+    ) {
+        this(basePower, category, tags, delayTicks, requiresPreviousConnection,
+            avoidable, baseAccuracy, false, 0);
     }
 }

@@ -25,6 +25,10 @@ public final class HitComponent {
     private final boolean avoidable;
     private final double baseAccuracy;
     private final List<StatusEffect> onHitEffects;
+    private final boolean reinforcementEligible;
+    private final int reinforcementBonusPower;
+    private final boolean activelyReinforced;
+    private final HitComponent authoredComponent;
 
     public HitComponent(
         int basePower,
@@ -34,7 +38,7 @@ public final class HitComponent {
         boolean avoidable
     ) {
         this(basePower, tags, delayTicks, requiresPreviousConnection, avoidable,
-            INHERIT_MOVE_ACCURACY, null);
+            INHERIT_MOVE_ACCURACY, null, false, 0);
     }
 
     public HitComponent(
@@ -46,7 +50,43 @@ public final class HitComponent {
         double baseAccuracy,
         List<StatusEffect> onHitEffects
     ) {
+        this(basePower, tags, delayTicks, requiresPreviousConnection, avoidable,
+            baseAccuracy, onHitEffects, false, 0);
+    }
+
+    public HitComponent(
+        int basePower,
+        Set<MoveTag> tags,
+        int delayTicks,
+        boolean requiresPreviousConnection,
+        boolean avoidable,
+        double baseAccuracy,
+        List<StatusEffect> onHitEffects,
+        boolean reinforcementEligible,
+        int reinforcementBonusPower
+    ) {
+        this(basePower, tags, delayTicks, requiresPreviousConnection, avoidable,
+            baseAccuracy, onHitEffects, reinforcementEligible, reinforcementBonusPower,
+            false, null);
+    }
+
+    private HitComponent(
+        int basePower,
+        Set<MoveTag> tags,
+        int delayTicks,
+        boolean requiresPreviousConnection,
+        boolean avoidable,
+        double baseAccuracy,
+        List<StatusEffect> onHitEffects,
+        boolean reinforcementEligible,
+        int reinforcementBonusPower,
+        boolean activelyReinforced,
+        HitComponent authoredComponent
+    ) {
         if (basePower < 0) throw new IllegalArgumentException("component basePower must be nonnegative");
+        if (reinforcementBonusPower < 0) {
+            throw new IllegalArgumentException("reinforcement bonus power must be nonnegative");
+        }
         if (delayTicks < 0) throw new IllegalArgumentException("component delayTicks must be nonnegative");
         if (tags == null || tags.isEmpty()) {
             throw new IllegalArgumentException("component attack tags are required");
@@ -79,6 +119,10 @@ public final class HitComponent {
         this.onHitEffects = onHitEffects == null
             ? List.of()
             : Collections.unmodifiableList(new ArrayList<>(onHitEffects));
+        this.reinforcementEligible = reinforcementEligible;
+        this.reinforcementBonusPower = reinforcementBonusPower;
+        this.activelyReinforced = activelyReinforced;
+        this.authoredComponent = authoredComponent;
     }
 
     public HitComponent(
@@ -102,7 +146,11 @@ public final class HitComponent {
     public int getDelayTicks() { return delayTicks; }
     public boolean requiresPreviousConnection() { return requiresPreviousConnection; }
     public boolean isAvoidable() { return avoidable; }
-    public boolean isBlackFlashEligible() { return category.isBlackFlashEligible(); }
+    public boolean isBlackFlashEligible() {
+        return activelyReinforced && tags.contains(MoveTag.PHYSICAL)
+            && !tags.contains(MoveTag.INNATE_TECHNIQUE)
+            && !tags.contains(MoveTag.NON_INNATE_TECHNIQUE);
+    }
     public boolean hasTag(MoveTag tag) { return tag != null && tags.contains(tag); }
     public boolean isMelee() { return hasTag(MoveTag.MELEE); }
     public boolean isRanged() { return hasTag(MoveTag.RANGED); }
@@ -121,6 +169,25 @@ public final class HitComponent {
 
     /** On-hit status effects applied when this specific component connects. */
     public List<StatusEffect> getOnHitEffects() { return onHitEffects; }
+    public boolean isReinforcementEligible() { return reinforcementEligible; }
+    public int getReinforcementBonusPower() { return reinforcementBonusPower; }
+    public boolean isActivelyReinforced() { return activelyReinforced; }
+    public HitComponent getAuthoredComponent() {
+        return authoredComponent == null ? this : authoredComponent;
+    }
+
+    /** Execution-only view; the authored component and source Move remain unchanged. */
+    public HitComponent reinforced() {
+        if (!reinforcementEligible) return this;
+        EnumSet<MoveTag> effectiveTags = EnumSet.copyOf(tags);
+        if (effectiveTags.contains(MoveTag.PHYSICAL)) {
+            effectiveTags.add(MoveTag.CURSED_ENERGY);
+        }
+        return new HitComponent(
+            Math.addExact(basePower, reinforcementBonusPower), effectiveTags, delayTicks,
+            requiresPreviousConnection, avoidable, baseAccuracy, onHitEffects,
+            reinforcementEligible, reinforcementBonusPower, true, getAuthoredComponent());
+    }
 
     private static Set<MoveTag> damageTags(MoveCategory category) {
         if (category == null

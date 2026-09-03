@@ -7,7 +7,6 @@ import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.DamageCalculator;
 import com.jjktbf.model.combat.Timeline;
-import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.BlockStyle;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.Move;
@@ -141,34 +140,6 @@ public class ParryDodgeTest {
 
         DamageCalculator.DamageResult result = resolve(attacker, defender, attack);
         assertTrue(result.isParried(), "Higher-potency parry should negate a lower-potency attack.");
-    }
-
-    @Test
-    void parryAffectedTagsUseBlockCoverageRules() {
-        Move physical = attackWithPotency("PHYSICAL", 1);
-        Move cursedEnergy = new Move.Builder("CE")
-            .name("CE")
-            .category(MoveCategory.CURSED_ENERGY)
-            .basePower(100).neverMiss(true).potency(1)
-            .apCost(10).unleashPoint(1).build();
-        Move nonInnate = new Move.Builder("NON_INNATE")
-            .name("NON_INNATE")
-            .category(MoveCategory.NON_INNATE_TECHNIQUE)
-            .basePower(100).neverMiss(true).potency(1)
-            .prerequisites(java.util.Map.of("jujutsuSkill", 0))
-            .apCost(10).unleashPoint(1).build();
-        Move parry = new Move.Builder("TAGGED_PARRY")
-            .name("Tagged Parry")
-            .category(MoveCategory.DEFENSIVE)
-            .defenseType(DefenseType.PARRY)
-            .blockAffectedTags(List.of("PHYSICAL", "CURSED_ENERGY"))
-            .potency(1).apCost(10).unleashPoint(1).build();
-
-        assertTrue(resolve(combatant(physical), combatantWithDefense(parry), physical).isParried());
-        assertTrue(resolve(combatant(cursedEnergy), combatantWithDefense(parry), cursedEnergy).isParried());
-        assertTrue(resolve(
-            combatant(nonInnate), combatantWithDefense(parry), nonInnate).isParried(),
-            "Technique attacks count as cursed energy for parry coverage.");
     }
 
     @Test
@@ -394,10 +365,8 @@ public class ParryDodgeTest {
             .tags(java.util.Set.of(MoveTag.DEFENSIVE, MoveTag.PHYSICAL, MoveTag.KATANA))
             .defenseType(DefenseType.PARRY)
             .parryStaggerTicks(4)
-            .blockAttackTypes(java.util.Set.of(
-                BlockAttackType.PHYSICAL,
-                BlockAttackType.PHYSICAL_CURSED_ENERGY,
-                BlockAttackType.CURSED_ENERGY))
+            .blockRanges(java.util.Set.of(MoveTag.RANGED))
+            .blockElementalTags(java.util.Set.of(MoveTag.FIRE))
             .potency(2)
             .apCost(10)
             .unleashPoint(1)
@@ -407,11 +376,8 @@ public class ParryDodgeTest {
         assertEquals(DefenseType.PARRY.name(), dto.defenseType);
         assertEquals(4, dto.parryStaggerTicks);
         assertEquals(2, dto.potency);
-        assertEquals(List.of(
-            BlockAttackType.PHYSICAL.name(),
-            BlockAttackType.PHYSICAL_CURSED_ENERGY.name(),
-            BlockAttackType.CURSED_ENERGY.name()), dto.blockAttackTypes);
-        assertNull(dto.blockAffectedTags);
+        assertEquals(List.of(MoveTag.RANGED.name()), dto.blockRanges);
+        assertEquals(List.of(MoveTag.FIRE.name()), dto.blockElementalTags);
         assertTrue(dto.tags.contains(MoveTag.KATANA.name()),
             "The weapon tag should round-trip through MoveData.");
 
@@ -419,10 +385,8 @@ public class ParryDodgeTest {
         assertTrue(restored.isParry());
         assertEquals(4, restored.getParryStaggerTicks());
         assertEquals(2, restored.getPotency());
-        assertEquals(java.util.Set.of(
-            BlockAttackType.PHYSICAL,
-            BlockAttackType.PHYSICAL_CURSED_ENERGY,
-            BlockAttackType.CURSED_ENERGY), restored.getBlockAttackTypes());
+        assertEquals(java.util.Set.of(MoveTag.RANGED), restored.getBlockRanges());
+        assertEquals(java.util.Set.of(MoveTag.FIRE), restored.getBlockElementalTags());
         assertEquals(MoveTag.KATANA, restored.weaponTag());
     }
 

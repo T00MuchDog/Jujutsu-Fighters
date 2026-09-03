@@ -1800,12 +1800,13 @@ public class CombatResolver {
             if (target == null || !target.isActive()) continue;
             boolean[] connected = execution.connectedByTarget.get(target.getInstanceId());
             if (connected == null) continue;
-            HitComponent component = execution.entry.segment.getMove()
+            HitComponent authoredComponent = execution.entry.segment.getMove()
                 .getHitComponents().get(componentIndex);
-            if (component.requiresPreviousConnection()
+            if (authoredComponent.requiresPreviousConnection()
                 && (componentIndex == 0 || !connected[componentIndex - 1])) {
                 continue;
             }
+            HitComponent component = execution.entry.segment.effectiveHitComponent(componentIndex);
             connected[componentIndex] = resolveHitComponent(
                 execution, component, componentIndex, target, state, tick, events);
             // Miss/block hooks and defensive coded effects can also mutate HP.

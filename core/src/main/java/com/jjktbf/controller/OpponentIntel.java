@@ -21,7 +21,7 @@ import java.util.List;
  *       do. This drives the "knows the player's moves" rules: whether they can
  *       only use physical attacks, whether they own cursed-energy/reinforcement
  *       attacks, their highest attack potency, guard-break/intangible presence,
- *       and whether their blocks are physical-only.</li>
+     *       and their guard-break/intangible options.</li>
  *   <li>The opponent's <em>committed</em> timeline this round
  *       ({@code opponent.getTimeline()}) — what they <em>are</em> doing right
  *       now. This drives dodge/block counters and the fire-ticks of committed
@@ -34,7 +34,7 @@ import java.util.List;
 final class OpponentIntel {
 
     static final OpponentIntel EMPTY = new OpponentIntel(
-        false, false, false, false, 0, false,
+        false, false, false, false, 0,
         0, 0, 0, 0, List.of(), List.of(), 0);
 
     // --- Authored attack profile (the opponent's known moves) ---
@@ -47,10 +47,6 @@ final class OpponentIntel {
     final boolean hasGuardBreak;
     final boolean hasIntangible;
     final int maxAttackPotency;
-
-    // --- Authored block profile ---
-    /** Owns blocks, and none of them cover cursed energy (CE attacks slip through). */
-    final boolean blocksPhysicalOnly;
 
     // --- Committed this round (the opponent's locked timeline) ---
     final int committedMeleeDodge;
@@ -65,7 +61,6 @@ final class OpponentIntel {
     private OpponentIntel(
         boolean hasCursedEnergy, boolean physicalOnly,
         boolean hasGuardBreak, boolean hasIntangible, int maxAttackPotency,
-        boolean blocksPhysicalOnly,
         int committedMeleeDodge, int committedRangedDodge,
         int committedBlock, int committedParry,
         List<Integer> committedAttackFireTicks,
@@ -76,7 +71,6 @@ final class OpponentIntel {
         this.hasGuardBreak = hasGuardBreak;
         this.hasIntangible = hasIntangible;
         this.maxAttackPotency = maxAttackPotency;
-        this.blocksPhysicalOnly = blocksPhysicalOnly;
         this.committedMeleeDodge = committedMeleeDodge;
         this.committedRangedDodge = committedRangedDodge;
         this.committedBlock = committedBlock;
@@ -103,16 +97,6 @@ final class OpponentIntel {
             maxPotency = Math.max(maxPotency, move.getPotency());
         }
         boolean physicalOnly = !attacks.isEmpty() && !hasCe;
-
-        // Block profile: do any of the opponent's blocks cover cursed energy?
-        boolean anyBlock = false;
-        boolean anyBlockCoversCe = false;
-        for (Move move : opponent.getCharacter().getKnownMoves()) {
-            if (move.getDefenseType() != DefenseType.BLOCK) continue;
-            anyBlock = true;
-            if (SmartAIScoring.blockCoversCursedEnergy(move)) anyBlockCoversCe = true;
-        }
-        boolean blocksPhysicalOnly = anyBlock && !anyBlockCoversCe;
 
         // Committed timeline.
         int meleeDodge = 0;
@@ -143,7 +127,6 @@ final class OpponentIntel {
 
         return new OpponentIntel(
             hasCe, physicalOnly, hasGuardBreak, hasIntangible, maxPotency,
-            blocksPhysicalOnly,
             meleeDodge, rangedDodge, block, parry,
             fireTicks, attacks, opponent.getEvasion());
     }

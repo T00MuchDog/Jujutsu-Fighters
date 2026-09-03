@@ -242,7 +242,8 @@ public final class TeamPlanningPanel {
                 panel.restorePlacement(
                     move, segment.startTick(), segment.ceCost(),
                     TargetListSupport.targetIds(segment), segment.apCost(),
-                    segment.fireTick() - segment.startTick() + 1);
+                    segment.fireTick() - segment.startTick() + 1,
+                    segment.reinforced(), segment.reinforcementCeCost());
             }
         }
     }

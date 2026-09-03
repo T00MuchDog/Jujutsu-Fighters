@@ -111,13 +111,41 @@ public final class CeEfficiencyCalculator {
         BattleStatMode statMode
     ) {
         if (!move.hasCeCost()) return 0;
+        return computeConfiguredCost(move, move.getBaseCeCost(), move.getMinCeCost(),
+            move.getMaxCeCost(), ceEfficiency, ceOutput, flags, statMode);
+    }
+
+    /** Calculate the independently-authored surcharge for a reinforced execution. */
+    public static int computeReinforcementCost(
+        Move move,
+        int ceEfficiency,
+        int ceOutput,
+        AbilityApplicator.AbilityFlags flags,
+        BattleStatMode statMode
+    ) {
+        if (move == null || !move.canBeReinforced()) return 0;
+        return computeConfiguredCost(move, move.getReinforcementBaseCeCost(),
+            move.getReinforcementMinCeCost(), move.getReinforcementMaxCeCost(),
+            ceEfficiency, ceOutput, flags, statMode);
+    }
+
+    private static int computeConfiguredCost(
+        Move move,
+        int baseCost,
+        int minCost,
+        int maxCost,
+        int ceEfficiency,
+        int ceOutput,
+        AbilityApplicator.AbilityFlags flags,
+        BattleStatMode statMode
+    ) {
 
         // Scale each raw stat exactly once into the combat-scale (10–~472) the
         // formulas expect. Callers pass raw CharacterStats values.
         int scaledEfficiency = statMode.scale(Math.max(0, ceEfficiency));
         int scaledOutput     = statMode.scale(Math.max(0, ceOutput));
 
-        double rawCost = move.getBaseCeCost()
+        double rawCost = baseCost
                        * efficiencyMultiplier(scaledEfficiency)
                        * outputMultiplier(scaledOutput);
 
@@ -126,9 +154,9 @@ public final class CeEfficiencyCalculator {
         }
 
         // Clamp to the move's hard min/max
-        int clamped = Math.max(move.getMinCeCost(), Math.min(move.getMaxCeCost(), (int) Math.round(rawCost)));
+        int clamped = Math.max(minCost, Math.min(maxCost, (int) Math.round(rawCost)));
         if (flags != null && flags.forcesMinimumCeCost(move)) {
-            clamped = move.getMinCeCost();
+            clamped = minCost;
         }
         return flags == null ? clamped : flags.alterCeCost(move, clamped);
     }

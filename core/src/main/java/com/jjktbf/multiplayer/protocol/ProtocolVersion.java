@@ -10,8 +10,8 @@ import java.util.Properties;
 public final class ProtocolVersion {
 
     public static final String GAME_VERSION = loadGameVersion();
-    /** Protocol v23 adds reserve lifecycle state and authoritative switch intent. */
-    public static final int PROTOCOL_VERSION = 23;
+    /** Protocol v24 adds per-execution cursed-energy reinforcement intent and state. */
+    public static final int PROTOCOL_VERSION = 24;
     public static final String STANDARD_RULESET = BattleStatMode.STANDARD.rulesetId();
     public static final String EQUALIZED_STATS_RULESET = BattleStatMode.EQUALIZED.rulesetId();
 

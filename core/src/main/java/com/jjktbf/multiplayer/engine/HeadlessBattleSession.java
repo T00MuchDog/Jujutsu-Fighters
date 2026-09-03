@@ -50,6 +50,7 @@ import com.jjktbf.multiplayer.protocol.PlanState;
 import com.jjktbf.multiplayer.protocol.PlayerSide;
 import com.jjktbf.multiplayer.protocol.PlayerState;
 import com.jjktbf.multiplayer.protocol.ProtocolVersion;
+import com.jjktbf.multiplayer.protocol.ReinforcementMoveState;
 import com.jjktbf.multiplayer.protocol.RoundStartCharacterState;
 import com.jjktbf.multiplayer.protocol.StatusEffectState;
 import com.jjktbf.multiplayer.protocol.SwitchSelection;
@@ -558,6 +559,15 @@ public final class HeadlessBattleSession {
                     placement.moveId()
                 );
             }
+            if (placement.reinforced() && !actor.canReinforce(move)) {
+                return rejectPlacement(
+                    commandId,
+                    INVALID_MOVE,
+                    "Actor cannot reinforce this move.",
+                    index,
+                    move.getId()
+                );
+            }
             if (!canonicalPlan.hasRemainingUses(move)) {
                 return rejectPlacement(
                     commandId,
@@ -613,7 +623,10 @@ public final class HeadlessBattleSession {
                     commandId, INVALID_TARGET, targetError, index, move.getId());
             }
 
-            int ceCost = actor.computeMoveCeCost(move);
+            int reinforcementCeCost = placement.reinforced()
+                ? actor.computeReinforcementCeCost(move) : 0;
+            int ceCost = Math.addExact(
+                actor.computeMoveCeCost(move), reinforcementCeCost);
             int effectiveApCost = canonicalPlan.effectiveApCost(move);
             int effectiveUnleashPoint = canonicalPlan.effectiveUnleashPoint(move);
             long endTick = (long) placement.startTick() + effectiveApCost - 1L;
@@ -668,10 +681,13 @@ public final class HeadlessBattleSession {
                 );
             }
 
-            ActionSegment segment = canonicalPlan.place(
+            ActionSegment segment = canonicalPlan.placeWithTargets(
                 move,
                 placement.startTick(),
-                ceCost
+                ceCost,
+                targetIds,
+                placement.reinforced(),
+                reinforcementCeCost
             );
             if (segment == null) {
                 return rejectPlacement(
@@ -682,7 +698,6 @@ public final class HeadlessBattleSession {
                     move.getId()
                 );
             }
-            assignSegmentTargets(segment, targetIds);
             List<SegmentRuntime> actorSegments = canonicalSegments.get(actor.getInstanceId());
             actorSegments.add(new SegmentRuntime(
                 segmentId(actor.getInstanceId(), actorSegments.size()),
@@ -1424,7 +1439,9 @@ public final class HeadlessBattleSession {
                     component.getDelayTicks(),
                     component.requiresPreviousConnection(),
                     component.isAvoidable(),
-                    component.getBaseAccuracy()))
+                    component.getBaseAccuracy(),
+                    component.isReinforcementEligible(),
+                    component.getReinforcementBonusPower()))
                 .toList(),
             move.getBaseAccuracy(),
             move.isNeverMiss(),
@@ -1455,7 +1472,17 @@ public final class HeadlessBattleSession {
                     effect.sourceResourceAmount == null ? 0 : effect.sourceResourceAmount,
                     effect.targetResourceKey,
                     effect.targetResourceAmount == null ? 0 : effect.targetResourceAmount))
-                .toList()
+                .toList(),
+            new ReinforcementMoveState(
+                move.canBeReinforced(),
+                combatant.canReinforce(move),
+                move.getReinforcementBaseCeCost(),
+                combatant.canReinforce(move)
+                    ? combatant.computeReinforcementCeCost(move) : 0,
+                move.getReinforcementMinCeCost(),
+                move.getReinforcementMaxCeCost(),
+                move.getReinforcementDefenseType().name(),
+                move.getReinforcementDefenseValue())
         );
     }
 
@@ -1519,7 +1546,9 @@ public final class HeadlessBattleSession {
             segment.status,
             segment.resolvedTick,
             segment.actorId.value(),
-            segment.targetIds.stream().map(CombatantId::value).toList()
+            segment.targetIds.stream().map(CombatantId::value).toList(),
+            planned.isReinforced(),
+            planned.getReinforcementCeCost()
         );
     }
 

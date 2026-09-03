@@ -189,7 +189,7 @@ class ProtocolJsonTest {
     void actionCommandRoundTripsAndCopiesIntent() throws Exception {
         List<PlanPlacement> placements = new ArrayList<>();
         placements.add(new PlanPlacement(
-            "000004", 13, "PLAYER-f1", List.of("ENEMY-f1", "ENEMY-f2")));
+            "000004", 13, "PLAYER-f1", List.of("ENEMY-f1", "ENEMY-f2"), true));
         placements.add(new PlanPlacement("000001", 48));
         ActionCommand command = ActionCommand.submitPlan("command-1", "match-1", 41, placements);
         placements.clear();
@@ -201,7 +201,10 @@ class ProtocolJsonTest {
         assertEquals(command, restored);
         assertEquals(CommandType.SUBMIT_PLAN, restored.type());
         assertEquals(2, restored.payload().placements().size());
-        assertEquals(4, tree.at("/payload/placements/0").size());
+        assertTrue(command.payload().placements().get(0).reinforced());
+        assertTrue(restored.payload().placements().get(0).reinforced());
+        assertTrue(tree.at("/payload/placements/0/reinforced").booleanValue());
+        assertEquals(5, tree.at("/payload/placements/0").size());
         assertEquals("PLAYER-f1", restored.payload().placements().get(0).actorId());
         assertEquals(List.of("ENEMY-f1", "ENEMY-f2"),
             restored.payload().placements().get(0).targetIds());
@@ -317,7 +320,7 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(23, joined.protocolVersion());
+        assertEquals(24, joined.protocolVersion());
         assertEquals(List.of(new SwitchSelection("PLAYER-f2", "PLAYER-f4")),
             command.payload().switches());
         assertEquals(42L, joined.stateVersion());

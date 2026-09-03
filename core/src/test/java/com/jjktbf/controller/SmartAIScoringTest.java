@@ -24,24 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SmartAIScoringTest {
 
     @Test
-    void blockUsefulnessIsZeroWhenItCoversNoOpponentAttack() {
-        BattleCombatant physicalOpp = AIFixtures.sorcerer("opp",
-            AIFixtures.meleeAttack("punch", 20, 10));
-        OpponentIntel intel = OpponentIntel.forOpponent(physicalOpp);
-
-        // A [CURSED_ENERGY]-only block cannot stop a purely physical attack.
-        assertEquals(0.0, SmartAIScoring.blockUsefulness(
-            AIFixtures.block("ceBlock", List.of("CURSED_ENERGY")), intel));
-    }
-
-    @Test
     void blockUsefulnessIsPositiveWhenItCoversAnOpponentAttack() {
         BattleCombatant physicalOpp = AIFixtures.sorcerer("opp",
             AIFixtures.meleeAttack("punch", 20, 10));
         OpponentIntel intel = OpponentIntel.forOpponent(physicalOpp);
 
         assertTrue(SmartAIScoring.blockUsefulness(
-            AIFixtures.block("phyBlock", List.of("PHYSICAL")), intel) > 0.0);
+            AIFixtures.block("block", List.of()), intel) > 0.0);
     }
 
     @Test
@@ -63,49 +52,18 @@ class SmartAIScoringTest {
     }
 
     @Test
-    void overReinforcedBlockIsDeWeightedVsAPhysicalOnlyOpponent() {
-        BattleCombatant physicalOpp = AIFixtures.sorcerer("opp",
-            AIFixtures.meleeAttack("punch", 20, 10));
-        OpponentIntel intel = OpponentIntel.forOpponent(physicalOpp);
-        assertTrue(intel.physicalOnly);
+    void authoredReinforcementAttackGetsItsScoringBonus() {
+        OpponentIntel intel = OpponentIntel.forOpponent(
+            AIFixtures.sorcerer("opp", AIFixtures.meleeAttack("punch", 20, 10)));
 
-        double minimal = SmartAIScoring.blockUsefulness(
-            AIFixtures.block("phy", List.of("PHYSICAL")), intel);
-        double reinforced = SmartAIScoring.blockUsefulness(
-            AIFixtures.block("reinforced", List.of("PHYSICAL", "CURSED_ENERGY")), intel);
-
-        assertTrue(minimal > reinforced,
-            "vs a physical-only opponent, the minimal physical block is preferred over the reinforced one");
-    }
-
-    @Test
-    void reinforcementAttackIsBoostedWhenOpponentBlocksArePhysicalOnly() {
-        BattleCombatant physicalBlocker = AIFixtures.sorcerer("opp",
-            AIFixtures.block("phy", List.of("PHYSICAL")),
-            AIFixtures.meleeAttack("punch", 20, 10));
-        OpponentIntel intel = OpponentIntel.forOpponent(physicalBlocker);
-        assertTrue(intel.blocksPhysicalOnly);
-
-        Move ceAttack = AIFixtures.ceAttack("ce", 20, 10);
+        Move reinforced = AIFixtures.ceAttack("reinforced", 20, 10);
         Move physical = AIFixtures.meleeAttack("phy", 20, 10);
 
-        assertEquals(SmartAIScoring.REINFORCEMENT_BYPASS_BONUS,
-            SmartAIScoring.reinforcementAttackMultiplier(ceAttack, intel));
+        assertEquals(1.15,
+            SmartAIScoring.reinforcementAttackMultiplier(reinforced, intel));
         assertEquals(1.0,
             SmartAIScoring.reinforcementAttackMultiplier(physical, intel),
-            "a physical attack gets no reinforcement bypass bonus");
-    }
-
-    @Test
-    void reinforcementAttackIsNotBoostedWhenOpponentCanBlockCe() {
-        BattleCombatant ceBlocker = AIFixtures.sorcerer("opp",
-            AIFixtures.block("ce", List.of("PHYSICAL", "CURSED_ENERGY")),
-            AIFixtures.meleeAttack("punch", 20, 10));
-        OpponentIntel intel = OpponentIntel.forOpponent(ceBlocker);
-        assertFalse(intel.blocksPhysicalOnly);
-
-        assertEquals(1.0, SmartAIScoring.reinforcementAttackMultiplier(
-            AIFixtures.ceAttack("ce", 20, 10), intel));
+            "a non-reinforced physical attack gets no authored-reinforcement bonus");
     }
 
     @Test
@@ -124,10 +82,18 @@ class SmartAIScoringTest {
     }
 
     @Test
-    void reinforcementRequiresBothPhysicalAndCursedEnergy() {
-        // "Reinforcement" = a PHYSICAL + CURSED_ENERGY strike, not any CE move.
-        assertTrue(SmartAIScoring.isReinforcement(AIFixtures.ceAttack("rein", 20, 10)));
-        assertFalse(SmartAIScoring.isReinforcement(AIFixtures.meleeAttack("phy", 20, 10)));
+    void reinforcementRequiresAuthoredFlagAndEligiblePhysicalHit() {
+        Set<MoveTag> physicalMelee = Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.MELEE);
+        Move authored = AIFixtures.attackWithReinforcementMetadata(
+            "reinforced", 20, 10, physicalMelee, false, 1, true, true);
+        Move missingMoveFlag = AIFixtures.attackWithReinforcementMetadata(
+            "missing-move-flag", 20, 10, physicalMelee, false, 1, false, true);
+        Move missingHitFlag = AIFixtures.attackWithReinforcementMetadata(
+            "missing-hit-flag", 20, 10, physicalMelee, false, 1, true, false);
+
+        assertTrue(SmartAIScoring.isReinforcement(authored));
+        assertFalse(SmartAIScoring.isReinforcement(missingMoveFlag));
+        assertFalse(SmartAIScoring.isReinforcement(missingHitFlag));
         assertFalse(SmartAIScoring.isReinforcement(AIFixtures.pureCeAttack("pureCe", 20, 10)));
     }
 

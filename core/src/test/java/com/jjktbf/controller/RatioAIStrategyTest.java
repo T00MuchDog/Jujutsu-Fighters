@@ -64,7 +64,7 @@ class RatioAIStrategyTest {
 
     @Test
     void pendingStacksBookkeeping() {
-        Move mark = move("000023"), strike = move("000024"), normal = move("000008");
+        Move mark = move("000023"), strike = move("000024"), normal = move("000000");
         assertEquals(1, RatioPlanning.pendingStacksAfter(mark, 0, 3), "a mark adds its stacks");
         assertEquals(3, RatioPlanning.pendingStacksAfter(mark, 2, 3), "bounded by capacity");
         assertEquals(3, RatioPlanning.pendingStacksAfter(mark, 3, 3), "no overflow at capacity");
@@ -182,8 +182,7 @@ class RatioAIStrategyTest {
         return AIFixtures.ratioSorcerer(abilities.isEmpty() ? "000001" : "000001",
             List.copyOf(abilities),
             move("000000"), // Basic Strike
-            move("000008"), // Reinforced Jab
-            move("000010"), // Reinforced Knee
+            move("000002"), // Jab
             move("000011"), // Cursed Energy Burst
             move("000022"), // Cursed Slash
             move("000023"), // Ratio Mark

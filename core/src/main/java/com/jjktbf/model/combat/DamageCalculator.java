@@ -316,8 +316,8 @@ public final class DamageCalculator {
             if (parrySeg != null && parrySeg.getMove().getPotency() >= move.getPotency()) {
                 parrySeg.consumeDefenseUse();
                 boolean perfect = isPerfectRead(parrySeg, currentTick);
-                boolean stagger = parrySeg.getMove().parryStaggersAttacker(move, component);
-                int staggerTicks = stagger ? parrySeg.getMove().getParryStaggerTicks() : 0;
+                boolean stagger = parrySeg.parryStaggersAttacker(move, component);
+                int staggerTicks = stagger ? parrySeg.effectiveParryStaggerTicks() : 0;
                 if (perfect && stagger) staggerTicks += PERFECT_PARRY_BONUS_STAGGER_TICKS;
                 int reflected = perfect && component.isRanged()
                     ? reflectedDamage(attacker, move, component, currentTick, rng,
@@ -387,8 +387,7 @@ public final class DamageCalculator {
             }
             double blockMultiplier = blockEffectivenessHook == null ? 1.0
                 : blockEffectivenessHook.multiplierFor(activeBlockSegment.getMove());
-            attackValue = activeBlockSegment.getMove().applyBlockTo(
-                attackValue, blockMultiplier);
+            attackValue = applyBlock(activeBlockSegment, attackValue, blockMultiplier);
             if (attackValue == 0) {
                 return DamageResult.blocked(
                     move, component, activeBlockSegment, codedModifiers.events())
@@ -418,6 +417,25 @@ public final class DamageCalculator {
         return DamageResult.hit(move, component, finalDamage, rawDamage, blackFlash,
             bypassBlock, codedModifiers.events(), activeBlockSegment)
             .withRecoil(codedModifiers.recoilDamage());
+    }
+
+    private static double applyBlock(
+        ActionSegment segment,
+        double incomingDamage,
+        double effectivenessMultiplier
+    ) {
+        double multiplier = Double.isFinite(effectivenessMultiplier)
+            ? Math.max(0.0, effectivenessMultiplier) : Double.MAX_VALUE;
+        return switch (segment.getMove().getBlockStyle()) {
+            case PERCENTAGE -> {
+                double reduction = Math.min(
+                    100.0, segment.effectiveBlockDamageReduction() * multiplier);
+                if (reduction >= 100.0) yield 0;
+                yield Math.max(1.0, incomingDamage * (100.0 - reduction) / 100.0);
+            }
+            case FLAT -> Math.max(
+                1.0, incomingDamage - segment.effectiveBlockFlatReduction() * multiplier);
+        };
     }
 
     /**

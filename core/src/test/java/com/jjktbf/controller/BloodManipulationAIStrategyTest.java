@@ -188,7 +188,7 @@ class BloodManipulationAIStrategyTest {
     /** The canonical Kamo Goodwill-Event kit (basic layer + bow + blood techniques). */
     private Move[] kit() {
         return new Move[] {
-            move("000000"), move("000001"), move("000013"), move("000019"),
+            move("000000"), move("000001"), move("000012"), move("000019"),
             move("000027"), move("000028"), move("000092"), move("000093"),
             move("000094"), move("000095"), move("000096"), move("000097"), move("000098")
         };

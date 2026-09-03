@@ -45,7 +45,7 @@
   },
   {
     "term": "BLACK FLASH",
-    "description": "A rare critical hit for PHYSICAL + CURSED_ENERGY moves without technique tags. It deals 2.5 times damage and restores 5% of maximum CE."
+    "description": "A rare critical hit for an actively reinforced Physical hit without technique tags. It deals 2.5 times damage and restores 5% of maximum CE."
   },
   {
     "term": "BLOCK",
@@ -197,7 +197,7 @@
   },
   {
     "term": "REINFORCEMENT",
-    "description": "An attack carrying both the Physical and Cursed Energy tags."
+    "description": "An optional planned execution that spends an additional, efficiency-scaled CE surcharge. Eligible Physical hits gain authored power and count as Cursed Energy hits without changing the source move."
   },
   {
     "term": "RECOIL",
@@ -309,7 +309,7 @@
   },
   {
     "term": "Basic Block",
-    "description": "A free Potency 1 block that halves pure Physical attack damage."
+    "description": "A free Potency 1 block that reduces matching attack damage."
   },
   {
     "term": "Jab",
@@ -336,18 +336,6 @@
     "description": "A powerful Heavy Physical melee attack."
   },
   {
-    "term": "Reinforced Jab",
-    "description": "A cursed-energy reinforced Physical melee attack."
-  },
-  {
-    "term": "Reinforced Elbow",
-    "description": "A cursed-energy reinforced Elbow Strike with increased base power."
-  },
-  {
-    "term": "Reinforced Knee",
-    "description": "A powerful cursed-energy reinforced Knee Strike."
-  },
-  {
     "term": "Cursed Energy Burst",
     "description": "A compact ranged attack made from raw Cursed Energy."
   },
@@ -360,28 +348,12 @@
     "description": "A brief Potency 1 block that negates Melee attack damage."
   },
   {
-    "term": "Reinforced Deflection",
-    "description": "A CE-powered Potency 1 Deflection with the same brief defensive window."
-  },
-  {
     "term": "Cross Guard",
-    "description": "A Potency 1 block that reduces pure Physical attack damage by 70%."
-  },
-  {
-    "term": "Reinforced Cross Guard",
-    "description": "A CE-powered block that reduces Potency 1 attack damage by 70%."
+    "description": "A Potency 1 block that reduces matching attack damage by 70%."
   },
   {
     "term": "Braced Guard",
-    "description": "A delayed Heavy Potency 1 block that flat-reduces pure Physical attack damage by 20."
-  },
-  {
-    "term": "Reinforced Braced Guard",
-    "description": "A delayed Heavy CE-powered block that flat-reduces any attack damage by 30."
-  },
-  {
-    "term": "Reinforced Basic Block",
-    "description": "A CE-powered block that halves Potency 1 attack damage."
+    "description": "A delayed Heavy Potency 1 block that flat-reduces matching attack damage."
   },
   {
     "term": "Cursed Energy Focus",

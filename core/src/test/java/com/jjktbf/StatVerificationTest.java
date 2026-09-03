@@ -895,7 +895,6 @@ public class StatVerificationTest {
             .unleashPoint(3)
             .defenseType(DefenseType.BLOCK).blockStyle(BlockStyle.PERCENTAGE)
             .blockDuration(0)
-            .blockAffectedTags(List.of("PHYSICAL"))
             .blockDamageReduction(50)
             .build();
 
@@ -906,94 +905,6 @@ public class StatVerificationTest {
         assertNotNull(timeline.activeBlockAt(3, attack));
         assertNotNull(timeline.activeBlockAt(12, attack));
         assertNull(timeline.activeBlockAt(13, attack));
-    }
-
-    @Test
-    void blockAffectedTagsFilterIncomingMoveTags() {
-        Move physicalAttack = new Move.Builder("PHYSICAL_TEST")
-            .name("Physical Test")
-            .category(MoveCategory.PHYSICAL)
-            .basePower(50)
-            .build();
-        Move innateAttack = new Move.Builder("INNATE_TEST")
-            .name("Innate Test")
-            .category(MoveCategory.INNATE_TECHNIQUE)
-            .requiredTechniqueId("SHRINE")                                  // technique-tag invariant
-            .prerequisites(java.util.Map.of("cursedtechniquemastery", 0))   // technique-tag invariant
-            .basePower(50)
-            .build();
-        Move physicalBlock = new Move.Builder("PHYSICAL_BLOCK")
-            .name("Physical Block")
-            .category(MoveCategory.DEFENSIVE)
-            .defenseType(DefenseType.BLOCK).blockStyle(BlockStyle.PERCENTAGE)
-            .blockAffectedTags(List.of("PHYSICAL"))
-            .blockDamageReduction(50)
-            .build();
-
-        Timeline timeline = new Timeline(30);
-        timeline.placeAt(physicalBlock, 1, 0);
-
-        assertNotNull(timeline.activeBlockAt(10, physicalAttack));
-        assertNull(timeline.activeBlockAt(10, innateAttack));
-    }
-
-    /**
-     * Block coverage is subset-direction: a block fires iff it covers every
-     * damage tag the incoming attack uses (attack tags ⊆ block tags).
-     *
-     * Example 1: a PHYSICAL-only block does NOT stop a PHYSICAL+CURSED_ENERGY
-     * attack — the CE component slips through.
-     */
-    @Test
-    void physicalBlockDoesNotCoverHybridAttack() {
-        Move hybridAttack = new Move.Builder("HYBRID_ATK")
-            .name("Hybrid Attack")
-            .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
-            .basePower(50)
-            .apCost(10).unleashPoint(1)
-            .build();
-        Move physicalBlock = new Move.Builder("PHYS_ONLY_BLOCK")
-            .name("Physical Only Block")
-            .category(MoveCategory.DEFENSIVE)
-            .defenseType(DefenseType.BLOCK).blockStyle(BlockStyle.PERCENTAGE)
-            .apCost(10).unleashPoint(1)
-            .blockAffectedTags(List.of("PHYSICAL"))
-            .blockDamageReduction(50)
-            .build();
-
-        Timeline timeline = new Timeline(30);
-        timeline.placeAt(physicalBlock, 1, 0);
-
-        assertNull(timeline.activeBlockAt(5, hybridAttack),
-            "A [PHYSICAL]-only block must NOT cover a PHYSICAL+CURSED_ENERGY attack.");
-    }
-
-    /**
-     * Example 2: a [PHYSICAL, CURSED_ENERGY] block DOES stop a pure-PHYSICAL
-     * attack — the block's coverage is a superset of the attack's tags.
-     */
-    @Test
-    void dualTagBlockCoversPhysicalSubset() {
-        Move physicalAttack = new Move.Builder("PURE_PHYS")
-            .name("Pure Physical")
-            .category(MoveCategory.PHYSICAL)
-            .basePower(50)
-            .apCost(10).unleashPoint(1)
-            .build();
-        Move dualBlock = new Move.Builder("DUAL_BLOCK")
-            .name("Dual Block")
-            .category(MoveCategory.DEFENSIVE)
-            .defenseType(DefenseType.BLOCK).blockStyle(BlockStyle.PERCENTAGE)
-            .apCost(10).unleashPoint(1)
-            .blockAffectedTags(List.of("PHYSICAL", "CURSED_ENERGY"))
-            .blockDamageReduction(50)
-            .build();
-
-        Timeline timeline = new Timeline(30);
-        timeline.placeAt(dualBlock, 1, 0);
-
-        assertNotNull(timeline.activeBlockAt(5, physicalAttack),
-            "A [PHYSICAL, CURSED_ENERGY] block MUST cover a pure-PHYSICAL attack.");
     }
 
     /**
@@ -1030,21 +941,26 @@ public class StatVerificationTest {
     }
 
     @Test
-    void blackFlashRequiresPhysicalCursedEnergyWithoutTechniqueTags() {
-        HitComponent physicalCursedEnergy = new HitComponent(50,
+    void blackFlashRequiresActiveReinforcementWithoutTechniqueTags() {
+        HitComponent intrinsicHybrid = new HitComponent(50,
             Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY), 0, false, true);
+        HitComponent reinforcedPhysical = new HitComponent(50,
+            Set.of(MoveTag.PHYSICAL), 0, false, true,
+            HitComponent.INHERIT_MOVE_ACCURACY, List.of(), true, 0).reinforced();
         HitComponent innateTechnique = new HitComponent(50,
             Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY, MoveTag.INNATE_TECHNIQUE),
-            0, false, true);
+            0, false, true, HitComponent.INHERIT_MOVE_ACCURACY, List.of(), true, 0).reinforced();
         HitComponent nonInnateTechnique = new HitComponent(50,
             Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY, MoveTag.NON_INNATE_TECHNIQUE),
-            0, false, true);
+            0, false, true, HitComponent.INHERIT_MOVE_ACCURACY, List.of(), true, 0).reinforced();
         HitComponent bothTechniqueTags = new HitComponent(50,
             Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY, MoveTag.INNATE_TECHNIQUE,
                 MoveTag.NON_INNATE_TECHNIQUE),
-            0, false, true);
+            0, false, true, HitComponent.INHERIT_MOVE_ACCURACY, List.of(), true, 0).reinforced();
 
-        assertTrue(physicalCursedEnergy.isBlackFlashEligible());
+        assertFalse(intrinsicHybrid.isBlackFlashEligible(),
+            "Intrinsic physical plus cursed energy is not execution-level reinforcement.");
+        assertTrue(reinforcedPhysical.isBlackFlashEligible());
         assertFalse(innateTechnique.isBlackFlashEligible(),
             "An innate-technique tag makes a hit ineligible for Black Flash.");
         assertFalse(nonInnateTechnique.isBlackFlashEligible(),

@@ -71,6 +71,8 @@ public class ActionSegment {
      * Stored here because CE is drained when the segment's startTick is reached.
      */
     private final int    actualCeCost;
+    private final int    reinforcementCeCost;
+    private final boolean reinforced;
     /** Move-start snapshot applied to every hit component in this execution. */
     private double       executionBasePowerMultiplier = 1.0;
 
@@ -88,11 +90,12 @@ public class ActionSegment {
 
     /** Runtime segment (a launch, counter, or defense copy): not plan-placed. */
     public ActionSegment(Move move, int startTick, int actualCeCost) {
-        this(move, startTick, actualCeCost, List.of(), false);
+        this(move, startTick, actualCeCost, List.of(), false, false, 0);
     }
 
     public ActionSegment(Move move, int startTick, int actualCeCost, CombatantId target) {
-        this(move, startTick, actualCeCost, target == null ? List.of() : List.of(target), true);
+        this(move, startTick, actualCeCost, target == null ? List.of() : List.of(target),
+            true, false, 0);
     }
 
     /** Planned placement with an explicit target list (see {@link #planned}). */
@@ -102,7 +105,19 @@ public class ActionSegment {
         int actualCeCost,
         List<CombatantId> targets
     ) {
-        this(move, startTick, actualCeCost, targets, true);
+        this(move, startTick, actualCeCost, targets, true, false, 0);
+    }
+
+    /** Planned execution with explicit reinforcement state and included surcharge. */
+    public ActionSegment(
+        Move move,
+        int startTick,
+        int actualCeCost,
+        List<CombatantId> targets,
+        boolean reinforced,
+        int reinforcementCeCost
+    ) {
+        this(move, startTick, actualCeCost, targets, true, reinforced, reinforcementCeCost);
     }
 
     private ActionSegment(
@@ -110,10 +125,12 @@ public class ActionSegment {
         int startTick,
         int actualCeCost,
         List<CombatantId> targets,
-        boolean planned
+        boolean planned,
+        boolean reinforced,
+        int reinforcementCeCost
     ) {
         this(move, startTick, actualCeCost, targets, planned,
-            move.getApCost(), move.getUnleashPoint());
+            move.getApCost(), move.getUnleashPoint(), reinforced, reinforcementCeCost);
     }
 
     ActionSegment(
@@ -125,6 +142,21 @@ public class ActionSegment {
         int apCost,
         int unleashPoint
     ) {
+        this(move, startTick, actualCeCost, targets, planned, apCost, unleashPoint,
+            false, 0);
+    }
+
+    ActionSegment(
+        Move move,
+        int startTick,
+        int actualCeCost,
+        List<CombatantId> targets,
+        boolean planned,
+        int apCost,
+        int unleashPoint,
+        boolean reinforced,
+        int reinforcementCeCost
+    ) {
         if (apCost < 1 || unleashPoint < 1 || unleashPoint > apCost) {
             throw new IllegalArgumentException("Invalid effective action timing");
         }
@@ -134,6 +166,14 @@ public class ActionSegment {
         this.unleashPoint = unleashPoint;
         this.fireTick      = Math.addExact(startTick, unleashPoint - 1);
         this.actualCeCost  = actualCeCost;
+        if (reinforcementCeCost < 0 || reinforcementCeCost > actualCeCost) {
+            throw new IllegalArgumentException("Invalid reinforcement CE surcharge");
+        }
+        if (reinforced && !move.canBeReinforced()) {
+            throw new IllegalArgumentException("Move cannot be reinforced");
+        }
+        this.reinforced = reinforced;
+        this.reinforcementCeCost = reinforcementCeCost;
         setTargets(targets);
         this.stunned       = false;
         this.fired         = false;
@@ -153,6 +193,44 @@ public class ActionSegment {
     public int     getFinalImpactTick() { return fireTick + move.getMaxHitDelayTicks(); }
     public int     getResolutionEndTick() { return Math.max(getEndTick(), getFinalImpactTick()); }
     public int     getActualCeCost()  { return actualCeCost; }
+    public int     getReinforcementCeCost() { return reinforcementCeCost; }
+    public int     getIntrinsicCeCost() { return actualCeCost - reinforcementCeCost; }
+    public boolean isReinforced() { return reinforced; }
+    public com.jjktbf.model.move.HitComponent effectiveHitComponent(int index) {
+        com.jjktbf.model.move.HitComponent component = move.getHitComponents().get(index);
+        return reinforced ? component.reinforced() : component;
+    }
+    public int effectiveBlockDamageReduction() {
+        int bonus = reinforced
+            && move.getReinforcementDefenseType()
+                == com.jjktbf.model.move.ReinforcementDefenseType.PERCENTAGE_BLOCK
+            ? move.getReinforcementDefenseValue() : 0;
+        return Math.max(0, Math.min(100, move.getBlockDamageReduction() + bonus));
+    }
+    public int effectiveBlockFlatReduction() {
+        int bonus = reinforced
+            && move.getReinforcementDefenseType()
+                == com.jjktbf.model.move.ReinforcementDefenseType.FLAT_BLOCK
+            ? move.getReinforcementDefenseValue() : 0;
+        return Math.max(0, move.getBlockFlatReduction() + bonus);
+    }
+    public int effectiveParryStaggerTicks() {
+        int bonus = reinforced
+            && move.getReinforcementDefenseType()
+                == com.jjktbf.model.move.ReinforcementDefenseType.STAGGER_LENGTH
+            ? move.getReinforcementDefenseValue() : 0;
+        return Math.max(0, move.getParryStaggerTicks() + bonus);
+    }
+    public boolean parryStaggersAttacker(
+        Move incoming,
+        com.jjktbf.model.move.HitComponent component
+    ) {
+        if (!move.isParry() || effectiveParryStaggerTicks() <= 0) return false;
+        if (component != null ? component.isGuardBreak()
+            : incoming != null && incoming.isGuardBreak()) return false;
+        return !(component != null ? component.isRanged()
+            : incoming != null && incoming.isRanged());
+    }
     public double  getExecutionBasePowerMultiplier() { return executionBasePowerMultiplier; }
     public void multiplyExecutionBasePower(double multiplier) {
         if (!Double.isFinite(multiplier) || multiplier <= 0.0) {
@@ -227,7 +305,8 @@ public class ActionSegment {
      */
     public ActionSegment cloneFired() {
         ActionSegment copy = new ActionSegment(
-            move, startTick, actualCeCost, List.of(), false, apCost, unleashPoint);
+            move, startTick, actualCeCost, List.of(), false, apCost, unleashPoint,
+            reinforced, reinforcementCeCost);
         copy.fired = true;
         copy.executionBasePowerMultiplier = executionBasePowerMultiplier;
         return copy;
@@ -246,7 +325,8 @@ public class ActionSegment {
         // which is harmless for a defence that is already fired.
         int start = Math.max(1, tick - unleashPoint + 1);
         ActionSegment copy = new ActionSegment(
-            move, start, actualCeCost, List.of(), false, apCost, unleashPoint);
+            move, start, actualCeCost, List.of(), false, apCost, unleashPoint,
+            reinforced, reinforcementCeCost);
         copy.fired = true;
         copy.reactionTriggered = true;
         copy.executionBasePowerMultiplier = executionBasePowerMultiplier;
@@ -289,8 +369,9 @@ public class ActionSegment {
 
     @Override
     public String toString() {
-        return String.format("ActionSegment{%s ticks=[%d-%d] fire=%d CE=%d %s}",
+        return String.format("ActionSegment{%s ticks=[%d-%d] fire=%d CE=%d %s%s}",
             move.getName(), startTick, getEndTick(), fireTick, actualCeCost,
+            reinforced ? "REINFORCED " : "",
             stunned ? "STUNNED" : "");
     }
 }

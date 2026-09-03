@@ -129,8 +129,9 @@ class RatioTechniqueTest {
     void reinforcementPassiveUsesFivePercentBoundaryOnTheCurrentHit() {
         Move reinforcement = new Move.Builder("REINFORCEMENT")
             .name("Reinforcement")
-            .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
-            .basePower(100)
+            .category(MoveCategory.PHYSICAL)
+            .hitComponents(List.of(reinforcementComponent(100)))
+            .canBeReinforced(true)
             .neverMiss(true)
             .apCost(10)
             .unleashPoint(1)
@@ -145,7 +146,7 @@ class RatioTechniqueTest {
         AbilityActivationEngine successEngine = new AbilityActivationEngine(successRandom);
         DamageCalculator.DamageResult success = DamageCalculator.resolve(
             successOwner, successTarget, reinforcement,
-            reinforcement.getHitComponents().get(0), 1, successRandom, 1,
+            reinforcement.getHitComponents().get(0).reinforced(), 1, successRandom, 1,
             false, false, trigger -> successEngine.onAttackConnected(successState, trigger));
         assertTrue(success.isHit());
         assertTrue(success.bypassedBlock());
@@ -159,7 +160,7 @@ class RatioTechniqueTest {
         AbilityActivationEngine failEngine = new AbilityActivationEngine(failRandom);
         DamageCalculator.DamageResult failure = DamageCalculator.resolve(
             failOwner, failTarget, reinforcement,
-            reinforcement.getHitComponents().get(0), 1, failRandom, 1,
+            reinforcement.getHitComponents().get(0).reinforced(), 1, failRandom, 1,
             false, false, trigger -> failEngine.onAttackConnected(failState, trigger));
         assertTrue(failure.isBlocked());
         assertEquals(0, ratioCount(failOwner));
@@ -167,7 +168,7 @@ class RatioTechniqueTest {
 
     @Test
     void alwaysActiveCodedConditionIsEligibleForEveryConnectedHit() {
-        Move attack = plainAttack("ALWAYS_RATIO");
+        Move attack = reinforcementAttack("ALWAYS_RATIO");
         AbilityConditionRuleData always = AbilityConditionRuleData.allEffects(
             AbilityConditionData.always());
         always.targetEffectIds = List.of("effect-000000");
@@ -177,16 +178,16 @@ class RatioTechniqueTest {
         AbilityActivationEngine engine = new AbilityActivationEngine(new ConstantRandom(0.5));
 
         assertTrue(engine.onAttackConnected(state, com.jjktbf.model.combat.AbilityTrigger
-            .attackConnected(owner, target, attack, attack.getHitComponents().get(0), 1))
+            .attackConnected(owner, target, attack, attack.getHitComponents().get(0).reinforced(), 1))
             .bypassBlock());
         assertTrue(engine.onAttackConnected(state, com.jjktbf.model.combat.AbilityTrigger
-            .attackConnected(owner, target, attack, attack.getHitComponents().get(0), 2))
+            .attackConnected(owner, target, attack, attack.getHitComponents().get(0).reinforced(), 2))
             .bypassBlock());
     }
 
     @Test
     void codedConditionCanAccumulateFactsBeforeItsNaturalRuntimeHook() {
-        Move attack = plainAttack("SEQUENCED_RATIO");
+        Move attack = reinforcementAttack("SEQUENCED_RATIO");
         AbilityConditionData moveUsed = AbilityConditionType.MOVE_USED.createDefault();
         moveUsed.moveId = attack.getId();
         AbilityConditionData connected = AbilityConditionType.ATTACK_CONNECTED.createDefault();
@@ -203,7 +204,7 @@ class RatioTechniqueTest {
             owner, target, attack, 1));
 
         assertTrue(engine.onAttackConnected(state, com.jjktbf.model.combat.AbilityTrigger
-            .attackConnected(owner, target, attack, attack.getHitComponents().get(0), 1))
+            .attackConnected(owner, target, attack, attack.getHitComponents().get(0).reinforced(), 1))
             .bypassBlock());
     }
 
@@ -388,6 +389,23 @@ class RatioTechniqueTest {
             .apCost(10)
             .unleashPoint(1)
             .build();
+    }
+
+    private static Move reinforcementAttack(String id) {
+        return new Move.Builder(id)
+            .name(id)
+            .category(MoveCategory.PHYSICAL)
+            .hitComponents(List.of(reinforcementComponent(100)))
+            .canBeReinforced(true)
+            .neverMiss(true)
+            .apCost(10)
+            .unleashPoint(1)
+            .build();
+    }
+
+    private static HitComponent reinforcementComponent(int power) {
+        return new HitComponent(power, MoveCategory.PHYSICAL.getTags(), 0, false, true,
+            HitComponent.INHERIT_MOVE_ACCURACY, List.of(), true, 0);
     }
 
     private static Move fullBlock() {

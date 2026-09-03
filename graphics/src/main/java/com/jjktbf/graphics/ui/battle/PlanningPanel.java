@@ -113,6 +113,7 @@ public class PlanningPanel {
     private final int ceOutput;
     private final com.jjktbf.model.character.AbilityApplicator.AbilityFlags abilityFlags;
     private final Map<String, Integer> authoritativeCeCosts;
+    private final Set<String> reinforcedPaletteMoves = new java.util.HashSet<>();
     private final BattleCombatant localCombatant;
     private BattleState localBattleState;
     private List<CodedAbilityState> abilityStates = List.of();
@@ -167,6 +168,8 @@ public class PlanningPanel {
     private BattlePlan.Board draggingBoard;
     private int originalTick;
     private int originalCeCost;
+    private boolean originalReinforced;
+    private int originalReinforcementCeCost;
     private List<CombatantId> originalTargets = List.of();
     private boolean originalTargetsPending;
     private int draggingTick;
@@ -444,7 +447,8 @@ public class PlanningPanel {
                 segment.getMove().getId(),
                 segment.getStartTick(),
                 actorId,
-                getSelectedTargetIds(segment)))
+                getSelectedTargetIds(segment),
+                segment.isReinforced()))
             .toList();
     }
 
@@ -465,7 +469,8 @@ public class PlanningPanel {
     private void cancelActiveDrag() {
         if (draggingSegment != null) {
             selectedSegment = place(
-                draggingSegment.getMove(), originalTick, originalCeCost, originalTargets);
+                draggingSegment.getMove(), originalTick, originalCeCost, originalTargets,
+                originalReinforced, originalReinforcementCeCost);
             if (originalTargetsPending && selectedSegment != null) {
                 pendingTargetSelections.add(selectedSegment);
             }
@@ -572,7 +577,9 @@ public class PlanningPanel {
         int ceCost,
         List<String> targetIds,
         int apCost,
-        int unleashPoint
+        int unleashPoint,
+        boolean reinforced,
+        int reinforcementCeCost
     ) {
         if (move == null) return null;
         List<CombatantId> targets = targetIds == null ? List.of() : targetIds.stream()
@@ -581,19 +588,45 @@ public class PlanningPanel {
             .distinct()
             .toList();
         ActionSegment segment = plan.restorePlacement(
-            move, startTick, ceCost, targets, apCost, unleashPoint);
+            move, startTick, ceCost, targets, apCost, unleashPoint,
+            reinforced, reinforcementCeCost);
         if (segment != null) setTargets(segment, targets);
         return segment;
     }
 
+    public ActionSegment restorePlacement(
+        Move move,
+        int startTick,
+        int ceCost,
+        List<String> targetIds,
+        int apCost,
+        int unleashPoint
+    ) {
+        return restorePlacement(move, startTick, ceCost, targetIds, apCost,
+            unleashPoint, false, 0);
+    }
+
     private ActionSegment place(Move move, int startTick, int ceCost, List<CombatantId> targets) {
-        ActionSegment segment = plan.place(move, startTick, ceCost);
+        boolean reinforced = isPaletteReinforced(move);
+        return place(move, startTick, ceCost, targets, reinforced,
+            reinforced ? reinforcementCeCost(move) : 0);
+    }
+
+    private ActionSegment place(
+        Move move, int startTick, int ceCost, List<CombatantId> targets,
+        boolean reinforced, int reinforcementCeCost
+    ) {
+        ActionSegment segment = plan.placeWithTargets(
+            move, startTick, ceCost, targets, reinforced, reinforcementCeCost);
         if (segment != null) setTargets(segment, targets);
         return segment;
     }
 
     private ActionSegment placeFirstFit(Move move, int ceCost, List<CombatantId> targets) {
-        ActionSegment segment = plan.placeFirstFit(move, ceCost);
+        boolean reinforced = isPaletteReinforced(move);
+        int surcharge = reinforced ? reinforcementCeCost(move) : 0;
+        ActionSegment segment = plan.placeFirstFitWithTargets(
+            move, ceCost, targets, reinforced, surcharge);
         if (segment != null) setTargets(segment, targets);
         return segment;
     }
@@ -846,9 +879,11 @@ public class PlanningPanel {
         float cardGeometryScale = unifiedWindowsLayout
             ? UNIFIED_CARD_SCALE : textGeometryScale();
         for (int i = 0; i < knownMoves.size(); i++) {
-            cards.add(new MoveCardView(
+            MoveCardView card = new MoveCardView(
                 knownMoves.get(i), 0f, 0f, cardGeometryScale,
-                cardWidth(), cardHeight(), shortViewportLayout ? 2 : 5));
+                cardWidth(), cardHeight(), shortViewportLayout ? 2 : 5);
+            card.setReinforced(isPaletteReinforced(knownMoves.get(i)));
+            cards.add(card);
         }
 
         paletteViewportBounds.set(
@@ -1065,7 +1100,7 @@ public class PlanningPanel {
                 }
             }
             for (MoveCardView card : cards) {
-                card.draw(batch, titleFont, statFont, ui, ceCost(card.getMove()));
+                card.draw(batch, titleFont, statFont, ui, plannedCeCost(card.getMove()));
             }
         } finally {
             titleFont.getData().setScale(originalTitleScaleX, originalTitleScaleY);
@@ -1704,6 +1739,27 @@ public class PlanningPanel {
             : CeEfficiencyCalculator.computeActualCost(move, ceEfficiency, ceOutput, abilityFlags);
     }
 
+    private boolean canReinforce(Move move) {
+        return move != null && move.canBeReinforced()
+            && (localCombatant == null || localCombatant.canReinforce(move));
+    }
+
+    private boolean isPaletteReinforced(Move move) {
+        return move != null && reinforcedPaletteMoves.contains(move.getId());
+    }
+
+    private int reinforcementCeCost(Move move) {
+        if (!canReinforce(move)) return 0;
+        return localCombatant != null
+            ? localCombatant.computeReinforcementCeCost(move)
+            : move.getReinforcementBaseCeCost();
+    }
+
+    private int plannedCeCost(Move move) {
+        return Math.addExact(ceCost(move),
+            isPaletteReinforced(move) ? reinforcementCeCost(move) : 0);
+    }
+
     private static CodedAbilityState findMiraclesState(List<CodedAbilityState> states) {
         if (states == null) return null;
         return states.stream()
@@ -1781,6 +1837,17 @@ public class PlanningPanel {
             if (button == Buttons.LEFT && handleTargetMenuClick()) return true;
 
             if (button == Buttons.RIGHT) {
+                if (paletteViewportBounds.contains(dragMouseX, dragMouseY)) {
+                    for (MoveCardView card : cards) {
+                        if (!card.getBounds().contains(dragMouseX, dragMouseY)
+                            || !canReinforce(card.getMove())) continue;
+                        String id = card.getMove().getId();
+                        if (!reinforcedPaletteMoves.add(id)) reinforcedPaletteMoves.remove(id);
+                        card.setReinforced(isPaletteReinforced(card.getMove()));
+                        lockError = null;
+                        return true;
+                    }
+                }
                 ActionSegmentView hit = hitSegment();
                 if (hit == null || !plan.remove(hit.getSegment())) return false;
                 targetLists.remove(hit.getSegment());
@@ -1907,10 +1974,15 @@ public class PlanningPanel {
             List<CombatantId> targets = draggingSegment == null
                 ? defaultTargets(move) : originalTargets;
             boolean droppedOnTimeline = barFor(draggingBoard).getBounds().contains(dragMouseX, dragMouseY);
+            boolean reinforced = newPlacement ? isPaletteReinforced(move) : originalReinforced;
+            int surcharge = newPlacement
+                ? (reinforced ? reinforcementCeCost(move) : 0)
+                : originalReinforcementCeCost;
+            int totalCost = newPlacement ? plannedCeCost(move) : originalCeCost;
             ActionSegment placed = clickingMoveCard
-                ? placeFirstFit(move, ceCost(move), targets)
+                ? placeFirstFit(move, plannedCeCost(move), targets)
                 : droppedOnTimeline && snapValid
-                    ? place(move, draggingTick, ceCost(move), targets) : null;
+                    ? place(move, draggingTick, totalCost, targets, reinforced, surcharge) : null;
             if (placed != null) {
                 selectedSegment = placed;
                 if (originalTargetsPending) pendingTargetSelections.add(placed);
@@ -1918,7 +1990,8 @@ public class PlanningPanel {
             } else if (droppedOnTimeline && draggingSegment != null) {
                 // A cancelled relocation must never destroy an already planned move.
                 selectedSegment = place(
-                    draggingSegment.getMove(), originalTick, originalCeCost, originalTargets);
+                    draggingSegment.getMove(), originalTick, originalCeCost, originalTargets,
+                    originalReinforced, originalReinforcementCeCost);
                 if (originalTargetsPending && selectedSegment != null) {
                     pendingTargetSelections.add(selectedSegment);
                 }
@@ -1977,6 +2050,8 @@ public class PlanningPanel {
         private void startMoveDrag(ActionSegment segment, BattlePlan.Board board) {
             originalTick = segment.getStartTick();
             originalCeCost = segment.getActualCeCost();
+            originalReinforced = segment.isReinforced();
+            originalReinforcementCeCost = segment.getReinforcementCeCost();
             originalTargets = targetsOf(segment);
             originalTargetsPending = pendingTargetSelections.remove(segment);
             closeTargetMenu();

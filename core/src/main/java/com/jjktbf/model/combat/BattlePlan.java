@@ -168,14 +168,28 @@ public class BattlePlan {
         int ceCost,
         List<CombatantId> targets
     ) {
+        return placeWithTargets(move, tick, ceCost, targets, false, 0);
+    }
+
+    public ActionSegment placeWithTargets(
+        Move move,
+        int tick,
+        int ceCost,
+        List<CombatantId> targets,
+        boolean reinforced,
+        int reinforcementCeCost
+    ) {
         if (!hasDistinctTargetIds(targets)) return null;
+        if (reinforced && (!move.canBeReinforced() || reinforcementCeCost < 0
+            || reinforcementCeCost > ceCost)) return null;
         if (!canPlace(move, ceCost)) return null;
         Board board = boardFor(move);
         Timeline tl = boardTimeline(board);
         int apCost = effectiveApCost(move);
         int unleashPoint = effectiveUnleashPoint(move);
         ActionSegment segment = tl.placeAtWithTargets(
-            move, tick, ceCost, targets, apCost, unleashPoint);
+            move, tick, ceCost, targets, apCost, unleashPoint,
+            reinforced, reinforcementCeCost);
         if (segment == null) return null;
         apUsed += apCost;
         ceUsed += ceCost;
@@ -191,13 +205,28 @@ public class BattlePlan {
         int apCost,
         int unleashPoint
     ) {
+        return restorePlacement(move, tick, ceCost, targets, apCost, unleashPoint,
+            false, 0);
+    }
+
+    public ActionSegment restorePlacement(
+        Move move,
+        int tick,
+        int ceCost,
+        List<CombatantId> targets,
+        int apCost,
+        int unleashPoint,
+        boolean reinforced,
+        int reinforcementCeCost
+    ) {
         if (!hasDistinctTargetIds(targets) || !hasRemainingUses(move)
             || apCost > remainingApBudget() || ceCost > remainingCe()) {
             return null;
         }
         Timeline timeline = boardTimeline(boardFor(move));
         ActionSegment segment = timeline.placeAtWithTargets(
-            move, tick, ceCost, targets, apCost, unleashPoint);
+            move, tick, ceCost, targets, apCost, unleashPoint,
+            reinforced, reinforcementCeCost);
         if (segment == null) return null;
         apUsed += apCost;
         ceUsed += ceCost;
@@ -221,6 +250,16 @@ public class BattlePlan {
         int ceCost,
         List<CombatantId> targets
     ) {
+        return placeFirstFitWithTargets(move, ceCost, targets, false, 0);
+    }
+
+    public ActionSegment placeFirstFitWithTargets(
+        Move move,
+        int ceCost,
+        List<CombatantId> targets,
+        boolean reinforced,
+        int reinforcementCeCost
+    ) {
         if (!hasDistinctTargetIds(targets)) return null;
         if (!canPlace(move, ceCost)) return null;
         Timeline tl = boardTimeline(boardFor(move));
@@ -230,7 +269,8 @@ public class BattlePlan {
         for (ActionSegment existing : tl.getSegments().stream()
             .sorted(java.util.Comparator.comparingInt(ActionSegment::getStartTick)).toList()) {
             if (existing.getStartTick() - cursor >= apCost) {
-                return placeWithTargets(move, cursor, ceCost, targets);
+                return placeWithTargets(
+                    move, cursor, ceCost, targets, reinforced, reinforcementCeCost);
             }
             cursor = Math.max(cursor, existing.getEndTick() + 1);
         }
@@ -239,7 +279,8 @@ public class BattlePlan {
                 > tl.getGridLength()) {
             return null;
         }
-        return placeWithTargets(move, cursor, ceCost, targets);
+        return placeWithTargets(
+            move, cursor, ceCost, targets, reinforced, reinforcementCeCost);
     }
 
     private static boolean hasDistinctTargetIds(List<CombatantId> targets) {
@@ -347,7 +388,8 @@ public class BattlePlan {
         for (ActionSegment s : allSegments()) {
             merged.addSegment(new ActionSegment(
                 s.getMove(), s.getStartTick(), s.getActualCeCost(), s.getTargets(), true,
-                s.getApCost(), s.getUnleashPoint()));
+                s.getApCost(), s.getUnleashPoint(), s.isReinforced(),
+                s.getReinforcementCeCost()));
         }
         return merged;
     }

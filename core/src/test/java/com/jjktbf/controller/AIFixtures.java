@@ -53,10 +53,11 @@ final class AIFixtures {
             Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.RANGED), false, 1);
     }
 
-    /** A cursed-energy ("reinforcement") melee attack: PHYSICAL + CURSED_ENERGY. */
+    /** An authored PHYSICAL melee attack that can be reinforced at execution. */
     static Move ceAttack(String id, int basePower, int apCost) {
-        return attack(id, basePower, apCost,
-            Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY, MoveTag.ATTACK, MoveTag.MELEE), false, 1);
+        return attackWithReinforcementMetadata(id, basePower, apCost,
+            Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.MELEE), false, 1,
+            true, true);
     }
 
     /** A pure cursed-energy attack (CURSED_ENERGY only, no PHYSICAL) — not "reinforcement". */
@@ -79,6 +80,20 @@ final class AIFixtures {
     /** Attack with an explicit potency (for block potency-gate tests). */
     static Move attack(String id, int basePower, int apCost, Set<MoveTag> tags,
                        boolean guardBreak, int potency) {
+        return attackWithReinforcementMetadata(
+            id, basePower, apCost, tags, guardBreak, potency, false, false);
+    }
+
+    /**
+     * Attack fixture with explicit authored reinforcement metadata. The move-wide
+     * flag and per-hit eligibility are intentionally independent so classification
+     * tests can cover both parts of the authored contract.
+     */
+    static Move attackWithReinforcementMetadata(
+        String id, int basePower, int apCost, Set<MoveTag> tags,
+        boolean guardBreak, int potency,
+        boolean canBeReinforced, boolean reinforcementEligible
+    ) {
         // The category (and thus the hit-component tag set) is determined by the
         // damage-nature tags present; modifier tags (ATTACK/MELEE/RANGED/INTANGIBLE)
         // ride on top via the move's tag set.
@@ -91,8 +106,16 @@ final class AIFixtures {
         return new Move.Builder(id)
             .name(id).category(category)
             .tags(tags).potency(potency)
-            .hitComponents(List.of(new HitComponent(basePower, damageTags, 0, false, true)))
+            .hitComponents(List.of(new HitComponent(
+                basePower, damageTags, 0, false, true,
+                HitComponent.INHERIT_MOVE_ACCURACY, List.of(),
+                reinforcementEligible, reinforcementEligible ? 20 : 0)))
             .guardBreak(guardBreak)
+            .canBeReinforced(canBeReinforced)
+            .reinforcementCeCosts(
+                canBeReinforced ? 15 : 0,
+                canBeReinforced ? 1 : 0,
+                canBeReinforced ? 80 : 0)
             .apCost(apCost).unleashPoint(1)
             .build();
     }
@@ -113,7 +136,7 @@ final class AIFixtures {
             .tags(Set.of(MoveTag.DEFENSIVE, MoveTag.PHYSICAL))
             .potency(potency)
             .defenseType(DefenseType.BLOCK).blockStyle(BlockStyle.PERCENTAGE)
-            .blockDamageReduction(reduction).blockAffectedTags(affectedTags)
+            .blockDamageReduction(reduction)
             .apCost(apCost).unleashPoint(1)
             .build();
     }

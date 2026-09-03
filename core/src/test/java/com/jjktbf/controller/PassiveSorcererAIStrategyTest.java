@@ -54,9 +54,7 @@ class PassiveSorcererAIStrategyTest {
     }
 
     @Test
-    void prefersPhysicalAttacksOverCursedEnergy() {
-        // Passive attack weight has no power factor, so the physical preference
-        // (PHYSICAL_WEIGHT 1.0 vs CE_WEIGHT 0.4) directly decides the weight.
+    void optionalReinforcementDoesNotPenaliseAnUnreinforcedAttack() {
         Move physical = AIFixtures.meleeAttack("phy", 20, 15);
         Move ce = AIFixtures.ceAttack("ce", 20, 15);
         OpponentIntel intel = OpponentIntel.forOpponent(
@@ -65,8 +63,8 @@ class PassiveSorcererAIStrategyTest {
         double phyWeight = PassiveSorcererAIStrategy.attackWeight(physical, intel);
         double ceWeight = PassiveSorcererAIStrategy.attackWeight(ce, intel);
 
-        assertTrue(phyWeight > ceWeight,
-            "passive weaves physical attacks to conserve CE: phy=" + phyWeight + " ce=" + ceWeight);
+        assertEquals(phyWeight, ceWeight,
+            "authored reinforcement costs no CE unless the execution enables it");
     }
 
     @Test

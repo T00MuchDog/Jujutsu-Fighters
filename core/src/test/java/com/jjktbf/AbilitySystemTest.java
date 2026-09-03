@@ -22,6 +22,7 @@ import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.character.coded.MiraclesAbility;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.BattleCombatant;
+import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.AbilityTrigger;
 import com.jjktbf.model.combat.CombatEvent;
@@ -30,6 +31,7 @@ import com.jjktbf.model.combat.AbilityActivationEngine;
 import com.jjktbf.model.combat.SeededRandomSource;
 import com.jjktbf.model.combat.Timeline;
 import com.jjktbf.model.move.Move;
+import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffectType;
@@ -1408,8 +1410,10 @@ class AbilitySystemTest {
 
         Move finisher = new Move.Builder("FINISHER")
             .name("Finisher")
-            .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
-            .basePower(10_000)
+            .category(MoveCategory.PHYSICAL)
+            .hitComponents(List.of(new HitComponent(10_000, Set.of(MoveTag.PHYSICAL),
+                0, false, true, HitComponent.INHERIT_MOVE_ACCURACY, List.of(), true, 0)))
+            .canBeReinforced(true)
             .neverMiss(true)
             .apCost(1)
             .unleashPoint(1)
@@ -1419,9 +1423,9 @@ class AbilitySystemTest {
         BattleCombatant defender = combatant("DEFENDER", List.of(), List.of());
         attacker.applyDamage(20);
         int before = attacker.getCurrentHp();
-        Timeline timeline = new Timeline(1);
-        timeline.placeAt(finisher, 1, 0);
-        attacker.setTimeline(timeline);
+        BattlePlan plan = new BattlePlan(1, 0, 1);
+        assertNotNull(plan.placeWithTargets(finisher, 1, 0, List.of(), true, 0));
+        attacker.setTimeline(plan.toLegacyTimeline());
         defender.setTimeline(new Timeline(1));
         BattleState state = new BattleState(attacker, defender);
         state.transitionTo(BattleState.Phase.RESOLUTION);

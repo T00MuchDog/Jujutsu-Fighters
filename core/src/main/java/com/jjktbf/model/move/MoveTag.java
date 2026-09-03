@@ -8,8 +8,7 @@ import java.util.Set;
  * Tags serve three purposes:
  *  1. Determine the Power formula used during damage calculation.
  *  2. Gate which characters can learn/use the move.
- *  3. Determine whether a Black Flash can proc (requires PHYSICAL + CURSED_ENERGY
- *     with no technique tag).
+ *  3. Describe the effective damage nature of an actively reinforced hit.
  *
  * Tag combinations and their Power formulae:
  *
@@ -40,9 +39,8 @@ import java.util.Set;
  *  PHYSICAL + INNATE_TECHNIQUE + NON_INNATE_TECHNIQUE
  *      Power = 2:2:1  InnateT : NonInnateT : Physical
  *
- * Black Flash eligibility: a hit component must contain PHYSICAL and
- * CURSED_ENERGY, and must not contain INNATE_TECHNIQUE or
- * NON_INNATE_TECHNIQUE.
+ * Black Flash eligibility additionally requires active execution-level
+ * reinforcement; intrinsic tag combinations are not sufficient.
  */
 public enum MoveTag {
 

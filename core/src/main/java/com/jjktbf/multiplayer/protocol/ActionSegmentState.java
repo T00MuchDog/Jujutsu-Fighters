@@ -27,7 +27,9 @@ public record ActionSegmentState(
     ActionSegmentStatus status,
     Integer resolvedTick,
     String actorId,
-    List<String> targetIds
+    List<String> targetIds,
+    boolean reinforced,
+    int reinforcementCeCost
 ) {
     public ActionSegmentState {
         targetIds = targetIds == null ? List.of() : List.copyOf(targetIds);
@@ -40,7 +42,7 @@ public record ActionSegmentState(
         ActionSegmentStatus status, Integer resolvedTick
     ) {
         this(segmentId, moveId, moveName, board, startTick, endTick, fireTick,
-            apCost, ceCost, status, resolvedTick, null, List.of());
+            apCost, ceCost, status, resolvedTick, null, List.of(), false, 0);
     }
 
     /** Source-compatible constructor for current singular-target callers. */
@@ -51,7 +53,17 @@ public record ActionSegmentState(
     ) {
         this(segmentId, moveId, moveName, board, startTick, endTick, fireTick,
             apCost, ceCost, status, resolvedTick, actorId,
-            targetId == null ? List.of() : List.of(targetId));
+            targetId == null ? List.of() : List.of(targetId), false, 0);
+    }
+
+    public ActionSegmentState(
+        String segmentId, String moveId, String moveName, PlanBoard board,
+        int startTick, int endTick, int fireTick, int apCost, int ceCost,
+        ActionSegmentStatus status, Integer resolvedTick, String actorId,
+        List<String> targetIds
+    ) {
+        this(segmentId, moveId, moveName, board, startTick, endTick, fireTick,
+            apCost, ceCost, status, resolvedTick, actorId, targetIds, false, 0);
     }
 
     /** Source-compatible singular view for clients not yet migrated to target lists. */

@@ -273,7 +273,6 @@ class PlanTargetingTest {
             .defenseType(DefenseType.BLOCK)
             .blockStyle(BlockStyle.PERCENTAGE)
             .blockDamageReduction(100)
-            .blockAffectedTags(List.of("PHYSICAL"))
             .apCost(5)
             .unleashPoint(1)
             .build();

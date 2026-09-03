@@ -1386,12 +1386,40 @@ public class BattleCombatant {
             statMode);
         cost = Math.max(0, (int) Math.round(modifyBattleStat(BattleStatKey.CE_COST, cost)));
         if (flags.waivesCeCostByStatTotal(
-            move, character.getBaseStats().baseStatTotal())) {
+            move, move.getBaseCeCost(), character.getBaseStats().baseStatTotal())) {
             return 0;
         }
         // An equipped cursed tool channels its own cursed energy: moves of its
         // weapon type cost the wielder nothing. Applied last so the free-CE
         // rule is absolute.
+        return isCoveredByCursedTool(move) ? 0 : cost;
+    }
+
+    public boolean hasReinforcementAbility() {
+        return abilities.stream().anyMatch(
+            com.jjktbf.model.character.ReinforcementAbility::is);
+    }
+
+    public boolean canReinforce(com.jjktbf.model.move.Move move) {
+        return move != null && move.canBeReinforced() && hasReinforcementAbility();
+    }
+
+    /** Additional CE charged for reinforcement, through the same modifier pipeline as move CE. */
+    public int computeReinforcementCeCost(com.jjktbf.model.move.Move move) {
+        if (!canReinforce(move)) return 0;
+        AbilityApplicator.AbilityFlags flags = getAbilityFlags();
+        int cost = CeEfficiencyCalculator.computeReinforcementCost(
+            move,
+            getEffectiveStats().getCursedEnergyEfficiency(),
+            getEffectiveStats().getCursedEnergyOutput(),
+            flags,
+            statMode);
+        cost = Math.max(0, (int) Math.round(modifyBattleStat(BattleStatKey.CE_COST, cost)));
+        if (flags.waivesCeCostByStatTotal(
+            move, move.getReinforcementBaseCeCost(),
+            character.getBaseStats().baseStatTotal())) {
+            return 0;
+        }
         return isCoveredByCursedTool(move) ? 0 : cost;
     }
 

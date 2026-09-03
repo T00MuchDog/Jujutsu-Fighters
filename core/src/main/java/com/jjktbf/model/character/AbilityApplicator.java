@@ -677,6 +677,7 @@ public final class AbilityApplicator {
         /** Whether an authored base CE cost falls within a stat-total waiver threshold. */
         public boolean waivesCeCostByStatTotal(
             com.jjktbf.model.move.Move move,
+            int authoredBaseCost,
             int baseStatTotal
         ) {
             for (AbilityEffectData effect : ceCostWaiveByStatTotalEffects) {
@@ -684,7 +685,7 @@ public final class AbilityApplicator {
                 int divisor = nvl(effect.intValue, 0);
                 if (divisor <= 0) continue;
                 int threshold = Math.max(1, baseStatTotal / divisor);
-                if (move.getBaseCeCost() <= threshold) return true;
+                if (authoredBaseCost <= threshold) return true;
             }
             return false;
         }

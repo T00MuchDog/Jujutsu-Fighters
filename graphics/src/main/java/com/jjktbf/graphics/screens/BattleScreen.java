@@ -3366,6 +3366,19 @@ public class BattleScreen implements Screen, BattleView {
             .defenseTargetCount(TargetListSupport.moveStateDefenseTargetCount(state))
             .targeting(TargetListSupport.moveStateTargeting(state))
             .freeMove(true);
+        if (state.reinforcement() != null && state.reinforcement().available()) {
+            builder.canBeReinforced(true)
+                // Online planning receives the already-scaled surcharge. Fixing
+                // all three values to it prevents any client-side rescaling.
+                .reinforcementCeCosts(
+                    state.reinforcement().effectiveCeCost(),
+                    state.reinforcement().effectiveCeCost(),
+                    state.reinforcement().effectiveCeCost())
+                .reinforcementDefense(
+                    com.jjktbf.model.move.ReinforcementDefenseType.fromName(
+                        state.reinforcement().defenseType()),
+                    state.reinforcement().defenseValue());
+        }
         if (!planningEffects.isEmpty()) builder.effects(planningEffects);
         if (TargetListSupport.moveStateAoeType(state) != null) {
             builder.aoeType(TargetListSupport.moveStateAoeType(state))
@@ -3406,12 +3419,14 @@ public class BattleScreen implements Screen, BattleView {
             return new HitComponent(
                 state.basePower(), tags, state.delayTicks(),
                 state.requiresPreviousConnection(), state.avoidable(),
-                state.baseAccuracy(), onHitEffects);
+                state.baseAccuracy(), onHitEffects,
+                state.reinforcementEligible(), state.reinforcementBonusPower());
         }
         return new HitComponent(
             state.basePower(), MoveCategory.valueOf(state.category()).getTags(),
             state.delayTicks(), state.requiresPreviousConnection(), state.avoidable(),
-            state.baseAccuracy(), onHitEffects);
+            state.baseAccuracy(), onHitEffects,
+            state.reinforcementEligible(), state.reinforcementBonusPower());
     }
 
     private void submitOnlinePlan() {

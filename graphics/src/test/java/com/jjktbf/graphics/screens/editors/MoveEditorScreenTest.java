@@ -8,7 +8,6 @@ import com.jjktbf.model.character.AbilityConditionType;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.move.AttackLaunchMode;
 import com.jjktbf.model.move.BlockStyle;
-import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.MoveData;
@@ -237,8 +236,7 @@ class MoveEditorScreenTest {
         assertEquals(DefenseType.BLOCK.name(), saved.defenseType);
         assertEquals(BlockStyle.FLAT.name(), saved.blockStyle);
         assertEquals(4, saved.blockDuration);
-        assertEquals(List.of(BlockAttackType.PHYSICAL.name()), saved.blockAttackTypes);
-        assertNull(saved.blockAffectedTags);
+        assertEquals(List.of(MoveTag.MELEE.name()), saved.blockRanges);
         assertEquals(20, saved.blockFlatReduction);
         assertEquals(1, saved.selfEffects.size());
 
@@ -249,25 +247,30 @@ class MoveEditorScreenTest {
     }
 
     @Test
-    void saveCopyPreservesMoveCapAndParryAffectedTags() {
+    void saveCopyPreservesMoveCapAndReinforcementFields() {
         MoveData draft = new MoveData();
         draft.tags = new ArrayList<>(List.of(
             MoveTag.DEFENSIVE.name(), MoveTag.PHYSICAL.name()));
         draft.defenseType = DefenseType.PARRY.name();
-        draft.blockAffectedTags = new ArrayList<>(List.of(
-            MoveTag.PHYSICAL.name(), MoveTag.CURSED_ENERGY.name()));
+        draft.blockRanges = new ArrayList<>(List.of(MoveTag.MELEE.name()));
+        draft.canBeReinforced = true;
+        draft.reinforcementBaseCeCost = 18;
+        draft.reinforcementMinCeCost = 3;
+        draft.reinforcementMaxCeCost = 75;
+        draft.reinforcementDefenseType = "STAGGER_LENGTH";
+        draft.reinforcementDefenseValue = 2;
         draft.moveCap = 1;
 
         MoveData saved = MoveEditorScreen.normalizedCopyForSave(draft);
 
         assertEquals(1, saved.moveCap);
-        assertEquals(List.of(
-            BlockAttackType.PHYSICAL.name(),
-            BlockAttackType.PHYSICAL_CURSED_ENERGY.name(),
-            BlockAttackType.CURSED_ENERGY.name()), saved.blockAttackTypes);
-        assertNull(saved.blockAffectedTags);
-        assertEquals(List.of(MoveTag.PHYSICAL.name(), MoveTag.CURSED_ENERGY.name()),
-            draft.blockAffectedTags);
+        assertEquals(List.of(MoveTag.MELEE.name()), saved.blockRanges);
+        assertTrue(saved.canBeReinforced);
+        assertEquals(18, saved.reinforcementBaseCeCost);
+        assertEquals(3, saved.reinforcementMinCeCost);
+        assertEquals(75, saved.reinforcementMaxCeCost);
+        assertEquals("STAGGER_LENGTH", saved.reinforcementDefenseType);
+        assertEquals(2, saved.reinforcementDefenseValue);
     }
 
     @Test
@@ -395,7 +398,7 @@ class MoveEditorScreenTest {
 
         assertEquals(DefenseType.NONE.name(), saved.defenseType);
         assertEquals(0, saved.blockDuration);
-        assertNull(saved.blockAffectedTags);
+        assertNull(saved.blockRanges);
         assertEquals(100, saved.blockDamageReduction);
         assertEquals(0, saved.blockFlatReduction);
         assertEquals(1, saved.selfEffects.size());
@@ -941,7 +944,7 @@ class MoveEditorScreenTest {
         data.defenseType = DefenseType.BLOCK.name();
         data.blockStyle = BlockStyle.FLAT.name();
         data.blockDuration = 4;
-        data.blockAffectedTags = new ArrayList<>(List.of(MoveTag.PHYSICAL.name()));
+        data.blockRanges = new ArrayList<>(List.of(MoveTag.MELEE.name()));
         data.blockDamageReduction = 35;
         data.blockFlatReduction = 20;
 

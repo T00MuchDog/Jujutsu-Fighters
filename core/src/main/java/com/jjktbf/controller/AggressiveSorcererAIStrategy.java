@@ -79,12 +79,19 @@ public class AggressiveSorcererAIStrategy implements AIStrategy {
         while (true) {
             Move pick = chooseNext(ai, plan, attacks, defenses, intel, stuck, rng, hasAttacked, lowHpOpponent);
             if (pick == null) break;
-            int ceCost = ai.computeMoveCeCost(pick);
+            int intrinsicCost = ai.computeMoveCeCost(pick);
+            int surcharge = ai.canReinforce(pick)
+                ? ai.computeReinforcementCeCost(pick) : 0;
+            boolean reinforced = ai.canReinforce(pick)
+                && plan.canPlace(pick, Math.addExact(intrinsicCost, surcharge));
+            int ceCost = Math.addExact(intrinsicCost, reinforced ? surcharge : 0);
             boolean placed;
             if (pick.isDefensive()) {
-                placed = placeDefense(pick, ceCost, plan, gridLength, ai, opponent, intel);
+                placed = placeDefense(pick, ceCost, plan, gridLength, ai, opponent, intel,
+                    reinforced, reinforced ? surcharge : 0);
             } else {
-                placed = placeAttack(pick, ceCost, plan, gridLength, rng) != null;
+                placed = placeAttack(pick, ceCost, plan, gridLength, rng,
+                    reinforced, reinforced ? surcharge : 0) != null;
             }
             if (!placed) {
                 stuck.add(pick);
@@ -173,28 +180,37 @@ public class AggressiveSorcererAIStrategy implements AIStrategy {
     // -------------------------------------------------------------------------
 
     /** Bunched clusters: high chance at the start and end, occasional mid move. */
-    private ActionSegment placeAttack(Move move, int ceCost, BattlePlan plan, int gridLength, RandomSource rng) {
+    private ActionSegment placeAttack(
+        Move move, int ceCost, BattlePlan plan, int gridLength, RandomSource rng,
+        boolean reinforced, int reinforcementCeCost
+    ) {
         double roll = rng.nextDouble();
         if (roll < START_CLUSTER_PROB) {
-            return SmartAIScoring.placeAtOrAfter(plan, move, ceCost, 1);
+            return SmartAIScoring.placeAtOrAfter(
+                plan, move, ceCost, 1, reinforced, reinforcementCeCost);
         }
         if (roll < START_CLUSTER_PROB + END_CLUSTER_PROB) {
-            return SmartAIScoring.placeBunchedAtEnd(plan, move, ceCost, gridLength);
+            return SmartAIScoring.placeBunchedAtEnd(
+                plan, move, ceCost, gridLength, reinforced, reinforcementCeCost);
         }
-        return SmartAIScoring.placeAtOrAfter(plan, move, ceCost, Math.max(1, gridLength / 3));
+        return SmartAIScoring.placeAtOrAfter(plan, move, ceCost,
+            Math.max(1, gridLength / 3), reinforced, reinforcementCeCost);
     }
 
     /** Align the rare defense to the opponent's biggest committed attack, else bunch at the start. */
     private boolean placeDefense(
         Move move, int ceCost, BattlePlan plan, int gridLength,
-        BattleCombatant ai, BattleCombatant opponent, OpponentIntel intel
+        BattleCombatant ai, BattleCombatant opponent, OpponentIntel intel,
+        boolean reinforced, int reinforcementCeCost
     ) {
         if (!intel.committedAttackFireTicks.isEmpty()) {
             int biggest = intel.committedAttackFireTicks.get(intel.committedAttackFireTicks.size() - 1);
             ActionSegment aligned = SmartAIScoring.placeAlignedToThreat(
-                plan, move, ceCost, biggest, ai, opponent);
+                plan, move, ceCost, biggest, ai, opponent,
+                reinforced, reinforcementCeCost);
             if (aligned != null) return true;
         }
-        return SmartAIScoring.placeAtOrAfter(plan, move, ceCost, 1) != null;
+        return SmartAIScoring.placeAtOrAfter(
+            plan, move, ceCost, 1, reinforced, reinforcementCeCost) != null;
     }
 }

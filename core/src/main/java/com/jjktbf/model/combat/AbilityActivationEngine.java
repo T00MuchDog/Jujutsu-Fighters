@@ -8,7 +8,6 @@ import com.jjktbf.model.character.coded.CodedMoveResponse;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectMessages;
 import com.jjktbf.model.move.StatusEffectType;
-import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveEffectData;
@@ -1652,7 +1651,9 @@ public final class AbilityActivationEngine {
         HitComponent component = trigger.hitComponent();
         if (component == null) return false;
         if (tag == MoveTag.CURSED_ENERGY) {
-            return BlockAttackType.from(component) != BlockAttackType.PHYSICAL;
+            return component.hasTag(MoveTag.CURSED_ENERGY)
+                || component.hasTag(MoveTag.INNATE_TECHNIQUE)
+                || component.hasTag(MoveTag.NON_INNATE_TECHNIQUE);
         }
         return component.hasTag(tag)
             || !MoveTag.HIT_TAGS.contains(tag)

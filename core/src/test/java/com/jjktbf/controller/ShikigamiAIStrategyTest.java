@@ -311,7 +311,7 @@ class ShikigamiAIStrategyTest {
             .moveType(MoveType.SHIKIGAMI)
             .tags(Set.of(MoveTag.DEFENSIVE, MoveTag.PHYSICAL))
             .defenseType(DefenseType.BLOCK).blockStyle(BlockStyle.PERCENTAGE)
-            .blockDamageReduction(50).blockAffectedTags(List.of("PHYSICAL"))
+            .blockDamageReduction(50)
             .apCost(5).unleashPoint(1)
             .build();
     }

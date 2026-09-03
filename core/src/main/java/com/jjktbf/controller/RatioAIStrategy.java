@@ -193,8 +193,14 @@ public class RatioAIStrategy implements AIStrategy {
             }
             Move pick = SmartAIScoring.weightedRandomPick(pool, weights, rng);
             if (pick == null) break;
+            int intrinsicCost = ai.computeMoveCeCost(pick);
+            int surcharge = ai.canReinforce(pick)
+                ? ai.computeReinforcementCeCost(pick) : 0;
+            boolean reinforced = ai.canReinforce(pick)
+                && plan.canPlace(pick, Math.addExact(intrinsicCost, surcharge));
             ActionSegment segment = SmartAIScoring.placeAtOrAfter(
-                plan, pick, ai.computeMoveCeCost(pick), 1);
+                plan, pick, Math.addExact(intrinsicCost, reinforced ? surcharge : 0), 1,
+                reinforced, reinforced ? surcharge : 0);
             if (segment == null) {
                 stuck.add(pick);
             } else {

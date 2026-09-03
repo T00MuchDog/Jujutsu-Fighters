@@ -32,10 +32,10 @@ class MoveCardViewTest {
     }
 
     @Test
-    void reinforcementDefenseUsesTheDeepLimePalette() {
+    void intrinsicHybridDefenseUsesTheDeepLimePalette() {
         Move move = moveWithTags("DEFENSIVE", "PHYSICAL", "CURSED_ENERGY");
 
-        assertEquals("REINFORCEMENT", MoveCardView.typeNameFor(move));
+        assertEquals("PHYSICAL + CURSED ENERGY", MoveCardView.typeNameFor(move));
         assertEquals(new Color(0.310f, 0.540f, 0.140f, 1f), MoveCardView.typeColorFor(move));
     }
 
@@ -67,13 +67,13 @@ class MoveCardViewTest {
     }
 
     @Test
-    void cursedToolCardsUseTheDarkCrimsonWeaponReinforcementPalette() {
+    void cursedToolCardsUseTheDarkCrimsonHybridPalette() {
         Move move = moveWithTags("ATTACK", "PHYSICAL", "CURSED_ENERGY", "KATANA");
-        Move unarmedReinforcement = moveWithTags("ATTACK", "PHYSICAL", "CURSED_ENERGY");
+        Move unarmedHybrid = moveWithTags("ATTACK", "PHYSICAL", "CURSED_ENERGY");
 
         assertEquals("CURSED TOOL", MoveCardView.typeNameFor(move));
         assertEquals(new Color(0.545f, 0.000f, 0.000f, 1f), MoveCardView.typeColorFor(move));
-        assertEquals("REINFORCEMENT", MoveCardView.typeNameFor(unarmedReinforcement));
+        assertEquals("PHYSICAL + CURSED ENERGY", MoveCardView.typeNameFor(unarmedHybrid));
     }
 
     @Test

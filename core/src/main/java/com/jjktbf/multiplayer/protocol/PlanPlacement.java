@@ -23,7 +23,8 @@ public record PlanPlacement(
     String moveId,
     int startTick,
     String actorId,
-    List<String> targetIds
+    List<String> targetIds,
+    boolean reinforced
 ) {
     public PlanPlacement {
         targetIds = targetIds == null ? List.of() : List.copyOf(targetIds);
@@ -31,13 +32,17 @@ public record PlanPlacement(
 
     /** Legacy two-field placement (no actor/target). */
     public PlanPlacement(String moveId, int startTick) {
-        this(moveId, startTick, null, List.of());
+        this(moveId, startTick, null, List.of(), false);
     }
 
     /** Source-compatible single-target constructor used by current planning clients. */
     public PlanPlacement(String moveId, int startTick, String actorId, String targetId) {
         this(moveId, startTick, actorId,
-            targetId == null ? List.of() : List.of(targetId));
+            targetId == null ? List.of() : List.of(targetId), false);
+    }
+
+    public PlanPlacement(String moveId, int startTick, String actorId, List<String> targetIds) {
+        this(moveId, startTick, actorId, targetIds, false);
     }
 
     /** Source-compatible singular view for clients not yet migrated to target lists. */

@@ -74,6 +74,16 @@ public final class TargetListSupport {
         String actorId,
         List<String> targetIds
     ) {
+        return placement(moveId, startTick, actorId, targetIds, false);
+    }
+
+    public static PlanPlacement placement(
+        String moveId,
+        int startTick,
+        String actorId,
+        List<String> targetIds,
+        boolean reinforced
+    ) {
         List<String> normalized = distinctStrings(targetIds);
         RecordComponent[] components = PlanPlacement.class.getRecordComponents();
         Class<?>[] parameterTypes = new Class<?>[components.length];
@@ -87,6 +97,7 @@ public final class TargetListSupport {
                 case "actorId" -> actorId;
                 case "targetId" -> normalized.isEmpty() ? null : normalized.get(0);
                 case "targetIds" -> normalized;
+                case "reinforced" -> reinforced;
                 default -> defaultValue(component.getType());
             };
         }

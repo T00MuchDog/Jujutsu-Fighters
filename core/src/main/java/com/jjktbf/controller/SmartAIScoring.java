@@ -42,13 +42,11 @@ import java.util.List;
  *   <li>{@link #effectMultiplier} — weight moves carrying effect rows higher.</li>
  *   <li>{@link #dodgeExposureMultiplier} — de-weight an attack when the opponent
  *       has committed matching (melee/ranged) dodges or blocks.</li>
- *   <li>{@link #reinforcementAttackMultiplier} — boost cursed-energy
- *       ("reinforcement") attacks when the opponent's blocks are physical-only
- *       (CE slips through physical blocks).</li>
+ *   <li>{@link #reinforcementAttackMultiplier} — modestly value authored
+ *       reinforcement and Black Flash potential.</li>
  *   <li>{@link #defenseValue} — score a defensive move by whether it actually
  *       covers an opponent threat, its potency vs the opponent's strongest
- *       attack, whether it's an over-broad "reinforced" block the opponent
- *       doesn't need, and guard-break/intangible counterplay.</li>
+ *       attack, and guard-break/intangible counterplay.</li>
  * </ul>
  *
  * <p>Placement helpers ({@link #placeAtOrAfter}, {@link #placeAtFreeRandom},
@@ -65,14 +63,10 @@ final class SmartAIScoring {
     static final double DODGE_WEIGHT = 0.6;
     /** Per committed block/parry, an attack's score divides by {@code 1 + this·count}. */
     static final double COMMITTED_BLOCK_WEIGHT = 0.25;
-    /** CE attack bonus when the opponent's blocks can't stop CE (physical-only blocks). */
-    static final double REINFORCEMENT_BYPASS_BONUS = 1.8;
     /** Guard-break/intangible attack bonus into an opponent turtling behind blocks/parries. */
     static final double DEFENSE_CRACK_BONUS = 1.5;
     /** Defense multiplier when its potency is below the opponent's strongest attack. */
     static final double POTENCY_FAIL = 0.3;
-    /** Broader-than-needed (reinforced) block vs a physical-only opponent. */
-    static final double OVER_REINFORCED = 0.7;
     /** Block value when the opponent owns guard-break attacks (blocks get bypassed). */
     static final double GUARDBREAK_BLOCK_PENALTY = 0.4;
     /** Block/parry value when the opponent owns intangible attacks (both are bypassed). */
@@ -90,31 +84,17 @@ final class SmartAIScoring {
     // Move classification
     // -------------------------------------------------------------------------
 
-    /**
-     * A "reinforcement" attack — a physical strike reinforced with cursed energy,
-     * i.e. carrying both PHYSICAL and CURSED_ENERGY (the PHYSICAL_CURSED_ENERGY
-     * typing). Pure-CE blasts and technique attacks are <em>not</em> "reinforcement".
-     */
+    /** Whether this move offers authored reinforcement on at least one physical hit. */
     static boolean isReinforcement(Move move) {
-        return move != null && move.hasTag("PHYSICAL") && move.hasTag("CURSED_ENERGY");
+        return move != null && move.canBeReinforced()
+            && move.getHitComponents().stream().anyMatch(component ->
+                component.isReinforcementEligible()
+                    && component.hasTag(MoveTag.PHYSICAL));
     }
 
     /** A purely physical attack — PHYSICAL tag and no cursed energy. */
     static boolean isPhysicalAttack(Move move) {
         return move != null && move.hasTag("PHYSICAL") && !move.hasTag("CURSED_ENERGY");
-    }
-
-    /**
-     * Whether a block covers either cursed-energy attack category. A block with
-     * no declared attack categories covers all three.
-     */
-    static boolean blockCoversCursedEnergy(Move block) {
-        if (block == null) return false;
-        var types = block.getBlockAttackTypes();
-        return types.isEmpty()
-            || types.contains(com.jjktbf.model.move.BlockAttackType.CURSED_ENERGY)
-            || types.contains(
-                com.jjktbf.model.move.BlockAttackType.PHYSICAL_CURSED_ENERGY);
     }
 
     private static boolean hasMeaningfulEffects(Move move) {
@@ -151,15 +131,9 @@ final class SmartAIScoring {
         return 1.0 / (1.0 + DODGE_WEIGHT * dodgeExposure + COMMITTED_BLOCK_WEIGHT * blockers);
     }
 
-    /**
-     * Boost reinforcement (PHYSICAL + CURSED_ENERGY) attacks when the opponent's
-     * blocks are physical-only — those attacks slip straight through.
-     */
+    /** Modest value for authored reinforcement/Black-Flash potential. */
     static double reinforcementAttackMultiplier(Move attack, OpponentIntel intel) {
-        if (intel.blocksPhysicalOnly && isReinforcement(attack)) {
-            return REINFORCEMENT_BYPASS_BONUS;
-        }
-        return 1.0;
+        return isReinforcement(attack) ? 1.15 : 1.0;
     }
 
     /**
@@ -181,8 +155,7 @@ final class SmartAIScoring {
      * Raw coverage of a block vs the opponent's authored attacks: does it stop
      * at least one attack they can actually throw? Returns 0 when the block
      * matches no opponent attack (a wasted block), otherwise a positive value
-     * reduced for low potency and for being broader than a physical-only
-     * opponent requires.
+     * reduced when its potency cannot contest the opponent's strongest attack.
      */
     static double blockUsefulness(Move block, OpponentIntel intel) {
         if (intel.attacks.isEmpty()) return 0;
@@ -198,11 +171,6 @@ final class SmartAIScoring {
         double score = 1.0;
         if (block.getPotency() < intel.maxAttackPotency) {
             score *= POTENCY_FAIL; // can't contest the opponent's strongest attack
-        }
-        // Opponent is purely physical: a block that also covers CE is broader
-        // than needed — prefer the minimal physical block.
-        if (intel.physicalOnly && blockCoversCursedEnergy(block)) {
-            score *= OVER_REINFORCED;
         }
         return score;
     }
@@ -662,12 +630,20 @@ final class SmartAIScoring {
      * {@code nearTick} upward that fits the move on its assigned board.
      */
     static ActionSegment placeAtOrAfter(BattlePlan plan, Move move, int ceCost, int nearTick) {
+        return placeAtOrAfter(plan, move, ceCost, nearTick, false, 0);
+    }
+
+    static ActionSegment placeAtOrAfter(
+        BattlePlan plan, Move move, int ceCost, int nearTick,
+        boolean reinforced, int reinforcementCeCost
+    ) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
         int grid = board.getGridLength();
         int need = plan.effectiveApCost(move);
         for (int start = Math.max(1, nearTick); start + need - 1 <= grid; start++) {
             if (board.isRangeFree(start, start + need - 1)) {
-                return plan.place(move, start, ceCost);
+                return plan.placeWithTargets(
+                    move, start, ceCost, List.of(), reinforced, reinforcementCeCost);
             }
         }
         return null;
@@ -697,11 +673,19 @@ final class SmartAIScoring {
      * the latest free slot that fits it.
      */
     static ActionSegment placeBunchedAtEnd(BattlePlan plan, Move move, int ceCost, int gridLength) {
+        return placeBunchedAtEnd(plan, move, ceCost, gridLength, false, 0);
+    }
+
+    static ActionSegment placeBunchedAtEnd(
+        BattlePlan plan, Move move, int ceCost, int gridLength,
+        boolean reinforced, int reinforcementCeCost
+    ) {
         Timeline board = plan.boardTimeline(BattlePlan.boardFor(move));
         int need = plan.effectiveApCost(move);
         for (int start = gridLength - need + 1; start >= 1; start--) {
             if (board.isRangeFree(start, start + need - 1)) {
-                return plan.place(move, start, ceCost);
+                return plan.placeWithTargets(
+                    move, start, ceCost, List.of(), reinforced, reinforcementCeCost);
             }
         }
         return null;
@@ -718,12 +702,22 @@ final class SmartAIScoring {
         BattlePlan plan, Move defense, int ceCost, int threatFireTick,
         BattleCombatant ai, BattleCombatant opponent
     ) {
+        return placeAlignedToThreat(
+            plan, defense, ceCost, threatFireTick, ai, opponent, false, 0);
+    }
+
+    static ActionSegment placeAlignedToThreat(
+        BattlePlan plan, Move defense, int ceCost, int threatFireTick,
+        BattleCombatant ai, BattleCombatant opponent,
+        boolean reinforced, int reinforcementCeCost
+    ) {
         if (opponent != null
             && ai.getRuntimeStat(StatKey.SPEED) < opponent.getRuntimeStat(StatKey.SPEED)) {
             return null;
         }
         int start = Math.max(
             1, threatFireTick - plan.effectiveUnleashPoint(defense) + 1);
-        return plan.place(defense, start, ceCost);
+        return plan.placeWithTargets(
+            defense, start, ceCost, List.of(), reinforced, reinforcementCeCost);
     }
 }

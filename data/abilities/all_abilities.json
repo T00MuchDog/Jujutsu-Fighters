@@ -742,8 +742,7 @@
   "sourceType" : "CURSED_CORPSE",
   "effects" : [ {
     "effectId" : "effect-000001",
-    "type" : "GRANT_ABILITY",
-    "abilityId" : "000010"
+    "type" : "POISON_IMMUNITY"
   } ],
   "masteryThreshold" : 0
 }, {
@@ -1317,5 +1316,14 @@
     "resourceCapacity" : 3,
     "resourceStartValue" : 0
   } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000059",
+  "name" : "Cursed-Energy Reinforcement",
+  "flavourText" : "The user can deliberately circulate cursed energy through a strike or guard at the moment of execution.",
+  "mechanicText" : "May toggle REINFORCEMENT on authored reinforceable moves, paying their additional CE cost.",
+  "category" : "PASSIVE",
+  "sourceType" : "CHARACTER",
+  "effects" : [ ],
   "masteryThreshold" : 0
 } ]

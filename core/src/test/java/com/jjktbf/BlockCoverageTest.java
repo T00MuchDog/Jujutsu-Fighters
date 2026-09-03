@@ -11,13 +11,11 @@ import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.Timeline;
-import com.jjktbf.model.move.BlockAttackType;
 import com.jjktbf.model.move.BlockStyle;
 import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
-import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveEffectData;
 import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
@@ -28,71 +26,41 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BlockCoverageTest {
 
     @Test
-    void attackTypingCollapsesTechniquesIntoThreeExactCategories() {
-        Move cursedEnergyBlock = block(
-            "CE_BLOCK", Set.of(BlockAttackType.CURSED_ENERGY), Set.of(), Set.of(), 100, List.of());
-        Move hybridBlock = block(
-            "HYBRID_BLOCK", Set.of(BlockAttackType.PHYSICAL_CURSED_ENERGY),
-            Set.of(), Set.of(), 100, List.of());
-
-        assertTrue(cursedEnergyBlock.blocksAttack(attack("RAW_CE", MoveCategory.CURSED_ENERGY)));
-        assertTrue(cursedEnergyBlock.blocksAttack(
-            attack("INNATE", MoveCategory.INNATE_TECHNIQUE)));
-        assertTrue(cursedEnergyBlock.blocksAttack(
-            attack("NON_INNATE", MoveCategory.NON_INNATE_TECHNIQUE)));
-        assertFalse(cursedEnergyBlock.blocksAttack(
-            attack("PHYSICAL", MoveCategory.PHYSICAL)));
-        assertFalse(cursedEnergyBlock.blocksAttack(
-            attack("PHYSICAL_INNATE", MoveCategory.PHYSICAL_INNATE_TECHNIQUE)));
-
-        assertTrue(hybridBlock.blocksAttack(
-            attack("PHYSICAL_CE", MoveCategory.PHYSICAL_CURSED_ENERGY)));
-        assertTrue(hybridBlock.blocksAttack(
-            attack("PHYSICAL_NON_INNATE", MoveCategory.PHYSICAL_NON_INNATE_TECHNIQUE)));
-        assertFalse(hybridBlock.blocksAttack(
-            attack("PURE_CE", MoveCategory.CURSED_ENERGY)));
-        assertFalse(hybridBlock.blocksAttack(
-            attack("PURE_PHYSICAL", MoveCategory.PHYSICAL)));
-    }
-
-    @Test
-    void attackTypeRangeAndEveryElementMustBeCovered() {
-        Move physicalFireBlock = block(
-            "PHYSICAL_FIRE",
-            Set.of(BlockAttackType.PHYSICAL),
-            Set.of(MoveTag.MELEE, MoveTag.RANGED),
-            Set.of(MoveTag.FIRE),
-            100,
-            List.of());
-        Move hybridFireBlock = block(
-            "HYBRID_FIRE",
-            Set.of(BlockAttackType.PHYSICAL_CURSED_ENERGY),
-            Set.of(MoveTag.MELEE, MoveTag.RANGED),
-            Set.of(MoveTag.FIRE),
-            100,
-            List.of());
+    void rangeAndEveryElementMustBeCovered() {
+        Move rangedFireBlock = block(
+            "RANGED_FIRE", Set.of(MoveTag.RANGED), Set.of(MoveTag.FIRE), 100, List.of());
+        Move allRangeFireBlock = block(
+            "ALL_RANGE_FIRE", Set.of(MoveTag.MELEE, MoveTag.RANGED),
+            Set.of(MoveTag.FIRE), 100, List.of());
 
         Move incoming = attack(
             "FIRE_REINFORCEMENT",
             MoveCategory.PHYSICAL_CURSED_ENERGY,
             MoveTag.RANGED,
             MoveTag.FIRE);
-        assertFalse(physicalFireBlock.blocksAttack(incoming));
-        assertTrue(hybridFireBlock.blocksAttack(incoming));
-        assertTrue(hybridFireBlock.blocksAttack(attack(
+        assertTrue(rangedFireBlock.blocksAttack(incoming));
+        assertFalse(rangedFireBlock.blocksAttack(attack(
             "MELEE_FIRE_REINFORCEMENT",
             MoveCategory.PHYSICAL_CURSED_ENERGY,
             MoveTag.MELEE,
             MoveTag.FIRE)));
-        assertFalse(hybridFireBlock.blocksAttack(attack(
+        assertFalse(rangedFireBlock.blocksAttack(attack(
+            "RANGED_ICE_REINFORCEMENT",
+            MoveCategory.PHYSICAL_CURSED_ENERGY,
+            MoveTag.RANGED,
+            MoveTag.ICE)));
+        assertTrue(allRangeFireBlock.blocksAttack(attack(
+            "MELEE_FIRE_REINFORCEMENT",
+            MoveCategory.PHYSICAL_CURSED_ENERGY,
+            MoveTag.MELEE,
+            MoveTag.FIRE)));
+        assertFalse(allRangeFireBlock.blocksAttack(attack(
             "MULTI_ELEMENT_REINFORCEMENT",
             MoveCategory.PHYSICAL_CURSED_ENERGY,
             MoveTag.MELEE,
@@ -103,7 +71,6 @@ class BlockCoverageTest {
             .name("Fire Parry")
             .category(MoveCategory.DEFENSIVE)
             .defenseType(DefenseType.PARRY)
-            .blockAttackTypes(Set.of(BlockAttackType.PHYSICAL_CURSED_ENERGY))
             .blockRanges(Set.of(MoveTag.RANGED))
             .blockElementalTags(Set.of(MoveTag.FIRE))
             .apCost(5)
@@ -118,29 +85,10 @@ class BlockCoverageTest {
     }
 
     @Test
-    void legacyMixedCoverageMigratesIntoIndependentDimensions() {
-        MoveData data = new MoveData();
-        data.blockAffectedTags = List.of(
-            MoveTag.PHYSICAL.name(), MoveTag.CURSED_ENERGY.name(),
-            MoveTag.RANGED.name(), MoveTag.FIRE.name());
-
-        assertTrue(data.migrateLegacyBlockCoverage());
-
-        assertEquals(List.of(
-            BlockAttackType.PHYSICAL.name(),
-            BlockAttackType.PHYSICAL_CURSED_ENERGY.name(),
-            BlockAttackType.CURSED_ENERGY.name()), data.blockAttackTypes);
-        assertEquals(List.of(MoveTag.RANGED.name()), data.blockRanges);
-        assertEquals(List.of(MoveTag.FIRE.name()), data.blockElementalTags);
-        assertNull(data.blockAffectedTags);
-    }
-
-    @Test
     void fireConditionHalvesAnOtherwiseFullBlock() {
         MoveEffectData halfAgainstFire = blockMultiplier(0.5, MoveTag.FIRE);
         Move conditionalBlock = block(
-            "CONDITIONAL_BLOCK", Set.of(), Set.of(), Set.of(), 100,
-            List.of(halfAgainstFire));
+            "CONDITIONAL_BLOCK", Set.of(), Set.of(), 100, List.of(halfAgainstFire));
 
         List<CombatEvent> fireEvents = resolve(
             conditionalBlock, attack("FIRE_ATTACK", MoveCategory.PHYSICAL, MoveTag.FIRE));
@@ -156,8 +104,7 @@ class BlockCoverageTest {
     void cursedEnergyConditionCanDoubleBlockEffectiveness() {
         MoveEffectData doubleAgainstCe = blockMultiplier(2.0, MoveTag.CURSED_ENERGY);
         Move conditionalBlock = block(
-            "CE_CONDITIONAL_BLOCK", Set.of(), Set.of(), Set.of(), 50,
-            List.of(doubleAgainstCe));
+            "CE_CONDITIONAL_BLOCK", Set.of(), Set.of(), 50, List.of(doubleAgainstCe));
 
         List<CombatEvent> ceEvents = resolve(
             conditionalBlock, attack("CE_ATTACK", MoveCategory.CURSED_ENERGY));
@@ -181,7 +128,6 @@ class BlockCoverageTest {
 
     private static Move block(
         String id,
-        Set<BlockAttackType> attackTypes,
         Set<MoveTag> ranges,
         Set<MoveTag> elements,
         int reduction,
@@ -192,7 +138,6 @@ class BlockCoverageTest {
             .category(MoveCategory.DEFENSIVE)
             .defenseType(DefenseType.BLOCK)
             .blockStyle(BlockStyle.PERCENTAGE)
-            .blockAttackTypes(attackTypes)
             .blockRanges(ranges)
             .blockElementalTags(elements)
             .blockDamageReduction(reduction)

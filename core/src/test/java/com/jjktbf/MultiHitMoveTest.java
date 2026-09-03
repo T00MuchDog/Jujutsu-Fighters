@@ -170,7 +170,7 @@ class MultiHitMoveTest {
         assertFalse(misses.stream().anyMatch(event ->
             Objects.equals(event.getComponentIndex(), 1)));
 
-        Move block = fullBlock("FULL_BLOCK", null);
+        Move block = fullBlock("FULL_BLOCK", Set.of());
         Move blockChain = attackBuilder("BLOCK_CHAIN")
             .hitComponents(List.of(
                 component(1, MoveCategory.PHYSICAL, 0, false, true),
@@ -325,18 +325,18 @@ class MultiHitMoveTest {
         assertTrue(resolveDamageAgainstDefense(attack, unavoidable, dodge).isHit());
         assertTrue(resolveDamageAgainstDefense(attack, unavoidable, parry).isHit());
         assertTrue(resolveDamageAgainstDefense(
-            attack, unavoidable, fullBlock("BLOCK", null)).isBlocked());
+            attack, unavoidable, fullBlock("BLOCK", Set.of())).isBlocked());
     }
 
     @Test
-    void blockCoverageUsesEachComponentsDamageTags() {
+    void blockCoverageUsesEachComponentsRangeTags() {
         Move move = attackBuilder("MIXED")
             .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
             .hitComponents(List.of(
-                component(1, MoveCategory.PHYSICAL, 0, false, true),
-                component(1, MoveCategory.CURSED_ENERGY, 0, false, true)))
+                new HitComponent(1, Set.of(MoveTag.PHYSICAL, MoveTag.MELEE), 0, false, true),
+                new HitComponent(1, Set.of(MoveTag.CURSED_ENERGY, MoveTag.RANGED), 0, false, true)))
             .build();
-        Move physicalBlock = fullBlock("PHYSICAL_BLOCK", List.of("PHYSICAL"));
+        Move physicalBlock = fullBlock("MELEE_BLOCK", Set.of(MoveTag.MELEE));
 
         // Defender faster than attacker so the same-tick instant block fires
         // first and legitimately contests the PHYSICAL component.
@@ -384,7 +384,7 @@ class MultiHitMoveTest {
             .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK))
             .hitComponents(List.of(guardBreakingMelee, intangibleRanged, plain))
             .build();
-        Move block = fullBlock("PER_HIT_BLOCK", null);
+        Move block = fullBlock("PER_HIT_BLOCK", Set.of());
         assertTrue(resolveDamageAgainstDefense(
             defensiveTest, guardBreakingMelee, block).isHit());
         assertTrue(resolveDamageAgainstDefense(
@@ -728,14 +728,14 @@ class MultiHitMoveTest {
             onHitEffects);
     }
 
-    private static Move fullBlock(String id, List<String> affectedTags) {
+    private static Move fullBlock(String id, Set<MoveTag> ranges) {
         return new Move.Builder(id)
             .name(id)
             .category(MoveCategory.DEFENSIVE)
             .defenseType(DefenseType.BLOCK)
             .blockStyle(BlockStyle.PERCENTAGE)
             .blockDamageReduction(100)
-            .blockAffectedTags(affectedTags)
+            .blockRanges(ranges)
             .apCost(5)
             .unleashPoint(1)
             .build();

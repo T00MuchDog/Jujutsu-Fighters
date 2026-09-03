@@ -25,8 +25,7 @@ import java.util.List;
  * <p>Defenses are committed before attacks so the defensive AP reserve is
  * honoured, and only defenses that are actually useful vs this opponent are
  * placed (see {@link SmartAIScoring#defenseValue} — a block that covers no
- * opponent threat, can't contest the opponent's potency, or is an over-broad
- * "reinforced" block against a purely physical opponent scores zero and is
+ * opponent threat or can't contest the opponent's potency scores zero and is
  * skipped). Attack weights favour cheap, quick, physical, effect-bearing moves.
  */
 public class PassiveSorcererAIStrategy implements AIStrategy {
@@ -36,7 +35,7 @@ public class PassiveSorcererAIStrategy implements AIStrategy {
     private static final double DEFENSE_AP_FRACTION = 2.0 / 3.0;
     /** Purely-physical attack base preference (passive favours these — CE-frugal). */
     private static final double PHYSICAL_WEIGHT = 1.0;
-    /** Any CE-bearing attack (reinforcement or pure CE) is de-weighted to conserve CE. */
+    /** Intrinsically CE-bearing attacks are de-weighted to conserve CE. */
     private static final double CE_WEIGHT = 0.4;
     /** Reference AP cost at which the quickness factor is 1.0 (cheaper = higher). */
     private static final double QUICKNESS_REF = 12.0;
@@ -151,8 +150,7 @@ public class PassiveSorcererAIStrategy implements AIStrategy {
     }
 
     private static double damageNaturePreference(Move move) {
-        // CE-frugal: favour purely physical attacks; any CE-bearing move
-        // (reinforcement or pure CE) spends CE and is de-weighted.
+        // Optional reinforcement does not spend CE unless the execution enables it.
         if (SmartAIScoring.isPhysicalAttack(move)) return PHYSICAL_WEIGHT;
         return CE_WEIGHT;
     }

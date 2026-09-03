@@ -143,6 +143,14 @@ public class MoveData {
     public int     minCeCost      = 0;
     public int     maxCeCost      = 0;
 
+    /** Optional CE reinforcement authored independently from the move's intrinsic CE use. */
+    public boolean canBeReinforced = false;
+    public int reinforcementBaseCeCost = 0;
+    public int reinforcementMinCeCost = 0;
+    public int reinforcementMaxCeCost = 0;
+    public String reinforcementDefenseType = "NONE";
+    public int reinforcementDefenseValue = 0;
+
     /** DefenseType enum name */
     public String  defenseType    = "NONE";
 
@@ -151,15 +159,10 @@ public class MoveData {
 
     /** Block/dodge/parry shared field: duration in AP ticks. 0 = use move's apCost. -1 = end of round. */
     public int     blockDuration = 0;
-    /** Exact attack categories this block or parry affects. Null/empty = all three. */
-    public List<String> blockAttackTypes;
     /** Accepted hit ranges (MELEE / RANGED). Null/empty = both and untagged hits. */
     public List<String> blockRanges;
     /** Blockable elemental tags. Every element on a hit must be selected. Null/empty = all. */
     public List<String> blockElementalTags;
-    /** Legacy mixed coverage list; migrated into the three fields above on load. */
-    @Deprecated
-    public List<String> blockAffectedTags;
     /** PERCENTAGE block only: percentage of damage reduced (0-100). 100 = full block. */
     public int     blockDamageReduction = 100;
     /** FLAT block only: flat damage amount subtracted from incoming attacks. */
@@ -376,6 +379,8 @@ public class MoveData {
         public double baseAccuracy = -1.0;
         /** On-hit status effects applied when this specific component connects. */
         public List<StatusEffectData> onHitEffects;
+        public boolean reinforcementEligible = false;
+        public int reinforcementBonusPower = 0;
 
         public HitComponent toHitComponent() {
             return toHitComponent(null);
@@ -405,7 +410,7 @@ public class MoveData {
             List<StatusEffect> effects = toStatusEffects(effectData);
             return new HitComponent(
                 basePower, parsed, delayTicks, requiresPreviousConnection, avoidable,
-                acc, effects);
+                acc, effects, reinforcementEligible, reinforcementBonusPower);
         }
 
         public static HitComponentData fromHitComponent(HitComponent component) {
@@ -415,6 +420,8 @@ public class MoveData {
             data.delayTicks = component.getDelayTicks();
             data.requiresPreviousConnection = component.requiresPreviousConnection();
             data.avoidable = component.isAvoidable();
+            data.reinforcementEligible = component.isReinforcementEligible();
+            data.reinforcementBonusPower = component.getReinforcementBonusPower();
             // Only persist per-hit accuracy when it is actually authored; leaving
             // baseAccuracy at its -1.0 "inherit" default keeps legacy saves clean.
             if (component.hasOwnAccuracy()) {
@@ -725,10 +732,15 @@ public class MoveData {
             .hasCeCost(hasCeCost != null ? hasCeCost : baseCeCost > 0)
             .minCeCost(minCeCost)
             .maxCeCost(maxCeCost)
+            .canBeReinforced(canBeReinforced)
+            .reinforcementCeCosts(
+                reinforcementBaseCeCost, reinforcementMinCeCost, reinforcementMaxCeCost)
+            .reinforcementDefense(
+                ReinforcementDefenseType.fromName(reinforcementDefenseType),
+                reinforcementDefenseValue)
             .defenseType(resolveDefenseType())
             .blockStyle(resolveBlockStyle())
             .blockDuration(blockDuration)
-            .blockAttackTypes(effectiveBlockAttackTypes())
             .blockRanges(effectiveBlockRanges())
             .blockElementalTags(effectiveBlockElementalTags())
             .blockDamageReduction(blockDamageReduction)
@@ -825,45 +837,13 @@ public class MoveData {
         };
     }
 
-    private Set<BlockAttackType> effectiveBlockAttackTypes() {
-        java.util.EnumSet<BlockAttackType> parsed =
-            java.util.EnumSet.noneOf(BlockAttackType.class);
-        if (blockAttackTypes != null) {
-            for (String stored : blockAttackTypes) {
-                if (stored == null || stored.isBlank()) continue;
-                parsed.add(BlockAttackType.valueOf(stored.trim().toUpperCase()));
-            }
-            return parsed;
-        }
-        if (blockAffectedTags == null) return parsed;
-
-        boolean physical = containsLegacyBlockTag(MoveTag.PHYSICAL);
-        boolean cursedEnergy = containsLegacyBlockTag(MoveTag.CURSED_ENERGY)
-            || containsLegacyBlockTag(MoveTag.INNATE_TECHNIQUE)
-            || containsLegacyBlockTag(MoveTag.NON_INNATE_TECHNIQUE);
-        if (physical) parsed.add(BlockAttackType.PHYSICAL);
-        if (cursedEnergy) parsed.add(BlockAttackType.CURSED_ENERGY);
-        if (physical && cursedEnergy) parsed.add(BlockAttackType.PHYSICAL_CURSED_ENERGY);
-        return parsed;
-    }
-
     private Set<MoveTag> effectiveBlockRanges() {
-        return blockRanges != null
-            ? parsedBlockTags(blockRanges, MoveTag.RANGE_TAGS, "range", true)
-            : parsedBlockTags(blockAffectedTags, MoveTag.RANGE_TAGS, "range", false);
+        return parsedBlockTags(blockRanges, MoveTag.RANGE_TAGS, "range", true);
     }
 
     private Set<MoveTag> effectiveBlockElementalTags() {
-        return blockElementalTags != null
-            ? parsedBlockTags(
-                blockElementalTags, MoveTag.ELEMENTAL_TAGS, "elemental", true)
-            : parsedBlockTags(
-                blockAffectedTags, MoveTag.ELEMENTAL_TAGS, "elemental", false);
-    }
-
-    private boolean containsLegacyBlockTag(MoveTag expected) {
-        return blockAffectedTags.stream().anyMatch(stored ->
-            stored != null && expected.name().equalsIgnoreCase(stored.trim()));
+        return parsedBlockTags(
+            blockElementalTags, MoveTag.ELEMENTAL_TAGS, "elemental", true);
     }
 
     private static Set<MoveTag> parsedBlockTags(
@@ -892,31 +872,6 @@ public class MoveData {
             }
         }
         return parsed;
-    }
-
-    /** Translate the retired mixed block tag list into explicit coverage dimensions. */
-    public boolean migrateLegacyBlockCoverage() {
-        if (blockAffectedTags == null) return false;
-        if (blockAttackTypes == null) {
-            Set<BlockAttackType> types = effectiveBlockAttackTypes();
-            blockAttackTypes = types.isEmpty() ? null
-                : types.stream().map(BlockAttackType::name)
-                    .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
-        }
-        if (blockRanges == null) {
-            Set<MoveTag> ranges = effectiveBlockRanges();
-            blockRanges = ranges.isEmpty() ? null
-                : ranges.stream().map(MoveTag::name)
-                    .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
-        }
-        if (blockElementalTags == null) {
-            Set<MoveTag> elements = effectiveBlockElementalTags();
-            blockElementalTags = elements.isEmpty() ? null
-                : elements.stream().map(MoveTag::name)
-                    .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
-        }
-        blockAffectedTags = null;
-        return true;
     }
 
     /**
@@ -1254,19 +1209,21 @@ public class MoveData {
         d.hasCeCost           = move.hasCeCost();
         d.minCeCost           = move.getMinCeCost();
         d.maxCeCost           = move.getMaxCeCost();
+        d.canBeReinforced     = move.canBeReinforced();
+        d.reinforcementBaseCeCost = move.getReinforcementBaseCeCost();
+        d.reinforcementMinCeCost = move.getReinforcementMinCeCost();
+        d.reinforcementMaxCeCost = move.getReinforcementMaxCeCost();
+        d.reinforcementDefenseType = move.getReinforcementDefenseType().name();
+        d.reinforcementDefenseValue = move.getReinforcementDefenseValue();
         d.defenseType           = move.getDefenseType().name();
         d.blockStyle            = move.getBlockStyle() != null ? move.getBlockStyle().name() : "PERCENTAGE";
         d.blockDuration         = move.getBlockDuration();
-        d.blockAttackTypes      = move.getBlockAttackTypes().isEmpty() ? null
-            : move.getBlockAttackTypes().stream().map(BlockAttackType::name)
-                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         d.blockRanges           = move.getBlockRanges().isEmpty() ? null
             : move.getBlockRanges().stream().map(MoveTag::name)
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         d.blockElementalTags    = move.getBlockElementalTags().isEmpty() ? null
             : move.getBlockElementalTags().stream().map(MoveTag::name)
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
-        d.blockAffectedTags     = null;
         d.blockDamageReduction  = move.getBlockDamageReduction();
         d.blockFlatReduction    = move.getBlockFlatReduction();
         d.dodgeChance           = move.getDodgeChance();

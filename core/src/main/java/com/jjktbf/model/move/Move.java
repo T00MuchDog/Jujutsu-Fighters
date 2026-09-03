@@ -125,6 +125,12 @@ public class Move {
 
     /** Hard maximum CE cost — efficiency cannot raise above this. */
     private final int maxCeCost;
+    private final boolean canBeReinforced;
+    private final int reinforcementBaseCeCost;
+    private final int reinforcementMinCeCost;
+    private final int reinforcementMaxCeCost;
+    private final ReinforcementDefenseType reinforcementDefenseType;
+    private final int reinforcementDefenseValue;
 
     /** Defensive behavior, if any. */
     private final DefenseType defenseType;
@@ -138,9 +144,6 @@ public class Move {
      * and {@link DefenseType#DODGE}.
      */
     private final int blockDuration;
-
-    /** Exact attack categories this block or parry accepts. Empty means all three. */
-    private final Set<BlockAttackType> blockAttackTypes;
 
     /** Accepted MELEE/RANGED hit tags. Empty means every range, including untagged hits. */
     private final Set<MoveTag> blockRanges;
@@ -340,10 +343,15 @@ public class Move {
         this.hasCeCost           = b.hasCeCost != null ? b.hasCeCost : b.baseCeCost > 0;
         this.minCeCost           = b.minCeCost;
         this.maxCeCost           = b.maxCeCost;
+        this.canBeReinforced     = b.canBeReinforced;
+        this.reinforcementBaseCeCost = b.reinforcementBaseCeCost;
+        this.reinforcementMinCeCost = b.reinforcementMinCeCost;
+        this.reinforcementMaxCeCost = b.reinforcementMaxCeCost;
+        this.reinforcementDefenseType = b.reinforcementDefenseType;
+        this.reinforcementDefenseValue = b.reinforcementDefenseValue;
         this.defenseType          = b.defenseType;
         this.blockStyle           = b.blockStyle != null ? b.blockStyle : BlockStyle.PERCENTAGE;
         this.blockDuration        = b.blockDuration;
-        this.blockAttackTypes     = immutableBlockAttackTypes(b.blockAttackTypes);
         this.blockRanges          = immutableBlockTags(b.blockRanges, MoveTag.RANGE_TAGS);
         this.blockElementalTags   = immutableBlockTags(
             b.blockElementalTags, MoveTag.ELEMENTAL_TAGS);
@@ -392,13 +400,6 @@ public class Move {
         else if (category != null) copy.addAll(category.getTags());
         copy.removeAll(MoveTag.HIT_ONLY_TAGS);
         return Collections.unmodifiableSet(copy);
-    }
-
-    private static Set<BlockAttackType> immutableBlockAttackTypes(
-        Set<BlockAttackType> source
-    ) {
-        if (source == null || source.isEmpty()) return Set.of();
-        return Collections.unmodifiableSet(EnumSet.copyOf(source));
     }
 
     private static Set<MoveTag> immutableBlockTags(Set<MoveTag> source, Set<MoveTag> allowed) {
@@ -476,7 +477,8 @@ public class Move {
         return new HitComponent(
             component.getBasePower(), tags, component.getDelayTicks(),
             component.requiresPreviousConnection(), component.isAvoidable(),
-            component.getBaseAccuracy(), component.getOnHitEffects());
+            component.getBaseAccuracy(), component.getOnHitEffects(),
+            component.isReinforcementEligible(), component.getReinforcementBonusPower());
     }
 
     private static int totalBasePower(List<HitComponent> components) {
@@ -541,30 +543,19 @@ public class Move {
     public boolean hasCeCost()                     { return hasCeCost; }
     public int getMinCeCost()                     { return minCeCost; }
     public int getMaxCeCost()                     { return maxCeCost; }
+    public boolean canBeReinforced()               { return canBeReinforced; }
+    public int getReinforcementBaseCeCost()        { return reinforcementBaseCeCost; }
+    public int getReinforcementMinCeCost()         { return reinforcementMinCeCost; }
+    public int getReinforcementMaxCeCost()         { return reinforcementMaxCeCost; }
+    public ReinforcementDefenseType getReinforcementDefenseType() {
+        return reinforcementDefenseType;
+    }
+    public int getReinforcementDefenseValue()      { return reinforcementDefenseValue; }
     public DefenseType getDefenseType()           { return defenseType; }
     public BlockStyle getBlockStyle()             { return blockStyle; }
     public int getBlockDuration()                 { return blockDuration; }
-    public Set<BlockAttackType> getBlockAttackTypes() { return blockAttackTypes; }
     public Set<MoveTag> getBlockRanges()          { return blockRanges; }
     public Set<MoveTag> getBlockElementalTags()   { return blockElementalTags; }
-    /** Legacy mixed representation retained for source compatibility. */
-    @Deprecated
-    public List<String> getBlockAffectedTags() {
-        if (blockAttackTypes.isEmpty() && blockRanges.isEmpty()
-            && blockElementalTags.isEmpty()) return null;
-        java.util.LinkedHashSet<String> tags = new java.util.LinkedHashSet<>();
-        if (blockAttackTypes.contains(BlockAttackType.PHYSICAL)
-            || blockAttackTypes.contains(BlockAttackType.PHYSICAL_CURSED_ENERGY)) {
-            tags.add(MoveTag.PHYSICAL.name());
-        }
-        if (blockAttackTypes.contains(BlockAttackType.CURSED_ENERGY)
-            || blockAttackTypes.contains(BlockAttackType.PHYSICAL_CURSED_ENERGY)) {
-            tags.add(MoveTag.CURSED_ENERGY.name());
-        }
-        blockRanges.stream().map(MoveTag::name).forEach(tags::add);
-        blockElementalTags.stream().map(MoveTag::name).forEach(tags::add);
-        return List.copyOf(tags);
-    }
     public int getBlockDamageReduction()          { return blockDamageReduction; }
     public int getBlockFlatReduction()            { return blockFlatReduction; }
     public int getDodgeChance()                   { return dodgeChance; }
@@ -815,34 +806,14 @@ public class Move {
             : incoming.hitComponents.isEmpty() ? null : incoming.hitComponents.get(0);
         if (incomingComponent == null) return false;
         return incoming.coveredByBlockProfile(
-            blockAttackTypes, blockRanges, blockElementalTags, incomingComponent);
-    }
-
-    /** Legacy mixed-list coverage adapter. */
-    @Deprecated
-    public boolean coveredByBlockTags(List<String> blockTags) {
-        HitComponent component = hitComponents.isEmpty() ? null : hitComponents.get(0);
-        return coveredByBlockTags(blockTags, component);
-    }
-
-    /** Legacy mixed-list coverage adapter. */
-    @Deprecated
-    public boolean coveredByBlockTags(List<String> blockTags, HitComponent component) {
-        if (component == null) return blockTags == null || blockTags.isEmpty();
-        LegacyBlockProfile profile = legacyBlockProfile(blockTags);
-        return coveredByBlockProfile(
-            profile.attackTypes(), profile.ranges(), profile.elements(), component);
+            blockRanges, blockElementalTags, incomingComponent);
     }
 
     private boolean coveredByBlockProfile(
-        Set<BlockAttackType> acceptedTypes,
         Set<MoveTag> acceptedRanges,
         Set<MoveTag> acceptedElements,
         HitComponent component
     ) {
-        if (!acceptedTypes.isEmpty()
-            && !acceptedTypes.contains(BlockAttackType.from(component))) return false;
-
         EnumSet<MoveTag> incomingRanges = EnumSet.noneOf(MoveTag.class);
         incomingRanges.addAll(component.getTags());
         incomingRanges.retainAll(MoveTag.RANGE_TAGS);
@@ -856,37 +827,6 @@ public class Move {
         incomingElements.retainAll(MoveTag.ELEMENTAL_TAGS);
         return acceptedElements.isEmpty() || acceptedElements.containsAll(incomingElements);
     }
-
-    private static LegacyBlockProfile legacyBlockProfile(List<String> storedTags) {
-        if (storedTags == null || storedTags.isEmpty()) {
-            return new LegacyBlockProfile(Set.of(), Set.of(), Set.of());
-        }
-        EnumSet<MoveTag> parsed = EnumSet.noneOf(MoveTag.class);
-        for (String stored : storedTags) {
-            if (stored == null || stored.isBlank()) continue;
-            try { parsed.add(MoveTag.valueOf(stored.trim().toUpperCase())); }
-            catch (IllegalArgumentException ignored) { }
-        }
-        boolean physical = parsed.contains(MoveTag.PHYSICAL);
-        boolean cursedEnergy = parsed.contains(MoveTag.CURSED_ENERGY)
-            || parsed.contains(MoveTag.INNATE_TECHNIQUE)
-            || parsed.contains(MoveTag.NON_INNATE_TECHNIQUE);
-        EnumSet<BlockAttackType> types = EnumSet.noneOf(BlockAttackType.class);
-        if (physical) types.add(BlockAttackType.PHYSICAL);
-        if (cursedEnergy) types.add(BlockAttackType.CURSED_ENERGY);
-        if (physical && cursedEnergy) types.add(BlockAttackType.PHYSICAL_CURSED_ENERGY);
-        EnumSet<MoveTag> ranges = EnumSet.copyOf(parsed);
-        ranges.retainAll(MoveTag.RANGE_TAGS);
-        EnumSet<MoveTag> elements = EnumSet.copyOf(parsed);
-        elements.retainAll(MoveTag.ELEMENTAL_TAGS);
-        return new LegacyBlockProfile(types, ranges, elements);
-    }
-
-    private record LegacyBlockProfile(
-        Set<BlockAttackType> attackTypes,
-        Set<MoveTag> ranges,
-        Set<MoveTag> elements
-    ) { }
 
     public boolean isDefensive() {
         return category == MoveCategory.DEFENSIVE;
@@ -1030,10 +970,15 @@ public class Move {
         private Boolean hasCeCost             = null;
         private int minCeCost                = 0;
         private int maxCeCost                = 0;
+        private boolean canBeReinforced       = false;
+        private int reinforcementBaseCeCost  = 0;
+        private int reinforcementMinCeCost   = 0;
+        private int reinforcementMaxCeCost   = 0;
+        private ReinforcementDefenseType reinforcementDefenseType = ReinforcementDefenseType.NONE;
+        private int reinforcementDefenseValue = 0;
         private DefenseType defenseType        = DefenseType.NONE;
         private BlockStyle blockStyle          = BlockStyle.PERCENTAGE;
         private int blockDuration              = 0;
-        private Set<BlockAttackType> blockAttackTypes = Set.of();
         private Set<MoveTag> blockRanges = Set.of();
         private Set<MoveTag> blockElementalTags = Set.of();
         private int blockDamageReduction       = 100;
@@ -1111,13 +1056,22 @@ public class Move {
         public Builder hasCeCost(boolean v)                { this.hasCeCost = v; return this; }
         public Builder minCeCost(int v)                    { this.minCeCost = v; return this; }
         public Builder maxCeCost(int v)                    { this.maxCeCost = v; return this; }
+        public Builder canBeReinforced(boolean v)          { this.canBeReinforced = v; return this; }
+        public Builder reinforcementCeCosts(int base, int min, int max) {
+            this.reinforcementBaseCeCost = base;
+            this.reinforcementMinCeCost = min;
+            this.reinforcementMaxCeCost = max;
+            return this;
+        }
+        public Builder reinforcementDefense(ReinforcementDefenseType type, int value) {
+            this.reinforcementDefenseType = type == null
+                ? ReinforcementDefenseType.NONE : type;
+            this.reinforcementDefenseValue = value;
+            return this;
+        }
         public Builder defenseType(DefenseType v)          { this.defenseType = v; return this; }
         public Builder blockStyle(BlockStyle v)            { this.blockStyle = v; return this; }
         public Builder blockDuration(int v)                { this.blockDuration = v; return this; }
-        public Builder blockAttackTypes(Set<BlockAttackType> v) {
-            this.blockAttackTypes = v == null ? Set.of() : Set.copyOf(v);
-            return this;
-        }
         public Builder blockRanges(Set<MoveTag> v) {
             this.blockRanges = v == null ? Set.of() : Set.copyOf(v);
             return this;
@@ -1125,14 +1079,6 @@ public class Move {
         public Builder blockElementalTags(Set<MoveTag> v) {
             this.blockElementalTags = v == null ? Set.of() : Set.copyOf(v);
             return this;
-        }
-        /** Legacy mixed-list builder adapter. */
-        @Deprecated
-        public Builder blockAffectedTags(List<String> v) {
-            LegacyBlockProfile profile = legacyBlockProfile(v);
-            return blockAttackTypes(profile.attackTypes())
-                .blockRanges(profile.ranges())
-                .blockElementalTags(profile.elements());
         }
         public Builder blockDamageReduction(int v)         { this.blockDamageReduction = v; return this; }
         public Builder blockFlatReduction(int v)           { this.blockFlatReduction = v; return this; }

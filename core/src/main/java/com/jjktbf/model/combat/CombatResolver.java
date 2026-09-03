@@ -481,6 +481,8 @@ public class CombatResolver {
                     AbilityTrigger.Type.DAMAGE, combatant, combatant, applied, tick)));
                 wakeFromSleep(state, combatant, combatant, null, -1, tick, events);
             }
+            events.addAll(state.domainBattlefield().onOwnerHealthChanged(
+                state, combatant, abilityActivations::executeDomainEffect, tick));
         }
     }
 
@@ -817,6 +819,8 @@ public class CombatResolver {
                 AbilityTrigger.Type.DAMAGE, source, holder, applied, tick)));
             wakeFromSleep(state, source, holder, null, -1, tick, events);
         }
+        events.addAll(state.domainBattlefield().onOwnerHealthChanged(
+            state, holder, abilityActivations::executeDomainEffect, tick));
     }
 
     private void drainCeForStartingSegments(
@@ -1945,6 +1949,8 @@ public class CombatResolver {
                         AbilityTrigger.Type.DAMAGE, defender, attacker, reflected, tick)));
                     wakeFromSleep(state, defender, attacker, move, componentIndex, tick, events);
                 }
+                events.addAll(state.domainBattlefield().onOwnerHealthChanged(
+                    state, attacker, abilityActivations::executeDomainEffect, tick));
                 reconcileLifecycle(state, tick, events);
             }
             if (result.staggersAttacker()) {
@@ -2023,6 +2029,8 @@ public class CombatResolver {
                         + hitQualifier(move, componentIndex))
                 .build());
         }
+        events.addAll(state.domainBattlefield().onOwnerHitDamage(
+            state, defender, appliedDamage, abilityActivations::executeDomainEffect, tick));
         events.addAll(abilityActivations.process(state, AbilityTrigger.move(
             AbilityTrigger.Type.ATTACK_HIT, attacker, defender, move, tick)));
         if (appliedDamage > 0) {
@@ -2458,6 +2466,8 @@ public class CombatResolver {
                 AbilityTrigger.Type.DAMAGE, attacker, attacker, applied, tick)));
             wakeFromSleep(state, attacker, attacker, move, -1, tick, events);
         }
+        events.addAll(state.domainBattlefield().onOwnerHealthChanged(
+            state, attacker, abilityActivations::executeDomainEffect, tick));
     }
 
     private void applyCursedSpeechCommandOutcome(
@@ -2513,6 +2523,8 @@ public class CombatResolver {
                     wakeFromSleep(
                         state, attacker, defender, move, componentIndex, tick, events);
                 }
+                events.addAll(state.domainBattlefield().onOwnerHealthChanged(
+                    state, defender, abilityActivations::executeDomainEffect, tick));
             }
             default -> { }
         }

@@ -28,7 +28,7 @@ def _write(value, indent):
     if isinstance(value, list):
         if not value:
             return "[ ]"
-        parts = [_write(item, indent + 2) for item in value]
+        parts = [_write(item, indent) for item in value]
         return "[" + " " + ", ".join(parts) + " ]"
     if isinstance(value, dict):
         if not value:

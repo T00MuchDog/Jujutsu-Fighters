@@ -425,7 +425,7 @@
   },
   {
     "term": "Simple Domain",
-    "description": "A non-innate barrier technique that opens a Simple Domain, nullifying the next hostile technique contact."
+    "description": "A non-innate barrier technique that carves out space inside a hostile Domain and continuously nullifies its sure hit while maintained."
   },
   {
     "term": "Sidestep",
@@ -465,11 +465,11 @@
   },
   {
     "term": "New Shadow Style Simple Domain",
-    "description": "A New Shadow Style stance that automatically parries the next attack at Potency 1, then answers a Melee parry with Sword Quick Draw."
+    "description": "A Simple Domain that nullifies hostile sure hits, paired with a separate New Shadow Style stance that parries the next attack and can answer a Melee parry with Sword Quick Draw."
   },
   {
     "term": "Simple Domain Binding Vow",
-    "description": "A character ability that dispels Simple Domain when another move is used."
+    "description": "A compatibility ability for the former coded Simple Domain stance; current Domain fields use authored maintenance rules instead."
   },
   {
     "term": "Earnest Swordswoman",

@@ -52,6 +52,24 @@ class DomainPlanningTest {
     }
 
     @Test
+    void nonInnateOrdinaryOpeningNeedsNoTechnique() {
+        DomainData data = new DomainData();
+        data.id = "NON_INNATE";
+        data.name = "Non-Innate Field";
+        data.requiredTechniqueName = null;
+        data.burnoutRounds = 0;
+        DomainDefinition domain = data.toDomain();
+        DomainDefinitionLookup lookup = lookup(domain);
+        BattleCombatant owner = combatant("OWNER", null, domain.id());
+        BattleState state = new BattleState(owner, combatant("ENEMY", null));
+        Move opening = openingMove("OPEN_NON_INNATE", domain.id());
+
+        assertNull(SmartAIScoring.domainOpeningRestriction(lookup, state, owner, opening));
+        assertEquals(SmartAIScoring.DOMAIN_OPENING_VALUE,
+            SmartAIScoring.domainMoveValue(lookup, state, owner, opening), 0.0);
+    }
+
+    @Test
     void ordinaryOpeningIsRestrictedWhenNotOwnedOrAlreadyActive() {
         DomainDefinition domain = ordinaryDomain("VOID", "Limitless");
         DomainDefinitionLookup lookup = lookup(domain);
@@ -71,6 +89,10 @@ class DomainPlanningTest {
         state.domainBattlefield().resolveDeclarations(state, null, 1);
         assertEquals("Own Domain already active",
             SmartAIScoring.domainOpeningRestriction(lookup, state, owner, opening));
+        DomainDefinition counter = counterDomain("SIMPLE");
+        assertEquals("Own Domain already active",
+            SmartAIScoring.domainOpeningRestriction(
+                lookup(counter), state, owner, openingMove("SIMPLE_DOMAIN", counter.id())));
     }
 
     @Test

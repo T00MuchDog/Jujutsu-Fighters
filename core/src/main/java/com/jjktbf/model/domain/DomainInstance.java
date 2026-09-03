@@ -19,8 +19,8 @@ public final class DomainInstance {
     private final int establishedTick;
     private int remainingRounds;
     private int remainingTicks;
+    private final int maximumInternalBarrierIntegrity;
     private int internalBarrierIntegrity;
-    private int externalBarrierIntegrity;
     private int remainingCounterUses;
     private int elapsedTicks;
     private double upkeepDebt;
@@ -31,7 +31,8 @@ public final class DomainInstance {
         CombatantId ownerId,
         Set<CombatantId> selectedTargetIds,
         int establishedRound,
-        int establishedTick
+        int establishedTick,
+        int maximumInternalBarrierIntegrity
     ) {
         this.instanceId = instanceId;
         this.definition = definition;
@@ -42,8 +43,8 @@ public final class DomainInstance {
         this.establishedTick = establishedTick;
         this.remainingRounds = definition.durationRounds();
         this.remainingTicks = definition.durationTicks();
-        this.internalBarrierIntegrity = definition.internalBarrierIntegrity();
-        this.externalBarrierIntegrity = definition.externalBarrierIntegrity();
+        this.maximumInternalBarrierIntegrity = Math.max(0, maximumInternalBarrierIntegrity);
+        this.internalBarrierIntegrity = this.maximumInternalBarrierIntegrity;
         this.remainingCounterUses = definition.counterUses();
     }
 
@@ -57,8 +58,8 @@ public final class DomainInstance {
     public int establishedTick() { return establishedTick; }
     public int remainingRounds() { return remainingRounds; }
     public int remainingTicks() { return remainingTicks; }
+    public int maximumInternalBarrierIntegrity() { return maximumInternalBarrierIntegrity; }
     public int internalBarrierIntegrity() { return internalBarrierIntegrity; }
-    public int externalBarrierIntegrity() { return externalBarrierIntegrity; }
     public int remainingCounterUses() { return remainingCounterUses; }
     public int elapsedTicks() { return elapsedTicks; }
     public String sourceLease() { return "DOMAIN:" + instanceId; }
@@ -92,24 +93,11 @@ public final class DomainInstance {
         return previous - internalBarrierIntegrity;
     }
 
-    int damageExternalBarrier(int amount) {
-        int previous = externalBarrierIntegrity;
-        externalBarrierIntegrity = Math.max(0, externalBarrierIntegrity - Math.max(0, amount));
-        return previous - externalBarrierIntegrity;
-    }
-
     int healInternalBarrier(int amount) {
         int previous = internalBarrierIntegrity;
-        internalBarrierIntegrity = Math.min(definition.internalBarrierIntegrity(),
-            internalBarrierIntegrity + Math.max(0, amount));
+        long healed = (long) internalBarrierIntegrity + Math.max(0, amount);
+        internalBarrierIntegrity = (int) Math.min(maximumInternalBarrierIntegrity, healed);
         return internalBarrierIntegrity - previous;
-    }
-
-    int healExternalBarrier(int amount) {
-        int previous = externalBarrierIntegrity;
-        externalBarrierIntegrity = Math.min(definition.externalBarrierIntegrity(),
-            externalBarrierIntegrity + Math.max(0, amount));
-        return externalBarrierIntegrity - previous;
     }
 
     boolean consumeCounterUse() {

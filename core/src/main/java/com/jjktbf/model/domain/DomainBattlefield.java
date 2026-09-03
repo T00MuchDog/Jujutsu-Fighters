@@ -19,6 +19,9 @@ import java.util.Set;
 /** Authoritative battle-wide owner of active Domains, counters, and clashes. */
 public final class DomainBattlefield {
 
+    public static final int HIT_DAMAGE_COLLAPSE_PERCENT = 8;
+    public static final int MIN_MAINTENANCE_HP_PERCENT = 15;
+
     public record DeclarationResult(boolean accepted, String error) {
         static DeclarationResult success() { return new DeclarationResult(true, null); }
         static DeclarationResult rejection(String error) {
@@ -44,13 +47,22 @@ public final class DomainBattlefield {
     private final List<DomainInstance> active = new ArrayList<>();
     private final List<PendingDeclaration> pending = new ArrayList<>();
     private final LinkedHashSet<ClashKey> activeClashes = new LinkedHashSet<>();
+
+    /** Signed fraction of integrity lost by the currently weaker Domain. */
+    private final java.util.Map<ClashKey, Double> clashProgress = new java.util.LinkedHashMap<>();
     private long instanceSequence;
 
     public List<DomainInstance> activeDomains() { return List.copyOf(active); }
 
     public List<DomainClash> clashes() {
         return activeClashes.stream()
-            .map(key -> new DomainClash(key.first(), key.second()))
+            .map(key -> {
+                double progress = clashProgress.getOrDefault(key, 0.0);
+                String leader = progress > 0.0 ? key.first()
+                    : progress < 0.0 ? key.second() : null;
+                return new DomainClash(key.first(), key.second(),
+                    leader, Math.abs(progress));
+            })
             .toList();
     }
 
@@ -81,23 +93,36 @@ public final class DomainBattlefield {
             || state.teamOf(owner) == null) {
             return DeclarationResult.rejection("A living battle participant is required.");
         }
+        if (!canMaintainDomain(owner)) {
+            return DeclarationResult.rejection(
+                "Domain maintenance requires at least 15% of maximum HP.");
+        }
+        boolean alreadyActive = active.stream().anyMatch(domain ->
+            domain.ownerId().equals(owner.getInstanceId()));
+        if (alreadyActive) {
+            return DeclarationResult.rejection(
+                "A combatant cannot maintain more than one Domain or anti-Domain.");
+        }
+        boolean alreadyPending = pending.stream().anyMatch(declaration ->
+            declaration.ownerId().equals(owner.getInstanceId()));
+        if (alreadyPending) {
+            return DeclarationResult.rejection(
+                "A combatant has already declared a Domain or anti-Domain.");
+        }
         if (!definition.antiDomain()) {
             if (!owner.getCharacter().canEstablishDomain(definition.id())) {
                 return DeclarationResult.rejection("This Domain is not unlocked.");
             }
-            if (!owner.getCharacter().canUseTechnique(definition.requiredTechniqueName())) {
-                return DeclarationResult.rejection("The required technique is unavailable.");
+            String requiredTechnique = definition.requiredTechniqueName();
+            if (requiredTechnique != null && !requiredTechnique.isBlank()) {
+                if (!owner.getCharacter().canUseTechnique(requiredTechnique)) {
+                    return DeclarationResult.rejection("The required technique is unavailable.");
+                }
+                if (owner.isTechniqueLocked(requiredTechnique)) {
+                    return DeclarationResult.rejection(
+                        "The required technique is temporarily locked.");
+                }
             }
-            if (owner.isTechniqueLocked(definition.requiredTechniqueName())) {
-                return DeclarationResult.rejection("The required technique is temporarily locked.");
-            }
-        }
-        boolean duplicate = pending.stream().anyMatch(candidate ->
-            candidate.ownerId().equals(owner.getInstanceId())
-                && candidate.definition().antiDomain() == definition.antiDomain());
-        if (duplicate) {
-            return DeclarationResult.rejection(
-                "Only one Domain of this kind may be declared by a combatant on one tick.");
         }
         LinkedHashSet<CombatantId> selected = new LinkedHashSet<>();
         if (selectedTargets != null) {
@@ -125,20 +150,15 @@ public final class DomainBattlefield {
 
         for (PendingDeclaration declaration : declarations) {
             BattleCombatant owner = state.combatant(declaration.ownerId());
-            if (owner == null || !owner.isActive()) continue;
-            List<DomainInstance> replaced = active.stream()
-                .filter(domain -> domain.ownerId().equals(declaration.ownerId()))
-                .filter(domain -> domain.definition().antiDomain()
-                    == declaration.definition().antiDomain())
-                .toList();
-            for (DomainInstance previous : replaced) {
-                collapse(previous, DomainCollapseReason.REPLACED, state, executor, tick, events);
-            }
+            if (owner == null || !owner.isActive() || !canMaintainDomain(owner)) continue;
+            if (active.stream().anyMatch(domain ->
+                domain.ownerId().equals(declaration.ownerId()))) continue;
 
             DomainInstance instance = new DomainInstance(
                 "domain-" + (++instanceSequence), declaration.definition(),
                 declaration.ownerId(), declaration.selectedTargetIds(),
-                declaration.round(), declaration.tick());
+                declaration.round(), declaration.tick(),
+                DomainClashCalculator.barrierIntegrity(declaration.definition(), owner));
             captureInitialMembers(instance, state);
             active.add(instance);
             established.add(instance);
@@ -162,11 +182,12 @@ public final class DomainBattlefield {
                 }
             }
         }
+        collapseBrokenBarriers(state, executor, tick, events);
         refreshClashes(state, tick, events);
         return events;
     }
 
-    /** Charge upkeep, resolve continuous pressure/programs, and expire tick tails. */
+    /** Charge upkeep, advance clashes and continuous programs, expire tick tails. */
     public List<CombatEvent> processTick(
         BattleState state,
         DomainEffectExecutor executor,
@@ -195,13 +216,15 @@ public final class DomainBattlefield {
             }
         }
 
-        applyClashPressure(state, executor, tick, events);
+        resolveBarrierPressure(state, executor, tick, events);
+        collapseBrokenBarriers(state, executor, tick, events);
         refreshClashes(state, tick, events);
         for (DomainInstance instance : List.copyOf(active)) {
             instance.beginActiveTick();
             runPrograms(instance, DomainTrigger.EACH_TICK, null,
                 state, executor, tick, events);
         }
+        collapseBrokenBarriers(state, executor, tick, events);
         for (DomainInstance instance : List.copyOf(active)) {
             if (instance.advanceTickDuration()) {
                 collapse(instance, DomainCollapseReason.DURATION_EXPIRED,
@@ -210,6 +233,7 @@ public final class DomainBattlefield {
         }
         reconcileOwners(state, executor, tick, events);
         refreshClashes(state, tick, events);
+        updateClashProgress(state);
         return events;
     }
 
@@ -291,6 +315,65 @@ public final class DomainBattlefield {
         return events;
     }
 
+    /** Collapse every field maintained by an owner overwhelmed by one connected hit. */
+    public List<CombatEvent> onOwnerHitDamage(
+        BattleState state,
+        BattleCombatant owner,
+        int appliedDamage,
+        DomainEffectExecutor executor,
+        int tick
+    ) {
+        if (state == null || owner == null || owner.getInstanceId() == null
+            || appliedDamage <= 0) {
+            return List.of();
+        }
+        boolean overwhelmingHit = (long) appliedDamage * 100
+            > (long) owner.getMaxHp() * HIT_DAMAGE_COLLAPSE_PERCENT;
+        boolean lowHp = !canMaintainDomain(owner);
+        if (!overwhelmingHit && !lowHp) return List.of();
+
+        pending.removeIf(declaration -> declaration.ownerId().equals(owner.getInstanceId()));
+        DomainCollapseReason reason = overwhelmingHit
+            ? DomainCollapseReason.OWNER_DAMAGED
+            : DomainCollapseReason.OWNER_LOW_HP;
+        return collapseOwnedDomains(state, owner, reason, executor, tick);
+    }
+
+    /** Enforce the minimum maintenance health after damage that was not a hit. */
+    public List<CombatEvent> onOwnerHealthChanged(
+        BattleState state,
+        BattleCombatant owner,
+        DomainEffectExecutor executor,
+        int tick
+    ) {
+        if (state == null || owner == null || owner.getInstanceId() == null
+            || canMaintainDomain(owner)) {
+            return List.of();
+        }
+        pending.removeIf(declaration -> declaration.ownerId().equals(owner.getInstanceId()));
+        DomainCollapseReason reason = owner.isDefeated() || !owner.isActive()
+            ? DomainCollapseReason.OWNER_DEFEATED
+            : DomainCollapseReason.OWNER_LOW_HP;
+        return collapseOwnedDomains(state, owner, reason, executor, tick);
+    }
+
+    private List<CombatEvent> collapseOwnedDomains(
+        BattleState state,
+        BattleCombatant owner,
+        DomainCollapseReason reason,
+        DomainEffectExecutor executor,
+        int tick
+    ) {
+        List<CombatEvent> events = new ArrayList<>();
+        for (DomainInstance instance : List.copyOf(active)) {
+            if (instance.ownerId().equals(owner.getInstanceId())) {
+                collapse(instance, reason, state, executor, tick, events);
+            }
+        }
+        refreshClashes(state, tick, events);
+        return events;
+    }
+
     public List<CombatEvent> reconcileOwners(
         BattleState state,
         DomainEffectExecutor executor,
@@ -331,28 +414,30 @@ public final class DomainBattlefield {
             } else if (owner.isDefeated() || !owner.isActive()) {
                 collapse(instance, DomainCollapseReason.OWNER_DEFEATED,
                     state, executor, tick, events);
+            } else if (!canMaintainDomain(owner)) {
+                collapse(instance, DomainCollapseReason.OWNER_LOW_HP,
+                    state, executor, tick, events);
             }
         }
     }
 
+    public static boolean canMaintainDomain(BattleCombatant owner) {
+        if (owner == null) return false;
+        return (long) owner.getCurrentHp() * 100
+            >= (long) owner.getMaxHp() * MIN_MAINTENANCE_HP_PERCENT;
+    }
+
     private void captureInitialMembers(DomainInstance instance, BattleState state) {
         BattleCombatant owner = state.combatant(instance.ownerId());
-        List<BattleCombatant> captured = switch (instance.definition().capturePolicy()) {
-            case NONE -> List.of();
-            case ALL_ACTIVE -> state.activeCombatants();
-            case ALL_ENEMIES -> owner == null ? List.of() : state.activeEnemiesOf(owner);
+        List<BattleCombatant> captured = new ArrayList<>();
+        if (owner != null) captured.add(owner);
+        List<BattleCombatant> additional = switch (instance.definition().capturePolicy()) {
+            case EVERYONE -> state.activeCombatants();
             case SELECTED_TARGETS -> instance.selectedTargetIds().stream()
                 .map(state::combatant).filter(Objects::nonNull).filter(BattleCombatant::isActive)
                 .toList();
-            case OWNER_AND_SELECTED -> {
-                List<BattleCombatant> members = new ArrayList<>();
-                if (owner != null) members.add(owner);
-                instance.selectedTargetIds().stream().map(state::combatant)
-                    .filter(Objects::nonNull).filter(BattleCombatant::isActive)
-                    .filter(member -> !members.contains(member)).forEach(members::add);
-                yield members;
-            }
         };
+        additional.stream().filter(member -> !captured.contains(member)).forEach(captured::add);
         captured.forEach(member -> instance.addMember(member.getInstanceId()));
         for (BattleCombatant member : captured) applyProtection(instance, member, state);
     }
@@ -467,7 +552,7 @@ public final class DomainBattlefield {
             }
             BattleCombatant counterOwner = state.combatant(counter.ownerId());
             if (counterOwner == null || !target.isAlliedWith(counterOwner)) continue;
-            if (counter.definition().counterPotency() < source.definition().clashPressurePerTick()) {
+            if (counter.definition().counterPotency() < source.definition().clashValue()) {
                 continue;
             }
             boolean blocks = switch (counter.definition().counterType()) {
@@ -510,10 +595,7 @@ public final class DomainBattlefield {
                 .filter(enemy -> !instance.contains(enemy.getInstanceId())).toList();
             case BARRIER -> List.of();
         };
-        return candidates.stream().filter(BattleCombatant::isActive)
-            .filter(candidate -> audience == DomainAudience.OWNER
-                || recognized(instance, candidate, owner))
-            .distinct().toList();
+        return candidates.stream().filter(BattleCombatant::isActive).distinct().toList();
     }
 
     private static List<BattleCombatant> members(
@@ -522,18 +604,6 @@ public final class DomainBattlefield {
     ) {
         return instance.memberIds().stream().map(state::combatant)
             .filter(Objects::nonNull).filter(BattleCombatant::isActive).toList();
-    }
-
-    private static boolean recognized(
-        DomainInstance instance,
-        BattleCombatant candidate,
-        BattleCombatant owner
-    ) {
-        return switch (instance.definition().recognitionPolicy()) {
-            case ALL_MEMBERS -> true;
-            case CURSED_ENERGY_USERS -> candidate.getMaxCursedEnergy() > 0;
-            case ENEMIES_ONLY -> !candidate.isAlliedWith(owner);
-        };
     }
 
     private void applyBarrierRow(
@@ -547,8 +617,8 @@ public final class DomainBattlefield {
         try { type = AbilityEffectType.fromName(row.type); }
         catch (RuntimeException exception) { return; }
         if (type == AbilityEffectType.HEAL_HP) {
-            int amount = effectAmount(row, source.definition().internalBarrierIntegrity());
-            int healed = source.healInternalBarrier(amount) + source.healExternalBarrier(amount);
+            int amount = effectAmount(row, source.maximumInternalBarrierIntegrity());
+            int healed = source.healInternalBarrier(amount);
             if (healed > 0) {
                 events.add(domainEvent(CombatEvent.Type.DOMAIN_BARRIER_DAMAGED,
                     source, state.combatant(source.ownerId()), tick,
@@ -561,55 +631,118 @@ public final class DomainBattlefield {
         for (DomainInstance target : List.copyOf(active)) {
             if (target == source || target.definition().antiDomain()
                 || !hostile(source, target, state) || !overlaps(source, target)) continue;
-            int maximum = target.definition().internalBarrierIntegrity();
+            int maximum = target.maximumInternalBarrierIntegrity();
             int amount = type == AbilityEffectType.INSTANT_KILL
                 ? maximum : effectAmount(row, maximum);
-            boolean exterior = source.definition().topology() == DomainTopology.OPEN
-                && target.definition().topology() == DomainTopology.CLOSED;
-            int damage = exterior ? target.damageExternalBarrier(amount)
-                : target.damageInternalBarrier(amount);
+            int damage = target.damageInternalBarrier(amount);
             if (damage > 0) events.add(barrierEvent(source, target, damage, tick));
         }
     }
 
-    private void applyClashPressure(
+    /** Apply ordinary clash differences and full Domain pressure against counters. */
+    private void resolveBarrierPressure(
         BattleState state,
         DomainEffectExecutor executor,
         int tick,
         List<CombatEvent> events
     ) {
-        if (activeClashes.isEmpty()) return;
+        resolveClashes(state, executor, tick, events);
+        applyAntiDomainPressure(state, executor, tick, events);
+    }
+
+    /** Damage the weaker Domain by the difference between the live clash scores. */
+    private void resolveClashes(
+        BattleState state,
+        DomainEffectExecutor executor,
+        int tick,
+        List<CombatEvent> events
+    ) {
         for (ClashKey clash : List.copyOf(activeClashes)) {
             DomainInstance first = find(clash.first());
             DomainInstance second = find(clash.second());
             if (first == null || second == null) continue;
-            int firstDamage = first.damageInternalBarrier(
-                second.definition().clashPressurePerTick());
-            int secondDamage = second.damageInternalBarrier(
-                first.definition().clashPressurePerTick());
-            if (firstDamage > 0) events.add(barrierEvent(second, first, firstDamage, tick));
-            if (secondDamage > 0) events.add(barrierEvent(first, second, secondDamage, tick));
+            BattleCombatant firstOwner = state.combatant(first.ownerId());
+            BattleCombatant secondOwner = state.combatant(second.ownerId());
+            if (firstOwner == null || secondOwner == null) continue;
 
-            if (first.definition().topology() == DomainTopology.OPEN
-                && second.definition().topology() == DomainTopology.CLOSED) {
-                int damage = second.damageExternalBarrier(
-                    first.definition().externalPressurePerTick());
-                if (damage > 0) events.add(barrierEvent(first, second, damage, tick));
-            }
-            if (second.definition().topology() == DomainTopology.OPEN
-                && first.definition().topology() == DomainTopology.CLOSED) {
-                int damage = first.damageExternalBarrier(
-                    second.definition().externalPressurePerTick());
-                if (damage > 0) events.add(barrierEvent(second, first, damage, tick));
+            double firstScore = DomainClashCalculator.clashScore(first.definition(), firstOwner);
+            double secondScore = DomainClashCalculator.clashScore(second.definition(), secondOwner);
+            if (Double.compare(firstScore, secondScore) == 0) continue;
+
+            DomainInstance winner = firstScore >= secondScore ? first : second;
+            DomainInstance loser = winner == first ? second : first;
+            int damage = loser.damageInternalBarrier(scoreDamage(
+                Math.abs(firstScore - secondScore)));
+            if (damage <= 0) continue;
+            events.add(barrierEvent(winner, loser, damage, tick));
+            if (loser.internalBarrierIntegrity() == 0) {
+                collapse(loser, DomainCollapseReason.INTERNAL_BARRIER_BROKEN,
+                    state, executor, tick, events);
             }
         }
+    }
+
+    /** Anti-Domains do not clash; each hostile Domain strikes them at full score. */
+    private void applyAntiDomainPressure(
+        BattleState state,
+        DomainEffectExecutor executor,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        for (DomainInstance source : List.copyOf(active)) {
+            if (source.definition().antiDomain()) continue;
+            BattleCombatant owner = state.combatant(source.ownerId());
+            if (owner == null) continue;
+            int pressure = scoreDamage(
+                DomainClashCalculator.clashScore(source.definition(), owner));
+            for (DomainInstance target : List.copyOf(active)) {
+                if (!target.definition().antiDomain() || !hostile(source, target, state)
+                    || !overlaps(source, target)) continue;
+                int damage = target.damageInternalBarrier(pressure);
+                if (damage <= 0) continue;
+                events.add(barrierEvent(source, target, damage, tick));
+                if (target.internalBarrierIntegrity() == 0) {
+                    collapse(target, DomainCollapseReason.INTERNAL_BARRIER_BROKEN,
+                        state, executor, tick, events);
+                }
+            }
+        }
+    }
+
+    private void updateClashProgress(BattleState state) {
+        for (ClashKey clash : activeClashes) {
+            DomainInstance first = find(clash.first());
+            DomainInstance second = find(clash.second());
+            if (first == null || second == null) continue;
+            BattleCombatant firstOwner = state.combatant(first.ownerId());
+            BattleCombatant secondOwner = state.combatant(second.ownerId());
+            if (firstOwner == null || secondOwner == null) continue;
+            double firstScore = DomainClashCalculator.clashScore(first.definition(), firstOwner);
+            double secondScore = DomainClashCalculator.clashScore(second.definition(), secondOwner);
+            if (Double.compare(firstScore, secondScore) == 0) {
+                clashProgress.put(clash, 0.0);
+                continue;
+            }
+            DomainInstance weaker = firstScore < secondScore ? first : second;
+            double progress = weaker.maximumInternalBarrierIntegrity() == 0 ? 1.0
+                : 1.0 - (double) weaker.internalBarrierIntegrity()
+                    / weaker.maximumInternalBarrierIntegrity();
+            clashProgress.put(clash, weaker == second ? progress : -progress);
+        }
+    }
+
+    /** Collapse Domains whose internal integrity was broken by barrier attacks. */
+    private void collapseBrokenBarriers(
+        BattleState state,
+        DomainEffectExecutor executor,
+        int tick,
+        List<CombatEvent> events
+    ) {
         for (DomainInstance instance : List.copyOf(active)) {
-            DomainCollapseReason reason = instance.internalBarrierIntegrity() == 0
-                ? DomainCollapseReason.INTERNAL_BARRIER_BROKEN
-                : instance.definition().topology() == DomainTopology.CLOSED
-                    && instance.externalBarrierIntegrity() == 0
-                        ? DomainCollapseReason.EXTERNAL_BARRIER_BROKEN : null;
-            if (reason != null) collapse(instance, reason, state, executor, tick, events);
+            if (instance.internalBarrierIntegrity() == 0) {
+                collapse(instance, DomainCollapseReason.INTERNAL_BARRIER_BROKEN,
+                    state, executor, tick, events);
+            }
         }
     }
 
@@ -637,6 +770,7 @@ public final class DomainBattlefield {
         }
         for (ClashKey ended : activeClashes) {
             if (next.contains(ended)) continue;
+            clashProgress.remove(ended);
             events.add(CombatEvent.of(CombatEvent.Type.DOMAIN_CLASH_ENDED)
                 .domainInstanceId(ended.first())
                 .relatedDomainInstanceId(ended.second()).tick(tick)
@@ -688,12 +822,14 @@ public final class DomainBattlefield {
             combatant.removeEffectsByLease(instance.sourceLease());
             appendMaximumEvents(owner, combatant, previousMaxHp, previousMaxCe, tick, events);
         }
+        String requiredTechnique = instance.definition().requiredTechniqueName();
         if (owner != null && !instance.definition().antiDomain()
+            && requiredTechnique != null && !requiredTechnique.isBlank()
             && reason != DomainCollapseReason.BATTLE_ENDED
             && (instance.definition().burnoutRounds() != 0
                 || instance.definition().burnoutTicks() != 0)) {
             AbilityEffectData burnout = AbilityEffectType.TEMP_LOCK_TECHNIQUE.createDefault();
-            burnout.stringValue = instance.definition().requiredTechniqueName();
+            burnout.stringValue = requiredTechnique;
             burnout.durationRounds = instance.definition().burnoutRounds();
             burnout.durationTicks = instance.definition().burnoutTicks();
             owner.addRuntimeAbilityEffect(
@@ -792,6 +928,11 @@ public final class DomainBattlefield {
             ? Math.max(0, effect.intValue == null ? 0 : effect.intValue)
             : Math.max(0, (int) Math.round(maximum
                 * (effect.doubleValue == null ? 0.0 : effect.doubleValue)));
+    }
+
+    private static int scoreDamage(double score) {
+        if (!Double.isFinite(score) || score >= Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return Math.max(0, (int) Math.ceil(score));
     }
 
     private static void appendMaximumEvents(

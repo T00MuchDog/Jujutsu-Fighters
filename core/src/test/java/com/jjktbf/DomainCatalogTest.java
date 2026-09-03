@@ -50,7 +50,8 @@ class DomainCatalogTest {
         for (DomainData domain : domains) {
             domain.validate();
             assertTrue(domainIds.add(domain.id), "duplicate domain id " + domain.id);
-            if (!domain.antiDomain) {
+            if (!domain.antiDomain && domain.requiredTechniqueName != null
+                && !domain.requiredTechniqueName.isBlank()) {
                 assertTrue(techniqueNames.contains(
                         domain.requiredTechniqueName.trim().toLowerCase()),
                     domain.id + " requires unknown technique " + domain.requiredTechniqueName);

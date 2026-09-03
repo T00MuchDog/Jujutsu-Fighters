@@ -1212,11 +1212,13 @@ Shipped coded abilities (keys / features / actions):
   NEW_SHADOW_STYLE                      (NewShadowStyleAbility)
     KEY = "NEW_SHADOW_STYLE".
     Features:
-      SIMPLE_DOMAIN_BINDING_VOW  Using any other move dispels an active Simple Domain.
+      SIMPLE_DOMAIN_BINDING_VOW  Compatibility feature for the former coded stance.
     ACTIVATE_SIMPLE_DOMAIN remains a compatibility coded action. Current authored
-    Simple Domain moves use ESTABLISH_DOMAIN instead; Domain 000000 carries the
-    owner-action collapse rule directly. New Shadow Style Simple Domain also owns
-    a Potency 1 PARRY and launches Sword Quick Draw after a melee parry.
+    Simple Domain moves use ESTABLISH_DOMAIN instead; the owner-action collapse
+    rule lives in Domain 000000's counterBreakOnOwnerMove flag, currently
+    authored false (the binding vow is disabled in shipped data). New Shadow
+    Style Simple Domain also owns a Potency 1 PARRY and launches Sword Quick
+    Draw after a melee parry.
 
   TEN_SHADOWS                            (TenShadowsAbility)
     KEY = "TEN_SHADOWS". Marker features only — exposes no move effect action.
@@ -1596,41 +1598,47 @@ DOMAIN EDITOR  (DomainEditorScreen)
 
 DOMAIN
   A battle-wide authored field established by an ESTABLISH_DOMAIN move effect.
-  An ORDINARY DOMAIN belongs to a required innate technique and may provide
-  sure-hit, field, caster, barrier, and procedure programs. An ANTI-DOMAIN uses
-  the same data model but supplies a counter rather than an ordinary sure-hit.
+  An ORDINARY DOMAIN may belong to a required innate technique and may provide
+  sure-hit, field, caster, barrier, and procedure programs. An ordinary field
+  with no required technique is non-innate. An ANTI-DOMAIN uses the same data
+  model but supplies sure-hit nullification rather than an ordinary sure-hit.
 
 DECLARATION AND OWNERSHIP
-  An ordinary Domain requires its definition to be unlocked, its required
-  technique to be usable, and that technique not to be temporarily locked.
-  Anti-Domains bypass those technique checks. One combatant may maintain one
-  ordinary Domain and one anti-Domain at once; declaring another of the same kind
-  replaces the old one. Every declaration on one tick establishes atomically
+  An ordinary Domain requires its definition to be unlocked. If it belongs to
+  an innate technique, that technique must be usable and not temporarily locked.
+  Anti-Domains bypass those technique checks. A combatant may maintain only one
+  field total, whether it is an ordinary Domain or an anti-Domain. Declaring any
+  other field while one is active fails and leaves the existing field unchanged.
+  A second declaration from the same combatant also fails while the first is
+  pending. Declarations from different combatants on one tick establish atomically
   before any ON_ESTABLISH program runs, so same-tick declarations interact fairly.
 
 TOPOLOGY
-  CLOSED       Has an inside and an exterior barrier.
-  OPEN         Projects into the base battlefield and can pressure a CLOSED
-               Domain's exterior during a clash.
-  INCOMPLETE   A partial field, used by the shipped Simple Domain anti-Domain.
+  Authoring classification of a field's structure. Exterior barriers and the
+  OPEN-vs-CLOSED pressure rule were retired with the clash rework, so topology
+  no longer changes clash behaviour; open Domains canonically carry a higher
+  authored clash value instead.
+    CLOSED       A barrier-sealed interior.
+    OPEN         Projects into the base battlefield with no outer wall.
+    INCOMPLETE   A partial field, used by the shipped Simple Domain anti-Domain.
 
 MEMBERSHIP POLICIES
-  Capture (who enters on establishment):
-    NONE / ALL_ACTIVE / ALL_ENEMIES / SELECTED_TARGETS / OWNER_AND_SELECTED
-  Recognition (which members authored effects can recognize):
-    ALL_MEMBERS / CURSED_ENERGY_USERS / ENEMIES_ONLY
+  Capture (who enters on establishment; the owner is always included):
+    EVERYONE / SELECTED_TARGETS
   Entrants (how later summons/combatants join):
     SNAPSHOT / FOLLOW_SUMMONER / ALL_NEW_COMBATANTS
   Protection (members exempt from hostile Domain programs):
     NONE / OWNER / OWNER_AND_ALLIES / OWNER_AND_SELECTED
 
-DURATION, UPKEEP, AND BARRIERS
-  A Domain has round/tick duration, fractional CE upkeep per active tick, internal
-  barrier integrity, and external barrier integrity. Fractional upkeep debt is
-  carried until a whole CE point is due; failure to pay collapses the Domain.
-  Internal integrity is attacked by clash pressure. An OPEN Domain also applies
-  its externalPressurePerTick to a clashing CLOSED Domain's exterior. CLOSED vs
-  CLOSED does not passively damage either exterior.
+DURATION, UPKEEP, AND INTEGRITY
+  A Domain has round/tick duration, fractional CE upkeep per active tick, and
+  internal barrier integrity. Fractional upkeep debt is carried until a whole
+  CE point is due; failure to pay collapses the Domain. Internal integrity is
+  the field's barrier health: it is damaged or repaired by barrier program rows
+  and damaged by Domain clash pressure. Reaching zero collapses the Domain.
+  Maintenance also fails immediately when one connected hit removes more than
+  8% of the owner's maximum HP, or whenever the owner falls below 15% maximum HP.
+  A combatant below 15% HP cannot establish a new Domain or anti-Domain.
 
 DOMAIN PROGRAMS
   Five ordered effect channels reuse the generic AbilityEffectType vocabulary:
@@ -1642,53 +1650,89 @@ DOMAIN PROGRAMS
     Audience:  OWNER / ENTERING_MEMBER / ENEMY_MEMBERS / ALLY_MEMBERS /
                ALL_MEMBERS / UNPROTECTED_MEMBERS / BARRIER / EXTERIOR_ENEMIES
     Delivery:  EFFECT / ATTACK / INFORMATION / RULE
+  Sure-hit rows alone pass through clash suppression, member protection, and
+  anti-Domain counter checks before execution. Field rows describe effects of
+  the environment, while caster rows describe effects sourced by the owner;
+  both otherwise use normal row execution and their authored audience. Barrier
+  rows with the BARRIER audience repair this field's integrity or damage hostile
+  barriers. Procedure rows use normal execution for authored rules and scripted
+  lifecycle behavior; interactive procedures remain deferred. Anti-Domains may
+  define barrier and procedure rows, but not sure-hit, field, or caster rows.
   BARRIER rows can repair integrity with HEAL_HP or damage another barrier with
   DEAL_DIRECT_DAMAGE / INSTANT_KILL. Effects leased from a Domain are removed
   when it collapses; ON_COLLAPSE programs run first unless the battle itself ended.
 
 DOMAIN CLASH
-  Overlapping hostile ordinary Domains clash. Both sure-hits are suppressed while
-  the clash exists, and each Domain applies clashPressurePerTick to the other's
-  internal barrier. The clash ends when overlap or hostility ends, or one Domain
-  collapses.
+  Overlapping hostile ordinary Domains clash. Both sure-hits are suppressed
+  while the clash exists. Each side holds a clash score:
 
-  The battle screen shows active fields in [DOMAIN] / [ANTI-DOMAIN] strips with
-  remaining duration; a participating ordinary Domain is marked <<CLASH>>.
+    score = clashValue × (1 + (3 × refinement + cePressure) / 100) / 20
 
-ANTI-DOMAIN COUNTERS
-  Counter potency must be at least the hostile Domain's clashPressurePerTick.
+    clashValue   The Domain's authored base clash value (similar for standard
+                 Domains; open and specialty non-hit Domains author higher).
+    refinement   DOMAIN REFINEMENT of the owner: one part Jujutsu Skill and
+                 one part Cursed Technique Mastery, read from live effective
+                 stats.
+    cePressure   The owner's current CE pool capped by CE output, as a
+                 percentage of the maximum pool. Re-read every tick, so upkeep
+                 drain shifts the clash live.
+
+  Refinement carries exactly three times the weight of the CE factor, so
+  refinement decides most clashes. Each tick, the lower-scoring Domain loses
+  internal integrity equal to ceil(abs(first score - second score)). Equal
+  scores deal no integrity damage. Takeover progress displays the fraction of
+  the weaker Domain's maximum integrity already lost. If live CE pressure makes
+  leadership flip, subsequent damage and the displayed leader flip with it.
+  Reaching zero integrity collapses the loser with INTERNAL_BARRIER_BROKEN;
+  the winner remains established and its sure hit resumes.
+
+  The battle screen shows active fields in [DOMAIN] / [ANTI-DOMAIN] strips
+  with remaining duration; the leading side of a clash is marked
+  <<CLASH nn%>> with its takeover progress.
+
+ANTI-DOMAIN NULLIFICATION
+  "Counter type" classifies which sure-hit delivery classes an anti-Domain can
+  nullify; it does not launch a retaliatory move. Counter potency must be at
+  least the hostile Domain's authored clashValue.
     SURE_HIT_NULLIFICATION          blocks every delivery class.
     SURE_HIT_INTERCEPTION           blocks ATTACK only.
     TECHNIQUE_CONTACT_NULLIFICATION blocks EFFECT, ATTACK, and INFORMATION, but
                                     cannot answer RULE.
-  A successful negation consumes one finite counter use. Reaching zero collapses
-  the anti-Domain; -1 means unlimited uses.
+  A successful negation consumes one use only when a finite number is authored.
+  Reaching zero collapses that anti-Domain; -1 continuously nullifies qualifying
+  sure hits for as long as the anti-Domain remains maintained. Anti-Domains do
+  not clash normally: each overlapping hostile Domain damages their integrity
+  every tick by ceil(the hostile Domain's full live clash score).
 
 COLLAPSE AND TECHNIQUE BURNOUT
   Canonical reasons: DURATION_EXPIRED, OWNER_DEFEATED, OWNER_REMOVED,
-  UPKEEP_FAILED, INTERNAL_BARRIER_BROKEN, EXTERNAL_BARRIER_BROKEN,
-  COUNTER_EXHAUSTED, OWNER_ACTED, REPLACED, VOLUNTARY, BATTLE_ENDED.
-  Unless battle end suppresses cleanup effects, an ordinary Domain's collapse
-  applies TEMP_LOCK_TECHNIQUE to its required technique for the authored burnout
-  duration. Anti-Domains cannot define burnout.
+  OWNER_DAMAGED, OWNER_LOW_HP,
+  UPKEEP_FAILED, CLASH_LOST, INTERNAL_BARRIER_BROKEN, COUNTER_EXHAUSTED,
+  OWNER_ACTED, VOLUNTARY, BATTLE_ENDED.
+  Unless battle end suppresses cleanup effects, an ordinary innate-technique
+  Domain's collapse applies TEMP_LOCK_TECHNIQUE to its required technique for
+  the authored burnout duration. Non-innate fields and anti-Domains have no
+  innate technique to burn out and do not receive technique burnout.
 
 SHIPPED SIMPLE DOMAIN
-  Domain 000000 Simple Domain is an INCOMPLETE anti-Domain. It protects its owner,
-  has 10 internal integrity, no upkeep, one counter use with Potency 50
-  TECHNIQUE_CONTACT_NULLIFICATION, and collapses when its owner acts.
-  Move 000149 Simple Domain only establishes this field. Move 000026 New Shadow
-  Style Simple Domain establishes the same field while also providing a Potency-1
-  parry that answers a successfully parried melee attacker with 000025 Sword Quick Draw.
+  Domain 000000 Simple Domain is an INCOMPLETE anti-Domain. It carves out and
+  protects its owner's space, has 3000 base internal integrity, no upkeep, and
+  unlimited Potency 100 TECHNIQUE_CONTACT_NULLIFICATION. It continuously stops
+  qualifying sure hits while maintained; heavier specialty clash values can
+  exceed its potency. Move 000138 only establishes this field. Move 000026 also
+  provides a separate Potency-1 New Shadow Style parry that answers a successfully
+  parried melee attacker with 000025 Sword Quick Draw. That automatic sword
+  response belongs to the move stance, not Simple Domain nullification.
 
 ================================================================================
   21. CONTENT CATALOG  (data/*.json — current shipped content)
 ================================================================================
 
-This compact snapshot reflects committed HEAD after the 2026-08-29 mechanics
-updates. IDs are included where they define references; the JSON files remain the
+This compact snapshot reflects the content after the 2026-09-03 Domain clash
+rework. IDs are included where they define references; the JSON files remain the
 authoritative source for mutable tuning and complete loadouts.
 
-  MOVES — 151 (data/moves/all_moves.json), ids 000000–000150.
+  MOVES — 140 (data/moves/all_moves.json), ids 000000–000139.
     11 are slot-free and 26 must be granted/unlocked rather than assigned directly.
     Cursed-spirit class content occupies 000110–000138; 000131 Reconstitute is
     granted by Cursed Spirit Physiology, heals 15% Max HP, and may be used twice
@@ -1702,10 +1746,10 @@ authoritative source for mutable tuning and complete loadouts.
     Plummet, Get Twisted, Return, Explode, and Die. 000139 Run Away commands up to
     three allies and confers an 85% RANGED dodge for four AP ticks.
 
-    Disaster Plants occupies 000140–000148 and 000150. 000150 Root Trip first
+    Disaster Plants occupies 000129–000137 and 000139. 000139 Root Trip first
     applies four ticks of RESTRAINED on a 72%-accuracy setup hit, then four ticks
     later launches an unavoidable 70-power RANGED GUARD_BREAK hit if the setup
-    connected. 000149 is the standalone Simple Domain move (§20).
+    connected. 000138 is the standalone Simple Domain move (§20).
 
     000143 Wooden Bulwark blocks 65% for every ally and 000148 Root Barrier flat-
     blocks 30; FIRE hits halve either block's effectiveness through

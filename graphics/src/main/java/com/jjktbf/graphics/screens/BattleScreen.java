@@ -1083,10 +1083,19 @@ public class BattleScreen implements Screen, BattleView {
         final boolean antiDomain;
         final String duration;
         final boolean clashing;
+        /** Takeover percent toward breaking the opposing Domain; -1 when unknown. */
+        final int clashTakeoverPercent;
 
         DomainBanner(
             String instanceId, String name, String ownerName,
             boolean antiDomain, String duration, boolean clashing
+        ) {
+            this(instanceId, name, ownerName, antiDomain, duration, clashing, -1);
+        }
+
+        DomainBanner(
+            String instanceId, String name, String ownerName, boolean antiDomain,
+            String duration, boolean clashing, int clashTakeoverPercent
         ) {
             this.instanceId = instanceId;
             this.name = name;
@@ -1094,11 +1103,18 @@ public class BattleScreen implements Screen, BattleView {
             this.antiDomain = antiDomain;
             this.duration = duration == null ? "" : duration;
             this.clashing = clashing;
+            this.clashTakeoverPercent = clashTakeoverPercent;
         }
 
         DomainBanner withClash(boolean clashing) {
-            return clashing == this.clashing ? this
-                : new DomainBanner(instanceId, name, ownerName, antiDomain, duration, clashing);
+            return clashing == this.clashing && !clashing ? this
+                : new DomainBanner(instanceId, name, ownerName, antiDomain,
+                    duration, clashing, -1);
+        }
+
+        DomainBanner withClashTakeover(int percent) {
+            return new DomainBanner(instanceId, name, ownerName, antiDomain,
+                duration, true, percent);
         }
 
         String label() {
@@ -1106,7 +1122,10 @@ public class BattleScreen implements Screen, BattleView {
             text.append(name);
             if (!ownerName.isBlank()) text.append(" - ").append(ownerName);
             if (!duration.isEmpty()) text.append(" (").append(duration).append(')');
-            if (clashing) text.append("  <<CLASH>>");
+            if (clashing) {
+                text.append(clashTakeoverPercent >= 0
+                    ? "  <<CLASH " + clashTakeoverPercent + "%>>" : "  <<CLASH>>");
+            }
             return text.toString();
         }
     }
@@ -1171,6 +1190,9 @@ public class BattleScreen implements Screen, BattleView {
         for (DomainClash clash : state.domainBattlefield().clashes()) {
             setDomainClash(clash.firstInstanceId(), true);
             setDomainClash(clash.secondInstanceId(), true);
+            if (clash.leaderInstanceId() != null) {
+                setDomainClashTakeover(clash.leaderInstanceId(), clash.takeoverProgress());
+            }
         }
     }
 
@@ -1191,6 +1213,10 @@ public class BattleScreen implements Screen, BattleView {
         for (DomainClashState clash : battlefield.clashes()) {
             setDomainClash(clash.firstDomainInstanceId(), true);
             setDomainClash(clash.secondDomainInstanceId(), true);
+            if (clash.leaderDomainInstanceId() != null) {
+                setDomainClashTakeover(clash.leaderDomainInstanceId(),
+                    clash.takeoverProgress());
+            }
         }
     }
 
@@ -1240,6 +1266,20 @@ public class BattleScreen implements Screen, BattleView {
         List<DomainBanner> banners = new ArrayList<>(domainBanners);
         banners.replaceAll(banner -> instanceId.equals(banner.instanceId)
             ? banner.withClash(clashing) : banner);
+        domainBanners = List.copyOf(banners);
+    }
+
+    /** Stamp the weaker Domain's integrity-loss percent onto the stronger banner. */
+    private void setDomainClashTakeover(String instanceId, double progress) {
+        if (instanceId == null) return;
+        int percent = (int) Math.round(Math.max(0.0, Math.min(1.0, progress)) * 100.0);
+        boolean present = domainBanners.stream()
+            .anyMatch(banner -> instanceId.equals(banner.instanceId)
+                && (!banner.clashing || banner.clashTakeoverPercent != percent));
+        if (!present) return;
+        List<DomainBanner> banners = new ArrayList<>(domainBanners);
+        banners.replaceAll(banner -> instanceId.equals(banner.instanceId)
+            ? banner.withClashTakeover(percent) : banner);
         domainBanners = List.copyOf(banners);
     }
 

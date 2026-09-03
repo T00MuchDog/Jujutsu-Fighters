@@ -502,8 +502,9 @@ class ProtocolJsonTest {
                     "domain-1", "UNLIMITED_VOID", "Unlimited Void", "PLAYER-f1",
                     false, "CLOSED", "NONE", List.of("ENEMY-f1"),
                     List.of("PLAYER-f1", "ENEMY-f1"), List.of("PLAYER-f1"),
-                    1, 4, 80, 60, -1)),
-                List.of(new DomainClashState("domain-1", "domain-2"))),
+                    1, 4, 80, 100, -1)),
+                List.of(new DomainClashState(
+                    "domain-1", "domain-2", "domain-1", 0.25))),
             1_700_000_090_000L,
             1_700_000_000_000L
         );

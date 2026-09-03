@@ -26,7 +26,6 @@ import com.jjktbf.model.domain.DomainCounterType;
 import com.jjktbf.model.domain.DomainData;
 import com.jjktbf.model.domain.DomainEntrantPolicy;
 import com.jjktbf.model.domain.DomainProtectionPolicy;
-import com.jjktbf.model.domain.DomainRecognitionPolicy;
 import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.domain.DomainTopology;
 import com.jjktbf.model.move.MoveData;
@@ -123,8 +122,9 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
                     "A Domain named \"" + existing.name + "\" already exists.");
             }
         }
-        if (!domain.antiDomain && techniqueRepo.findByName(
-            domain.requiredTechniqueName).isEmpty()) {
+        if (!domain.antiDomain && domain.requiredTechniqueName != null
+            && !domain.requiredTechniqueName.isBlank() && techniqueRepo.findByName(
+                domain.requiredTechniqueName).isEmpty()) {
             return ValidationResult.error("Choose an existing required technique.");
         }
         String referenceError = effectReferenceError(domain);
@@ -214,16 +214,21 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
             if (checked) {
                 domain.requiredTechniqueName = null;
                 domain.topology = DomainTopology.INCOMPLETE.name();
-                domain.capturePolicy = DomainCapturePolicy.OWNER_AND_SELECTED.name();
+                domain.capturePolicy = DomainCapturePolicy.SELECTED_TARGETS.name();
                 domain.protectionPolicy = DomainProtectionPolicy.OWNER_AND_SELECTED.name();
+                domain.internalBarrierIntegrity = DomainData.DEFAULT_ANTI_DOMAIN_INTEGRITY;
                 domain.counterType = DomainCounterType.SURE_HIT_NULLIFICATION.name();
                 domain.burnoutRounds = 0;
                 domain.burnoutTicks = 0;
+                domain.sureHitEffects = new ArrayList<>();
+                domain.fieldEffects = new ArrayList<>();
+                domain.casterEffects = new ArrayList<>();
             } else {
                 domain.requiredTechniqueName = techniqueRepo.getAll().stream()
                     .map(technique -> technique.name).filter(java.util.Objects::nonNull)
                     .findFirst().orElse(null);
                 domain.topology = DomainTopology.CLOSED.name();
+                domain.internalBarrierIntegrity = DomainData.DEFAULT_DOMAIN_INTEGRITY;
                 domain.counterType = DomainCounterType.NONE.name();
                 domain.burnoutRounds = 1;
                 domain.burnoutTicks = 0;
@@ -234,7 +239,9 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
         identity.add(labelledRow("Required technique", techniqueSelect(domain))).growX().row();
         identity.add(formHint(domain.antiDomain
             ? "Anti-Domains need no innate technique or technique-tree node."
-            : "Saving creates a Domain node in the selected technique's tree."))
+            : domain.requiredTechniqueName == null || domain.requiredTechniqueName.isBlank()
+                ? "Non-innate fields have no technique burnout or technique-tree node."
+                : "Saving creates a Domain node in the selected technique's tree."))
             .left().row();
 
         Table space = formSection(form, "SPACE AND MEMBERSHIP");
@@ -242,8 +249,6 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
             value -> domain.topology = value);
         addEnumRow(space, "Capture policy", DomainCapturePolicy.class, domain.capturePolicy,
             value -> domain.capturePolicy = value);
-        addEnumRow(space, "Recognition", DomainRecognitionPolicy.class,
-            domain.recognitionPolicy, value -> domain.recognitionPolicy = value);
         addEnumRow(space, "New entrants", DomainEntrantPolicy.class, domain.entrantPolicy,
             value -> domain.entrantPolicy = value);
         addEnumRow(space, "Protection", DomainProtectionPolicy.class,
@@ -265,15 +270,12 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
         barrier.add(labelledIntField("Internal integrity",
             value(domain.internalBarrierIntegrity), 0, Integer.MAX_VALUE,
             value -> domain.internalBarrierIntegrity = value)).growX().row();
-        barrier.add(labelledIntField("External integrity",
-            value(domain.externalBarrierIntegrity), 0, Integer.MAX_VALUE,
-            value -> domain.externalBarrierIntegrity = value)).growX().row();
-        barrier.add(labelledIntField("Clash pressure / tick",
-            value(domain.clashPressurePerTick), 0, Integer.MAX_VALUE,
-            value -> domain.clashPressurePerTick = value)).growX().row();
-        barrier.add(labelledIntField("External pressure / tick",
-            value(domain.externalPressurePerTick), 0, Integer.MAX_VALUE,
-            value -> domain.externalPressurePerTick = value)).growX().row();
+        barrier.add(labelledIntField("Base clash value",
+            value(domain.clashValue), 0, Integer.MAX_VALUE,
+            value -> domain.clashValue = value)).growX().row();
+        barrier.add(formHint("Integrity scales 3:1 with Jujutsu Skill and CE output. "
+            + "Clashes damage the weaker Domain by the score difference; an anti-Domain "
+            + "takes the hostile Domain's full clash score.")).left().row();
 
         if (domain.antiDomain) {
             Table counter = formSection(form, "COUNTER PROGRAM");
@@ -289,12 +291,14 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
                 checked -> domain.counterBreakOnOwnerMove = checked))).growX().row();
         }
 
-        addEffectSection(form, "SURE-HIT PROGRAM", domain.sureHitEffects,
-            "Admitted rows bypass normal accuracy, then pass protection and counter checks.");
-        addEffectSection(form, "FIELD PROGRAM", domain.fieldEffects,
-            "Environmental effects for recognized Domain members.");
-        addEffectSection(form, "CASTER PROGRAM", domain.casterEffects,
-            "Effects sourced by the Domain owner while the Domain exists.");
+        if (!domain.antiDomain) {
+            addEffectSection(form, "SURE-HIT PROGRAM", domain.sureHitEffects,
+                "Admitted rows bypass normal accuracy, then pass protection and counter checks.");
+            addEffectSection(form, "FIELD PROGRAM", domain.fieldEffects,
+                "Environmental effects for Domain members.");
+            addEffectSection(form, "CASTER PROGRAM", domain.casterEffects,
+                "Effects sourced by the Domain owner while the Domain exists.");
+        }
         addEffectSection(form, "BARRIER PROGRAM", domain.barrierEffects,
             "Effects associated with barrier state and opposing barriers.");
         addEffectSection(form, "PROCEDURE PROGRAM", domain.procedureEffects,
@@ -332,7 +336,7 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
     private SelectBox<String> techniqueSelect(DomainData domain) {
         SelectBox<String> select = new DynamicSelectBox<>(skin, uiProfile);
         List<String> labels = new ArrayList<>();
-        if (domain.antiDomain) labels.add(NO_TECHNIQUE);
+        labels.add(NO_TECHNIQUE);
         techniqueRepo.getAll().stream().map(technique -> technique.name)
             .filter(java.util.Objects::nonNull).forEach(labels::add);
         if (labels.isEmpty()) labels.add(NO_TECHNIQUE);
@@ -346,6 +350,10 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 domain.requiredTechniqueName = NO_TECHNIQUE.equals(select.getSelected())
                     ? null : select.getSelected();
+                if (domain.requiredTechniqueName == null) {
+                    domain.burnoutRounds = 0;
+                    domain.burnoutTicks = 0;
+                }
                 markDirty();
             }
         });

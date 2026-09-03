@@ -23,9 +23,6 @@ public final class DomainDefinition {
     public DomainCapturePolicy capturePolicy() {
         return enumValue(DomainCapturePolicy.class, data.capturePolicy);
     }
-    public DomainRecognitionPolicy recognitionPolicy() {
-        return enumValue(DomainRecognitionPolicy.class, data.recognitionPolicy);
-    }
     public DomainEntrantPolicy entrantPolicy() {
         return enumValue(DomainEntrantPolicy.class, data.entrantPolicy);
     }
@@ -38,9 +35,7 @@ public final class DomainDefinition {
     public int burnoutTicks() { return integer(data.burnoutTicks); }
     public double ceUpkeepPerTick() { return decimal(data.ceUpkeepPerTick); }
     public int internalBarrierIntegrity() { return integer(data.internalBarrierIntegrity); }
-    public int externalBarrierIntegrity() { return integer(data.externalBarrierIntegrity); }
-    public int clashPressurePerTick() { return integer(data.clashPressurePerTick); }
-    public int externalPressurePerTick() { return integer(data.externalPressurePerTick); }
+    public int clashValue() { return integer(data.clashValue); }
     public DomainCounterType counterType() {
         return enumValue(DomainCounterType.class, data.counterType);
     }

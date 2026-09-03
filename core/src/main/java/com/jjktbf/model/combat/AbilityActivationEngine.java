@@ -975,6 +975,8 @@ public final class AbilityActivationEngine {
                                 target, StatusEffectType.SLEEP, tick));
                         }
                     }
+                    events.addAll(state.domainBattlefield().onOwnerHealthChanged(
+                        state, target, this::executeDomainEffect, tick));
                 }
             }
             case APPLY_STATUS -> {

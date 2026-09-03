@@ -16,6 +16,7 @@ import com.jjktbf.model.combat.MoveTargeting;
 import com.jjktbf.model.combat.PowerCalculator;
 import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.Timeline;
+import com.jjktbf.model.domain.DomainBattlefield;
 import com.jjktbf.model.domain.DomainDefinition;
 import com.jjktbf.model.domain.DomainInstance;
 import com.jjktbf.model.move.HitComponent;
@@ -492,6 +493,7 @@ final class SmartAIScoring {
     ) {
         if (lookup == null || state == null || ai == null || move == null) return null;
         if (move.isDefensive()) return null;
+        if (!DomainBattlefield.canMaintainDomain(ai)) return "Too injured to maintain a Domain";
         boolean enemyDomainActive = activeEnemyDomain(state, ai) != null;
         for (MoveEffectData effect : move.getEffects()) {
             if (effect == null || !AbilityEffectType.ESTABLISH_DOMAIN.name()
@@ -501,6 +503,7 @@ final class SmartAIScoring {
             DomainDefinition definition = lookup.findDomain(effect.domainId.trim())
                 .orElse(null);
             if (definition == null) return "Unknown Domain";
+            if (ownsActiveDomain(state, ai)) return "Own Domain already active";
             if (definition.antiDomain()) {
                 if (!enemyDomainActive) return "No enemy Domain to answer";
                 continue;
@@ -508,13 +511,15 @@ final class SmartAIScoring {
             if (!ai.getCharacter().canEstablishDomain(definition.id())) {
                 return "Domain not unlocked";
             }
-            if (!ai.getCharacter().canUseTechnique(definition.requiredTechniqueName())) {
-                return "Required technique unavailable";
+            String requiredTechnique = definition.requiredTechniqueName();
+            if (requiredTechnique != null && !requiredTechnique.isBlank()) {
+                if (!ai.getCharacter().canUseTechnique(requiredTechnique)) {
+                    return "Required technique unavailable";
+                }
+                if (ai.isTechniqueLocked(requiredTechnique)) {
+                    return "Required technique locked";
+                }
             }
-            if (ai.isTechniqueLocked(definition.requiredTechniqueName())) {
-                return "Required technique locked";
-            }
-            if (ownsActiveDomain(state, ai, false)) return "Own Domain already active";
         }
         return null;
     }
@@ -615,19 +620,16 @@ final class SmartAIScoring {
         return null;
     }
 
-    private static boolean ownsActiveDomain(
-        BattleState state, BattleCombatant ai, boolean antiDomain
-    ) {
+    private static boolean ownsActiveDomain(BattleState state, BattleCombatant ai) {
         for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
-            if (instance.definition().antiDomain() == antiDomain
-                && instance.ownerId().equals(ai.getInstanceId())) {
+            if (instance.ownerId().equals(ai.getInstanceId())) {
                 return true;
             }
         }
         return false;
     }
 
-    /** True when an enemy anti-Domain protects against this Domain's pressure. */
+    /** True when an enemy anti-Domain is potent enough to answer this Domain. */
     private static boolean enemyCounterDominates(
         BattleState state, BattleCombatant ai, DomainDefinition definition
     ) {
@@ -635,7 +637,7 @@ final class SmartAIScoring {
             if (!instance.definition().antiDomain()) continue;
             BattleCombatant owner = state.combatant(instance.ownerId());
             if (owner == null || owner.isAlliedWith(ai)) continue;
-            if (instance.definition().counterPotency() >= definition.clashPressurePerTick()) {
+            if (instance.definition().counterPotency() >= definition.clashValue()) {
                 return true;
             }
         }

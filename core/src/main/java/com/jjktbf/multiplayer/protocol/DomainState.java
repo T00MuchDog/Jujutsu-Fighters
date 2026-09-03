@@ -20,7 +20,7 @@ public record DomainState(
     int remainingRounds,
     int remainingTicks,
     int internalBarrierIntegrity,
-    int externalBarrierIntegrity,
+    int clashValue,
     int remainingCounterUses
 ) {
     public DomainState {

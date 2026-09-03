@@ -317,7 +317,7 @@ class HeadlessBattleSessionTest {
         var active = snapshot.domainBattlefield().activeDomains().get(0);
         assertEquals(domain.id(), active.domainId());
         assertEquals(PLAYER_ONE_ID, active.ownerInstanceId());
-        assertEquals(40, active.internalBarrierIntegrity());
+        assertEquals(168, active.internalBarrierIntegrity());
         assertTrue(active.memberInstanceIds().contains(PLAYER_ONE_ID));
         assertTrue(active.memberInstanceIds().contains(PLAYER_TWO_ID));
 

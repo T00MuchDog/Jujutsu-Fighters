@@ -1634,7 +1634,7 @@
 }, {
   "id" : "000026",
   "name" : "New Shadow Style Simple Domain",
-  "description" : "Establish a New Shadow Style Simple Domain that automatically PARRYs the next ATTACK at POTENCY 1, then answers a MELEE attacker with *move:000025*.",
+  "description" : "Establish a Simple Domain that continuously nullifies hostile sure hits while maintained. Separately, the New Shadow Style stance PARRIES the next ATTACK at POTENCY 1 and answers a MELEE attacker with *move:000025*.",
   "moveTypes" : [ "SORCERER" ],
   "tags" : [ "NON_INNATE_TECHNIQUE", "CURSED_ENERGY", "UTILITY", "DEFENSIVE", "ATTACK" ],
   "basePower" : 0,
@@ -8995,7 +8995,7 @@
 }, {
   "id" : "000138",
   "name" : "Simple Domain",
-  "description" : "Establish a Simple Domain that nullifies the next hostile technique contact, whether ATTACK, effect, or information.",
+  "description" : "Establish a Simple Domain that continuously nullifies hostile sure-hit technique contact delivered as an ATTACK, effect, or information while maintained.",
   "moveTypes" : [ "SORCERER" ],
   "tags" : [ "NON_INNATE_TECHNIQUE", "CURSED_ENERGY", "UTILITY" ],
   "basePower" : 0,

@@ -18,17 +18,19 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DomainData {
 
+    public static final int DEFAULT_DOMAIN_INTEGRITY = 100;
+    public static final int DEFAULT_ANTI_DOMAIN_INTEGRITY = 1000;
+
     public String id;
     public String name;
     public String description;
 
-    /** Required for ordinary Domains; null only for anti-Domain definitions. */
+    /** Present only when this field belongs to an innate technique. */
     public String requiredTechniqueName;
     public boolean antiDomain;
 
     public String topology = DomainTopology.CLOSED.name();
-    public String capturePolicy = DomainCapturePolicy.ALL_ACTIVE.name();
-    public String recognitionPolicy = DomainRecognitionPolicy.ALL_MEMBERS.name();
+    public String capturePolicy = DomainCapturePolicy.EVERYONE.name();
     public String entrantPolicy = DomainEntrantPolicy.FOLLOW_SUMMONER.name();
     public String protectionPolicy = DomainProtectionPolicy.OWNER.name();
 
@@ -38,10 +40,12 @@ public class DomainData {
     public Integer burnoutRounds = 1;
     public Integer burnoutTicks = 0;
     public Double ceUpkeepPerTick = 0.0;
-    public Integer internalBarrierIntegrity = 100;
-    public Integer externalBarrierIntegrity = 100;
-    public Integer clashPressurePerTick = 0;
-    public Integer externalPressurePerTick = 0;
+
+    /** Base integrity scaled at runtime by Jujutsu Skill and CE output. */
+    public Integer internalBarrierIntegrity = DEFAULT_DOMAIN_INTEGRITY;
+
+    /** Base clash value scaled by refinement/live CE, then divided for per-tick pressure. */
+    public Integer clashValue = 100;
 
     public String counterType = DomainCounterType.NONE.name();
     public Integer counterPotency = 0;
@@ -66,7 +70,6 @@ public class DomainData {
         copy.antiDomain = antiDomain;
         copy.topology = topology;
         copy.capturePolicy = capturePolicy;
-        copy.recognitionPolicy = recognitionPolicy;
         copy.entrantPolicy = entrantPolicy;
         copy.protectionPolicy = protectionPolicy;
         copy.durationRounds = durationRounds;
@@ -75,9 +78,7 @@ public class DomainData {
         copy.burnoutTicks = burnoutTicks;
         copy.ceUpkeepPerTick = ceUpkeepPerTick;
         copy.internalBarrierIntegrity = internalBarrierIntegrity;
-        copy.externalBarrierIntegrity = externalBarrierIntegrity;
-        copy.clashPressurePerTick = clashPressurePerTick;
-        copy.externalPressurePerTick = externalPressurePerTick;
+        copy.clashValue = clashValue;
         copy.counterType = counterType;
         copy.counterPotency = counterPotency;
         copy.counterUses = counterUses;
@@ -99,10 +100,8 @@ public class DomainData {
     public void validate() {
         requireText(id, "Domain ID");
         requireText(name, "Domain name");
-        if (!antiDomain) requireText(requiredTechniqueName, "Required technique");
         parse(DomainTopology.class, topology, "topology");
         parse(DomainCapturePolicy.class, capturePolicy, "capture policy");
-        parse(DomainRecognitionPolicy.class, recognitionPolicy, "recognition policy");
         parse(DomainEntrantPolicy.class, entrantPolicy, "entrant policy");
         parse(DomainProtectionPolicy.class, protectionPolicy, "protection policy");
         DomainCounterType counter = parse(DomainCounterType.class, counterType, "counter type");
@@ -111,6 +110,11 @@ public class DomainData {
         }
         if (!antiDomain && counter != DomainCounterType.NONE) {
             throw new IllegalArgumentException("Only anti-Domains may define a counter type");
+        }
+        if (antiDomain && (!empty(sureHitEffects) || !empty(fieldEffects)
+            || !empty(casterEffects))) {
+            throw new IllegalArgumentException(
+                "Anti-Domains cannot define sure-hit, field, or caster effects");
         }
         int rounds = durationRounds == null ? 0 : durationRounds;
         int ticks = durationTicks == null ? 0 : durationTicks;
@@ -123,14 +127,17 @@ public class DomainData {
         if (antiDomain && (collapseBurnoutRounds != 0 || collapseBurnoutTicks != 0)) {
             throw new IllegalArgumentException("Anti-Domains cannot apply technique burnout");
         }
+        if ((requiredTechniqueName == null || requiredTechniqueName.isBlank())
+            && (collapseBurnoutRounds != 0 || collapseBurnoutTicks != 0)) {
+            throw new IllegalArgumentException(
+                "Domains without an innate technique cannot apply technique burnout");
+        }
         if (ceUpkeepPerTick == null || !Double.isFinite(ceUpkeepPerTick)
             || ceUpkeepPerTick < 0.0) {
             throw new IllegalArgumentException("Domain CE upkeep must be zero or greater");
         }
         requireNonNegative(internalBarrierIntegrity, "Internal barrier integrity");
-        requireNonNegative(externalBarrierIntegrity, "External barrier integrity");
-        requireNonNegative(clashPressurePerTick, "Clash pressure");
-        requireNonNegative(externalPressurePerTick, "External pressure");
+        requireNonNegative(clashValue, "Clash value");
         if (counterPotency == null || counterPotency < 0) {
             throw new IllegalArgumentException("Counter potency must be zero or greater");
         }
@@ -188,6 +195,10 @@ public class DomainData {
                 }
             }
         }
+    }
+
+    private static boolean empty(List<AbilityEffectData> effects) {
+        return effects == null || effects.isEmpty();
     }
 
     private static List<AbilityEffectData> copyEffects(List<AbilityEffectData> source) {

@@ -1646,7 +1646,8 @@ public final class HeadlessBattleSession {
             .toList();
         List<DomainClashState> clashes = battleState.domainBattlefield().clashes().stream()
             .map(clash -> new DomainClashState(
-                clash.firstInstanceId(), clash.secondInstanceId()))
+                clash.firstInstanceId(), clash.secondInstanceId(),
+                clash.leaderInstanceId(), clash.takeoverProgress()))
             .toList();
         return new DomainBattlefieldState(domains, clashes);
     }
@@ -1666,7 +1667,7 @@ public final class HeadlessBattleSession {
             domain.remainingRounds(),
             domain.remainingTicks(),
             domain.internalBarrierIntegrity(),
-            domain.externalBarrierIntegrity(),
+            domain.definition().clashValue(),
             domain.remainingCounterUses()
         );
     }

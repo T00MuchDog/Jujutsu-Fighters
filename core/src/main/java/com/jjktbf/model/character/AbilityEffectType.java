@@ -8,6 +8,8 @@ import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
 
 import java.util.Collections;
+import java.util.Arrays;
+import java.util.List;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.LinkedHashSet;
@@ -205,8 +207,7 @@ public enum AbilityEffectType {
     AUTO_STATUS_APPLY(
         "Apply status automatically",
         "Applies a supported status at fight start, round start, or after a hit.",
-        STATUS_TYPE, TARGET, TIMING, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE,
-        CE_UPKEEP_PER_TICK),
+        STATUS_TYPE, TARGET, TIMING, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE),
     LOCK_MOVE_TAG(
         "Lock own move tag",
         "Prevents this character from selecting moves with one tag.",
@@ -253,8 +254,11 @@ public enum AbilityEffectType {
     APPLY_STATUS(
         "Apply status",
         "Applies any status when the ability activates.",
-        STATUS_TYPE, TARGET, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE,
-        CE_UPKEEP_PER_TICK),
+        STATUS_TYPE, TARGET, DURATION, MAGNITUDE, PER_TICK_REMOVAL_CHANCE),
+    MAINTAIN_STATUS_WITH_CE(
+        "Maintain status with CE",
+        "Drains efficiency-scaled CE from the target each AP tick while the selected status is active. Reapplying maintenance replaces that status type's rate, and failed payment ends the status.",
+        STATUS_TYPE, TARGET, CE_UPKEEP_PER_TICK),
     REMOVE_STATUS(
         "Remove status",
         "Removes every instance of one status from the target.",
@@ -376,7 +380,8 @@ public enum AbilityEffectType {
     private static final java.util.Set<AbilityEffectType> ACTIVATION_REQUIRED =
         java.util.EnumSet.of(
             HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE,
-            INSTANT_KILL, APPLY_STATUS, REMOVE_STATUS, CLEAR_STATUSES,
+            INSTANT_KILL, APPLY_STATUS, MAINTAIN_STATUS_WITH_CE,
+            REMOVE_STATUS, CLEAR_STATUSES,
             TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
             IGNORE_DAMAGE, DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE,
             APPLY_NEVER_MISS, APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,
@@ -461,6 +466,16 @@ public enum AbilityEffectType {
     public boolean uses(AbilityEffectParameter parameter, AbilityEffectData effect) {
         if (!uses(parameter)) return false;
         if (effect == null) return true;
+        if (uses(STATUS_TYPE) && (parameter == MAGNITUDE
+            || parameter == PER_TICK_REMOVAL_CHANCE)) {
+            try {
+                StatusEffectType status = StatusEffectType.fromName(effect.stringValue);
+                if (parameter == MAGNITUDE) return status.usesMagnitude();
+                return status.usesConfigurablePerTickRemovalChance();
+            } catch (IllegalArgumentException ignored) {
+                return true;
+            }
+        }
         if (isAmountModeEffect()) {
             ValueMode mode = selectedValueMode(effect);
             if (parameter == INTEGER) return mode == ValueMode.FLAT;
@@ -488,6 +503,26 @@ public enum AbilityEffectType {
             return selectedCeDrainMode(effect) == CeDrainMode.OVER_TIME;
         }
         return true;
+    }
+
+    /** Operations that are valid for the selected stat subtype. */
+    public List<StatOperation> statOperations(AbilityEffectData effect) {
+        if (!uses(STAT_OPERATION)) return List.of();
+        if (this == TIMED_STAT_MODIFIER && selectedStatType(effect) == StatType.CORE) {
+            return List.of(StatOperation.CHANGE, StatOperation.MULTIPLY);
+        }
+        return List.of(StatOperation.values());
+    }
+
+    /** Battle stats that this effect can consume. */
+    public List<BattleStatKey> battleStats() {
+        if (!uses(BATTLE_STAT)) return List.of();
+        if (this == BATTLE_STAT_ODDS_MULTIPLY) {
+            return Arrays.stream(BattleStatKey.values())
+                .filter(BattleStatKey::isProbability)
+                .toList();
+        }
+        return List.of(BattleStatKey.values());
     }
 
     public Set<AbilityEffectParameter> parameters() {
@@ -553,6 +588,7 @@ public enum AbilityEffectType {
         effect.durationTicks = null;
         effect.magnitude = null;
         effect.perTickRemovalChance = null;
+        effect.ceUpkeepPerTick = null;
         effect.uses = null;
         effect.refreshGroup = null;
         effect.resourceKey = null;
@@ -631,6 +667,11 @@ public enum AbilityEffectType {
                 effect.target = AbilityEffectTarget.ENEMY.name();
                 effect.durationRounds = 1;
                 effect.magnitude = 10.0;
+            }
+            case MAINTAIN_STATUS_WITH_CE -> {
+                effect.stringValue = StatusEffectType.CURSED_SPEECH_WARD.name();
+                effect.target = AbilityEffectTarget.SELF.name();
+                effect.ceUpkeepPerTick = 1.0;
             }
             case REMOVE_STATUS -> {
                 effect.stringValue = StatusEffectType.STRENGTH_DECREASE.name();
@@ -797,16 +838,14 @@ public enum AbilityEffectType {
             effect.durationRounds = defaults.durationRounds != null ? defaults.durationRounds : 1;
         }
         if (uses(DURATION, effect) && effect.durationTicks == null) effect.durationTicks = 0;
-        if (uses(MAGNITUDE) && effect.magnitude == null) effect.magnitude = defaults.magnitude;
-        if (uses(PER_TICK_REMOVAL_CHANCE) && effect.perTickRemovalChance == null) {
+        if (uses(MAGNITUDE, effect) && effect.magnitude == null) {
+            effect.magnitude = defaults.magnitude;
+        }
+        if (uses(PER_TICK_REMOVAL_CHANCE, effect) && effect.perTickRemovalChance == null) {
             effect.perTickRemovalChance = defaultPerTickRemovalChance(effect.stringValue);
         }
-        if (uses(STATUS_TYPE) && uses(MAGNITUDE)) {
-            try {
-                if (!StatusEffectType.fromName(effect.stringValue).usesMagnitude()) {
-                    effect.magnitude = 0.0;
-                }
-            } catch (IllegalArgumentException ignored) { }
+        if (uses(CE_UPKEEP_PER_TICK) && effect.ceUpkeepPerTick == null) {
+            effect.ceUpkeepPerTick = defaults.ceUpkeepPerTick;
         }
         if (uses(USES) && effect.uses == null) effect.uses = defaults.uses;
         if (uses(BATTLE_STAT, effect) && isBlank(effect.stringValue)) {
@@ -869,8 +908,8 @@ public enum AbilityEffectType {
             effect.durationRounds = null;
             effect.durationTicks = null;
         }
-        if (!uses(MAGNITUDE)) effect.magnitude = null;
-        if (!uses(PER_TICK_REMOVAL_CHANCE)) effect.perTickRemovalChance = null;
+        if (!uses(MAGNITUDE, effect)) effect.magnitude = null;
+        if (!uses(PER_TICK_REMOVAL_CHANCE, effect)) effect.perTickRemovalChance = null;
         if (!uses(CE_UPKEEP_PER_TICK)) effect.ceUpkeepPerTick = null;
         if (!uses(USES) && !migratedAccuracyUses) effect.uses = null;
         if (!uses(REFRESH_GROUP)) effect.refreshGroup = null;
@@ -1017,10 +1056,10 @@ public enum AbilityEffectType {
                 return "A ROUND_START status must last exactly 1 round and 0 ticks so it refreshes without stacking.";
             }
         }
-        if (uses(MAGNITUDE) && (!isFinite(effect.magnitude) || effect.magnitude < 0)) {
+        if (uses(MAGNITUDE, effect) && (!isFinite(effect.magnitude) || effect.magnitude < 0)) {
             return "Enter a non-negative status amount.";
         }
-        if (uses(PER_TICK_REMOVAL_CHANCE) && effect.perTickRemovalChance != null
+        if (uses(PER_TICK_REMOVAL_CHANCE, effect) && effect.perTickRemovalChance != null
             && (!isFinite(effect.perTickRemovalChance)
                 || effect.perTickRemovalChance < 0.0 || effect.perTickRemovalChance > 1.0)) {
             return "Per-tick removal chance must be between 0% and 100%.";
@@ -1134,6 +1173,9 @@ public enum AbilityEffectType {
                 ? "Maximum active summons must be greater than 0." : null;
             case SUMMON_CE_UPKEEP_PER_ACTIVE_TICK -> effect.doubleValue <= 0
                 ? "Summon upkeep must be greater than 0." : null;
+            case MAINTAIN_STATUS_WITH_CE -> effect.ceUpkeepPerTick == null
+                || effect.ceUpkeepPerTick <= 0.0
+                ? "Status upkeep must be greater than 0." : null;
             case SET_JUJUTSU_ART_SLOTS -> effect.intValue < 0
                 || effect.intValue > CombatStats.MAX_ART_SLOTS
                 ? "Jujutsu Art slots must be between 0 and "
@@ -1226,11 +1268,16 @@ public enum AbilityEffectType {
             && selectedAccuracyDuration(effect) == AccuracyDuration.NEXT_ATTACK
             && effect != null && effect.uses != null && effect.uses > 0;
         if (uses(DURATION, effect) || migratedAccuracyUses) {
-            fields.add(TechniqueMasteryProgressions.DURATION_ROUNDS);
-            fields.add(TechniqueMasteryProgressions.DURATION_TICKS);
+            StatusEffectType status = selectedStatus(effect);
+            if (status == null || !status.requiresTickDuration()) {
+                fields.add(TechniqueMasteryProgressions.DURATION_ROUNDS);
+            }
+            if (status == null || !status.requiresRoundDuration()) {
+                fields.add(TechniqueMasteryProgressions.DURATION_TICKS);
+            }
         }
-        if (uses(MAGNITUDE)) fields.add(TechniqueMasteryProgressions.MAGNITUDE);
-        if (uses(PER_TICK_REMOVAL_CHANCE)) {
+        if (uses(MAGNITUDE, effect)) fields.add(TechniqueMasteryProgressions.MAGNITUDE);
+        if (uses(PER_TICK_REMOVAL_CHANCE, effect)) {
             fields.add(TechniqueMasteryProgressions.PER_TICK_REMOVAL_CHANCE);
         }
         if (uses(USES) || migratedAccuracyUses) {
@@ -1480,6 +1527,15 @@ public enum AbilityEffectType {
             return StatusEffectType.fromName(statusName).defaultPerTickRemovalChance();
         } catch (IllegalArgumentException ignored) {
             return 0.0;
+        }
+    }
+
+    private StatusEffectType selectedStatus(AbilityEffectData effect) {
+        if (!uses(STATUS_TYPE) || effect == null) return null;
+        try {
+            return StatusEffectType.fromName(effect.stringValue);
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 

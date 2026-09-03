@@ -393,11 +393,11 @@ public class CombatResolver {
                 state, abilityActivations::executeDomainEffect, tick));
             if (finishBattleIfNeeded(state, events, tick)) return events;
 
-            // Status CE upkeep is charged after this tick's actions and before
+            // Status-maintenance CE is charged after this tick's actions and before
             // duration tick-down, so a status pays exactly one installment for
             // every tick it is active — including its application and expiry
             // ticks.
-            processStatusCeUpkeeps(state, tick, events);
+            processStatusCeMaintenances(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
             processTimelineEffectExpiry(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
@@ -510,30 +510,41 @@ public class CombatResolver {
     }
 
     /**
-     * Drain the CE upkeep of every active status that carries one, once per
-     * resolution tick — the same cadence at which status durations tick down.
+     * Drain every active status-maintenance effect once per resolution tick,
+     * at the same cadence as status duration tick-down.
      * The base upkeep rate is scaled by the holder's CE Efficiency (efficient
      * characters sustain statuses more cheaply) and fractional rates carry
      * their remainder across ticks. A status whose installment cannot be paid
      * in full collapses (is removed) instead of lingering for free.
      */
-    private void processStatusCeUpkeeps(
+    private void processStatusCeMaintenances(
         BattleState state,
         int tick,
         List<CombatEvent> events
     ) {
         for (BattleCombatant combatant : state.activeCombatants()) {
             if (!combatant.isActive()) continue;
-            List<StatusEffect> upkeepStatuses = combatant.getActiveEffects().stream()
-                .filter(effect -> effect.getCeUpkeepPerTick() > 0.0)
-                .toList();
-            if (upkeepStatuses.isEmpty()) continue;
+            List<BattleCombatant.StatusCeMaintenance> maintenances =
+                combatant.getStatusCeMaintenances();
+            if (maintenances.isEmpty()) continue;
             double multiplier = CeUpkeepScaler.upkeepMultiplier(
                 combatant.getEffectiveStats().getCursedEnergyEfficiency(),
                 combatant.getStatMode());
-            for (StatusEffect status : upkeepStatuses) {
+            for (BattleCombatant.StatusCeMaintenance maintenance : maintenances) {
+                AbilityEffectData effect = maintenance.effect();
+                Set<StatusEffectType> referenced =
+                    StatusEffectType.referencedTypes(effect.stringValue);
+                StatusEffectType status = referenced.stream()
+                    .filter(combatant::hasEffect)
+                    .findFirst()
+                    .orElse(null);
+                if (status == null) {
+                    combatant.removeStatusCeMaintenance(maintenance);
+                    continue;
+                }
                 int due = combatant.accrueStatusCeUpkeep(
-                    status.getCeUpkeepPerTick() * multiplier);
+                    (effect.ceUpkeepPerTick == null ? 0.0 : effect.ceUpkeepPerTick)
+                        * multiplier);
                 if (due <= 0) continue;
                 int drained = combatant.drainCe(due);
                 if (drained > 0) {
@@ -546,15 +557,15 @@ public class CombatResolver {
                 if (drained < due) {
                     // The CE pool ran out mid-installment: the sustained status
                     // collapses instead of continuing for free.
-                    combatant.removeStatusEffects(status.getType());
+                    referenced.forEach(combatant::removeStatusEffects);
                     events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
                         .source(combatant).target(combatant).tick(tick)
                         .message(combatant.getCharacter().getName() + "'s "
-                            + status.getType().displayName()
+                            + status.displayName()
                             + " collapses — no cursed energy left to sustain it!")
                         .build());
                     events.addAll(abilityActivations.process(state, AbilityTrigger.status(
-                        AbilityTrigger.Type.STATUS_REMOVED, combatant, status.getType(), tick)));
+                        AbilityTrigger.Type.STATUS_REMOVED, combatant, status, tick)));
                 }
             }
         }

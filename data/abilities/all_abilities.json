@@ -1222,14 +1222,14 @@
   "id" : "000054",
   "name" : "Grudge-Fed Flesh",
   "flavourText" : "Every wound the curse inflicts feeds fresh resentment back into its damaged form.",
-  "mechanicText" : "After dealing at least 25 DAMAGE in one instance, restore 2% MAX HP.",
+  "mechanicText" : "After dealing at least 30 DAMAGE in one instance, restore 2% MAX HP.",
   "category" : "ACTIVE",
   "sourceType" : "CURSED_SPIRIT",
   "activationConditions" : [ {
     "condition" : {
       "type" : "DAMAGE_DEALT_AT_LEAST",
       "actor" : "SELF",
-      "amount" : 25
+      "amount" : 30
     },
     "targetEffectIds" : [ "effect-000000" ],
     "matchSameTrigger" : true

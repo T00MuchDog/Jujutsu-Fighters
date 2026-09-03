@@ -37,6 +37,7 @@ import com.jjktbf.model.domain.DomainAudience;
 import com.jjktbf.model.domain.DomainDeliveryClass;
 import com.jjktbf.model.domain.DomainTrigger;
 import com.jjktbf.model.move.MoveData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffectType;
 import com.jjktbf.model.technique.InnateTechniqueData;
@@ -78,6 +79,7 @@ public class EffectListEditor extends Table {
     private final boolean passiveAbility;
     private final List<AbilityEffectType> availableTypes;
     private final boolean moveEffectEditor;
+    private final MoveEffectTrigger moveEffectTrigger;
     private final boolean domainEffectEditor;
     private final UiProfile uiProfile;
     private final boolean windowsLayout;
@@ -98,9 +100,7 @@ public class EffectListEditor extends Table {
     ) {
         this(effects, moves, abilities, techniques, characters, List.of(), onDirty,
             requestRebuild, soundPlayer, masteryEligible, passiveAbility,
-            java.util.Arrays.stream(AbilityEffectType.values())
-                .filter(type -> !type.isMoveOnly())
-                .toList(), false, uiProfile, skin);
+            abilityEffectTypes(passiveAbility), false, false, null, uiProfile, skin);
     }
 
     public EffectListEditor(
@@ -121,7 +121,7 @@ public class EffectListEditor extends Table {
     ) {
         this(effects, moves, abilities, techniques, characters, List.of(), onDirty,
             requestRebuild, soundPlayer, masteryEligible, passiveAbility,
-            availableTypes, moveEffectEditor, false, uiProfile, skin);
+            availableTypes, moveEffectEditor, false, null, uiProfile, skin);
     }
 
     public EffectListEditor(
@@ -143,7 +143,30 @@ public class EffectListEditor extends Table {
     ) {
         this(effects, moves, abilities, techniques, characters, domains, onDirty,
             requestRebuild, soundPlayer, masteryEligible, passiveAbility,
-            availableTypes, moveEffectEditor, false, uiProfile, skin);
+            availableTypes, moveEffectEditor, false, null, uiProfile, skin);
+    }
+
+    public EffectListEditor(
+        List<AbilityEffectData> effects,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<InnateTechniqueData> techniques,
+        List<CharacterData> characters,
+        List<DomainData> domains,
+        Runnable onDirty,
+        Runnable requestRebuild,
+        Consumer<SoundCue> soundPlayer,
+        boolean masteryEligible,
+        boolean passiveAbility,
+        List<AbilityEffectType> availableTypes,
+        boolean moveEffectEditor,
+        MoveEffectTrigger moveEffectTrigger,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
+        this(effects, moves, abilities, techniques, characters, domains, onDirty,
+            requestRebuild, soundPlayer, masteryEligible, passiveAbility,
+            availableTypes, moveEffectEditor, false, moveEffectTrigger, uiProfile, skin);
     }
 
     public EffectListEditor(
@@ -164,6 +187,30 @@ public class EffectListEditor extends Table {
         UiProfile uiProfile,
         Skin skin
     ) {
+        this(effects, moves, abilities, techniques, characters, domains, onDirty,
+            requestRebuild, soundPlayer, masteryEligible, passiveAbility,
+            availableTypes, moveEffectEditor, domainEffectEditor, null, uiProfile, skin);
+    }
+
+    private EffectListEditor(
+        List<AbilityEffectData> effects,
+        List<MoveData> moves,
+        List<AbilityData> abilities,
+        List<InnateTechniqueData> techniques,
+        List<CharacterData> characters,
+        List<DomainData> domains,
+        Runnable onDirty,
+        Runnable requestRebuild,
+        Consumer<SoundCue> soundPlayer,
+        boolean masteryEligible,
+        boolean passiveAbility,
+        List<AbilityEffectType> availableTypes,
+        boolean moveEffectEditor,
+        boolean domainEffectEditor,
+        MoveEffectTrigger moveEffectTrigger,
+        UiProfile uiProfile,
+        Skin skin
+    ) {
         super(skin);
         this.skin = skin;
         this.effects = effects == null ? new ArrayList<>() : effects;
@@ -180,6 +227,7 @@ public class EffectListEditor extends Table {
         this.availableTypes = availableTypes == null || availableTypes.isEmpty()
             ? List.of(AbilityEffectType.APPLY_STATUS) : List.copyOf(availableTypes);
         this.moveEffectEditor = moveEffectEditor;
+        this.moveEffectTrigger = moveEffectTrigger;
         this.domainEffectEditor = domainEffectEditor;
         this.uiProfile = uiProfile;
         this.windowsLayout = uiProfile == UiProfile.WINDOWS;
@@ -401,12 +449,12 @@ public class EffectListEditor extends Table {
         TextField durationTicksField = type.uses(AbilityEffectParameter.DURATION, effect)
             && !roundOnlyStatus ? nonNegativeIntegerField(effect.durationTicks) : null;
         TextField perTickRemovalChanceField = type.uses(
-            AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE)
+            AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE, effect)
             ? nonNegativeDecimalField(effect.perTickRemovalChance == null
                 ? null : effect.perTickRemovalChance * 100.0) : null;
 
         if (domainEffectEditor) {
-            addDomainMetadataFields(fields, effect, refreshFields);
+            addDomainMetadataFields(fields, effect, type, refreshFields);
         }
 
         if (type.uses(AbilityEffectParameter.CODED_FEATURE)) {
@@ -452,8 +500,8 @@ public class EffectListEditor extends Table {
 
         if (type.uses(AbilityEffectParameter.CODED_ACTION)) {
             List<CodedAbilityRegistry.EffectAction> actions =
-                CodedAbilityRegistry.effectActions();
-            CodedAbilityRegistry.EffectAction selected = codedAction(effect);
+                codedActionsForTrigger(moveEffectTrigger);
+            CodedAbilityRegistry.EffectAction selected = codedAction(effect, actions);
             SelectBox<String> actionBox = new DynamicSelectBox<>(skin, uiProfile);
             actionBox.setItems(actions.stream()
                 .map(CodedAbilityRegistry.EffectAction::label)
@@ -461,7 +509,7 @@ public class EffectListEditor extends Table {
             actionBox.setSelected(selected.label());
             effect.codedAbilityKey = selected.key();
             effect.codedAction = selected.action();
-            CodedAbilityRegistry.prepareMoveEffect(effect);
+            prepareCodedMoveEffect(effect);
             actionBox.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     CodedAbilityRegistry.EffectAction action = actions.stream()
@@ -473,7 +521,7 @@ public class EffectListEditor extends Table {
                     effect.codedStackCount = null;
                     effect.codedParameters = null;
                     effect.masteryProgression = null;
-                    CodedAbilityRegistry.prepareMoveEffect(effect);
+                    prepareCodedMoveEffect(effect);
                     refreshFields.run();
                 }
             });
@@ -493,6 +541,10 @@ public class EffectListEditor extends Table {
                         .filter(value -> value.label.equals(statTypeBox.getSelected()))
                         .findFirst().orElse(AbilityEffectType.StatType.CORE);
                     effect.statType = selected.name();
+                    if (!type.statOperations(effect).contains(
+                        AbilityEffectType.selectedStatOperation(effect))) {
+                        effect.statOperation = type.statOperations(effect).get(0).name();
+                    }
                     effect.stat = selected == AbilityEffectType.StatType.CORE
                         ? StatKey.VITALITY.fieldName : null;
                     effect.stringValue = selected == AbilityEffectType.StatType.BATTLE
@@ -507,14 +559,21 @@ public class EffectListEditor extends Table {
         }
 
         if (type.uses(AbilityEffectParameter.STAT_OPERATION)) {
+            List<AbilityEffectType.StatOperation> operations = type.statOperations(effect);
+            AbilityEffectType.StatOperation currentOperation =
+                AbilityEffectType.selectedStatOperation(effect);
+            if (!operations.contains(currentOperation)) {
+                currentOperation = operations.get(0);
+                effect.statOperation = currentOperation.name();
+                type.prepare(effect);
+            }
             SelectBox<String> operationBox = new DynamicSelectBox<>(skin, uiProfile);
-            operationBox.setItems(java.util.Arrays.stream(AbilityEffectType.StatOperation.values())
+            operationBox.setItems(operations.stream()
                 .map(value -> value.label).toArray(String[]::new));
-            operationBox.setSelected(AbilityEffectType.selectedStatOperation(effect).label);
+            operationBox.setSelected(currentOperation.label);
             operationBox.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
-                    AbilityEffectType.StatOperation selected = java.util.Arrays.stream(
-                            AbilityEffectType.StatOperation.values())
+                    AbilityEffectType.StatOperation selected = operations.stream()
                         .filter(value -> value.label.equals(operationBox.getSelected()))
                         .findFirst().orElse(AbilityEffectType.StatOperation.CHANGE);
                     effect.statOperation = selected.name();
@@ -617,10 +676,19 @@ public class EffectListEditor extends Table {
         }
 
         if (type.uses(AbilityEffectParameter.BATTLE_STAT, effect)) {
+            List<BattleStatKey> battleStats = type.battleStats();
+            BattleStatKey selectedStat;
+            try {
+                selectedStat = BattleStatKey.fromString(effect.stringValue);
+            } catch (RuntimeException exception) {
+                selectedStat = battleStats.get(0);
+            }
+            if (!battleStats.contains(selectedStat)) selectedStat = battleStats.get(0);
+            effect.stringValue = selectedStat.name();
             SelectBox<String> statBox = new DynamicSelectBox<>(skin, uiProfile);
-            statBox.setItems(java.util.Arrays.stream(BattleStatKey.values())
+            statBox.setItems(battleStats.stream()
                 .map(stat -> stat.label).toArray(String[]::new));
-            statBox.setSelected(battleStatLabel(effect.stringValue));
+            statBox.setSelected(selectedStat.label);
             effect.stringValue = battleStatFromLabel(statBox.getSelected()).name();
             statBox.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
@@ -630,7 +698,8 @@ public class EffectListEditor extends Table {
             addRow(fields, "Battle stat", statBox);
         }
 
-        if (type.uses(AbilityEffectParameter.MOVE_SCOPE)) {
+        if (type.uses(AbilityEffectParameter.MOVE_SCOPE)
+            && !(moveEffectEditor && type.isAccuracyPriority())) {
             SelectBox<String> scopeBox = new DynamicSelectBox<>(skin, uiProfile);
             scopeBox.setItems(moveScopeLabels(type != AbilityEffectType.LOCK_MOVE_TAG));
             scopeBox.setSelected(moveScopeLabel(effect.moveTag));
@@ -643,6 +712,8 @@ public class EffectListEditor extends Table {
                 }
             });
             addRow(fields, type == AbilityEffectType.LOCK_MOVE_TAG ? "Move tag" : "Affected moves", scopeBox);
+        } else if (moveEffectEditor && type.isAccuracyPriority()) {
+            effect.moveTag = null;
         }
 
         if (type.uses(AbilityEffectParameter.INTEGER, effect)) {
@@ -840,48 +911,33 @@ public class EffectListEditor extends Table {
                         }
                         effect.durationTicks = 0;
                     }
+                    type.prepare(effect);
                     refreshFields.run();
                 }
             });
             addRow(fields, "Status", statusBox);
         }
 
-        if (type.uses(AbilityEffectParameter.TARGET)) {
-            SelectBox<String> targetBox = new DynamicSelectBox<>(skin, uiProfile);
-            String self = moveEffectEditor ? "Move user" : AbilityEffectTarget.SELF.name();
-            String enemy = moveEffectEditor ? "Move target" : AbilityEffectTarget.ENEMY.name();
-            String ally = moveEffectEditor ? "Move ally" : AbilityEffectTarget.ALLY.name();
-            String both = moveEffectEditor ? "User and target" : AbilityEffectTarget.BOTH.name();
-            String selfAndAlly = moveEffectEditor ? "User and ally" : AbilityEffectTarget.SELF_AND_ALLY.name();
-            String pairFirst = "Pair first";
-            String pairSecond = "Pair second";
-            String pairBoth = "Pair both";
-            if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
-                || type == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER) {
-                targetBox.setItems(self);
-            } else if (moveEffectEditor) {
-                targetBox.setItems(self, enemy, ally, both, selfAndAlly,
-                    pairFirst, pairSecond, pairBoth);
-            } else {
-                targetBox.setItems(self, enemy, ally, both, selfAndAlly);
+        if (type.uses(AbilityEffectParameter.TARGET) && !domainEffectEditor) {
+            List<AbilityEffectTarget> targetModes = targetModes(type, effect);
+            AbilityEffectTarget selectedTarget = safeTarget(effect.target);
+            if (!targetModes.contains(selectedTarget)) selectedTarget = targetModes.get(0);
+            effect.target = selectedTarget.name();
+            if (targetModes.size() > 1) {
+                SelectBox<String> targetBox = new DynamicSelectBox<>(skin, uiProfile);
+                targetBox.setItems(targetModes.stream()
+                    .map(this::targetLabel).toArray(String[]::new));
+                targetBox.setSelected(targetLabel(selectedTarget));
+                effect.target = targetFromLabel(targetBox.getSelected()).name();
+                targetBox.addListener(new ChangeListener() {
+                    @Override public void changed(ChangeEvent event, Actor actor) {
+                        effect.target = targetFromLabel(targetBox.getSelected()).name();
+                    }
+                });
+                addRow(fields, "Target", targetBox);
             }
-            targetBox.setSelected(switch (safeTarget(effect.target)) {
-                case SELF -> self;
-                case ENEMY -> enemy;
-                case ALLY -> ally;
-                case BOTH -> both;
-                case SELF_AND_ALLY -> selfAndAlly;
-                case PAIR_FIRST -> moveEffectEditor ? pairFirst : self;
-                case PAIR_SECOND -> moveEffectEditor ? pairSecond : self;
-                case PAIR_BOTH -> moveEffectEditor ? pairBoth : self;
-            });
-            effect.target = targetFromLabel(targetBox.getSelected()).name();
-            targetBox.addListener(new ChangeListener() {
-                @Override public void changed(ChangeEvent event, Actor actor) {
-                    effect.target = targetFromLabel(targetBox.getSelected()).name();
-                }
-            });
-            addRow(fields, "Target", targetBox);
+        } else if (domainEffectEditor && type.uses(AbilityEffectParameter.TARGET)) {
+            effect.target = AbilityEffectTarget.SELF.name();
         }
 
         if (type.uses(AbilityEffectParameter.TIMING)) {
@@ -956,14 +1012,14 @@ public class EffectListEditor extends Table {
             }
         }
 
-        if (type.uses(AbilityEffectParameter.MAGNITUDE) && !tickOnlyStatus) {
+        if (type.uses(AbilityEffectParameter.MAGNITUDE, effect)) {
             TextField magnitude = nonNegativeDecimalField(effect.magnitude);
             magnitude.addListener(new ChangeListener() {
                 @Override public void changed(ChangeEvent event, Actor actor) {
                     effect.magnitude = parseDouble(magnitude.getText());
                 }
             });
-            addRow(fields, roundOnlyStatus ? "Damage per round" : "Amount (flat points)", magnitude);
+            addRow(fields, "Amount (flat points)", magnitude);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.MAGNITUDE,
                 () -> effect.magnitude == null ? 0 : (int) Math.round(effect.magnitude));
         }
@@ -988,7 +1044,7 @@ public class EffectListEditor extends Table {
                     effect.ceUpkeepPerTick = parseDouble(ceUpkeep.getText());
                 }
             });
-            addRow(fields, "CE upkeep per tick (blank = none)", ceUpkeep);
+            addRow(fields, "CE upkeep per tick", ceUpkeep);
         }
 
         if (type.uses(AbilityEffectParameter.USES)) {
@@ -1123,26 +1179,31 @@ public class EffectListEditor extends Table {
         Runnable refreshFields
     ) {
         if (RatioAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)) {
-            SelectBox<String> target = new DynamicSelectBox<>(skin, uiProfile);
             String apply = "Apply to this hit";
             String create = "Create Ratio stacks";
-            target.setItems(apply, create);
-            target.setSelected(RatioAbility.CREATE_STACKS.equalsIgnoreCase(effect.codedTarget)
-                ? create : apply);
-            target.addListener(new ChangeListener() {
-                @Override public void changed(ChangeEvent event, Actor actor) {
-                    effect.codedTarget = create.equals(target.getSelected())
-                        ? RatioAbility.CREATE_STACKS : RatioAbility.APPLY_TO_MOVE;
-                    effect.codedStackCount = RatioAbility.CREATE_STACKS.equals(effect.codedTarget)
-                        ? effect.codedStackCount == null ? 1 : effect.codedStackCount
-                        : null;
-                    effect.codedParameters = null;
-                    effect.masteryProgression = null;
-                    CodedAbilityRegistry.prepareMoveEffect(effect);
-                    refreshFields.run();
-                }
-            });
-            addRow(fields, "Mode", target);
+            if (moveEffectTrigger == MoveEffectTrigger.ON_HIT) {
+                SelectBox<String> target = new DynamicSelectBox<>(skin, uiProfile);
+                target.setItems(apply, create);
+                target.setSelected(RatioAbility.CREATE_STACKS.equalsIgnoreCase(effect.codedTarget)
+                    ? create : apply);
+                target.addListener(new ChangeListener() {
+                    @Override public void changed(ChangeEvent event, Actor actor) {
+                        effect.codedTarget = create.equals(target.getSelected())
+                            ? RatioAbility.CREATE_STACKS : RatioAbility.APPLY_TO_MOVE;
+                        effect.codedStackCount = RatioAbility.CREATE_STACKS.equals(effect.codedTarget)
+                            ? effect.codedStackCount == null ? 1 : effect.codedStackCount
+                            : null;
+                        effect.codedParameters = null;
+                        effect.masteryProgression = null;
+                        prepareCodedMoveEffect(effect);
+                        refreshFields.run();
+                    }
+                });
+                addRow(fields, "Mode", target);
+            } else {
+                effect.codedTarget = RatioAbility.CREATE_STACKS;
+                prepareCodedMoveEffect(effect);
+            }
             if (RatioAbility.CREATE_STACKS.equalsIgnoreCase(effect.codedTarget)) {
                 TextField stacks = integerField(
                     effect.codedStackCount == null ? 1 : effect.codedStackCount);
@@ -1462,6 +1523,13 @@ public class EffectListEditor extends Table {
         return availableTypes.get(0);
     }
 
+    static List<AbilityEffectType> abilityEffectTypes(boolean passive) {
+        return java.util.Arrays.stream(AbilityEffectType.values())
+            .filter(type -> !type.isMoveOnly())
+            .filter(type -> passive ? !type.requiresActivation() : !type.isPassiveOnly())
+            .toList();
+    }
+
     private static CodedAbilityRegistry.AbilityFeature codedFeature(
         AbilityEffectData effect
     ) {
@@ -1477,10 +1545,90 @@ public class EffectListEditor extends Table {
     private static CodedAbilityRegistry.EffectAction codedAction(
         AbilityEffectData effect
     ) {
-        return CodedAbilityRegistry.effectActions().stream()
+        return codedAction(effect, CodedAbilityRegistry.effectActions());
+    }
+
+    private static CodedAbilityRegistry.EffectAction codedAction(
+        AbilityEffectData effect,
+        List<CodedAbilityRegistry.EffectAction> actions
+    ) {
+        return actions.stream()
             .filter(action -> action.key().equalsIgnoreCase(effect.codedAbilityKey)
                 && action.action().equalsIgnoreCase(effect.codedAction))
-            .findFirst().orElse(CodedAbilityRegistry.effectActions().get(0));
+            .findFirst().orElse(actions.get(0));
+    }
+
+    static List<CodedAbilityRegistry.EffectAction> codedActionsForTrigger(
+        MoveEffectTrigger trigger
+    ) {
+        return CodedAbilityRegistry.effectActions().stream()
+            .filter(action -> trigger == null || CodedAbilityRegistry.supportsEffectTrigger(
+                action.key(), action.action(), defaultCodedTarget(action), trigger))
+            .toList();
+    }
+
+    private static String defaultCodedTarget(CodedAbilityRegistry.EffectAction action) {
+        if (RatioAbility.KEY.equalsIgnoreCase(action.key())) {
+            return RatioAbility.CREATE_STACKS;
+        }
+        if (CursedSpeechAbility.KEY.equalsIgnoreCase(action.key())) {
+            return CursedSpeechAbility.DONT_MOVE;
+        }
+        return null;
+    }
+
+    private void prepareCodedMoveEffect(AbilityEffectData effect) {
+        CodedAbilityRegistry.prepareMoveEffect(effect);
+        if (moveEffectTrigger != null && moveEffectTrigger != MoveEffectTrigger.ON_HIT
+            && RatioAbility.KEY.equalsIgnoreCase(effect.codedAbilityKey)
+            && RatioAbility.APPLY_TO_MOVE.equalsIgnoreCase(effect.codedTarget)) {
+            effect.codedTarget = RatioAbility.CREATE_STACKS;
+            CodedAbilityRegistry.prepareMoveEffect(effect);
+        }
+    }
+
+    private List<AbilityEffectTarget> targetModes(
+        AbilityEffectType type,
+        AbilityEffectData effect
+    ) {
+        if (type == AbilityEffectType.CODED_MOVE_ACTION) {
+            return List.of(CodedAbilityRegistry.requiredEffectTarget(
+                effect.codedAbilityKey, effect.codedAction));
+        }
+        if (type == AbilityEffectType.TRANSACT_BOUNDED_RESOURCE
+            || type == AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER) {
+            return List.of(AbilityEffectTarget.SELF);
+        }
+        if (type == AbilityEffectType.AUTO_STATUS_APPLY) {
+            return List.of(AbilityEffectTarget.SELF, AbilityEffectTarget.ENEMY,
+                AbilityEffectTarget.BOTH);
+        }
+        List<AbilityEffectTarget> targets = new ArrayList<>(List.of(
+            AbilityEffectTarget.SELF,
+            AbilityEffectTarget.ENEMY,
+            AbilityEffectTarget.ALLY,
+            AbilityEffectTarget.BOTH,
+            AbilityEffectTarget.SELF_AND_ALLY));
+        if (moveEffectEditor && moveEffectTrigger == MoveEffectTrigger.ON_FIRE) {
+            targets.add(AbilityEffectTarget.PAIR_FIRST);
+            targets.add(AbilityEffectTarget.PAIR_SECOND);
+            targets.add(AbilityEffectTarget.PAIR_BOTH);
+        }
+        return List.copyOf(targets);
+    }
+
+    private String targetLabel(AbilityEffectTarget target) {
+        if (!moveEffectEditor) return target.name();
+        return switch (target) {
+            case SELF -> "Move user";
+            case ENEMY -> "Move target";
+            case ALLY -> "Move ally";
+            case BOTH -> "User and target";
+            case SELF_AND_ALLY -> "User and ally";
+            case PAIR_FIRST -> "Pair first";
+            case PAIR_SECOND -> "Pair second";
+            case PAIR_BOTH -> "Pair both";
+        };
     }
 
     private static AbilityEffectTarget safeTarget(String value) {
@@ -1650,28 +1798,53 @@ public class EffectListEditor extends Table {
     private void addDomainMetadataFields(
         Table fields,
         AbilityEffectData effect,
+        AbilityEffectType type,
         Runnable refreshFields
     ) {
         SelectBox<String> trigger = enumBox(DomainTrigger.values(), effect.domainTrigger,
             value -> effect.domainTrigger = value);
-        addRow(fields, "Domain trigger", trigger);
-
-        SelectBox<String> audience = enumBox(DomainAudience.values(), effect.domainAudience,
-            value -> effect.domainAudience = value);
-        addRow(fields, "Domain audience", audience);
-
-        SelectBox<String> delivery = enumBox(
-            DomainDeliveryClass.values(), effect.domainDeliveryClass,
-            value -> effect.domainDeliveryClass = value);
-        addRow(fields, "Delivery class", delivery);
-
-        TextField interval = nonNegativeIntegerField(effect.domainIntervalTicks);
-        interval.addListener(new ChangeListener() {
+        trigger.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
-                effect.domainIntervalTicks = parseInteger(interval.getText());
+                refreshFields.run();
             }
         });
-        addRow(fields, "Interval (ticks)", interval);
+        addRow(fields, "Domain trigger", trigger);
+
+        DomainAudience[] audiences = domainAudiences(type, effect);
+        SelectBox<String> audience = enumBox(audiences, effect.domainAudience,
+            value -> effect.domainAudience = value);
+        audience.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                refreshFields.run();
+            }
+        });
+        addRow(fields, "Domain audience", audience);
+
+        boolean barrierAudience = DomainAudience.BARRIER.name().equals(effect.domainAudience);
+        if (!barrierAudience) {
+            SelectBox<String> delivery = enumBox(
+                DomainDeliveryClass.values(), effect.domainDeliveryClass,
+                value -> effect.domainDeliveryClass = value);
+            addRow(fields, "Delivery class", delivery);
+        }
+
+        if (DomainTrigger.EACH_TICK.name().equals(effect.domainTrigger)) {
+            TextField interval = nonNegativeIntegerField(effect.domainIntervalTicks);
+            interval.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.domainIntervalTicks = parseInteger(interval.getText());
+                }
+            });
+            addRow(fields, "Interval (ticks)", interval);
+        }
+
+        if (barrierAudience) {
+            effect.domainDeliveryClass = DomainDeliveryClass.EFFECT.name();
+            effect.domainActivationChanceEnabled = false;
+            effect.domainActivationChance = 1.0;
+            effect.domainCondition = null;
+            return;
+        }
 
         CheckBox chanceEnabled = new CheckBox(" Roll activation chance", skin);
         chanceEnabled.setChecked(Boolean.TRUE.equals(effect.domainActivationChanceEnabled));
@@ -1711,6 +1884,21 @@ public class EffectListEditor extends Table {
                 effect.domainCondition, moves, () -> { }, soundPlayer,
                 masteryEligible, uiProfile, skin)).growX().row();
         }
+    }
+
+    private static DomainAudience[] domainAudiences(
+        AbilityEffectType type,
+        AbilityEffectData effect
+    ) {
+        boolean memberEntering = DomainTrigger.ON_MEMBER_ENTER.name()
+            .equals(effect.domainTrigger);
+        boolean supportsBarrier = type == AbilityEffectType.HEAL_HP
+            || type == AbilityEffectType.DEAL_DIRECT_DAMAGE
+            || type == AbilityEffectType.INSTANT_KILL;
+        return java.util.Arrays.stream(DomainAudience.values())
+            .filter(audience -> audience != DomainAudience.ENTERING_MEMBER || memberEntering)
+            .filter(audience -> audience != DomainAudience.BARRIER || supportsBarrier)
+            .toArray(DomainAudience[]::new);
     }
 
     private <E extends Enum<E>> SelectBox<String> enumBox(

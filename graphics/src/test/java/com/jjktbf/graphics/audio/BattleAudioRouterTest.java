@@ -77,16 +77,23 @@ class BattleAudioRouterTest {
     }
 
     @Test
-    void resourceCuesIgnoreMoveCostsAndBookkeepingEvents() {
+    void resourceCuesIgnoreMoveCostsAndPerTickBookkeepingEvents() {
         Move paidMove = move("PAID", "ATTACK");
         assertTrue(BattleAudioRouter.cueFor(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
             .move(paidMove).intValue(10).build()).isEmpty());
-        assertEquals(SoundCue.BATTLE_CE_DRAIN, BattleAudioRouter.cueFor(
-            CombatEvent.of(CombatEvent.Type.CE_DRAINED).intValue(10).build()).orElseThrow());
-        assertEquals(SoundCue.BATTLE_CE_RESTORE, BattleAudioRouter.cueFor(
-            CombatEvent.of(CombatEvent.Type.CE_RESTORED).intValue(10).build()).orElseThrow());
         assertTrue(BattleAudioRouter.cueFor(
-            CombatEvent.of(CombatEvent.Type.CE_RESTORED).intValue(0).build()).isEmpty());
+            CombatEvent.of(CombatEvent.Type.CE_DRAINED).intValue(10).build()).isEmpty());
+        assertTrue(BattleAudioRouter.cueFor(
+            CombatEvent.of(CombatEvent.Type.CE_RESTORED).intValue(10).build()).isEmpty());
+        assertEquals(SoundCue.BATTLE_CE_DRAIN, BattleAudioRouter.cueFor(
+            CombatEvent.of(CombatEvent.Type.CE_DRAINED)
+                .componentIndex(0).intValue(10).build()).orElseThrow());
+        assertEquals(SoundCue.BATTLE_CE_RESTORE, BattleAudioRouter.cueFor(
+            CombatEvent.of(CombatEvent.Type.CE_RESTORED)
+                .componentIndex(0).intValue(10).build()).orElseThrow());
+        assertTrue(BattleAudioRouter.cueFor(
+            CombatEvent.of(CombatEvent.Type.CE_RESTORED)
+                .componentIndex(0).intValue(0).build()).isEmpty());
         assertEquals(SoundCue.BATTLE_STUN, BattleAudioRouter.cueFor(
             CombatEvent.of(CombatEvent.Type.CE_DEPLETED).move(paidMove).build()).orElseThrow());
         assertTrue(BattleAudioRouter.cueFor(
@@ -96,8 +103,12 @@ class BattleAudioRouterTest {
 
         assertTrue(BattleAudioRouter.cueFor(
             event(BattleEventType.CE_DRAINED, 10, "PAID"), null).isEmpty());
+        assertTrue(BattleAudioRouter.cueFor(
+            event(BattleEventType.CE_DRAINED, 10, null), null).isEmpty());
         assertEquals(SoundCue.BATTLE_CE_DRAIN, BattleAudioRouter.cueFor(
-            event(BattleEventType.CE_DRAINED, 10, null), null).orElseThrow());
+            event(BattleEventType.CE_DRAINED, 10, null, 0), null).orElseThrow());
+        assertEquals(SoundCue.BATTLE_CE_RESTORE, BattleAudioRouter.cueFor(
+            event(BattleEventType.CE_RESTORED, 10, null, 0), null).orElseThrow());
         assertTrue(BattleAudioRouter.cueFor(
             event(BattleEventType.MAX_CE_CHANGED, 100, null), null).isEmpty());
     }
@@ -126,11 +137,20 @@ class BattleAudioRouterTest {
     }
 
     private static BattleEventState event(BattleEventType type, Integer value, String moveId) {
+        return event(type, value, moveId, null);
+    }
+
+    private static BattleEventState event(
+        BattleEventType type,
+        Integer value,
+        String moveId,
+        Integer componentIndex
+    ) {
         return new BattleEventState(
             "EVENT", type, 1, 1,
             null, null, null,
             null, null, null,
-            moveId, null, value, null, ""
+            moveId, null, componentIndex, value, null, ""
         );
     }
 }

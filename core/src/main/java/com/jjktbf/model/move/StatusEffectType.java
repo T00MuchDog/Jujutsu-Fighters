@@ -200,6 +200,11 @@ public enum StatusEffectType {
         return defaultPerTickRemovalChance;
     }
 
+    /** Whether authored effects may override this status's per-tick removal chance. */
+    public boolean usesConfigurablePerTickRemovalChance() {
+        return this != FROZEN;
+    }
+
     public double signedMagnitude(double magnitude) {
         return direction * magnitude;
     }

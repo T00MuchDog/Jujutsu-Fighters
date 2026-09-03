@@ -145,17 +145,6 @@ class CursedSpeechWardTest {
     }
 
     @Test
-    void wardApplicationCarriesItsUpkeepThroughStatusTickdown() {
-        StatusEffect ward = new StatusEffect(
-            StatusEffectType.CURSED_SPEECH_WARD, 0, 4, 0.0, 0.0, 1.5);
-
-        StatusEffect afterOneTick = ward.withDuration(0, 3);
-
-        assertEquals(1.5, afterOneTick.getCeUpkeepPerTick());
-        assertEquals(3, afterOneTick.getDurationTicks());
-    }
-
-    @Test
     void fractionalUpkeepCarriesItsRemainderAcrossTicks() {
         BattleCombatant combatant = fighter("ACCUMULATOR", 80);
 
@@ -164,6 +153,87 @@ class CursedSpeechWardTest {
         assertEquals(1, combatant.accrueStatusCeUpkeep(1.5), "4.5 total → pays 1, owes 0.5");
         assertEquals(0, combatant.accrueStatusCeUpkeep(0.4), "0.9 total → pays nothing yet");
         assertEquals(0.9, combatant.getStatusCeUpkeepDebt(), 1.0e-9);
+    }
+
+    @Test
+    void refreshingWardReplacesItsMaintenanceRate() {
+        BattleCombatant combatant = fighter("REFRESHER", 80);
+        StatusEffect ward = new StatusEffect(
+            StatusEffectType.CURSED_SPEECH_WARD, 0, 4, 0.0);
+        MoveEffectData maintenance =
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.createDefaultMoveEffect();
+        maintenance.stringValue = StatusEffectType.CURSED_SPEECH_WARD.name();
+        maintenance.ceUpkeepPerTick = 1.5;
+
+        combatant.addStatusEffect(ward);
+        combatant.addRuntimeAbilityEffect(maintenance);
+        assertEquals(1.5,
+            combatant.getStatusCeUpkeepPerTick(StatusEffectType.CURSED_SPEECH_WARD));
+
+        combatant.addStatusEffect(ward);
+        assertEquals(1.5,
+            combatant.getStatusCeUpkeepPerTick(StatusEffectType.CURSED_SPEECH_WARD));
+
+        maintenance.ceUpkeepPerTick = 2.0;
+        combatant.addRuntimeAbilityEffect(maintenance);
+        assertEquals(2.0,
+            combatant.getStatusCeUpkeepPerTick(StatusEffectType.CURSED_SPEECH_WARD));
+
+        maintenance.ceUpkeepPerTick = 3.0;
+        combatant.addRuntimeAbilityEffect(maintenance);
+        combatant.addStatusEffect(ward);
+        assertEquals(3.0,
+            combatant.getStatusCeUpkeepPerTick(StatusEffectType.CURSED_SPEECH_WARD),
+            "maintenance survives a status refresh even when its row executes first");
+    }
+
+    @Test
+    void maintenanceEndsAfterTheLastStackedStatusExpires() {
+        BattleCombatant combatant = fighter("STACKED", 80);
+        MoveEffectData maintenance =
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.createDefaultMoveEffect();
+        maintenance.stringValue = StatusEffectType.STRENGTH_INCREASE.name();
+
+        combatant.addStatusEffect(new StatusEffect(
+            StatusEffectType.STRENGTH_INCREASE, 1, 10.0));
+        combatant.addStatusEffect(new StatusEffect(
+            StatusEffectType.STRENGTH_INCREASE, 2, 10.0));
+        combatant.addRuntimeAbilityEffect(maintenance);
+
+        combatant.tickStatusEffects();
+        assertTrue(combatant.hasActiveRuntimeEffect(effect ->
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.name().equals(effect.type)));
+
+        combatant.tickStatusEffects();
+        assertFalse(combatant.hasActiveRuntimeEffect(effect ->
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.name().equals(effect.type)));
+    }
+
+    @Test
+    void maintenanceWithoutItsReferencedStatusIsDiscarded() {
+        MoveEffectData maintenance =
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.createDefaultMoveEffect();
+        maintenance.effectId = "effect-000000";
+        maintenance.trigger = MoveEffectTrigger.ON_FIRE.name();
+        maintenance.target = AbilityEffectTarget.SELF.name();
+        maintenance.stringValue = StatusEffectType.CURSED_SPEECH_WARD.name();
+        Move move = new Move.Builder("ORPHANED_MAINTENANCE")
+            .name("Orphaned Maintenance")
+            .category(MoveCategory.DEFENSIVE)
+            .basePower(0)
+            .apCost(1)
+            .unleashPoint(1)
+            .effects(List.of(maintenance))
+            .build();
+        BattleCombatant user = fighter("USER", 80, move);
+        BattleState state = new BattleState(user, fighter("ENEMY", 80));
+        place(user, move, List.of());
+
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+        new CombatResolver(new SequenceRandom(0.0)).resolveRound(state);
+
+        assertFalse(user.hasActiveRuntimeEffect(effect ->
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.name().equals(effect.type)));
     }
 
     private static int upkeepDrained(List<CombatEvent> events, BattleCombatant payer) {
@@ -184,7 +254,13 @@ class CursedSpeechWardTest {
         ward.durationRounds = 0;
         ward.durationTicks = 20;
         ward.magnitude = 0.0;
-        ward.ceUpkeepPerTick = upkeepPerTick;
+        MoveEffectData maintenance =
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.createDefaultMoveEffect();
+        maintenance.effectId = "effect-000001";
+        maintenance.trigger = MoveEffectTrigger.ON_FIRE.name();
+        maintenance.target = AbilityEffectTarget.SELF.name();
+        maintenance.stringValue = StatusEffectType.CURSED_SPEECH_WARD.name();
+        maintenance.ceUpkeepPerTick = upkeepPerTick;
         return new Move.Builder("COVER_EARS")
             .name("Cover Ears")
             .category(MoveCategory.DEFENSIVE)
@@ -192,7 +268,7 @@ class CursedSpeechWardTest {
             .basePower(0)
             .apCost(6)
             .unleashPoint(3)
-            .effects(List.of(ward))
+            .effects(List.of(ward, maintenance))
             .build();
     }
 

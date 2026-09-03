@@ -34,9 +34,10 @@ public final class BattleAudioRouter {
             case HP_RESTORED -> positiveCue(event.getIntValue(), SoundCue.BATTLE_HEAL);
             case MAX_HP_CHANGED, MAX_CE_CHANGED -> Optional.empty();
             case BLACK_FLASH -> Optional.of(SoundCue.BATTLE_BLACK_FLASH);
-            case CE_DRAINED -> event.getMove() == null
-                ? positiveCue(event.getIntValue(), SoundCue.BATTLE_CE_DRAIN) : Optional.empty();
-            case CE_RESTORED -> positiveCue(event.getIntValue(), SoundCue.BATTLE_CE_RESTORE);
+            case CE_DRAINED -> effectResourceCue(
+                event.getComponentIndex(), event.getIntValue(), SoundCue.BATTLE_CE_DRAIN);
+            case CE_RESTORED -> effectResourceCue(
+                event.getComponentIndex(), event.getIntValue(), SoundCue.BATTLE_CE_RESTORE);
             case CE_DEPLETED -> event.getMove() == null
                 ? Optional.empty() : Optional.of(SoundCue.BATTLE_STUN);
             case STATUS_APPLIED, BFS_ENTERED, COMBATANT_SUMMONED,
@@ -73,9 +74,10 @@ public final class BattleAudioRouter {
             case HP_RESTORED -> positiveCue(event.value(), SoundCue.BATTLE_HEAL);
             case MAX_HP_CHANGED, MAX_CE_CHANGED -> Optional.empty();
             case BLACK_FLASH -> Optional.of(SoundCue.BATTLE_BLACK_FLASH);
-            case CE_DRAINED -> event.moveId() == null
-                ? positiveCue(event.value(), SoundCue.BATTLE_CE_DRAIN) : Optional.empty();
-            case CE_RESTORED -> positiveCue(event.value(), SoundCue.BATTLE_CE_RESTORE);
+            case CE_DRAINED -> effectResourceCue(
+                event.componentIndex(), event.value(), SoundCue.BATTLE_CE_DRAIN);
+            case CE_RESTORED -> effectResourceCue(
+                event.componentIndex(), event.value(), SoundCue.BATTLE_CE_RESTORE);
             case CE_DEPLETED -> event.moveId() == null
                 ? Optional.empty() : Optional.of(SoundCue.BATTLE_STUN);
             case STATUS_APPLIED, BFS_ENTERED, COMBATANT_SUMMONED,
@@ -97,6 +99,14 @@ public final class BattleAudioRouter {
 
     private static Optional<SoundCue> positiveCue(Integer value, SoundCue cue) {
         return value != null && value > 0 ? Optional.of(cue) : Optional.empty();
+    }
+
+    private static Optional<SoundCue> effectResourceCue(
+        Integer componentIndex,
+        Integer value,
+        SoundCue cue
+    ) {
+        return componentIndex == null ? Optional.empty() : positiveCue(value, cue);
     }
 
     public static Optional<SoundCue> cueForMove(Move move) {

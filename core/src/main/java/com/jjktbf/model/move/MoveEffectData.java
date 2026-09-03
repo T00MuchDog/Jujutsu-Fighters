@@ -233,6 +233,11 @@ public class MoveEffectData extends AbilityEffectData {
             && moveTrigger != MoveEffectTrigger.ON_HIT) {
             return "This pre-hit coded effect must use On hit.";
         }
+        if (effectType == AbilityEffectType.CODED_MOVE_ACTION
+            && !CodedAbilityRegistry.supportsEffectTrigger(
+                codedAbilityKey, codedAction, codedTarget, moveTrigger)) {
+            return "This coded effect cannot use " + moveTrigger.displayName() + ".";
+        }
         if (CodedAbilityRegistry.executesBeforeHit(this)
             && !com.jjktbf.model.character.AbilityEffectTarget.ENEMY.name()
                 .equalsIgnoreCase(target)) {

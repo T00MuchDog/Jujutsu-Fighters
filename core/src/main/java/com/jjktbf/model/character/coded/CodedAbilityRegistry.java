@@ -7,6 +7,7 @@ import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.MoveEffectData;
+import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.character.AbilityEffectType;
 
 import java.util.ArrayList;
@@ -280,9 +281,47 @@ public final class CodedAbilityRegistry {
         effect.codedParameters = prepareEffectParameters(
             effect.codedParameters, effect.codedAbilityKey,
             effect.codedAction, effect.codedTarget);
-        if (effect instanceof MoveEffectData moveEffect && executesBeforeHit(moveEffect)) {
-            effect.target = AbilityEffectTarget.ENEMY.name();
+        effect.target = requiredEffectTarget(effect.codedAbilityKey, effect.codedAction).name();
+    }
+
+    /** Every currently registered coded action owns a fixed runtime target. */
+    public static AbilityEffectTarget requiredEffectTarget(String key, String action) {
+        String normalizedKey = normalize(key);
+        String normalizedAction = normalize(action);
+        if ((RatioAbility.KEY.equals(normalizedKey)
+                && RatioAbility.RATIO_EFFECT.equals(normalizedAction))
+            || (CursedSpeechAbility.KEY.equals(normalizedKey)
+                && CursedSpeechAbility.COMMAND.equals(normalizedAction))) {
+            return AbilityEffectTarget.ENEMY;
         }
+        return AbilityEffectTarget.SELF;
+    }
+
+    /** Whether a coded action and its selected mode can execute at this move trigger. */
+    public static boolean supportsEffectTrigger(
+        String key,
+        String action,
+        String target,
+        MoveEffectTrigger trigger
+    ) {
+        if (trigger == null) return false;
+        String normalizedKey = normalize(key);
+        String normalizedAction = normalize(action);
+        String normalizedTarget = normalize(target);
+        if (NewShadowStyleAbility.KEY.equals(normalizedKey)
+            && NewShadowStyleAbility.ACTIVATE_SIMPLE_DOMAIN.equals(normalizedAction)) {
+            return trigger == MoveEffectTrigger.ON_FIRE;
+        }
+        if ((RatioAbility.KEY.equals(normalizedKey)
+                && RatioAbility.RATIO_EFFECT.equals(normalizedAction)
+                && RatioAbility.APPLY_TO_MOVE.equals(normalizedTarget))
+            || (CursedSpeechAbility.KEY.equals(normalizedKey)
+                && CursedSpeechAbility.COMMAND.equals(normalizedAction))) {
+            return trigger == MoveEffectTrigger.ON_HIT;
+        }
+        return trigger == MoveEffectTrigger.ON_FIRE || trigger == MoveEffectTrigger.ON_HIT
+            || trigger == MoveEffectTrigger.ON_BLOCK || trigger == MoveEffectTrigger.ON_PARRY
+            || trigger == MoveEffectTrigger.ON_DODGE;
     }
 
     public static Map<String, Integer> prepareEffectParameters(

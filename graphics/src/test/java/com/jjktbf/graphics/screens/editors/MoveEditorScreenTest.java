@@ -927,6 +927,16 @@ class MoveEditorScreenTest {
             .contains(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY));
         assertEquals(List.of(AbilityEffectType.BLOCK_EFFECTIVENESS_MULTIPLY),
             MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.BLOCK_CALCULATION));
+        assertEquals(List.of(AbilityEffectType.NEVER_MISS, AbilityEffectType.NEVER_HIT),
+            MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ACCURACY_CHECK));
+        assertTrue(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_FIRE)
+            .contains(AbilityEffectType.EXCHANGE_ATTACK_TARGETS));
+        assertTrue(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_FIRE)
+            .contains(AbilityEffectType.ESTABLISH_DOMAIN));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_HIT)
+            .contains(AbilityEffectType.EXCHANGE_ATTACK_TARGETS));
+        assertFalse(MoveEditorScreen.moveEffectTypes(MoveEffectTrigger.ON_HIT)
+            .contains(AbilityEffectType.ESTABLISH_DOMAIN));
     }
 
     private static MoveData moveWithAllSectionDetails() {

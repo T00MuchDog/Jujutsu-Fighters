@@ -2504,9 +2504,13 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             false,
             moveEffectTypes(trigger),
             true,
+            trigger,
             uiProfile,
             skin)).growX().row();
-        if (!context.isEmpty() && trigger != MoveEffectTrigger.AVAILABILITY) {
+        if (!context.isEmpty()
+            && trigger != MoveEffectTrigger.AVAILABILITY
+            && trigger != MoveEffectTrigger.ACCURACY_CHECK
+            && trigger != MoveEffectTrigger.ON_START) {
             editor.add(formHint(
                 trigger.displayName() + " is the mandatory first condition. "
                     + "Each row may add another condition and its own chance roll."))
@@ -2603,6 +2607,11 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 .filter(AbilityEffectType::isMoveAvailabilityConstraint)
                 .toList();
         }
+        if (trigger == MoveEffectTrigger.ACCURACY_CHECK) {
+            return java.util.Arrays.stream(AbilityEffectType.values())
+                .filter(AbilityEffectType::isAccuracyPriority)
+                .toList();
+        }
         if (trigger == MoveEffectTrigger.ON_START) {
             return List.of(
                 AbilityEffectType.TRANSACT_BOUNDED_RESOURCE,
@@ -2624,6 +2633,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .filter(type -> !type.isAccuracyPriority())
             .filter(type -> !type.isMoveAvailabilityConstraint())
             .filter(type -> !type.isBlockEffectivenessModifier())
+            .filter(type -> trigger == MoveEffectTrigger.ON_FIRE
+                || (type != AbilityEffectType.EXCHANGE_ATTACK_TARGETS
+                    && type != AbilityEffectType.ESTABLISH_DOMAIN))
             .filter(type -> type != AbilityEffectType.TRANSACT_BOUNDED_RESOURCE)
             .filter(type -> type != AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER)
             .filter(type -> !types.contains(type))

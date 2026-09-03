@@ -992,8 +992,7 @@ public final class AbilityActivationEngine {
                             effect.stringValue, effect.magnitude == null ? 0.0 : effect.magnitude),
                         effect.perTickRemovalChance == null
                             ? status.defaultPerTickRemovalChance()
-                            : effect.perTickRemovalChance,
-                        effect.ceUpkeepPerTick == null ? 0.0 : effect.ceUpkeepPerTick);
+                            : effect.perTickRemovalChance);
                     boolean accepted = extendStatusForCurrentPhase(state)
                         ? target.addStatusEffect(
                             applied, state.getCurrentPhase(), owner, effect.runtimeLease)
@@ -1011,6 +1010,13 @@ public final class AbilityActivationEngine {
                     appendResourceMaximumEvents(
                         owner, target, previousMaxHp, previousMaxCe, tick, events);
                     followUps.add(AbilityTrigger.status(AbilityTrigger.Type.STATUS_APPLIED, target, status, tick));
+                }
+            }
+            case MAINTAIN_STATUS_WITH_CE -> {
+                StatusEffectType maintained = status(effect.stringValue, null);
+                if (maintained == null) return;
+                for (BattleCombatant target : targets) {
+                    addRuntimeEffect(state, owner, target, effect, tick, events);
                 }
             }
             case REMOVE_STATUS -> {

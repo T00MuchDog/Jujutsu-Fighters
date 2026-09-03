@@ -99,7 +99,7 @@ of those exact paths is enough to enable it:
 | `sfx/battle/parry.wav` | A local parry event |
 | `sfx/battle/black_flash.wav` | A Black Flash event |
 | `sfx/battle/ignored.wav`, `heal.wav` | Ignored damage and restored HP |
-| `sfx/battle/ce_*.wav` | Cursed-energy drain and restoration |
+| `sfx/battle/ce_*.wav` | Explicit cursed-energy drain and restoration effects; passive per-tick changes stay silent |
 | `sfx/battle/stun.wav`, `status_*.wav` | Interrupted actions and status changes |
 | `sfx/battle/ability.wav`, `ratio.wav` | Ability and Ratio activations |
 | `sfx/battle/round_*.wav` | Local/online round boundaries |

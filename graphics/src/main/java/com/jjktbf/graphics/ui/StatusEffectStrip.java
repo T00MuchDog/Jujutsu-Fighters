@@ -61,7 +61,7 @@ public final class StatusEffectStrip {
                 effect.getDurationTicks(),
                 effect.getMagnitude(),
                 effect.getPerTickRemovalChance(),
-                effect.getCeUpkeepPerTick(),
+                combatant.getStatusCeUpkeepPerTick(effect.getType()),
                 sourceName,
                 1));
         }

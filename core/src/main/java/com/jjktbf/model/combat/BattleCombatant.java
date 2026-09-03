@@ -847,9 +847,8 @@ public class BattleCombatant {
                 effect.stringValue, storedMagnitude);
             double perTickRemovalChance = effect.perTickRemovalChance != null
                 ? effect.perTickRemovalChance : type.defaultPerTickRemovalChance();
-            double ceUpkeepPerTick = effect.ceUpkeepPerTick != null ? effect.ceUpkeepPerTick : 0.0;
             StatusEffect status = new StatusEffect(
-                type, rounds, ticks, magnitude, perTickRemovalChance, ceUpkeepPerTick);
+                type, rounds, ticks, magnitude, perTickRemovalChance);
             return addStatusEffect(status, phase, source, sourceLease);
         } catch (IllegalArgumentException ex) {
             System.err.println("[WARN] Invalid automatic status: " + effect.stringValue);
@@ -926,7 +925,7 @@ public class BattleCombatant {
         activeEffects.addAll(remaining);
         statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
         statusLeases.keySet().removeIf(effect -> !activeEffects.contains(effect));
-        resetStatusDamageProgressIfCured();
+        clearStateForInactiveStatuses();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -947,7 +946,7 @@ public class BattleCombatant {
         activeEffects.addAll(remaining);
         statusSources.keySet().removeIf(effect -> !activeEffects.contains(effect));
         statusLeases.keySet().removeIf(effect -> !activeEffects.contains(effect));
-        resetStatusDamageProgressIfCured();
+        clearStateForInactiveStatuses();
         expiredThisTick.clear();
         expiredThisTick.addAll(expired);
     }
@@ -971,7 +970,7 @@ public class BattleCombatant {
         activeEffects.removeIf(e -> e.getType() == type);
         statusSources.keySet().removeIf(effect -> effect.getType() == type);
         statusLeases.keySet().removeIf(effect -> effect.getType() == type);
-        resetStatusDamageProgressIfCured();
+        clearStateForInactiveStatuses();
         clampPoolsToMaximums();
     }
 
@@ -980,7 +979,7 @@ public class BattleCombatant {
         activeEffects.removeIf(effect -> effect.getType() == type);
         statusSources.keySet().removeIf(effect -> effect.getType() == type);
         statusLeases.keySet().removeIf(effect -> effect.getType() == type);
-        resetStatusDamageProgressIfCured();
+        clearStateForInactiveStatuses();
         clampPoolsToMaximums();
         return before - activeEffects.size();
     }
@@ -996,7 +995,7 @@ public class BattleCombatant {
         activeEffects.clear();
         statusSources.clear();
         statusLeases.clear();
-        resetStatusDamageProgressIfCured();
+        clearStateForInactiveStatuses();
         clampPoolsToMaximums();
         return removed;
     }
@@ -1041,8 +1040,17 @@ public class BattleCombatant {
         return due;
     }
 
-    private void resetStatusDamageProgressIfCured() {
+    private void clearStateForInactiveStatuses() {
         statusDamageProgress.keySet().removeIf(type -> !hasEffect(type));
+        clearMaintenanceForInactiveStatuses();
+    }
+
+    private void clearMaintenanceForInactiveStatuses() {
+        runtimeAbilityEffects.removeIf(runtime ->
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.name().equalsIgnoreCase(
+                runtime.effect.type)
+                && StatusEffectType.referencedTypes(runtime.effect.stringValue).stream()
+                    .noneMatch(this::hasEffect));
     }
 
     // -------------------------------------------------------------------------
@@ -1051,6 +1059,10 @@ public class BattleCombatant {
 
     /** A timed CE drain together with the combatant that applied it. */
     public record OverTimeCeDrain(BattleCombatant source, AbilityEffectData effect) {
+    }
+
+    /** A CE upkeep effect tied to one active status on this combatant. */
+    record StatusCeMaintenance(AbilityEffectData effect) {
     }
 
     public void addRuntimeAbilityEffect(AbilityEffectData effect) {
@@ -1104,8 +1116,11 @@ public class BattleCombatant {
         int applicationTick
     ) {
         if (effect == null || effect.type == null) return;
-        String normalizedRefreshGroup = refreshGroup == null || refreshGroup.isBlank()
-            ? null : refreshGroup.trim();
+        String normalizedRefreshGroup =
+            AbilityEffectType.MAINTAIN_STATUS_WITH_CE.name().equalsIgnoreCase(effect.type)
+                ? statusMaintenanceGroup(effect.stringValue)
+                : refreshGroup == null || refreshGroup.isBlank()
+                    ? null : refreshGroup.trim();
         if (normalizedRefreshGroup != null) {
             runtimeAbilityEffects.removeIf(existing ->
                 normalizedRefreshGroup.equals(existing.refreshGroup));
@@ -1187,6 +1202,39 @@ public class BattleCombatant {
             .toList();
     }
 
+    List<StatusCeMaintenance> getStatusCeMaintenances() {
+        return runtimeAbilityEffects.stream()
+            .filter(runtime -> AbilityEffectType.MAINTAIN_STATUS_WITH_CE.name()
+                .equalsIgnoreCase(runtime.effect.type))
+            .map(runtime -> new StatusCeMaintenance(runtime.effect))
+            .toList();
+    }
+
+    void removeStatusCeMaintenance(StatusCeMaintenance maintenance) {
+        if (maintenance == null) return;
+        runtimeAbilityEffects.removeIf(runtime -> runtime.effect == maintenance.effect());
+    }
+
+    /** Raw authored upkeep rate maintaining this status, before efficiency scaling. */
+    public double getStatusCeUpkeepPerTick(StatusEffectType type) {
+        if (type == null || !hasEffect(type)) return 0.0;
+        return getStatusCeMaintenances().stream()
+            .map(StatusCeMaintenance::effect)
+            .filter(effect -> StatusEffectType.referencedTypes(effect.stringValue).contains(type))
+            .mapToDouble(effect -> effect.ceUpkeepPerTick == null ? 0.0 : effect.ceUpkeepPerTick)
+            .sum();
+    }
+
+    private static String statusMaintenanceGroup(String statusName) {
+        try {
+            return "__status-ce-maintenance:"
+                + StatusEffectType.fromName(statusName).name();
+        } catch (IllegalArgumentException exception) {
+            return "__status-ce-maintenance:"
+                + (statusName == null ? "" : statusName.trim().toUpperCase(Locale.ROOT));
+        }
+    }
+
     /**
      * Whether this combatant holds an active runtime effect matching {@code match}.
      * A non-consuming planning-time read (unlike the {@code consume*} queries), so
@@ -1213,7 +1261,7 @@ public class BattleCombatant {
         leasedStatuses.forEach(statusSources::remove);
         leasedStatuses.forEach(statusLeases::remove);
         removed += leasedStatuses.size();
-        resetStatusDamageProgressIfCured();
+        clearStateForInactiveStatuses();
         clampPoolsToMaximums();
         return removed;
     }

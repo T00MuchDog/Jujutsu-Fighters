@@ -133,11 +133,7 @@ public class AbilityEffectData {
     /** Chance in [0, 1] to remove an applied status on each resolution tick. */
     public Double perTickRemovalChance;
 
-    /**
-     * Base cursed energy drained from the holder each resolution tick while an
-     * applied status remains active. Scaled by the holder's CE Efficiency at
-     * runtime; null means the status has no upkeep.
-     */
+    /** Base CE rate used by MAINTAIN_STATUS_WITH_CE before efficiency scaling. */
     public Double ceUpkeepPerTick;
 
     /** Number of times a consumable effect may be used. -1 means unlimited. */

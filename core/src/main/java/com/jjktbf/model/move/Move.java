@@ -516,9 +516,15 @@ public class Move {
     public int getNeverMissTier(int mastery) {
         return accuracyPriorityTier(AbilityEffectType.NEVER_MISS, mastery);
     }
+    public int getNeverMissTier(com.jjktbf.model.combat.BattleCombatant attacker) {
+        return accuracyPriorityTier(AbilityEffectType.NEVER_MISS, attacker);
+    }
     public int getNeverHitTier()                  { return getNeverHitTier(0); }
     public int getNeverHitTier(int mastery) {
         return accuracyPriorityTier(AbilityEffectType.NEVER_HIT, mastery);
+    }
+    public int getNeverHitTier(com.jjktbf.model.combat.BattleCombatant defender) {
+        return accuracyPriorityTier(AbilityEffectType.NEVER_HIT, defender);
     }
     /** True when at least one hit component breaks guards. */
     public boolean isGuardBreak()                 {
@@ -614,6 +620,23 @@ public class Move {
             }
             com.jjktbf.model.character.AbilityEffectData resolved =
                 TechniqueMasteryResolver.resolve(effect, mastery);
+            tier = Math.max(tier, resolved.intValue == null ? 0 : resolved.intValue);
+        }
+        return tier;
+    }
+
+    private int accuracyPriorityTier(
+        AbilityEffectType expected,
+        com.jjktbf.model.combat.BattleCombatant owner
+    ) {
+        int tier = 0;
+        for (MoveEffectData effect : effects) {
+            if (!expected.name().equalsIgnoreCase(effect.type)
+                || !MoveEffectTrigger.ACCURACY_CHECK.name().equalsIgnoreCase(effect.trigger)) {
+                continue;
+            }
+            com.jjktbf.model.character.AbilityEffectData resolved =
+                TechniqueMasteryResolver.resolve(effect, owner);
             tier = Math.max(tier, resolved.intValue == null ? 0 : resolved.intValue);
         }
         return tier;

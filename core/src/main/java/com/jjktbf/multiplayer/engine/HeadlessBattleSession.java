@@ -1425,8 +1425,7 @@ public final class HeadlessBattleSession {
         return new MoveState(
             move.getId(),
             move.getName(),
-            MoveDescriptionVariables.resolve(
-                move, TechniqueMasteryResolver.masteryOf(combatant)),
+            MoveDescriptionVariables.resolve(move, combatant),
             move.getCategory().name(),
             moveTags(move),
             planBoard(BattlePlan.boardFor(move)),

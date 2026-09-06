@@ -13,7 +13,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.9,
     "reinforcementEligible" : true,
-    "reinforcementBonusPower" : 20
+    "reinforcementBonusPower" : 20,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -55,9 +56,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -109,9 +110,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -130,7 +131,8 @@
     "baseAccuracy" : 0.95,
     "onHitEffects" : [ ],
     "reinforcementEligible" : true,
-    "reinforcementBonusPower" : 20
+    "reinforcementBonusPower" : 20,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.95,
   "neverMiss" : false,
@@ -176,9 +178,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -197,7 +199,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.88,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.88,
   "neverMiss" : false,
@@ -244,9 +247,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -265,7 +268,8 @@
     "baseAccuracy" : 0.84,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.84,
   "neverMiss" : false,
@@ -321,9 +325,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -343,7 +347,8 @@
     "baseAccuracy" : 0.84,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.84,
   "neverMiss" : false,
@@ -390,9 +395,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -412,7 +417,8 @@
     "baseAccuracy" : 0.85,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.85,
   "neverMiss" : false,
@@ -460,9 +466,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -515,9 +521,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -568,9 +574,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -622,9 +628,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : true
@@ -696,9 +702,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -770,9 +776,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -856,9 +862,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -877,7 +883,8 @@
     "baseAccuracy" : 0.88,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.88,
   "neverMiss" : false,
@@ -927,9 +934,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1046,9 +1053,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1067,7 +1074,8 @@
     "baseAccuracy" : 0.92,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.92,
   "neverMiss" : false,
@@ -1132,9 +1140,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1153,7 +1161,8 @@
     "baseAccuracy" : 0.94,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.94,
   "neverMiss" : false,
@@ -1202,9 +1211,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1278,9 +1287,9 @@
   },
   "attackLaunchMoveId" : "000025",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : true,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : true,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1336,9 +1345,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1394,9 +1403,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1415,7 +1424,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.92,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 10,
     "tags" : [ "CURSED_ENERGY", "MELEE" ],
@@ -1424,7 +1434,8 @@
     "avoidable" : false,
     "baseAccuracy" : 1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.94,
   "neverMiss" : false,
@@ -1475,9 +1486,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1544,9 +1555,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1613,9 +1624,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1634,7 +1645,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.8,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 30,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
@@ -1643,7 +1655,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.8,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 30,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
@@ -1652,7 +1665,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.8,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.93,
   "neverMiss" : false,
@@ -1703,9 +1717,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1764,9 +1778,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : true,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1845,9 +1859,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1914,9 +1928,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -1983,9 +1997,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2052,9 +2066,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2121,9 +2135,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2190,9 +2204,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2259,9 +2273,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2279,7 +2293,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.92,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 24,
     "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
@@ -2288,7 +2303,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.92,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -2353,9 +2369,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2374,7 +2390,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -2439,9 +2456,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2507,9 +2524,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2528,7 +2545,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -2593,9 +2611,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2614,7 +2632,8 @@
     "baseAccuracy" : 0.95,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.95,
   "neverMiss" : false,
@@ -2671,9 +2690,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2691,7 +2710,8 @@
     "avoidable" : true,
     "baseAccuracy" : -1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 15,
     "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
@@ -2700,7 +2720,8 @@
     "avoidable" : true,
     "baseAccuracy" : -1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 15,
     "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
@@ -2709,7 +2730,8 @@
     "avoidable" : true,
     "baseAccuracy" : -1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -2770,9 +2792,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2791,7 +2813,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -2849,9 +2872,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2909,9 +2932,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2967,9 +2990,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -2987,7 +3010,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.95,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.95,
   "neverMiss" : false,
@@ -3030,9 +3054,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3050,7 +3074,8 @@
     "avoidable" : true,
     "baseAccuracy" : 1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : true,
@@ -3093,9 +3118,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3114,7 +3139,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3161,9 +3187,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3183,7 +3209,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3231,9 +3258,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3253,7 +3280,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3309,9 +3337,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3329,7 +3357,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.9,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3372,9 +3401,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3393,7 +3422,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3449,9 +3479,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3470,7 +3500,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3529,9 +3560,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3550,7 +3581,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3597,9 +3629,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3617,7 +3649,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.96,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.96,
   "neverMiss" : false,
@@ -3660,9 +3693,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3680,7 +3713,8 @@
     "avoidable" : true,
     "baseAccuracy" : -1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 42,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
@@ -3689,7 +3723,8 @@
     "avoidable" : true,
     "baseAccuracy" : -1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3732,9 +3767,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3753,7 +3788,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3802,9 +3838,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3824,7 +3860,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3871,9 +3908,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3892,7 +3929,8 @@
     "baseAccuracy" : -1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 14,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
@@ -3902,7 +3940,8 @@
     "baseAccuracy" : -1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 14,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
@@ -3912,7 +3951,8 @@
     "baseAccuracy" : -1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -3965,9 +4005,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -3986,7 +4026,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -4049,9 +4090,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4070,7 +4111,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4175,9 +4217,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4196,7 +4238,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4281,9 +4324,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4302,7 +4345,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4393,9 +4437,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4414,7 +4458,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4498,9 +4543,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4519,7 +4564,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4598,9 +4644,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4619,7 +4665,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4706,9 +4753,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4727,7 +4774,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4807,9 +4855,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4828,7 +4876,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -4915,9 +4964,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4935,7 +4984,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.7,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.7,
   "neverMiss" : false,
@@ -4979,9 +5029,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -4999,7 +5049,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.85,
     "reinforcementEligible" : true,
-    "reinforcementBonusPower" : 7
+    "reinforcementBonusPower" : 7,
+    "soulDamage" : false
   }, {
     "basePower" : 18,
     "tags" : [ "PHYSICAL", "MELEE" ],
@@ -5008,7 +5059,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.85,
     "reinforcementEligible" : true,
-    "reinforcementBonusPower" : 7
+    "reinforcementBonusPower" : 7,
+    "soulDamage" : false
   }, {
     "basePower" : 18,
     "tags" : [ "PHYSICAL", "MELEE" ],
@@ -5017,7 +5069,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.85,
     "reinforcementEligible" : true,
-    "reinforcementBonusPower" : 7
+    "reinforcementBonusPower" : 7,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.85,
   "neverMiss" : false,
@@ -5059,9 +5112,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5080,7 +5133,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.9,
     "reinforcementEligible" : true,
-    "reinforcementBonusPower" : 20
+    "reinforcementBonusPower" : 20,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -5132,9 +5186,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5200,9 +5254,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5257,9 +5311,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5315,9 +5369,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5374,9 +5428,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -5432,9 +5486,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5490,9 +5544,9 @@
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
   "shikigamiMove" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5554,9 +5608,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5575,7 +5629,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.88,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 24,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
@@ -5584,7 +5639,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.88,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 24,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
@@ -5593,7 +5649,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.88,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.88,
   "neverMiss" : false,
@@ -5630,9 +5687,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5652,7 +5709,8 @@
     "baseAccuracy" : 0.9,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -5693,9 +5751,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5748,9 +5806,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5769,7 +5827,8 @@
     "baseAccuracy" : 0.82,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.82,
   "neverMiss" : false,
@@ -5851,9 +5910,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5872,7 +5931,8 @@
     "baseAccuracy" : 0.93,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.93,
   "neverMiss" : false,
@@ -5922,9 +5982,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -5943,7 +6003,8 @@
     "baseAccuracy" : 0.86,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.86,
   "neverMiss" : false,
@@ -5993,9 +6054,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6014,7 +6075,8 @@
     "baseAccuracy" : 0.95,
     "onHitEffects" : [ ],
     "reinforcementEligible" : true,
-    "reinforcementBonusPower" : 20
+    "reinforcementBonusPower" : 20,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.95,
   "neverMiss" : false,
@@ -6059,9 +6121,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6080,7 +6142,8 @@
     "baseAccuracy" : 1.0,
     "onHitEffects" : [ ],
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -6146,9 +6209,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6234,9 +6297,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6254,7 +6317,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.94,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.94,
   "neverMiss" : false,
@@ -6315,9 +6379,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6335,7 +6399,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.9,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -6391,9 +6456,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6455,9 +6520,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6475,7 +6540,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.97,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.97,
   "neverMiss" : false,
@@ -6527,9 +6593,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6608,9 +6674,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6629,7 +6695,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.92,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.92,
   "neverMiss" : false,
@@ -6671,9 +6738,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6692,7 +6759,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.86,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 18,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
@@ -6701,7 +6769,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.86,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 24,
     "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
@@ -6710,7 +6779,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.86,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.86,
   "neverMiss" : false,
@@ -6752,9 +6822,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6773,7 +6843,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.8,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.8,
   "neverMiss" : false,
@@ -6815,9 +6886,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6836,7 +6907,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.9,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -6891,9 +6963,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6912,7 +6984,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.88,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.88,
   "neverMiss" : false,
@@ -6956,9 +7029,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -6977,7 +7050,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.85,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.85,
   "neverMiss" : false,
@@ -7020,9 +7094,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7041,7 +7115,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.78,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.78,
   "neverMiss" : false,
@@ -7089,9 +7164,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7110,7 +7185,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.92,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.92,
   "neverMiss" : false,
@@ -7156,9 +7232,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7177,7 +7253,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.88,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.88,
   "neverMiss" : false,
@@ -7223,9 +7300,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7244,7 +7321,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.86,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.86,
   "neverMiss" : false,
@@ -7301,9 +7379,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7322,7 +7400,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.75,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.75,
   "neverMiss" : false,
@@ -7366,9 +7445,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7387,7 +7466,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.85,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.85,
   "neverMiss" : false,
@@ -7437,9 +7517,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7486,9 +7566,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -7540,9 +7620,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7590,9 +7670,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : true,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7654,9 +7734,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7716,9 +7796,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -7771,9 +7851,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -7792,7 +7872,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.9,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -7830,9 +7911,9 @@
   "targeting" : "DEFAULT",
   "attackLaunchMode" : "ON_DEFENCE",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : true,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -7886,9 +7967,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -7950,9 +8031,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : true,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8025,9 +8106,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8095,9 +8176,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8170,9 +8251,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8246,9 +8327,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8318,9 +8399,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8393,9 +8474,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8456,9 +8537,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8512,9 +8593,9 @@
   "defenseTargetCount" : 3,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : true,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8532,7 +8613,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.87,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 22,
     "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
@@ -8541,7 +8623,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.92,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.89,
   "neverMiss" : false,
@@ -8601,9 +8684,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8621,7 +8704,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.9,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -8668,9 +8752,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8688,7 +8772,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.97,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 36,
     "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
@@ -8697,7 +8782,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.97,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.9,
   "neverMiss" : false,
@@ -8743,9 +8829,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8809,9 +8895,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : true,
   "flatBlock" : false
@@ -8829,7 +8915,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.84,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.84,
   "neverMiss" : false,
@@ -8890,9 +8977,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -8976,9 +9063,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -9044,9 +9131,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -9064,7 +9151,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.85,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 0.84,
   "neverMiss" : false,
@@ -9116,9 +9204,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -9182,9 +9270,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : true,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : true,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : true
@@ -9251,9 +9339,9 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
-  "anyBlock" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false
@@ -9271,7 +9359,8 @@
     "avoidable" : true,
     "baseAccuracy" : 0.94,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   }, {
     "basePower" : 78,
     "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK" ],
@@ -9280,7 +9369,8 @@
     "avoidable" : false,
     "baseAccuracy" : 1.0,
     "reinforcementEligible" : false,
-    "reinforcementBonusPower" : 0
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
   } ],
   "baseAccuracy" : 1.0,
   "neverMiss" : false,
@@ -9341,9 +9431,864 @@
   "defenseTargetCount" : 2,
   "targeting" : "DEFAULT",
   "mustBeGranted" : false,
+  "anyBlock" : false,
   "parry" : false,
   "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000140",
+  "name" : "Release Transfigured Human",
+  "description" : "Consume 1 TRANSFIGURED HUMAN and unleash it as a *character:000022* that harries the enemy.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 8,
+  "unleashPoint" : 4,
+  "baseCeCost" : 30,
+  "hasCeCost" : true,
+  "minCeCost" : 10,
+  "maxCeCost" : 90,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "TRANSACT_BOUNDED_RESOURCE",
+    "target" : "SELF",
+    "sourceResourceKey" : "TRANSFIGURED_HUMANS",
+    "sourceResourceAmount" : 1,
+    "targetResourceAmount" : 0,
+    "trigger" : "ON_START",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "SUMMON_CHARACTER",
+    "characterId" : "000022",
+    "trigger" : "ON_FIRE",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 0,
+    "cursedEnergyReserves" : 40,
+    "cursedEnergyEfficiency" : 40,
+    "cursedEnergyOutput" : 40,
+    "jujutsuSkill" : 45
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 2,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
   "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000141",
+  "name" : "Transfigured Human Assault",
+  "description" : "Consume 1 TRANSFIGURED HUMAN, transfiguring it into a weapon that tears at the enemy and leaves them reeling.",
+  "tags" : [ "ATTACK", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
+  "basePower" : 45,
+  "hitComponents" : [ {
+    "basePower" : 45,
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "delayTicks" : 0,
+    "requiresPreviousConnection" : false,
+    "avoidable" : true,
+    "baseAccuracy" : 0.9,
+    "onHitEffects" : [ ],
+    "reinforcementEligible" : false,
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
+  } ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 13,
+  "unleashPoint" : 6,
+  "baseCeCost" : 38,
+  "hasCeCost" : true,
+  "minCeCost" : 12,
+  "maxCeCost" : 130,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "TRANSACT_BOUNDED_RESOURCE",
+    "target" : "SELF",
+    "sourceResourceKey" : "TRANSFIGURED_HUMANS",
+    "sourceResourceAmount" : 1,
+    "targetResourceAmount" : 0,
+    "trigger" : "ON_START",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "APPLY_STATUS",
+    "stringValue" : "STAGGER",
+    "target" : "ENEMY",
+    "durationRounds" : 0,
+    "durationTicks" : 2,
+    "trigger" : "ON_HIT",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 10,
+    "cursedEnergyReserves" : 50,
+    "cursedEnergyEfficiency" : 45,
+    "cursedEnergyOutput" : 45,
+    "jujutsuSkill" : 55
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000142",
+  "name" : "Hooved Legs",
+  "description" : "Reshape both legs into haunches and hooves, roughly a third faster than they have any right to be.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 6,
+  "unleashPoint" : 3,
+  "baseCeCost" : 18,
+  "hasCeCost" : true,
+  "minCeCost" : 6,
+  "maxCeCost" : 60,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "speed",
+    "doubleValue" : 0.3,
+    "valueMode" : "PERCENT",
+    "statType" : "CORE",
+    "statOperation" : "CHANGE",
+    "target" : "SELF",
+    "durationRounds" : 1,
+    "durationTicks" : 0,
+    "refreshGroup" : "HOOFED_LEGS_SPEED",
+    "trigger" : "ON_FIRE",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 15,
+    "jujutsuSkill" : 50
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000143",
+  "name" : "Idle Transfiguration",
+  "description" : "Lay a hand on the enemy's SOUL and simply rewrite them. The touch guarantees a SOUL MANIPULATION attempt - the target's soul decides the rest.",
+  "tags" : [ "ATTACK", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ {
+    "basePower" : 0,
+    "tags" : [ "INNATE_TECHNIQUE", "MELEE" ],
+    "delayTicks" : 0,
+    "requiresPreviousConnection" : false,
+    "avoidable" : true,
+    "baseAccuracy" : 0.9,
+    "onHitEffects" : [ ],
+    "reinforcementEligible" : false,
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : true
+  } ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 10,
+  "unleashPoint" : 4,
+  "baseCeCost" : 30,
+  "hasCeCost" : true,
+  "minCeCost" : 10,
+  "maxCeCost" : 100,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "CODED_MOVE_ACTION",
+    "codedAbilityKey" : "IDLE_TRANSFIGURATION",
+    "codedAction" : "SOUL_MANIPULATION",
+    "target" : "ENEMY",
+    "soulDamage" : true,
+    "trigger" : "ON_HIT",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 20,
+    "cursedEnergyOutput" : 55,
+    "jujutsuSkill" : 65
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000144",
+  "name" : "Miniature Form",
+  "description" : "Shrink the whole body down to something barely there - fragile, but nearly impossible to land a clean hit on.",
+  "tags" : [ "UTILITY", "DEFENSIVE", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 8,
+  "unleashPoint" : 3,
+  "baseCeCost" : 25,
+  "hasCeCost" : true,
+  "minCeCost" : 8,
+  "maxCeCost" : 80,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "TIMED_STAT_MODIFIER",
+    "doubleValue" : 0.6,
+    "valueMode" : "PERCENT",
+    "statType" : "BATTLE",
+    "statOperation" : "CHANGE",
+    "stringValue" : "EVASION",
+    "target" : "SELF",
+    "durationRounds" : 0,
+    "durationTicks" : 5,
+    "refreshGroup" : "MINIATURE_FORM_EVASION",
+    "trigger" : "ON_FIRE",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "speed",
+    "doubleValue" : 0.2,
+    "valueMode" : "PERCENT",
+    "statType" : "CORE",
+    "statOperation" : "CHANGE",
+    "target" : "SELF",
+    "durationRounds" : 0,
+    "durationTicks" : 5,
+    "refreshGroup" : "MINIATURE_FORM_SPEED",
+    "trigger" : "ON_FIRE",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  }, {
+    "effectId" : "effect-000002",
+    "type" : "TIMED_STAT_MODIFIER",
+    "doubleValue" : 1.0,
+    "valueMode" : "PERCENT",
+    "statType" : "BATTLE",
+    "statOperation" : "CHANGE",
+    "stringValue" : "DAMAGE_TAKEN",
+    "target" : "SELF",
+    "durationRounds" : 0,
+    "durationTicks" : 5,
+    "refreshGroup" : "MINIATURE_FORM_DAMAGE_TAKEN",
+    "trigger" : "ON_FIRE",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 25,
+    "cursedEnergyEfficiency" : 60
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000145",
+  "name" : "Blade Mill",
+  "description" : "Both arms burst into banks of grinding blades. Wild, heavy, and catastrophically sharp.",
+  "tags" : [ "ATTACK", "INNATE_TECHNIQUE" ],
+  "basePower" : 75,
+  "hitComponents" : [ {
+    "basePower" : 75,
+    "tags" : [ "INNATE_TECHNIQUE", "MELEE" ],
+    "delayTicks" : 0,
+    "requiresPreviousConnection" : false,
+    "avoidable" : true,
+    "baseAccuracy" : 0.8,
+    "onHitEffects" : [ ],
+    "reinforcementEligible" : false,
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
+  } ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : true,
+  "potency" : 1,
+  "apCost" : 16,
+  "unleashPoint" : 8,
+  "baseCeCost" : 55,
+  "hasCeCost" : true,
+  "minCeCost" : 20,
+  "maxCeCost" : 200,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 35,
+    "cursedEnergyReserves" : 70,
+    "cursedEnergyOutput" : 75,
+    "jujutsuSkill" : 85
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000146",
+  "name" : "Flesh Drill",
+  "description" : "Extend and spin the whole arm into a piercing drill that crosses the field with unusual precision.",
+  "tags" : [ "ATTACK", "INNATE_TECHNIQUE" ],
+  "basePower" : 57,
+  "hitComponents" : [ {
+    "basePower" : 57,
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "delayTicks" : 0,
+    "requiresPreviousConnection" : false,
+    "avoidable" : true,
+    "baseAccuracy" : 0.95,
+    "onHitEffects" : [ ],
+    "reinforcementEligible" : false,
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
+  } ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 12,
+  "unleashPoint" : 5,
+  "baseCeCost" : 40,
+  "hasCeCost" : true,
+  "minCeCost" : 12,
+  "maxCeCost" : 140,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 30,
+    "cursedEnergyReserves" : 60,
+    "cursedEnergyOutput" : 65,
+    "jujutsuSkill" : 75
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000147",
+  "name" : "Giant Fist",
+  "description" : "Swell a hand into a crushing slab that pins the enemy where they stand - the opening Idle Transfiguration needs.",
+  "tags" : [ "ATTACK", "INNATE_TECHNIQUE" ],
+  "basePower" : 45,
+  "hitComponents" : [ {
+    "basePower" : 45,
+    "tags" : [ "INNATE_TECHNIQUE", "MELEE" ],
+    "delayTicks" : 0,
+    "requiresPreviousConnection" : false,
+    "avoidable" : true,
+    "baseAccuracy" : 0.9,
+    "onHitEffects" : [ ],
+    "reinforcementEligible" : false,
+    "reinforcementBonusPower" : 0,
+    "soulDamage" : false
+  } ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 12,
+  "unleashPoint" : 5,
+  "baseCeCost" : 35,
+  "hasCeCost" : true,
+  "minCeCost" : 10,
+  "maxCeCost" : 120,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "APPLY_STATUS",
+    "stringValue" : "STAGGER",
+    "target" : "ENEMY",
+    "durationRounds" : 0,
+    "durationTicks" : 2,
+    "trigger" : "ON_HIT",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 25,
+    "cursedEnergyOutput" : 55,
+    "jujutsuSkill" : 65
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000148",
+  "name" : "Spike Form",
+  "description" : "Bloom the whole body into an outward ball of spikes. Anyone who swings into it regrets it; anything thrown from afar does not.",
+  "tags" : [ "DEFENSIVE", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 10,
+  "unleashPoint" : 3,
+  "baseCeCost" : 18,
+  "hasCeCost" : true,
+  "minCeCost" : 5,
+  "maxCeCost" : 60,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "BLOCK",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 8,
+  "blockRanges" : [ "MELEE" ],
+  "blockDamageReduction" : 35,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "REACTION",
+  "defenseUses" : 2,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DEAL_DIRECT_DAMAGE",
+    "intValue" : 40,
+    "valueMode" : "FLAT",
+    "target" : "ENEMY",
+    "trigger" : "ON_BLOCK",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 20,
+    "jujutsuSkill" : 55
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : true,
+  "parry" : false,
+  "dodge" : false,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : true,
+  "flatBlock" : false
+}, {
+  "id" : "000149",
+  "name" : "Winged Evasion",
+  "description" : "Sprout wings from the back and simply be elsewhere. Nothing is answered, nothing is touched.",
+  "tags" : [ "DEFENSIVE", "INNATE_TECHNIQUE" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 8,
+  "unleashPoint" : 2,
+  "baseCeCost" : 20,
+  "hasCeCost" : true,
+  "minCeCost" : 6,
+  "maxCeCost" : 70,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "DODGE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 5,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 80,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "REACTION",
+  "defenseUses" : 1,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 15,
+    "jujutsuSkill" : 50
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : true,
+  "defenceAttackHybrid" : false,
+  "percentageBlock" : false,
+  "flatBlock" : false
+}, {
+  "id" : "000150",
+  "name" : "Domain Expansion: Self-Embodiment of Perfection",
+  "description" : "Close the barrier and complete the technique: within it, Mahito's hands never leave anyone's soul. Establish *domain:000001*.",
+  "tags" : [ "UTILITY", "INNATE_TECHNIQUE", "CURSED_ENERGY" ],
+  "basePower" : 0,
+  "hitComponents" : [ ],
+  "baseAccuracy" : 1.0,
+  "neverMiss" : false,
+  "guardBreak" : false,
+  "heavy" : false,
+  "potency" : 1,
+  "apCost" : 10,
+  "unleashPoint" : 6,
+  "baseCeCost" : 300,
+  "hasCeCost" : true,
+  "minCeCost" : 100,
+  "maxCeCost" : 600,
+  "canBeReinforced" : false,
+  "reinforcementBaseCeCost" : 0,
+  "reinforcementMinCeCost" : 0,
+  "reinforcementMaxCeCost" : 0,
+  "reinforcementDefenseType" : "NONE",
+  "reinforcementDefenseValue" : 0,
+  "defenseType" : "NONE",
+  "blockStyle" : "PERCENTAGE",
+  "blockDuration" : 0,
+  "blockDamageReduction" : 100,
+  "blockFlatReduction" : 0,
+  "dodgeChance" : 0,
+  "dodgeScope" : "BOTH",
+  "parryStaggerTicks" : 0,
+  "defenseTiming" : "FIXED",
+  "defenseUses" : 0,
+  "onHitEffects" : [ ],
+  "selfEffects" : [ ],
+  "onBlockEffects" : [ ],
+  "onParryEffects" : [ ],
+  "onDodgeEffects" : [ ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "ESTABLISH_DOMAIN",
+    "domainId" : "000001",
+    "target" : "SELF",
+    "trigger" : "ON_FIRE",
+    "condition" : {
+      "type" : "ALWAYS"
+    }
+  } ],
+  "prerequisites" : {
+    "cursedTechniqueMastery" : 140,
+    "jujutsuSkill" : 100,
+    "cursedEnergyOutput" : 60,
+    "cursedEnergyReserves" : 60,
+    "cursedEnergyEfficiency" : 50
+  },
+  "requiredTechniqueId" : "Idle Transfiguration",
+  "isFreeMove" : false,
+  "moveCap" : 0,
+  "aoeTargetCount" : 2,
+  "defenseTargeting" : "SELF",
+  "defenseTargetCount" : 2,
+  "targeting" : "DEFAULT",
+  "mustBeGranted" : false,
+  "anyBlock" : false,
+  "parry" : false,
+  "dodge" : false,
   "defenceAttackHybrid" : false,
   "percentageBlock" : false,
   "flatBlock" : false

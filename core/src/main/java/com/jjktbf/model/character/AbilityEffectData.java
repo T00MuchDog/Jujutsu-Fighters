@@ -189,6 +189,16 @@ public class AbilityEffectData {
     /** Domain row activation chance in [0, 1]. */
     public Double domainActivationChance;
 
+    // ── Soul damage metadata ──────────────────────────────────────────────────
+    /**
+     * Marks the damage or soul contact dealt by this row as damage to the soul.
+     * Soul damage bypasses mechanics that restore or reshape the body (e.g.
+     * Maintaining the Soul) and is preserved through Domain sure-hit copying and
+     * execution. Meaningful on damage-dealing rows such as DEAL_DIRECT_DAMAGE
+     * and on coded rows that manipulate a target's soul.
+     */
+    public Boolean soulDamage;
+
     /** Runtime-only source lease used to remove persistent effects atomically. */
     @JsonIgnore
     public String runtimeLease;
@@ -262,6 +272,7 @@ public class AbilityEffectData {
             ? null : source.domainCondition.copy();
         this.domainActivationChanceEnabled = source.domainActivationChanceEnabled;
         this.domainActivationChance = source.domainActivationChance;
+        this.soulDamage = source.soulDamage;
         this.runtimeLease = source.runtimeLease;
     }
 
@@ -466,6 +477,7 @@ public class AbilityEffectData {
                 + (magnitude   != null ? " mag=" + magnitude : "")
                 + (perTickRemovalChance != null ? " remove/tick=" + perTickRemovalChance : "")
                 + (ceUpkeepPerTick != null ? " ceUpkeep/tick=" + ceUpkeepPerTick : "")
+                + (soulDamage != null && soulDamage ? " soul" : "")
                 + (uses        != null ? " uses=" + uses : "")
             + " }";
     }

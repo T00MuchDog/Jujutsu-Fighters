@@ -39,5 +39,6 @@ public enum AbilityEffectParameter {
     STAT_OPERATION,
     ACCURACY_DURATION,
     CE_DRAIN_MODE,
-    CE_EFFICIENCY_SCALING
+    CE_EFFICIENCY_SCALING,
+    SOUL_DAMAGE
 }

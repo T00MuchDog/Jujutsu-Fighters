@@ -381,6 +381,8 @@ public class MoveData {
         public List<StatusEffectData> onHitEffects;
         public boolean reinforcementEligible = false;
         public int reinforcementBonusPower = 0;
+        /** Marks this component's damage as striking the soul rather than the body. */
+        public boolean soulDamage = false;
 
         public HitComponent toHitComponent() {
             return toHitComponent(null);
@@ -410,7 +412,7 @@ public class MoveData {
             List<StatusEffect> effects = toStatusEffects(effectData);
             return new HitComponent(
                 basePower, parsed, delayTicks, requiresPreviousConnection, avoidable,
-                acc, effects, reinforcementEligible, reinforcementBonusPower);
+                acc, effects, reinforcementEligible, reinforcementBonusPower, soulDamage);
         }
 
         public static HitComponentData fromHitComponent(HitComponent component) {
@@ -422,6 +424,7 @@ public class MoveData {
             data.avoidable = component.isAvoidable();
             data.reinforcementEligible = component.isReinforcementEligible();
             data.reinforcementBonusPower = component.getReinforcementBonusPower();
+            data.soulDamage = component.isSoulDamage();
             // Only persist per-hit accuracy when it is actually authored; leaving
             // baseAccuracy at its -1.0 "inherit" default keeps legacy saves clean.
             if (component.hasOwnAccuracy()) {

@@ -53,13 +53,12 @@ public final class AbilityApplicator {
         }
 
         AbilityFlags flags = new AbilityFlags();
-        int progressionMastery = statMode.masteryForProgression(
-            passiveMastery(baseStats, abilities));
+        CharacterStats progressionStats = passiveProgressionStats(baseStats, abilities);
 
         for (Ability ability : abilities == null ? List.<Ability>of() : abilities) {
             if (ability == null) continue;
             if (!ability.isPassive()) {
-                addActiveCeCostAlterations(flags, ability, progressionMastery);
+                addActiveCeCostAlterations(flags, ability, progressionStats, statMode);
                 continue;
             }
             for (AbilityEffectData authored : ability.getEffects()) {
@@ -67,11 +66,10 @@ public final class AbilityApplicator {
                     System.err.println("[WARN] AbilityApplicator: missing ability effect type");
                     continue;
                 }
-                boolean modifiesMastery = StatKey.CURSED_TECHNIQUE_MASTERY.fieldName
-                    .equalsIgnoreCase(authored.stat);
+                boolean modifiesOwnScalingStat = modifiesOwnScalingStat(authored);
                 AbilityEffectData eff = "TECHNIQUE".equalsIgnoreCase(ability.getSourceType())
-                    && !modifiesMastery
-                    ? TechniqueMasteryResolver.resolve(authored, progressionMastery)
+                    && !modifiesOwnScalingStat
+                    ? TechniqueMasteryResolver.resolve(authored, progressionStats, statMode)
                     : authored;
                 AbilityEffectType type;
                 try {
@@ -247,7 +245,8 @@ public final class AbilityApplicator {
     private static void addActiveCeCostAlterations(
         AbilityFlags flags,
         Ability ability,
-        int progressionMastery
+        CharacterStats progressionStats,
+        BattleStatMode statMode
     ) {
         for (AbilityEffectData authored : ability.getEffects()) {
             if (authored == null || authored.type == null) continue;
@@ -256,49 +255,126 @@ public final class AbilityApplicator {
             catch (IllegalArgumentException ignored) { continue; }
             if (type != AbilityEffectType.CE_COST_ALTER) continue;
             AbilityEffectData effect = "TECHNIQUE".equalsIgnoreCase(ability.getSourceType())
-                ? TechniqueMasteryResolver.resolve(authored, progressionMastery) : authored;
+                ? TechniqueMasteryResolver.resolve(authored, progressionStats, statMode)
+                : authored;
             for (AbilityConditionRuleData rule : ability.getActivationConditions()) {
                 if (rule == null || !rule.targetsEffect(authored.effectId)) continue;
                 AbilityConditionData condition = "TECHNIQUE".equalsIgnoreCase(ability.getSourceType())
-                    ? TechniqueMasteryResolver.resolve(rule.condition, progressionMastery)
+                    ? resolveCondition(rule.condition, progressionStats, statMode)
                     : rule.condition;
                 flags.addCeCostAlteration(effect, condition);
             }
         }
     }
 
-    /** Resolve literal passive CTM modifiers before deriving other passive values from CTM. */
-    private static int passiveMastery(CharacterStats baseStats, List<Ability> abilities) {
-        Integer override = null;
-        int addition = 0;
-        double multiplier = 1.0;
+    /**
+     * Resolve literal passive stat modifiers for every core stat so progressions
+     * scale from the same values the passives establish. Mirrors the historical
+     * CTM-only pre-pass: sets, then additions, then multipliers, floored at 0.
+     */
+    private static CharacterStats passiveProgressionStats(
+        CharacterStats baseStats,
+        List<Ability> abilities
+    ) {
+        Map<StatKey, Integer> overrides = new EnumMap<>(StatKey.class);
+        Map<StatKey, Integer> additions = new EnumMap<>(StatKey.class);
+        Map<StatKey, Double> multipliers = new EnumMap<>(StatKey.class);
+        for (StatKey key : StatKey.values()) {
+            additions.put(key, 0);
+            multipliers.put(key, 1.0);
+        }
         for (Ability ability : abilities == null ? List.<Ability>of() : abilities) {
             if (ability == null || !ability.isPassive()) continue;
             for (AbilityEffectData effect : ability.getEffects()) {
                 if (effect == null || effect.type == null
-                    || !StatKey.CURSED_TECHNIQUE_MASTERY.fieldName.equalsIgnoreCase(effect.stat)) {
+                    || effect.stat == null || effect.stat.isBlank()) {
                     continue;
                 }
+                StatKey stat;
+                try { stat = StatKey.fromString(effect.stat); }
+                catch (IllegalArgumentException ignored) { continue; }
                 AbilityEffectType type;
                 try { type = AbilityEffectType.fromName(effect.type); }
                 catch (IllegalArgumentException ignored) { continue; }
                 switch (type) {
-                    case STAT_SET_MIN -> override = 0;
-                    case STAT_SET_VALUE -> override = nvl(effect.intValue, 0);
-                    case STAT_ADD -> addition += nvl(effect.intValue, 0);
-                    case STAT_MULTIPLY -> multiplier *= nvl(effect.doubleValue, 1.0);
+                    case STAT_SET_MIN -> overrides.put(stat, 0);
+                    case STAT_SET_VALUE -> overrides.put(stat, nvl(effect.intValue, 0));
+                    case STAT_ADD -> additions.merge(stat, nvl(effect.intValue, 0), Integer::sum);
+                    case STAT_MULTIPLY -> multipliers.merge(
+                        stat, nvl(effect.doubleValue, 1.0), (left, right) -> left * right);
                     case STAT_DIVIDE -> {
                         double divisor = effect.doubleValue != null && effect.doubleValue != 0
                             ? effect.doubleValue : 1.0;
-                        multiplier /= divisor;
+                        multipliers.merge(stat, 1.0 / divisor,
+                            (left, right) -> left * right);
                     }
                     default -> { }
                 }
             }
         }
-        int starting = override == null
-            ? baseStats.getCursedTechniqueMastery() : override;
-        return Math.max(0, (int) Math.round((starting + addition) * multiplier));
+        return new CharacterStats(
+            passiveStatValue(StatKey.VITALITY, baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.STRENGTH, baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.DURABILITY, baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.SPEED, baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.CURSED_ENERGY_RESERVES,
+                baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.CURSED_ENERGY_EFFICIENCY,
+                baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.CURSED_ENERGY_OUTPUT,
+                baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.JUJUTSU_SKILL,
+                baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.COMBAT_ABILITY,
+                baseStats, overrides, additions, multipliers),
+            passiveStatValue(StatKey.CURSED_TECHNIQUE_MASTERY,
+                baseStats, overrides, additions, multipliers));
+    }
+
+    private static int passiveStatValue(
+        StatKey stat,
+        CharacterStats baseStats,
+        Map<StatKey, Integer> overrides,
+        Map<StatKey, Integer> additions,
+        Map<StatKey, Double> multipliers
+    ) {
+        Integer override = overrides.get(stat);
+        int starting = override == null ? stat.get(baseStats) : override;
+        return Math.max(0, (int) Math.round(
+            (starting + additions.get(stat)) * multipliers.get(stat)));
+    }
+
+    /**
+     * True when an effect modifies a stat its own progression scales with, so
+     * resolving it would feed the effect's own output back into its input.
+     */
+    private static boolean modifiesOwnScalingStat(AbilityEffectData effect) {
+        if (effect == null || effect.stat == null || effect.stat.isBlank()
+            || effect.masteryProgression == null || effect.masteryProgression.isEmpty()) {
+            return false;
+        }
+        StatKey modified;
+        try { modified = StatKey.fromString(effect.stat); }
+        catch (IllegalArgumentException ignored) { return false; }
+        for (com.jjktbf.model.progression.TechniqueMasteryProgressionData progression
+                : effect.masteryProgression.values()) {
+            if (progression != null && progression.effectiveScalingStats().contains(modified)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static AbilityConditionData resolveCondition(
+        AbilityConditionData condition,
+        CharacterStats progressionStats,
+        BattleStatMode statMode
+    ) {
+        if (condition == null || condition.masteryProgression == null
+            || condition.masteryProgression.isEmpty()) {
+            return condition;
+        }
+        return TechniqueMasteryResolver.resolve(condition, progressionStats, statMode);
     }
 
     /** Apply battle-time character-stat effects without the character-editor clamp. */

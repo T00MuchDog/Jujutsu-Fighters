@@ -166,7 +166,7 @@ public class DomainData {
             if (effect == null) throw new IllegalArgumentException(
                 "Null " + channel + " effect at row " + (index + 1));
             AbilityEffectType type = AbilityEffectType.fromName(effect.type);
-            if (type.isMoveOnly()) {
+            if (!type.isDomainProgramEffect()) {
                 throw new IllegalArgumentException(
                     "Move-only effect " + type.displayName() + " cannot be used in a Domain");
             }

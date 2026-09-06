@@ -94,16 +94,38 @@ public final class MoveDescriptionVariables {
         return resolve(move.getDescription(), move.getEffects(), mastery);
     }
 
+    /** Resolves every known token against the move user's selected scaling stats. */
+    public static String resolve(
+        Move move,
+        com.jjktbf.model.combat.BattleCombatant combatant
+    ) {
+        if (move == null) return "";
+        return resolve(move.getDescription(), move.getEffects(), combatant);
+    }
+
     public static String resolve(
         String description,
         List<? extends AbilityEffectData> effects,
-        int mastery
+        com.jjktbf.model.combat.BattleCombatant combatant
     ) {
         if (description == null || description.isEmpty() || effects == null
             || effects.isEmpty()) {
             return description == null ? "" : description;
         }
+        Map<String, String> values = resolvedTokens(description, effects,
+            (effect, field) -> resolvedValue(effect, field, combatant));
+        return substituteTokens(description, values);
+    }
 
+    private interface FieldResolver {
+        String resolve(AbilityEffectData effect, String field);
+    }
+
+    private static Map<String, String> resolvedTokens(
+        String description,
+        List<? extends AbilityEffectData> effects,
+        FieldResolver fieldResolver
+    ) {
         Map<String, AbilityEffectData> effectsById = new LinkedHashMap<>();
         for (AbilityEffectData effect : effects) {
             if (effect != null && effect.effectId != null && !effect.effectId.isBlank()) {
@@ -113,11 +135,14 @@ public final class MoveDescriptionVariables {
         Map<String, String> values = new LinkedHashMap<>();
         for (Variable variable : variables(effects)) {
             AbilityEffectData effect = effectsById.get(normalize(variable.effectId()));
-            String value = resolvedValue(effect, variable.field(), mastery);
+            String value = fieldResolver.resolve(effect, variable.field());
             if (value != null) values.put(normalize(variable.key()), value);
         }
-        if (values.isEmpty()) return description;
+        return values;
+    }
 
+    private static String substituteTokens(String description, Map<String, String> values) {
+        if (values.isEmpty()) return description;
         Matcher matcher = TOKEN_PATTERN.matcher(description);
         StringBuffer resolved = new StringBuffer(description.length());
         while (matcher.find()) {
@@ -127,6 +152,34 @@ public final class MoveDescriptionVariables {
         }
         matcher.appendTail(resolved);
         return resolved.toString();
+    }
+
+    private static String resolvedValue(
+        AbilityEffectData source,
+        String field,
+        com.jjktbf.model.combat.BattleCombatant combatant
+    ) {
+        if (source == null) return null;
+        if (TechniqueMasteryProgressions.ACTIVATION_CHANCE.equals(field)
+            && source instanceof MoveEffectData moveEffect) {
+            return formatPercent(moveEffect.resolvedActivationChance(combatant));
+        }
+        AbilityEffectData resolved = TechniqueMasteryResolver.resolve(source, combatant);
+        return resolvedTokenValue(resolved, source, field);
+    }
+
+    public static String resolve(
+        String description,
+        List<? extends AbilityEffectData> effects,
+        int mastery
+    ) {
+        if (description == null || description.isEmpty() || effects == null
+            || effects.isEmpty()) {
+            return description == null ? "" : description;
+        }
+        Map<String, String> values = resolvedTokens(description, effects,
+            (effect, field) -> resolvedValue(effect, field, mastery));
+        return substituteTokens(description, values);
     }
 
     /** Returns an editor-facing error for a missing or malformed stable effect token. */
@@ -209,6 +262,14 @@ public final class MoveDescriptionVariables {
         }
 
         AbilityEffectData resolved = TechniqueMasteryResolver.resolve(source, mastery);
+        return resolvedTokenValue(resolved, source, field);
+    }
+
+    private static String resolvedTokenValue(
+        AbilityEffectData resolved,
+        AbilityEffectData source,
+        String field
+    ) {
         AbilityEffectType type;
         try {
             type = AbilityEffectType.fromName(source.type);

@@ -326,14 +326,13 @@ public final class MoveAvailability {
         Move move
     ) {
         if (actor == null || move == null || !move.usesUnifiedEffects()) return List.of();
-        int mastery = TechniqueMasteryResolver.masteryOf(actor);
         return move.getEffects().stream()
             .filter(effect -> AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.name()
                 .equalsIgnoreCase(effect.type))
             .filter(effect -> effect.resolvedTrigger() == MoveEffectTrigger.ON_START
                 || effect.resolvedTrigger() == MoveEffectTrigger.ON_FIRE)
-            .filter(effect -> guaranteed(effect, mastery))
-            .map(effect -> TechniqueMasteryResolver.resolve(effect, mastery))
+            .filter(effect -> guaranteed(effect, actor))
+            .map(effect -> TechniqueMasteryResolver.resolve(effect, actor))
             .toList();
     }
 
@@ -348,7 +347,7 @@ public final class MoveAvailability {
                 .equalsIgnoreCase(effect.type))
             .filter(effect -> effect.resolvedTrigger() == MoveEffectTrigger.ON_START
                 || effect.resolvedTrigger() == MoveEffectTrigger.ON_FIRE)
-            .filter(effect -> guaranteed(effect, 0))
+            .filter(effect -> guaranteed(effect, null))
             .map(effect -> (AbilityEffectData) effect)
             .toList();
     }
@@ -366,17 +365,16 @@ public final class MoveAvailability {
         Move move
     ) {
         if (move == null || !move.usesUnifiedEffects()) return List.of();
-        int mastery = actor == null ? 0 : TechniqueMasteryResolver.masteryOf(actor);
         return move.effectsFor(MoveEffectTrigger.ON_START, -1).stream()
             .filter(effect -> AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.name()
                 .equalsIgnoreCase(effect.type))
-            .filter(effect -> guaranteed(effect, mastery))
-            .map(effect -> TechniqueMasteryResolver.resolve(effect, mastery))
+            .filter(effect -> guaranteed(effect, actor))
+            .map(effect -> TechniqueMasteryResolver.resolve(effect, actor))
             .toList();
     }
 
-    private static boolean guaranteed(MoveEffectData effect, int mastery) {
-        return effect.resolvedActivationChance(mastery) >= 1.0
+    private static boolean guaranteed(MoveEffectData effect, BattleCombatant actor) {
+        return effect.resolvedActivationChance(actor) >= 1.0
             && guaranteedCondition(effect.condition);
     }
 

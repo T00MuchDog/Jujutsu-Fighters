@@ -216,6 +216,18 @@ public enum StatusEffectType {
             || this == CURSED_SPEECH_WARD || this == CURSED_ENERGY_PARASITE;
     }
 
+    /**
+     * True when this status represents physical, anatomy-dependent injury —
+     * damage to the body's structure rather than the mind, cursed-energy flow,
+     * or an external restraint. A body that reshapes itself (e.g. Maintaining
+     * the Soul restoring the damage it took) does not keep these once the
+     * associated damage is restored. Mental effects, CE disruption, control
+     * statuses, soul effects, and plain stat debuffs are excluded.
+     */
+    public boolean isBodilyInjury() {
+        return this == BURNED || this == FROZEN || this == POISON;
+    }
+
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */
     public static StatusEffectType fromName(String name) {
         if (name == null || name.isBlank()) {

@@ -82,7 +82,7 @@ public final class AbilityActivationEngine {
             : TechniqueMasteryResolver.resolve(effect.domainCondition, mastery);
         AbilityTrigger trigger = new AbilityTrigger(
             AbilityTrigger.Type.TIMELINE_TICK, owner, target, null, null,
-            0, tick, state.getCurrentPhase(), null, null);
+            0, tick, state.getCurrentPhase(), null, null, false);
         if (!evaluateMoveCondition(
             condition, owner, target, state, trigger, List.of(trigger))) {
             return List.of();
@@ -560,7 +560,8 @@ public final class AbilityActivationEngine {
             state,
             trigger,
             binding -> allowsCodedBinding(
-                binding, owner, enemy, state, trigger, activationCache));
+                binding, owner, enemy, state, trigger, activationCache),
+            rng);
     }
 
     /** Preserve event facts even when a coded runtime does not query its gate yet. */
@@ -961,8 +962,9 @@ public final class AbilityActivationEngine {
                         .componentIndex(effectComponentIndex)
                         .build());
                     if (damage > 0) {
-                        followUps.add(AbilityTrigger.amount(
-                            AbilityTrigger.Type.DAMAGE, owner, target, damage, tick));
+                        followUps.add(AbilityTrigger.damage(
+                            owner, target, damage,
+                            Boolean.TRUE.equals(effect.soulDamage), tick));
                         if (target.removeStatusEffects(StatusEffectType.SLEEP) > 0) {
                             events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
                                 .source(owner).target(target).move(move)
@@ -1294,7 +1296,7 @@ public final class AbilityActivationEngine {
                     effect.masteryProgression);
                 for (BattleCombatant target : targets) {
                     events.addAll(owner.getCodedAbilities().onEffectFired(
-                        state, coded, owner, target, tick));
+                        state, coded, owner, target, tick, rng));
                 }
             }
             case MAX_ACTIVE_SUMMONS, SUMMON_CE_UPKEEP_PER_ACTIVE_TICK,

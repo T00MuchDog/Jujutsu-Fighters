@@ -4,6 +4,7 @@ import com.jjktbf.model.character.coded.CodedAbilityRegistry;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
 import com.jjktbf.model.move.StatusEffectType;
+import com.jjktbf.model.progression.TechniqueMasteryProgressionData;
 import com.jjktbf.model.progression.TechniqueMasteryProgressions;
 import com.jjktbf.model.progression.TechniqueMasteryResolver;
 
@@ -52,6 +53,7 @@ import static com.jjktbf.model.character.AbilityEffectParameter.STAT_OPERATION;
 import static com.jjktbf.model.character.AbilityEffectParameter.ACCURACY_DURATION;
 import static com.jjktbf.model.character.AbilityEffectParameter.CE_DRAIN_MODE;
 import static com.jjktbf.model.character.AbilityEffectParameter.CE_EFFICIENCY_SCALING;
+import static com.jjktbf.model.character.AbilityEffectParameter.SOUL_DAMAGE;
 
 /**
  * Mechanical effects that can be composed into an ability.
@@ -108,7 +110,7 @@ public enum AbilityEffectType {
     CODED_MOVE_ACTION(
         "Coded move effect",
         "Runs an allow-listed compiled effect primitive when its move trigger fires.",
-        CODED_ACTION, TARGET),
+        CODED_ACTION, TARGET, SOUL_DAMAGE),
 
     CE_COST_TO_MINIMUM(
         "Minimum CE costs",
@@ -244,8 +246,8 @@ public enum AbilityEffectType {
         CE_EFFICIENCY_SCALING),
     DEAL_DIRECT_DAMAGE(
         "Deal direct damage",
-        "Immediately deals either fixed damage or a percentage of maximum HP, bypassing accuracy and defense.",
-        TARGET, VALUE_MODE, INTEGER, DECIMAL),
+        "Immediately deals either fixed damage or a percentage of maximum HP, bypassing accuracy and defense. Soul damage also bypasses effects that restore the body.",
+        TARGET, VALUE_MODE, INTEGER, DECIMAL, SOUL_DAMAGE),
     INSTANT_KILL(
         "Instant kill",
         "Immediately reduces the target to 0 HP unless fatal-hit protection is active.",
@@ -601,6 +603,7 @@ public enum AbilityEffectType {
         effect.targetResourceAmount = null;
         effect.masteryProgression = null;
         effect.ceEfficiencyProgression = null;
+        effect.soulDamage = null;
 
         if (uses(STAT)) effect.stat = StatKey.VITALITY.fieldName;
         if (uses(TARGET)) effect.target = AbilityEffectTarget.SELF.name();
@@ -921,6 +924,7 @@ public enum AbilityEffectType {
         if (!uses(SOURCE_RESOURCE_AMOUNT)) effect.sourceResourceAmount = null;
         if (!uses(TARGET_RESOURCE)) effect.targetResourceKey = null;
         if (!uses(TARGET_RESOURCE_AMOUNT)) effect.targetResourceAmount = null;
+        if (!uses(SOUL_DAMAGE)) effect.soulDamage = null;
         if (!uses(BATTLE_STAT, effect) && !uses(TECHNIQUE) && !uses(STATUS_TYPE)) effect.stringValue = null;
         Set<String> allowedProgressions = masteryProgressionFields(effect);
         if (effect.masteryProgression != null) {
@@ -1204,19 +1208,26 @@ public enum AbilityEffectType {
             effect.masteryProgression, masteryProgressionFields(effect));
         if (progressionError != null) return progressionError;
         if (effect.masteryProgression != null && !effect.masteryProgression.isEmpty()) {
-            for (int mastery = 0; mastery <= CharacterStats.MAX_STAT; mastery++) {
+            // Probe the full combined range: a progression driven by several
+            // scaling stats accepts inputs up to MAX_STAT per selected stat,
+            // so a single-stat probe would miss invalid high-input values.
+            int maxInput = effect.masteryProgression.values().stream()
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(TechniqueMasteryProgressionData::maxScalingInput)
+                .max().orElse(CharacterStats.MAX_STAT);
+            for (int input = 0; input <= maxInput; input++) {
                 AbilityEffectData resolved;
                 try {
-                    resolved = TechniqueMasteryResolver.resolve(effect, mastery);
+                    resolved = TechniqueMasteryResolver.resolve(effect, input);
                 } catch (RuntimeException exception) {
-                    return "Invalid mastery progression at CTM " + mastery + ": "
+                    return "Invalid mastery progression at input " + input + ": "
                         + exception.getMessage();
                 }
                 resolved.masteryProgression = null;
                 resolved.ceEfficiencyProgression = null;
                 String error = validationError(resolved);
                 if (error != null) {
-                    return "At CTM " + mastery + ": " + error;
+                    return "At input " + input + ": " + error;
                 }
             }
         }
@@ -1364,6 +1375,16 @@ public enum AbilityEffectType {
             || this == ESTABLISH_DOMAIN
             || isBlockEffectivenessModifier()
             || isMoveAvailabilityConstraint();
+    }
+
+    /**
+     * Whether this primitive may appear in a Domain program row. Coded move
+     * effects are executable Domain sure-hits — the Domain owner's compiled
+     * runtime receives them like a move row — while the remaining move-only
+     * primitives have no Domain meaning.
+     */
+    public boolean isDomainProgramEffect() {
+        return !isMoveOnly() || this == CODED_MOVE_ACTION;
     }
 
     private static void timedDefaults(AbilityEffectData effect) {

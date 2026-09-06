@@ -119,6 +119,9 @@ public final class CodedAbilityRegistry {
             } else if (CursedSpeechAbility.KEY.equals(entry.getKey())) {
                 runtime = new CursedSpeechAbility(
                     owner, entry.getValue(), bindingsByKey.getOrDefault(entry.getKey(), Map.of()));
+            } else if (IdleTransfigurationAbility.KEY.equals(entry.getKey())) {
+                runtime = new IdleTransfigurationAbility(
+                    owner, entry.getValue(), bindingsByKey.getOrDefault(entry.getKey(), Map.of()));
             }
             if (runtime != null) {
                 runtimes.add(new CodedAbilities.RuntimeEntry(
@@ -141,7 +144,9 @@ public final class CodedAbilityRegistry {
             || (TenShadowsAbility.KEY.equals(normalizedKey)
             && TenShadowsAbility.supportsFeature(normalizedFeature))
             || (CursedSpeechAbility.KEY.equals(normalizedKey)
-            && CursedSpeechAbility.supportsFeature(normalizedFeature));
+            && CursedSpeechAbility.supportsFeature(normalizedFeature))
+            || (IdleTransfigurationAbility.KEY.equals(normalizedKey)
+            && IdleTransfigurationAbility.supportsFeature(normalizedFeature));
     }
 
     public static List<AbilityFeature> abilityFeatures() {
@@ -166,7 +171,13 @@ public final class CodedAbilityRegistry {
             new AbilityFeature(CursedSpeechAbility.KEY,
                 CursedSpeechAbility.TECHNIQUE, "Cursed Speech"),
             new AbilityFeature(CursedSpeechAbility.KEY,
-                CursedSpeechAbility.REFINED_COMMANDS, "Refined Commands")
+                CursedSpeechAbility.REFINED_COMMANDS, "Refined Commands"),
+            new AbilityFeature(IdleTransfigurationAbility.KEY,
+                IdleTransfigurationAbility.MAINTAINING_THE_SOUL, "Maintaining the Soul"),
+            new AbilityFeature(IdleTransfigurationAbility.KEY,
+                IdleTransfigurationAbility.MALLEABLE_BODY, "Malleable Body"),
+            new AbilityFeature(IdleTransfigurationAbility.KEY,
+                IdleTransfigurationAbility.SOUL_MANIPULATION, "Soul Manipulation")
         );
     }
 
@@ -207,6 +218,37 @@ public final class CodedAbilityRegistry {
             return List.of(percent(
                 CursedSpeechAbility.SUCCESS_BONUS_PERCENT,
                 "Command success bonus %", 0, 100, 10));
+        }
+        if (IdleTransfigurationAbility.KEY.equals(normalizedKey)) {
+            return switch (normalizedFeature) {
+                case IdleTransfigurationAbility.MAINTAINING_THE_SOUL -> List.of(
+                    integer(IdleTransfigurationAbility.CE_DRAIN_PER_TICK,
+                        "CE upkeep per tick", 0, 99,
+                        IdleTransfigurationAbility.DEFAULT_CE_DRAIN_PER_TICK));
+                case IdleTransfigurationAbility.SOUL_MANIPULATION -> List.of(
+                    percent(IdleTransfigurationAbility.PROC_CHANCE_PERCENT,
+                        "Melee proc chance %", 0, 100,
+                        IdleTransfigurationAbility.DEFAULT_PROC_CHANCE_PERCENT),
+                    percent(IdleTransfigurationAbility.BASE_SUCCESS_PERCENT,
+                        "Base success %", 0, 100,
+                        IdleTransfigurationAbility.DEFAULT_BASE_SUCCESS_PERCENT),
+                    integer(IdleTransfigurationAbility.CTM_SUCCESS_PER_TEN_POINTS,
+                        "Success % per 10 CTM", 0, 99,
+                        IdleTransfigurationAbility.DEFAULT_CTM_SUCCESS_PER_TEN_POINTS),
+                    percent(IdleTransfigurationAbility.SUCCESS_PER_STACK_PERCENT,
+                        "Success % per stack", 0, 100,
+                        IdleTransfigurationAbility.DEFAULT_SUCCESS_PER_STACK_PERCENT),
+                    integer(IdleTransfigurationAbility.RESIST_PER_TEN_CE,
+                        "Success % lost per 10 resisting CE", 0, 99,
+                        IdleTransfigurationAbility.DEFAULT_RESIST_PER_TEN_CE),
+                    percent(IdleTransfigurationAbility.MIN_SUCCESS_PERCENT,
+                        "Minimum success %", 0, 100,
+                        IdleTransfigurationAbility.DEFAULT_MIN_SUCCESS_PERCENT),
+                    percent(IdleTransfigurationAbility.MAX_SUCCESS_PERCENT,
+                        "Maximum success %", 1, 100,
+                        IdleTransfigurationAbility.DEFAULT_MAX_SUCCESS_PERCENT));
+                default -> List.of();
+            };
         }
         return List.of();
     }
@@ -291,7 +333,10 @@ public final class CodedAbilityRegistry {
         if ((RatioAbility.KEY.equals(normalizedKey)
                 && RatioAbility.RATIO_EFFECT.equals(normalizedAction))
             || (CursedSpeechAbility.KEY.equals(normalizedKey)
-                && CursedSpeechAbility.COMMAND.equals(normalizedAction))) {
+                && CursedSpeechAbility.COMMAND.equals(normalizedAction))
+            || (IdleTransfigurationAbility.KEY.equals(normalizedKey)
+                && IdleTransfigurationAbility.ACTION_SOUL_MANIPULATION.equals(
+                    normalizedAction))) {
             return AbilityEffectTarget.ENEMY;
         }
         return AbilityEffectTarget.SELF;
@@ -316,7 +361,10 @@ public final class CodedAbilityRegistry {
                 && RatioAbility.RATIO_EFFECT.equals(normalizedAction)
                 && RatioAbility.APPLY_TO_MOVE.equals(normalizedTarget))
             || (CursedSpeechAbility.KEY.equals(normalizedKey)
-                && CursedSpeechAbility.COMMAND.equals(normalizedAction))) {
+                && CursedSpeechAbility.COMMAND.equals(normalizedAction))
+            || (IdleTransfigurationAbility.KEY.equals(normalizedKey)
+                && IdleTransfigurationAbility.ACTION_SOUL_MANIPULATION.equals(
+                    normalizedAction))) {
             return trigger == MoveEffectTrigger.ON_HIT;
         }
         return trigger == MoveEffectTrigger.ON_FIRE || trigger == MoveEffectTrigger.ON_HIT
@@ -376,7 +424,10 @@ public final class CodedAbilityRegistry {
             || (ShikigamiMoveRuntime.KEY.equals(normalizedKey)
             && ShikigamiMoveRuntime.DESUMMON_SELF.equals(normalizedAction))
             || (CursedSpeechAbility.KEY.equals(normalizedKey)
-            && CursedSpeechAbility.COMMAND.equals(normalizedAction));
+                && CursedSpeechAbility.COMMAND.equals(normalizedAction))
+            || (IdleTransfigurationAbility.KEY.equals(normalizedKey)
+                && IdleTransfigurationAbility.ACTION_SOUL_MANIPULATION.equals(
+                    normalizedAction));
     }
 
     public static boolean supportsEffect(
@@ -423,7 +474,10 @@ public final class CodedAbilityRegistry {
             new EffectAction(ShikigamiMoveRuntime.KEY,
                 ShikigamiMoveRuntime.DESUMMON_SELF, "Desummon self"),
             new EffectAction(CursedSpeechAbility.KEY,
-                CursedSpeechAbility.COMMAND, "Cursed Speech command")
+                CursedSpeechAbility.COMMAND, "Cursed Speech command"),
+            new EffectAction(IdleTransfigurationAbility.KEY,
+                IdleTransfigurationAbility.ACTION_SOUL_MANIPULATION,
+                "Attempt Soul Manipulation")
         );
     }
 

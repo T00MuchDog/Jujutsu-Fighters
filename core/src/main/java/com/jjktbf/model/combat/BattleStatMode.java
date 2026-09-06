@@ -51,7 +51,12 @@ public enum BattleStatMode {
      * battles. Equalized battles use the fully scaled and blended runtime CTM.
      */
     public int masteryForProgression(int rawEffectiveMastery) {
-        return this == STANDARD ? rawEffectiveMastery : scale(rawEffectiveMastery);
+        return statForProgression(rawEffectiveMastery);
+    }
+
+    /** Same progression policy applied to any scaling stat, not only CTM. */
+    public int statForProgression(int rawEffectiveStat) {
+        return this == STANDARD ? rawEffectiveStat : scale(rawEffectiveStat);
     }
 
     public static BattleStatMode fromRuleset(String rulesetId) {

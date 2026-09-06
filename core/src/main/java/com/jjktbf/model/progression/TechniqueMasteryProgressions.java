@@ -94,6 +94,21 @@ public final class TechniqueMasteryProgressions {
         return progressions == null || field == null ? null : progressions.get(field);
     }
 
+    /** Largest combined input any progression in the map can receive. */
+    public static int maxScalingInput(
+        Map<String, TechniqueMasteryProgressionData> progressions
+    ) {
+        int max = 0;
+        if (progressions != null) {
+            for (TechniqueMasteryProgressionData progression : progressions.values()) {
+                if (progression != null) {
+                    max = Math.max(max, progression.maxScalingInput());
+                }
+            }
+        }
+        return max == 0 ? com.jjktbf.model.character.CharacterStats.MAX_STAT : max;
+    }
+
     public static String validationError(
         Map<String, TechniqueMasteryProgressionData> progressions,
         Set<String> allowedFields

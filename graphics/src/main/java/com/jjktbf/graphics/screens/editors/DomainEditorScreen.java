@@ -50,7 +50,7 @@ public final class DomainEditorScreen extends EditorScreenBase<DomainData> {
     private static final List<AbilityEffectType> DOMAIN_EFFECT_TYPES = Arrays.stream(
             AbilityEffectType.values())
         .filter(AbilityEffectType::requiresActivation)
-        .filter(type -> !type.isMoveOnly())
+        .filter(AbilityEffectType::isDomainProgramEffect)
         .toList();
 
     private final DomainRepository repo;

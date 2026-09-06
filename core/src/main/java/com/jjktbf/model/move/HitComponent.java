@@ -28,6 +28,7 @@ public final class HitComponent {
     private final boolean reinforcementEligible;
     private final int reinforcementBonusPower;
     private final boolean activelyReinforced;
+    private final boolean soulDamage;
     private final HitComponent authoredComponent;
 
     public HitComponent(
@@ -67,7 +68,39 @@ public final class HitComponent {
     ) {
         this(basePower, tags, delayTicks, requiresPreviousConnection, avoidable,
             baseAccuracy, onHitEffects, reinforcementEligible, reinforcementBonusPower,
-            false, null);
+            false, false, null);
+    }
+
+    /** Authoring constructor that additionally marks the damage as soul damage. */
+    public HitComponent(
+        int basePower,
+        Set<MoveTag> tags,
+        int delayTicks,
+        boolean requiresPreviousConnection,
+        boolean avoidable,
+        double baseAccuracy,
+        List<StatusEffect> onHitEffects,
+        boolean reinforcementEligible,
+        int reinforcementBonusPower,
+        boolean soulDamage
+    ) {
+        this(basePower, tags, delayTicks, requiresPreviousConnection, avoidable,
+            baseAccuracy, onHitEffects, reinforcementEligible, reinforcementBonusPower,
+            soulDamage, false, null);
+    }
+
+    /**
+     * Component whose damage strikes the soul directly. Soul damage bypasses
+     * mechanics that restore or reshape the body.
+     */
+    public HitComponent(
+        int basePower,
+        Set<MoveTag> tags,
+        double baseAccuracy,
+        boolean soulDamage
+    ) {
+        this(basePower, tags, 0, false, true,
+            baseAccuracy, null, false, 0, soulDamage, false, null);
     }
 
     private HitComponent(
@@ -80,6 +113,7 @@ public final class HitComponent {
         List<StatusEffect> onHitEffects,
         boolean reinforcementEligible,
         int reinforcementBonusPower,
+        boolean soulDamage,
         boolean activelyReinforced,
         HitComponent authoredComponent
     ) {
@@ -121,6 +155,7 @@ public final class HitComponent {
             : Collections.unmodifiableList(new ArrayList<>(onHitEffects));
         this.reinforcementEligible = reinforcementEligible;
         this.reinforcementBonusPower = reinforcementBonusPower;
+        this.soulDamage = soulDamage;
         this.activelyReinforced = activelyReinforced;
         this.authoredComponent = authoredComponent;
     }
@@ -156,6 +191,8 @@ public final class HitComponent {
     public boolean isRanged() { return hasTag(MoveTag.RANGED); }
     public boolean isGuardBreak() { return hasTag(MoveTag.GUARD_BREAK); }
     public boolean isIntangible() { return hasTag(MoveTag.INTANGIBLE); }
+    /** True when this component's damage strikes the soul rather than the body. */
+    public boolean isSoulDamage() { return soulDamage; }
 
     /**
      * Per-hit base accuracy as a fraction [0.0, 1.0], or
@@ -186,7 +223,8 @@ public final class HitComponent {
         return new HitComponent(
             Math.addExact(basePower, reinforcementBonusPower), effectiveTags, delayTicks,
             requiresPreviousConnection, avoidable, baseAccuracy, onHitEffects,
-            reinforcementEligible, reinforcementBonusPower, true, getAuthoredComponent());
+            reinforcementEligible, reinforcementBonusPower, soulDamage, true,
+            getAuthoredComponent());
     }
 
     private static Set<MoveTag> damageTags(MoveCategory category) {

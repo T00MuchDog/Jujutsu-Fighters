@@ -256,16 +256,19 @@ public enum AbilityConditionType {
             condition.masteryProgression, type.masteryProgressionFields());
         if (progressionError != null) return path + ": " + progressionError;
         if (condition.masteryProgression != null && !condition.masteryProgression.isEmpty()) {
-            for (int mastery = 0; mastery <= CharacterStats.MAX_STAT; mastery++) {
+            int maxScalingInput = TechniqueMasteryProgressions.maxScalingInput(
+                condition.masteryProgression);
+            for (int scalingValue = 0; scalingValue <= maxScalingInput; scalingValue++) {
                 AbilityConditionData resolved;
                 try {
-                    resolved = TechniqueMasteryResolver.resolve(condition, mastery);
+                    resolved = TechniqueMasteryResolver.resolve(condition, scalingValue);
                 } catch (RuntimeException exception) {
-                    return path + " has invalid mastery progression at CTM " + mastery + ".";
+                    return path + " has invalid stat progression at scaling value "
+                        + scalingValue + ".";
                 }
                 resolved.masteryProgression = null;
                 String error = validationError(resolved, path);
-                if (error != null) return "At CTM " + mastery + ": " + error;
+                if (error != null) return "At scaling value " + scalingValue + ": " + error;
             }
         }
         return null;

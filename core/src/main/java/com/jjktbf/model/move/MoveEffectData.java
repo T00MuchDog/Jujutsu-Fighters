@@ -90,6 +90,15 @@ public class MoveEffectData extends AbilityEffectData {
             mastery);
     }
 
+    /** Activation chance resolved against the owner's selected scaling stats. */
+    public double resolvedActivationChance(com.jjktbf.model.combat.BattleCombatant owner) {
+        return TechniqueMasteryResolver.resolvePercent(
+            activationMasteryProgression,
+            TechniqueMasteryProgressions.ACTIVATION_CHANCE,
+            effectiveActivationChance(),
+            owner);
+    }
+
     public boolean matches(MoveEffectTrigger expected, int componentIndex) {
         if (expected == null || resolvedTrigger() != expected) return false;
         return expected != MoveEffectTrigger.ON_HIT
@@ -261,15 +270,19 @@ public class MoveEffectData extends AbilityEffectData {
             String progressionError = TechniqueMasteryProgressions.validationError(
                 activationMasteryProgression, allowed);
             if (progressionError != null) return progressionError;
-            for (int mastery = 0; mastery <= CharacterStats.MAX_STAT; mastery++) {
+            int maxScalingInput = TechniqueMasteryProgressions.maxScalingInput(
+                activationMasteryProgression);
+            for (int scalingValue = 0; scalingValue <= maxScalingInput; scalingValue++) {
                 double chance;
                 try {
-                    chance = resolvedActivationChance(mastery);
+                    chance = resolvedActivationChance(scalingValue);
                 } catch (RuntimeException exception) {
-                    return "Invalid activation chance progression at CTM " + mastery + ".";
+                    return "Invalid activation chance progression at scaling value "
+                        + scalingValue + ".";
                 }
                 if (chance < 0.0 || chance > 1.0) {
-                    return "Activation chance is outside 0%-100% at CTM " + mastery + ".";
+                    return "Activation chance is outside 0%-100% at scaling value "
+                        + scalingValue + ".";
                 }
             }
         }

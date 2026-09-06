@@ -164,7 +164,7 @@ public final class MiraclesAbility implements CodedAbilityRuntime {
         List<CodedAbilityBinding> bindings = bindingsByFeature.getOrDefault(feature, List.of());
         if (bindings.isEmpty() || bindings.get(0).effect() == null) return fallback;
         var resolved = TechniqueMasteryResolver.resolve(
-            bindings.get(0).effect(), TechniqueMasteryResolver.masteryOf(owner));
+            bindings.get(0).effect(), owner);
         return TechniqueMasteryResolver.codedParameter(
             resolved.codedParameters, parameter, fallback);
     }

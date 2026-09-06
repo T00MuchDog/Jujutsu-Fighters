@@ -53,6 +53,7 @@ public class ArchetypeAIStrategy implements AIStrategy {
     private static final String RATIO = "Ratio";
     private static final String BLOOD_MANIPULATION = "Blood Manipulation";
     private static final String DISASTER_PLANTS = "Disaster Plants";
+    private static final String IDLE_TRANSFIGURATION = "Idle Transfiguration";
 
     private final GreedyAIStrategy sorcererStrategy = new GreedyAIStrategy();
     private final ShikigamiAIStrategy shikigamiStrategy = new ShikigamiAIStrategy();
@@ -63,6 +64,8 @@ public class ArchetypeAIStrategy implements AIStrategy {
     private final RatioAIStrategy ratioStrategy = new RatioAIStrategy();
     private final BloodManipulationAIStrategy bloodManipulationStrategy = new BloodManipulationAIStrategy();
     private final HanamiAIStrategy hanamiStrategy = new HanamiAIStrategy();
+    private final IdleTransfigurationAIStrategy idleTransfigurationStrategy =
+        new IdleTransfigurationAIStrategy();
 
     /** Hardcoded archetype assignment for the final technique-less sorcerer roster. */
     private static final Set<String> AGGRESSIVE_IDS = Set.of("000003", "000005"); // Yuji Itadori, Maki Zenin
@@ -172,6 +175,9 @@ public class ArchetypeAIStrategy implements AIStrategy {
         if (DISASTER_PLANTS.equalsIgnoreCase(character.getInnateTechniqueName())) {
             return hanamiStrategy.buildPlan(state, ai, rng); // state-aware Flower Offering
         }
+        if (IDLE_TRANSFIGURATION.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            return idleTransfigurationStrategy.buildPlan(state, ai, rng); // state-aware soul economy
+        }
         return sorcererStrategy.selectPlan(ai, opponent, rng);
     }
 
@@ -222,6 +228,10 @@ public class ArchetypeAIStrategy implements AIStrategy {
         }
         if (DISASTER_PLANTS.equalsIgnoreCase(character.getInnateTechniqueName())) {
             return hanamiStrategy.selectPlan(ai, opponent, rng);
+        }
+        if (IDLE_TRANSFIGURATION.equalsIgnoreCase(character.getInnateTechniqueName())) {
+            // No state here: degrade to single-opponent Idle Transfiguration planning.
+            return idleTransfigurationStrategy.selectPlan(ai, opponent, rng);
         }
         return sorcererStrategy.selectPlan(ai, opponent, rng);
     }

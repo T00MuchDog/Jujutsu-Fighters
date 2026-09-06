@@ -534,7 +534,8 @@ public final class ContentCatalog implements BattleCharacterLookup, DomainDefini
                 ? List.<String>of() : definition.availableDomainIds) {
                 DomainData domain = domainDataById.get(domainId);
                 if (domain != null && !domain.antiDomain && !TechniqueSkillTree.allowsDomain(
-                    techniqueDefinitions, domain.requiredTechniqueName, domain.id, definition)) {
+                    techniqueDefinitions, moveDefinitions, domain.requiredTechniqueName,
+                    domain.id, definition)) {
                     throw invalid(CHARACTERS_RESOURCE, "character " + definition.id
                         + " does not meet technique-tree prerequisites for Domain " + domain.id);
                 }

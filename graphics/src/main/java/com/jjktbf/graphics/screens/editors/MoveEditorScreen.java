@@ -322,6 +322,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         copy.onHitEffects = copyEffectListOrNull(source.onHitEffects);
         copy.reinforcementEligible = source.reinforcementEligible;
         copy.reinforcementBonusPower = source.reinforcementBonusPower;
+        copy.soulDamage = source.soulDamage;
         return copy;
     }
 
@@ -1663,6 +1664,17 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                         .growX().row();
                 }
             }
+
+            CheckBox soulDamage = new CheckBox(" Soul damage", skin);
+            soulDamage.setChecked(component.soulDamage);
+            soulDamage.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    game.audio().play(SoundCue.UI_TOGGLE);
+                    component.soulDamage = soulDamage.isChecked();
+                    markDirty();
+                }
+            });
+            card.add(soulDamage).left().row();
 
             card.add(new Label("Attack Tags", skin)).padTop(3f).row();
             card.add(buildHitComponentTagToggles(d, component)).growX().row();

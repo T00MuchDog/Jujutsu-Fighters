@@ -19,52 +19,62 @@ public enum StatKey {
     VITALITY(
         "vitality",
         "Vitality",
-        "vitality", "vit"
+        "vitality", "vit",
+        "vit"
     ),
     STRENGTH(
         "strength",
         "Strength",
-        "strength", "str"
+        "strength", "str",
+        "str"
     ),
     DURABILITY(
         "durability",
         "Durability",
-        "durability", "dur"
+        "durability", "dur",
+        "dur"
     ),
     SPEED(
         "speed",
         "Speed",
-        "speed", "spd"
+        "speed", "spd",
+        "spd"
     ),
     COMBAT_ABILITY(
         "combatAbility",
         "Combat Ability",
-        "combatability", "ca"
+        "combatability", "ca",
+        "ca"
     ),
     CURSED_ENERGY_RESERVES(
         "cursedEnergyReserves",
         "Cursed Energy Reserves",
-        "cursedenergyreserves", "cereserves", "cer"
+        "cursedenergyreserves", "cereserves", "cer",
+        "ceres"
     ),
     CURSED_ENERGY_EFFICIENCY(
         "cursedEnergyEfficiency",
         "Cursed Energy Efficiency",
-        "cursedenergyefficiency", "ceefficiency", "ceeff"
+        "cursedenergyefficiency", "ceefficiency", "ceeff",
+        "cee"
     ),
     CURSED_ENERGY_OUTPUT(
         "cursedEnergyOutput",
         "Cursed Energy Output",
-        "cursedenergyoutput", "ceoutput", "ceo"
+        "cursedenergyoutput", "ceoutput", "ceo",
+        "ceout"
     ),
     JUJUTSU_SKILL(
         "jujutsuSkill",
         "Jujutsu Skill",
-        "jujutsuskill", "js"
+        "jujutsuskill", "js",
+        "js"
     ),
     CURSED_TECHNIQUE_MASTERY(
         "cursedTechniqueMastery",
         "Cursed Technique Mastery",
-        "cursedtechniquemastery", "ctmastery", "ctm"
+        "cursedtechniquemastery", "ctmastery", "ctm",
+        "ctm"
     );
 
     /** The camelCase field name used in CharacterData (JSON DTO). */
@@ -73,13 +83,32 @@ public enum StatKey {
     /** Human-readable label for display in editors and UI. */
     public final String label;
 
+    /**
+     * Variable name this stat uses inside scaling formulas. Distinct from the
+     * alias list because it is authored inside formula expressions, not looked
+     * up by name.
+     */
+    public final String formulaVariable;
+
     /** Normalised aliases (all lowercase, no spaces or underscores) for string lookup. */
     private final String[] aliases;
 
-    StatKey(String fieldName, String label, String... aliases) {
+    StatKey(String fieldName, String label, String[] aliases, String formulaVariable) {
         this.fieldName = fieldName;
         this.label     = label;
         this.aliases   = aliases;
+        this.formulaVariable = formulaVariable;
+    }
+
+    StatKey(String fieldName, String label, String firstAlias, String secondAlias,
+            String formulaVariable) {
+        this(fieldName, label, new String[] {firstAlias, secondAlias}, formulaVariable);
+    }
+
+    StatKey(String fieldName, String label, String firstAlias, String secondAlias,
+            String thirdAlias, String formulaVariable) {
+        this(fieldName, label, new String[] {firstAlias, secondAlias, thirdAlias},
+            formulaVariable);
     }
 
     // =========================================================================

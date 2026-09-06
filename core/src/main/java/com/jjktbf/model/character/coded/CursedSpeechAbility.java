@@ -93,8 +93,7 @@ public final class CursedSpeechAbility implements CodedAbilityRuntime {
         }
         if (authored == null) return CodedHitModifiers.none();
 
-        StatusEffect command = TechniqueMasteryResolver.resolve(
-            authored, TechniqueMasteryResolver.masteryOf(owner));
+        StatusEffect command = TechniqueMasteryResolver.resolve(authored, owner);
         int baseChance = TechniqueMasteryResolver.codedParameter(
             command.getCodedParameters(), BASE_CHANCE_PERCENT, 0);
         int baseRecoil = TechniqueMasteryResolver.codedParameter(
@@ -213,7 +212,7 @@ public final class CursedSpeechAbility implements CodedAbilityRuntime {
         List<CodedAbilityBinding> bindings = bindingsByFeature.getOrDefault(feature, List.of());
         if (bindings.isEmpty() || bindings.get(0).effect() == null) return fallback;
         var resolved = TechniqueMasteryResolver.resolve(
-            bindings.get(0).effect(), TechniqueMasteryResolver.masteryOf(owner));
+            bindings.get(0).effect(), owner);
         return TechniqueMasteryResolver.codedParameter(
             resolved.codedParameters, parameter, fallback);
     }

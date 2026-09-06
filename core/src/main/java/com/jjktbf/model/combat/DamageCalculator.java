@@ -227,7 +227,7 @@ public final class DamageCalculator {
         // to stop an attack. With no authored tiers, legacy dodge/accuracy rules
         // continue unchanged.
         int neverMissTier = Math.max(
-            move.getNeverMissTier(TechniqueMasteryResolver.masteryOf(attacker)),
+            move.getNeverMissTier(attacker),
             Math.max(attacker.getAbilityFlags().neverMissTierFor(move),
                 temporaryNeverMissTier));
         int neverHitTier = Math.max(defender.getAbilityFlags().neverHitTierFor(move),
@@ -242,8 +242,7 @@ public final class DamageCalculator {
                     currentTick, move, component, com.jjktbf.model.move.DefenseType.DODGE,
                     requireFiredDefense);
                 if (dodgeSeg != null) {
-                    int dodgeTier = dodgeSeg.getMove().getNeverHitTier(
-                        TechniqueMasteryResolver.masteryOf(defender));
+                    int dodgeTier = dodgeSeg.getMove().getNeverHitTier(defender);
                     boolean canAvoid = neverMissTier == 0 || dodgeTier > neverMissTier;
                     int chance = Math.max(0, Math.min(100, dodgeSeg.getMove().getDodgeChance()));
                     if (canAvoid) {

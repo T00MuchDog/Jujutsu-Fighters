@@ -940,6 +940,17 @@ public class EffectListEditor extends Table {
             effect.target = AbilityEffectTarget.SELF.name();
         }
 
+        if (type.uses(AbilityEffectParameter.SOUL_DAMAGE)) {
+            CheckBox soulDamage = new CheckBox(" Soul damage", skin);
+            soulDamage.setChecked(Boolean.TRUE.equals(effect.soulDamage));
+            soulDamage.addListener(new ChangeListener() {
+                @Override public void changed(ChangeEvent event, Actor actor) {
+                    effect.soulDamage = soulDamage.isChecked() ? true : null;
+                }
+            });
+            addRow(fields, "Contact", soulDamage);
+        }
+
         if (type.uses(AbilityEffectParameter.TIMING)) {
             SelectBox<String> timingBox = new DynamicSelectBox<>(skin, uiProfile);
             timingBox.setItems(

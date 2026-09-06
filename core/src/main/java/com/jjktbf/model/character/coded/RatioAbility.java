@@ -127,8 +127,7 @@ public final class RatioAbility implements CodedAbilityRuntime {
             directEffect = ratioMoveEffect(component.getOnHitEffects());
             if (directEffect == null) directEffect = ratioMoveEffect(move.getSelfEffects());
         }
-        directEffect = TechniqueMasteryResolver.resolve(
-            directEffect, TechniqueMasteryResolver.masteryOf(owner));
+        directEffect = TechniqueMasteryResolver.resolve(directEffect, owner);
         int directChance = directEffect == null ? 0 : TechniqueMasteryResolver.codedParameter(
             directEffect.getCodedParameters(), TRIGGER_CHANCE_PERCENT, 100);
         boolean directRatio = directEffect != null && (directChance >= 100
@@ -302,7 +301,7 @@ public final class RatioAbility implements CodedAbilityRuntime {
         List<CodedAbilityBinding> bindings = bindingsByFeature.getOrDefault(feature, List.of());
         if (bindings.isEmpty() || bindings.get(0).effect() == null) return fallback;
         var resolved = TechniqueMasteryResolver.resolve(
-            bindings.get(0).effect(), TechniqueMasteryResolver.masteryOf(owner));
+            bindings.get(0).effect(), owner);
         return TechniqueMasteryResolver.codedParameter(
             resolved.codedParameters, parameter, fallback);
     }

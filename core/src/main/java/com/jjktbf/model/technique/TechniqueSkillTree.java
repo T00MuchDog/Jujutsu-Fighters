@@ -131,12 +131,17 @@ public final class TechniqueSkillTree {
             }
         }
         for (DomainData domain : expectedDomains.values()) {
-            if (!retainedContent.contains(contentKey(SkillTreeNodeData.DOMAIN, domain.id))) {
-                technique.skillTree.add(newNode(technique, SkillTreeNodeData.DOMAIN,
-                    domain.id, statPrerequisites(domain.prerequisites)));
-                retainedContent.add(contentKey(SkillTreeNodeData.DOMAIN, domain.id));
-                changed = true;
+            if (retainedContent.contains(contentKey(SkillTreeNodeData.DOMAIN, domain.id))) {
+                continue;
             }
+            // A Domain opened by one of the technique's own moves is already
+            // represented by that move's node; a second, Domain-typed node would
+            // only duplicate the same unlock.
+            if (openedByTechniqueMove(domain.id, expectedMoves.values())) continue;
+            technique.skillTree.add(newNode(technique, SkillTreeNodeData.DOMAIN,
+                domain.id, statPrerequisites(domain.prerequisites)));
+            retainedContent.add(contentKey(SkillTreeNodeData.DOMAIN, domain.id));
+            changed = true;
         }
 
         Set<String> validNodeIds = technique.skillTree.stream()
@@ -334,11 +339,42 @@ public final class TechniqueSkillTree {
         String domainId,
         CharacterData character
     ) {
+        return allowsDomain(techniques, null, requiredTechnique, domainId, character);
+    }
+
+    /**
+     * Domain access gate. A Domain either has its own DOMAIN node or, when the
+     * technique opens it with a move of its own, is gated by that move's node.
+     */
+    public static boolean allowsDomain(
+        List<InnateTechniqueData> techniques,
+        List<MoveData> moves,
+        String requiredTechnique,
+        String domainId,
+        CharacterData character
+    ) {
         if (techniques == null || requiredTechnique == null || domainId == null) return true;
         InnateTechniqueData technique = techniqueByName(techniques, requiredTechnique);
         if (technique == null) return false;
         SkillTreeNodeData node = nodeForContent(technique, SkillTreeNodeData.DOMAIN, domainId);
-        return node != null && isActive(node, character) && isUnlocked(technique, node, character);
+        if (node != null) {
+            return isActive(node, character) && isUnlocked(technique, node, character);
+        }
+        // No DOMAIN node: the technique's opening move represents the Domain.
+        if (moves == null || technique.skillTree == null) return false;
+        for (SkillTreeNodeData moveNode : technique.skillTree) {
+            if (moveNode == null
+                || !SkillTreeNodeData.MOVE.equalsIgnoreCase(moveNode.contentType)) {
+                continue;
+            }
+            MoveData move = moves.stream()
+                .filter(candidate -> moveNode.contentId != null
+                    && moveNode.contentId.equals(candidate.id))
+                .findFirst().orElse(null);
+            if (move == null || !openedByTechniqueMove(domainId, List.of(move))) continue;
+            return isActive(moveNode, character) && isUnlocked(technique, moveNode, character);
+        }
+        return false;
     }
 
     /** Remove active descendants whose node prerequisites are no longer met. */
@@ -506,6 +542,27 @@ public final class TechniqueSkillTree {
 
     private static String contentKey(String type, String id) {
         return String.valueOf(type).toUpperCase(Locale.ROOT) + ":" + id;
+    }
+
+    /** True when one of the technique's moves establishes the given Domain. */
+    public static boolean openedByTechniqueMove(
+        String domainId,
+        java.util.Collection<MoveData> techniqueMoves
+    ) {
+        if (domainId == null || techniqueMoves == null) return false;
+        for (MoveData move : techniqueMoves) {
+            if (move == null || move.effects == null) continue;
+            for (com.jjktbf.model.move.MoveEffectData effect : move.effects) {
+                if (effect != null
+                    && com.jjktbf.model.character.AbilityEffectType.ESTABLISH_DOMAIN.name()
+                        .equalsIgnoreCase(effect.type)
+                    && effect.domainId != null
+                    && domainId.equals(effect.domainId.trim())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static boolean techniqueMatches(String techniqueName, String reference) {

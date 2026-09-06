@@ -43,10 +43,23 @@ public final class CodedAbilities {
         AbilityTrigger trigger,
         Predicate<CodedAbilityBinding> activationGate
     ) {
+        return onTrigger(state, trigger, activationGate, null);
+    }
+
+    /** Trigger dispatch that additionally supplies the battle randomness. */
+    public List<CombatEvent> onTrigger(
+        BattleState state,
+        AbilityTrigger trigger,
+        Predicate<CodedAbilityBinding> activationGate,
+        RandomSource rng
+    ) {
         List<CombatEvent> events = new ArrayList<>();
         for (RuntimeEntry entry : runtimes) {
-            events.addAll(entry.runtime().onTrigger(
-                state, trigger, featureGate(entry, activationGate)));
+            events.addAll(rng == null
+                ? entry.runtime().onTrigger(
+                    state, trigger, featureGate(entry, activationGate))
+                : entry.runtime().onTrigger(
+                    state, trigger, featureGate(entry, activationGate), rng));
         }
         return events;
     }
@@ -63,9 +76,24 @@ public final class CodedAbilities {
         BattleCombatant defender,
         int tick
     ) {
+        return onEffectFired(state, effect, attacker, defender, tick, null);
+    }
+
+    /** Coded-row dispatch that additionally supplies the battle randomness. */
+    public List<CombatEvent> onEffectFired(
+        BattleState state,
+        StatusEffect effect,
+        BattleCombatant attacker,
+        BattleCombatant defender,
+        int tick,
+        RandomSource rng
+    ) {
         List<CombatEvent> events = new ArrayList<>();
         for (RuntimeEntry entry : runtimes) {
-            events.addAll(entry.runtime().onEffectFired(state, effect, attacker, defender, tick));
+            events.addAll(rng == null
+                ? entry.runtime().onEffectFired(state, effect, attacker, defender, tick)
+                : entry.runtime().onEffectFired(
+                    state, effect, attacker, defender, tick, rng));
         }
         return events;
     }

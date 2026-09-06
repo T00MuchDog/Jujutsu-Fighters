@@ -477,8 +477,8 @@ public class CombatResolver {
                         + type.displayName() + "!")
                 .build());
             if (applied > 0) {
-                events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
-                    AbilityTrigger.Type.DAMAGE, combatant, combatant, applied, tick)));
+                events.addAll(abilityActivations.process(state, AbilityTrigger.damage(
+                    combatant, combatant, applied, false, tick)));
                 wakeFromSleep(state, combatant, combatant, null, -1, tick, events);
             }
             events.addAll(state.domainBattlefield().onOwnerHealthChanged(
@@ -2043,11 +2043,11 @@ public class CombatResolver {
         }
         events.addAll(state.domainBattlefield().onOwnerHitDamage(
             state, defender, appliedDamage, abilityActivations::executeDomainEffect, tick));
-        events.addAll(abilityActivations.process(state, AbilityTrigger.move(
-            AbilityTrigger.Type.ATTACK_HIT, attacker, defender, move, tick)));
+        events.addAll(abilityActivations.process(state, AbilityTrigger.attackHit(
+            attacker, defender, move, component, tick)));
         if (appliedDamage > 0) {
-            events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
-                AbilityTrigger.Type.DAMAGE, attacker, defender, appliedDamage, tick)));
+            events.addAll(abilityActivations.process(state, AbilityTrigger.damage(
+                attacker, defender, appliedDamage, component.isSoulDamage(), tick)));
             wakeFromSleep(state, attacker, defender, move, componentIndex, tick, events);
         }
 
@@ -2411,8 +2411,7 @@ public class CombatResolver {
         List<CombatEvent> events
     ) {
         for (StatusEffect authored : component.getOnHitEffects()) {
-            StatusEffect effect = TechniqueMasteryResolver.resolve(
-                authored, TechniqueMasteryResolver.masteryOf(attacker));
+            StatusEffect effect = TechniqueMasteryResolver.resolve(authored, attacker);
             // A summon on-hit row enqueues a shikigami onto the attacker's team
             // when the hit connects (mirrors the unleash-time summon path).
             if (effect.isSummon()) {
@@ -2429,7 +2428,7 @@ public class CombatResolver {
                         state, attacker, defender, move, effect, componentIndex, tick, events);
                 } else {
                     events.addAll(attacker.getCodedAbilities().onEffectFired(
-                        state, effect, attacker, defender, tick));
+                        state, effect, attacker, defender, tick, rng));
                 }
                 continue;
             }
@@ -2603,8 +2602,7 @@ public class CombatResolver {
         List<CombatEvent> events
     ) {
         for (StatusEffect authored : move.getSelfEffects()) {
-            StatusEffect effect = TechniqueMasteryResolver.resolve(
-                authored, TechniqueMasteryResolver.masteryOf(combatant));
+            StatusEffect effect = TechniqueMasteryResolver.resolve(authored, combatant);
             // A summon self row enqueues a shikigami onto the wielder's team at
             // unleash (equivalent to the legacy summonCharacterId field, now
             // expressed as an editable effect row).
@@ -2619,7 +2617,7 @@ public class CombatResolver {
             // behaviour is stored on an editable effect row.
             if (effect.isCoded()) {
                 events.addAll(combatant.getCodedAbilities().onEffectFired(
-                    state, effect, combatant, defender, tick));
+                    state, effect, combatant, defender, tick, rng));
                 continue;
             }
             int previousMaxHp = combatant.getMaxHp();
@@ -2672,8 +2670,7 @@ public class CombatResolver {
             state, defender, attacker, move, trigger, tick, events, incomingExecution);
         if (effects == null || effects.isEmpty()) return;
         for (StatusEffect authored : effects) {
-            StatusEffect effect = TechniqueMasteryResolver.resolve(
-                authored, TechniqueMasteryResolver.masteryOf(defender));
+            StatusEffect effect = TechniqueMasteryResolver.resolve(authored, defender);
             // A summon on-defense row enqueues a shikigami onto the defender's
             // team when their defense resolves the incoming attack.
             if (effect.isSummon()) {
@@ -2683,7 +2680,7 @@ public class CombatResolver {
             }
             if (effect.isCoded()) {
                 events.addAll(defender.getCodedAbilities().onEffectFired(
-                    state, effect, defender, attacker, tick));
+                    state, effect, defender, attacker, tick, rng));
                 continue;
             }
             int previousMaxHp = defender.getMaxHp();

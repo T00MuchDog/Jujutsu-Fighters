@@ -308,14 +308,13 @@
   "id" : "000011",
   "name" : "Vessel",
   "flavourText" : "Two souls inhabit one body while preserving the boundary between them.",
-  "mechanicText" : "Grant access to *ability:000012*.",
+  "mechanicText" : "Attacks can strike the SOUL. RCT can heal the user's SOUL.",
   "category" : "PASSIVE",
   "sourceType" : "ABILITY",
   "sourceValue" : "000008",
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "GRANT_ABILITY",
-    "abilityId" : "000012"
+    "type" : "SOUL_AWARE_ATTACKS"
   } ],
   "masteryThreshold" : 0
 }, {
@@ -324,8 +323,8 @@
   "flavourText" : "Awareness of the soul's shape allows a blow or healing energy to reach it directly.",
   "mechanicText" : "PHYSICAL MELEE attacks can strike the SOUL. RCT can heal the user's SOUL.",
   "category" : "PASSIVE",
-  "sourceType" : "ABILITY",
-  "sourceValue" : "000011",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Idle Transfiguration",
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "SOUL_AWARE_ATTACKS"
@@ -864,39 +863,142 @@
   "id" : "000040",
   "name" : "Nine-to-Five Binding Vow",
   "flavourText" : "Nanami vows to hold himself back between nine and five so that, once overtime begins, he can surpass his own limits.",
-  "mechanicText" : "Multiply VITALITY, STRENGTH, DURABILITY, SPEED, CURSED ENERGY RESERVES, and CURSED ENERGY OUTPUT by 0.8. JUJUTSU SKILL, COMBAT ABILITY, CURSED ENERGY EFFICIENCY, and CURSED TECHNIQUE MASTERY are unaffected.",
-  "category" : "PASSIVE",
+  "mechanicText" : "For the first five rounds, multiply VITALITY, STRENGTH, DURABILITY, SPEED, CURSED ENERGY RESERVES, and CURSED ENERGY OUTPUT by 0.8. From round six onward (overtime), multiply them by 1.2 instead. JUJUTSU SKILL, COMBAT ABILITY, CURSED ENERGY EFFICIENCY, and CURSED TECHNIQUE MASTERY are unaffected.",
+  "category" : "ACTIVE",
   "sourceType" : "CHARACTER",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "BATTLE_STARTED"
+    },
+    "targetEffectIds" : [ "effect-000000", "effect-000001", "effect-000002", "effect-000003", "effect-000004", "effect-000005" ],
+    "matchSameTrigger" : true
+  }, {
+    "condition" : {
+      "type" : "ROUND_REACHED",
+      "round" : 6
+    },
+    "targetEffectIds" : [ "effect-000006", "effect-000007", "effect-000008", "effect-000009", "effect-000010", "effect-000011" ]
+  } ],
   "effects" : [ {
     "effectId" : "effect-000000",
-    "type" : "STAT_MULTIPLY",
+    "type" : "TIMED_STAT_MODIFIER",
     "stat" : "vitality",
-    "doubleValue" : 0.8
+    "doubleValue" : 0.8,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : 5,
+    "durationTicks" : 0
   }, {
     "effectId" : "effect-000001",
-    "type" : "STAT_MULTIPLY",
+    "type" : "TIMED_STAT_MODIFIER",
     "stat" : "strength",
-    "doubleValue" : 0.8
+    "doubleValue" : 0.8,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : 5,
+    "durationTicks" : 0
   }, {
     "effectId" : "effect-000002",
-    "type" : "STAT_MULTIPLY",
+    "type" : "TIMED_STAT_MODIFIER",
     "stat" : "durability",
-    "doubleValue" : 0.8
+    "doubleValue" : 0.8,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : 5,
+    "durationTicks" : 0
   }, {
     "effectId" : "effect-000003",
-    "type" : "STAT_MULTIPLY",
+    "type" : "TIMED_STAT_MODIFIER",
     "stat" : "speed",
-    "doubleValue" : 0.8
+    "doubleValue" : 0.8,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : 5,
+    "durationTicks" : 0
   }, {
     "effectId" : "effect-000004",
-    "type" : "STAT_MULTIPLY",
+    "type" : "TIMED_STAT_MODIFIER",
     "stat" : "cursedEnergyReserves",
-    "doubleValue" : 0.8
+    "doubleValue" : 0.8,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : 5,
+    "durationTicks" : 0
   }, {
     "effectId" : "effect-000005",
-    "type" : "STAT_MULTIPLY",
+    "type" : "TIMED_STAT_MODIFIER",
     "stat" : "cursedEnergyOutput",
-    "doubleValue" : 0.8
+    "doubleValue" : 0.8,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : 5,
+    "durationTicks" : 0
+  }, {
+    "effectId" : "effect-000006",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "vitality",
+    "doubleValue" : 1.2,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
+  }, {
+    "effectId" : "effect-000007",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "strength",
+    "doubleValue" : 1.2,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
+  }, {
+    "effectId" : "effect-000008",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "durability",
+    "doubleValue" : 1.2,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
+  }, {
+    "effectId" : "effect-000009",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "speed",
+    "doubleValue" : 1.2,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
+  }, {
+    "effectId" : "effect-000010",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "cursedEnergyReserves",
+    "doubleValue" : 1.2,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
+  }, {
+    "effectId" : "effect-000011",
+    "type" : "TIMED_STAT_MODIFIER",
+    "stat" : "cursedEnergyOutput",
+    "doubleValue" : 1.2,
+    "statType" : "CORE",
+    "statOperation" : "MULTIPLY",
+    "target" : "SELF",
+    "durationRounds" : -1,
+    "durationTicks" : 0
   } ],
   "masteryThreshold" : 0
 }, {
@@ -1325,5 +1427,79 @@
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000060",
+  "name" : "Maintaining the Soul",
+  "flavourText" : "The soul's shape is the truth of the body; Mahito forces his flesh to conform to it without pause.",
+  "mechanicText" : "Drain 2 CE per TICK. Each non-SOUL damage instance is restored at a CE cost scaled to the damage dealt: 10 CE up to 10 damage, 30 up to 30, 50 up to 50, 100 up to 100, and 300 beyond. SOUL damage and lethal blows are never restored.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Idle Transfiguration",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "CODED",
+    "codedAbilityKey" : "IDLE_TRANSFIGURATION",
+    "codedFeature" : "MAINTAINING_THE_SOUL",
+    "codedParameters" : {
+      "ceDrainPerTick" : 2
+    }
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000061",
+  "name" : "Soul Manipulation",
+  "flavourText" : "To touch a soul is to hold it - and a touch is all Idle Transfiguration needs.",
+  "mechanicText" : "Successful MELEE attacks have a 5% chance to attempt SOUL MANIPULATION. Success transfigures the target instantly. Failure teaches the target's shape: each failed attempt adds a permanent stack, and every later attempt is harder to resist.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Idle Transfiguration",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "CODED",
+    "codedAbilityKey" : "IDLE_TRANSFIGURATION",
+    "codedFeature" : "SOUL_MANIPULATION",
+    "codedParameters" : {
+      "procChancePercent" : 5,
+      "baseSuccessPercent" : 5,
+      "ctmSuccessPerTenPoints" : 1,
+      "successPerStackPercent" : 12,
+      "resistPerTenCe" : 1,
+      "minSuccessPercent" : 1,
+      "maxSuccessPercent" : 95
+    }
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000062",
+  "name" : "Malleable Body",
+  "flavourText" : "A body with no fixed shape keeps no wound it does not want to keep.",
+  "mechanicText" : "Bodily injury statuses are shed whenever *ability:000060* restores the associated damage.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Idle Transfiguration",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "CODED",
+    "codedAbilityKey" : "IDLE_TRANSFIGURATION",
+    "codedFeature" : "MALLEABLE_BODY"
+  } ],
+  "masteryThreshold" : 0
+}, {
+  "id" : "000063",
+  "name" : "Transfigured Human Stockpile",
+  "flavourText" : "Idle Transfiguration leaves broken people behind, and broken people are material.",
+  "mechanicText" : "Begin battle with 8 TRANSFIGURED HUMANS. Certain moves consume them.",
+  "category" : "PASSIVE",
+  "sourceType" : "TECHNIQUE",
+  "sourceValue" : "Idle Transfiguration",
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DEFINE_BOUNDED_RESOURCE",
+    "resourceKey" : "TRANSFIGURED_HUMANS",
+    "resourceLabel" : "Transfigured Humans",
+    "resourceCapacity" : 8,
+    "resourceStartValue" : 8
+  } ],
   "masteryThreshold" : 0
 } ]

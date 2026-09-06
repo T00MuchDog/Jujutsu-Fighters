@@ -33,6 +33,20 @@ public interface CodedAbilityRuntime {
     );
 
     /**
+     * Trigger dispatch that additionally supplies the battle's deterministic
+     * randomness, for features that roll chances outside hit resolution.
+     * Defaults to the rng-less variant.
+     */
+    default List<CombatEvent> onTrigger(
+        BattleState state,
+        AbilityTrigger trigger,
+        Predicate<String> featureActive,
+        RandomSource rng
+    ) {
+        return onTrigger(state, trigger, featureActive);
+    }
+
+    /**
      * React to a coded effect row firing during move resolution.
      *
      * <p>Called once per coded effect row on the move: a coded <em>self</em>-effect
@@ -55,6 +69,22 @@ public interface CodedAbilityRuntime {
         int tick
     ) {
         return List.of();
+    }
+
+    /**
+     * Coded-row dispatch that additionally supplies the battle's deterministic
+     * randomness, for actions that resolve their own rolls. Defaults to the
+     * rng-less variant.
+     */
+    default List<CombatEvent> onEffectFired(
+        BattleState state,
+        StatusEffect effect,
+        BattleCombatant attacker,
+        BattleCombatant defender,
+        int tick,
+        RandomSource rng
+    ) {
+        return onEffectFired(state, effect, attacker, defender, tick);
     }
 
     /** Supply modifiers after an attacking move connects but before block and defense. */

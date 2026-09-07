@@ -25,6 +25,23 @@ class BattleAudioRouterTest {
     }
 
     @Test
+    void cursedSpeechFiresOnlyAtMoveUnleashForLocalAndOnlineEvents() {
+        Move cursedSpeech = move("000065", "ATTACK");
+
+        assertEquals(SoundCue.BATTLE_CURSED_SPEECH, BattleAudioRouter.cueFor(
+            CombatEvent.of(CombatEvent.Type.MOVE_FIRED).move(cursedSpeech).build()).orElseThrow());
+        assertEquals(SoundCue.BATTLE_CURSED_SPEECH, BattleAudioRouter.cueFor(
+            event(BattleEventType.MOVE_FIRED, 1, "000065"), cursedSpeech).orElseThrow());
+
+        assertTrue(BattleAudioRouter.cueFor(
+            CombatEvent.of(CombatEvent.Type.MOVE_TARGETED).move(cursedSpeech).build()).isEmpty());
+        assertTrue(BattleAudioRouter.cueFor(
+            event(BattleEventType.MOVE_TARGETED, 1, "000065"), cursedSpeech).isEmpty());
+        assertEquals(SoundCue.BATTLE_ATTACK_UNLEASH,
+            BattleAudioRouter.cueForMove(move("OTHER", "ATTACK", "PHYSICAL")).orElseThrow());
+    }
+
+    @Test
     void localOutcomeEventsMapToBattleEffects() {
         Map<CombatEvent.Type, SoundCue> mappings = Map.ofEntries(
             Map.entry(CombatEvent.Type.MOVE_MISSED, SoundCue.BATTLE_MISS),

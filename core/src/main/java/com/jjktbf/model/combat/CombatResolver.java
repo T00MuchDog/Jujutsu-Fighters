@@ -621,17 +621,24 @@ public class CombatResolver {
         Map<BattleCombatant, List<StatusEffect>> expiredByCombatant = new LinkedHashMap<>();
         Map<BattleCombatant, Integer> previousMaxHp = new IdentityHashMap<>();
         Map<BattleCombatant, Integer> previousMaxCe = new IdentityHashMap<>();
+        Map<BattleCombatant, Integer> previousSize = new IdentityHashMap<>();
         Set<BattleCombatant> hpClamped = Collections.newSetFromMap(new IdentityHashMap<>());
         Set<BattleCombatant> ceClamped = Collections.newSetFromMap(new IdentityHashMap<>());
 
         for (BattleCombatant combatant : combatants) {
             previousMaxHp.put(combatant, combatant.getMaxHp());
             previousMaxCe.put(combatant, combatant.getMaxCursedEnergy());
+            previousSize.put(combatant,
+                CombatEvent.encodeSizeMultiplier(combatant.getSizeMultiplier()));
             combatant.beginPoolClampDeferral();
         }
         try {
             for (BattleCombatant combatant : combatants) {
                 combatant.tickTimelineEffects(state.getRoundNumber(), tick);
+                if (CombatEvent.encodeSizeMultiplier(combatant.getSizeMultiplier())
+                    != previousSize.get(combatant)) {
+                    events.add(CombatEvent.sizeMultiplierChanged(combatant, combatant, tick));
+                }
                 events.addAll(combatant.getCodedAbilities().tickTimelineEffects(tick));
                 expiredByCombatant.put(combatant, combatant.drainExpiredStatusEffects());
             }
@@ -2872,6 +2879,7 @@ public class CombatResolver {
         List<BattleCombatant> combatants = state.presentCombatants();
         Map<BattleCombatant, Integer> previousMaxHp = new LinkedHashMap<>();
         Map<BattleCombatant, Integer> previousMaxCe = new LinkedHashMap<>();
+        Map<BattleCombatant, Integer> previousSize = new IdentityHashMap<>();
         Set<BattleCombatant> hpClamped = Collections.newSetFromMap(new IdentityHashMap<>());
         Set<BattleCombatant> ceClamped = Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -2885,6 +2893,8 @@ public class CombatResolver {
         for (BattleCombatant combatant : combatants) {
             previousMaxHp.put(combatant, combatant.getMaxHp());
             previousMaxCe.put(combatant, combatant.getMaxCursedEnergy());
+            previousSize.put(combatant,
+                CombatEvent.encodeSizeMultiplier(combatant.getSizeMultiplier()));
             combatant.beginPoolClampDeferral();
         }
 
@@ -2892,6 +2902,10 @@ public class CombatResolver {
         try {
             for (BattleCombatant combatant : combatants) {
                 combatant.tickRoundEffects(round);
+                if (CombatEvent.encodeSizeMultiplier(combatant.getSizeMultiplier())
+                    != previousSize.get(combatant)) {
+                    events.add(CombatEvent.sizeMultiplierChanged(combatant, combatant, 0));
+                }
                 expiredByCombatant.put(combatant, combatant.drainExpiredStatusEffects());
                 boolean wasBfs = combatant.isInBlackFlashState();
                 combatant.tickBfsExpiry(round);

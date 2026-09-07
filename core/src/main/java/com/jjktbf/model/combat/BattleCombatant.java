@@ -1811,6 +1811,17 @@ public class BattleCombatant {
     public Character getOriginCharacter()                  { return originCharacter; }
     public BattleStatMode getStatMode()                    { return statMode; }
 
+    /** Current physical-size multiplier contributed by temporary transformation effects. */
+    public double getSizeMultiplier() {
+        double multiplier = runtimeAbilityEffects.stream()
+            .filter(runtime -> AbilityEffectType.TIMED_SIZE_MULTIPLIER.name()
+                .equalsIgnoreCase(runtime.effect.type))
+            .map(runtime -> runtime.effect.doubleValue)
+            .filter(java.util.Objects::nonNull)
+            .reduce(1.0, (left, right) -> left * right);
+        return Math.max(0.01, Math.min(10.0, multiplier));
+    }
+
     /**
      * True while the combatant's <em>current</em> form (post-transformation, if
      * any) still knows the given move, matched by move id.

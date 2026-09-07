@@ -1061,14 +1061,14 @@ public final class AbilityActivationEngine {
                         owner, target, previousMaxHp, previousMaxCe, tick, events);
                 }
             }
-            case TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
+            case TIMED_STAT_MODIFIER, TIMED_SIZE_MULTIPLIER, TEMP_STAT_SET_VALUE,
                  IGNORE_DAMAGE, DAMAGE_SHIELD,
                  SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS, APPLY_NEVER_HIT,
                  GUARANTEE_NEXT_BLACK_FLASH, CANCEL_NEXT_MOVE,
                  TEMP_LOCK_MOVE_TAG, TEMP_LOCK_TECHNIQUE -> {
                 for (BattleCombatant target : targets) {
                     addRuntimeEffect(
-                        state, owner, target, effect, tick, events, effect.refreshGroup);
+                        state, owner, target, effect, tick, events, effect.refreshGroup, move);
                 }
             }
             case TAUNT -> {
@@ -1702,7 +1702,7 @@ public final class AbilityActivationEngine {
         int tick,
         List<CombatEvent> events
     ) {
-        addRuntimeEffect(state, source, target, effect, tick, events, null);
+        addRuntimeEffect(state, source, target, effect, tick, events, null, null);
     }
 
     private static void addRuntimeEffect(
@@ -1714,12 +1714,29 @@ public final class AbilityActivationEngine {
         List<CombatEvent> events,
         String refreshGroup
     ) {
+        addRuntimeEffect(state, source, target, effect, tick, events, refreshGroup, null);
+    }
+
+    private static void addRuntimeEffect(
+        BattleState state,
+        BattleCombatant source,
+        BattleCombatant target,
+        AbilityEffectData effect,
+        int tick,
+        List<CombatEvent> events,
+        String refreshGroup,
+        Move move
+    ) {
         int previousMaxHp = target.getMaxHp();
         int previousMaxCe = target.getMaxCursedEnergy();
+        int previousSize = CombatEvent.encodeSizeMultiplier(target.getSizeMultiplier());
         target.addRuntimeAbilityEffect(
             effect, state.getRoundNumber(), state.getCurrentPhase(), refreshGroup, source, tick);
         appendResourceMaximumEvents(
             source, target, previousMaxHp, previousMaxCe, tick, events);
+        if (CombatEvent.encodeSizeMultiplier(target.getSizeMultiplier()) != previousSize) {
+            events.add(CombatEvent.sizeMultiplierChanged(source, target, move, tick));
+        }
     }
 
     private static void appendResourceMaximumEvents(

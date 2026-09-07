@@ -1,0 +1,113 @@
+{
+  "motifs": {
+    "blood-chakram": [
+      {"ellipse":[17,24,79,72],"fill":"#400e22","outline":"#200f1b","width":2},
+      {"ellipse":[19,25,77,70],"outline":"#cc263d","width":6},
+      {"ellipse":[28,33,68,63],"fill":"#00000000","outline":"#fa5360","width":2},
+      {"polygon":[[18,44],[4,60],[24,56]],"fill":"#9d1631","outline":"#f44950"},
+      {"polygon":[[43,26],[56,10],[57,30]],"fill":"#9d1631","outline":"#f44950"},
+      {"polygon":[[75,43],[91,34],[76,56]],"fill":"#9d1631","outline":"#f44950"},
+      {"polygon":[[43,70],[39,87],[57,69]],"fill":"#9d1631","outline":"#f44950"},
+      {"line":[[21,40],[30,30],[47,27],[63,29]],"fill":"#ff9790","width":2}
+    ],
+    "blood-net": [
+      {"line":[[9,30],[26,8],[48,15],[68,7],[88,30],[81,66],[60,88],[34,82],[10,65],[9,30]],"fill":"#531129","width":4},
+      {"line":[[9,30],[60,88]],"fill":"#c42741","width":3},
+      {"line":[[26,8],[81,66]],"fill":"#d9384d","width":3},
+      {"line":[[48,15],[86,53]],"fill":"#b61b36","width":3},
+      {"line":[[10,52],[34,82]],"fill":"#e74351","width":3},
+      {"line":[[10,65],[68,7]],"fill":"#b51d36","width":3},
+      {"line":[[25,78],[86,18]],"fill":"#f1525d","width":2},
+      {"line":[[49,86],[85,50]],"fill":"#db3446","width":3},
+      {"line":[[9,42],[40,12]],"fill":"#ee4b53","width":2}
+    ],
+    "blood-arrow": [
+      {"line":[[7,68],[27,62],[46,39],[76,37]],"fill":"#65152d","width":5},
+      {"line":[[7,67],[26,60],[46,37],[78,35]],"fill":"#dd3148","width":2},
+      {"line":[[24,40],[78,35]],"fill":"#251c29","width":3},
+      {"line":[[27,38],[77,33]],"fill":"#c8a88b"},
+      {"polygon":[[73,28],[91,33],[75,41]],"fill":"#d33243","outline":"#4d1825"},
+      {"polygon":[[24,38],[17,30],[29,35],[37,38],[27,42],[18,47]],"fill":"#d7ccbc","outline":"#362f3a"}
+    ],
+    "red-scale-eye": [
+      {"polygon":[[16,44],[34,33],[62,34],[81,43],[61,55],[34,55]],"fill":"#2c1722","outline":"#db9c8c"},
+      {"polygon":[[21,44],[37,38],[60,39],[74,44],[59,50],[37,50]],"fill":"#efddd1"},
+      {"ellipse":[43,37,54,51],"fill":"#773244"},
+      {"line":[[48,39],[48,48]],"fill":"#120f1b","width":3},
+      {"polygon":[[28,15],[39,25],[51,52],[67,74],[55,71],[44,55],[38,47]],"fill":"#a41b34"},
+      {"polygon":[[62,17],[57,33],[44,50],[28,67],[28,58],[38,43],[47,23]],"fill":"#d63348"},
+      {"line":[[33,22],[43,43],[59,66]],"fill":"#fa7770","width":2},
+      {"line":[[11,71],[25,71],[29,61],[33,79],[38,66],[43,71],[80,71]],"fill":"#aa263e","width":2}
+    ],
+    "blood-thread": [
+      {"line":[[0,48],[95,48]],"fill":"#3a0d22","width":7},
+      {"line":[[0,47],[95,47]],"fill":"#c32740","width":4},
+      {"line":[[0,46],[95,46]],"fill":"#ff8580"},
+      {"line":[[0,54],[17,52],[38,53],[64,51],[95,54]],"fill":"#841930"}
+    ],
+    "ratio-ruler": [
+      {"line":[[8,48],[88,48]],"fill":"#20242e","width":5},
+      {"line":[[8,48],[88,48]],"fill":"#edf4ee"},
+      {"line":[[8,41],[8,55]],"fill":"#edf4ee"},
+      {"line":[[16,44],[16,52]],"fill":"#edf4ee"},
+      {"line":[[24,44],[24,52]],"fill":"#edf4ee"},
+      {"line":[[32,44],[32,52]],"fill":"#edf4ee"},
+      {"line":[[40,44],[40,52]],"fill":"#edf4ee"},
+      {"line":[[48,44],[48,52]],"fill":"#edf4ee"},
+      {"line":[[56,44],[56,52]],"fill":"#edf4ee"},
+      {"line":[[64,42],[64,54]],"fill":"#ff283c","width":2},
+      {"line":[[72,44],[72,52]],"fill":"#edf4ee"},
+      {"line":[[80,44],[80,52]],"fill":"#edf4ee"},
+      {"line":[[88,41],[88,55]],"fill":"#edf4ee"},
+      {"polygon":[[64,35],[67,41],[73,39],[71,45],[77,48],[71,51],[73,57],[67,55],[64,61],[61,55],[55,57],[57,51],[51,48],[57,45],[55,39],[61,41]],"outline":"#f5233b","width":2},
+      {"ellipse":[60,44,68,52],"outline":"#ff6972","width":2}
+    ],
+    "wrapped-cleaver": [
+      {"polygon":[[8,66],[18,72],[35,54],[29,47]],"fill":"#463934","outline":"#1b202c"},
+      {"line":[[14,65],[29,51]],"fill":"#a39b88","width":3},
+      {"polygon":[[26,46],[33,39],[40,45],[33,55]],"fill":"#cdbd93","outline":"#262b32"},
+      {"polygon":[[33,40],[67,6],[83,21],[81,30],[47,59],[35,49]],"fill":"#d5d7c9","outline":"#282c35","width":2},
+      {"polygon":[[68,10],[79,21],[77,27],[44,53],[39,47]],"fill":"#f2edda"},
+      {"line":[[41,34],[56,45]],"fill":"#929e9d","width":2},
+      {"line":[[50,26],[64,37]],"fill":"#929e9d","width":2},
+      {"line":[[59,18],[73,29]],"fill":"#929e9d","width":2},
+      {"ellipse":[64,17,68,21],"fill":"#3d4a54"},
+      {"ellipse":[53,28,57,32],"fill":"#3d4a54"},
+      {"ellipse":[43,39,47,43],"fill":"#3d4a54"},
+      {"ellipse":[63,29,67,33],"fill":"#3d4a54"},
+      {"ellipse":[53,39,57,43],"fill":"#3d4a54"}
+    ]
+  },
+  "effects": [
+    {"id":"ct-guided-arrow","name":"Blood-Guided Arrow","moveIds":["000093"],"family":"blood","placement":"source","role":"utility","description":"Blood wets the arrowhead and bends its guide trail; this arms later bow attacks.",
+     "art":[{"kind":"art:blood-arrow","x":[37,55],"y":[56,40],"rotate":[-12,14]},{"kind":"droplet","palette":"blood","scale":[0.3,0.1],"x":[71,64],"y":[27,35],"time":[0,0.6]}],
+     "profile":{"durationSeconds":0.9,"impactSeconds":0.3,"size":1.45,"source":[{"at":0},{"at":0.35,"rotation":-3,"green":0.85},{"at":1,"easing":"smooth"}]}},
+    {"id":"ct-red-scale","name":"Flowing Red Scale","moveIds":["000094"],"family":"blood","placement":"source","role":"utility","description":"Kamo's crossing red eye marking sharpens over a pulsing circulation trace.",
+     "art":[{"kind":"art:red-scale-eye","scale":[0.7,1]},{"kind":"slash","palette":"blood","scale":0.38,"x":21,"y":[77,55],"time":[0.3,1]},{"kind":"slash","palette":"blood","scale":0.3,"x":75,"y":[66,36],"time":[0.4,1]}],
+     "profile":{"durationSeconds":1.05,"impactSeconds":0.36,"size":1.5,"source":[{"at":0},{"at":0.3,"green":0.6,"blue":0.6},{"at":0.5},{"at":0.65,"green":0.72,"blue":0.72},{"at":1}],"background":[{"at":0},{"at":0.4,"green":0.68,"blue":0.72},{"at":1}]}},
+    {"id":"ct-crimson-binding","name":"Crimson Binding","moveIds":["000095"],"family":"blood","placement":"target","role":"attack","description":"A blood mass opens into a taut diamond-mesh net, not energy chains.",
+     "art":[{"kind":"orb","palette":"blood","scale":[0.4,0.05],"time":[0,0.4]},{"kind":"art:blood-net","scale":[0.15,1.05],"rotate":[-15,0],"time":[0.12,1]},{"kind":"droplet","palette":"blood","scale":0.1,"repeat":5,"radius":[17,39],"y":[42,68],"time":[0.4,1]}],
+     "profile":{"durationSeconds":0.95,"impactSeconds":0.47,"size":1.65,"target":[{"at":0},{"at":0.5,"scaleX":0.91},{"at":1,"easing":"smooth"}]}},
+    {"id":"ct-slicing-exorcism","name":"Slicing Exorcism","moveIds":["000096"],"family":"blood","placement":"target","role":"attack","impact":14,"description":"The hollow four-spiked blood chakram travels across the gap and shears through contact.",
+     "art":[{"kind":"art:blood-chakram","scale":[0.9,1.1],"rotate":[-40,-200],"time":[0.44,0.9]},{"kind":"slash","palette":"blood","scale":[0.3,1.1],"rotate":-28,"time":[0.52,1]},{"kind":"droplet","palette":"blood","scale":0.12,"repeat":4,"radius":[5,36],"time":[0.55,1]}],
+     "profile":{"durationSeconds":1.05,"impactSeconds":0.61,"size":1.5,"source":[{"at":0},{"at":0.2,"rotation":5},{"at":0.43,"x":0.12,"rotation":-6},{"at":1}],"target":[{"at":0},{"at":0.57},{"at":0.64,"x":0.14,"rotation":-7},{"at":1}],"layers":[{"effect":"ct-blood-chakram-flight","placement":"projectile","plane":"front","durationSeconds":0.54,"size":1.2}]}},
+    {"id":"ct-convergence","name":"Convergence","moveIds":["000097"],"family":"blood","placement":"source","role":"utility","description":"Opposed palms squeeze orbiting blood inward to one dense compressed sphere.",
+     "art":[{"kind":"hand","palette":"flesh","scale":0.55,"x":[20,35],"rotate":-80},{"kind":"hand","palette":"flesh","scale":0.55,"x":[76,61],"rotate":80,"flip":true},{"kind":"droplet","palette":"blood","scale":[0.19,0.04],"repeat":7,"radius":[35,0],"orbit":2.1,"time":[0,0.7]},{"kind":"orb","palette":"blood","scale":[0.44,0.16],"time":[0.12,1]},{"kind":"star","palette":"blood","scale":0.24,"time":[0.6,0.85]}],
+     "profile":{"durationSeconds":1.2,"impactSeconds":0.72,"size":1.5,"source":[{"at":0},{"at":0.6,"scaleX":0.97,"green":0.85},{"at":1}],"background":[{"at":0},{"at":0.6,"red":0.6,"green":0.4,"blue":0.48},{"at":1}]}},
+    {"id":"ct-piercing-blood","name":"Piercing Blood","moveIds":["000098"],"family":"blood","placement":"target","role":"attack","impact":14,"description":"A sonic needle of compressed blood drives through a tiny puncture with red splinters.",
+     "art":[{"kind":"star","palette":"blood","scale":[0.15,0.8],"time":[0.5,0.75]},{"kind":"slash","palette":"blood","scale":[0.3,0.8],"rotate":-42,"time":[0.52,0.95]},{"kind":"droplet","palette":"blood","scale":0.09,"repeat":7,"radius":[3,37],"time":[0.57,1]}],
+     "profile":{"durationSeconds":1.1,"impactSeconds":0.6,"size":1.4,"source":[{"at":0},{"at":0.48},{"at":0.55,"x":-0.15},{"at":1}],"target":[{"at":0},{"at":0.54},{"at":0.58,"x":0.15,"rotation":-4},{"at":1}],"layers":[{"effect":"ct-pressure-core","placement":"source","plane":"front","durationSeconds":0.5,"size":0.8},{"effect":"ct-piercing-stream","placement":"beam","plane":"front","startSeconds":0.5,"durationSeconds":0.36,"size":0.7}]}},
+    {"id":"ct-blood-chakram-flight","name":"Spinning Blood Chakram","placement":"projectile","role":"utility","art":[{"kind":"art:blood-chakram","rotate":[0,-320]}]},
+    {"id":"ct-piercing-stream","name":"Compressed Blood Stream","placement":"beam","role":"utility","art":[{"kind":"art:blood-thread","fadeIn":0.01,"fadeOut":0.08}]},
+    {"id":"ct-pressure-core","name":"Compressed Blood Muzzle","placement":"source","role":"utility","art":[{"kind":"orb","palette":"blood","scale":[0.4,0.17]},{"kind":"droplet","palette":"blood","scale":0.09,"repeat":6,"radius":[29,4],"orbit":1.5}]},
+    {"id":"ct-ratio-mark","name":"Ratio Mark","moveIds":["000023"],"family":"ratio","placement":"target","role":"targeted","description":"A ten-section white ruler resolves a red weak point precisely seven sections from its left end.",
+     "art":[{"kind":"art:ratio-ruler","scale":[0.8,1],"fadeIn":0.35,"fadeOut":0.15}],
+     "profile":{"durationSeconds":0.88,"impactSeconds":0.4,"size":1.6,"background":[{"at":0},{"at":0.4,"red":0.4,"green":0.46,"blue":0.52},{"at":1}]}},
+    {"id":"ct-ratio-strike","name":"Ratio Strike","moveIds":["000024"],"family":"ratio","placement":"target","role":"attack","description":"Nanami's dotted, wrapped short cleaver snaps horizontally through the ruler's 7:3 node.",
+     "art":[{"kind":"art:ratio-ruler","time":[0,0.8]},{"kind":"art:wrapped-cleaver","scale":0.75,"x":[23,67],"rotate":[-80,-25],"time":[0.08,0.75]},{"kind":"star","palette":"blood","scale":[0.1,0.55],"x":64,"time":[0.45,0.72]},{"kind":"slash","palette":"bone","scale":0.8,"x":61,"rotate":-48,"time":[0.48,1]}],
+     "profile":{"durationSeconds":0.82,"impactSeconds":0.41,"size":1.65,"source":[{"at":0},{"at":0.2,"x":-0.07,"rotation":5},{"at":0.49,"x":0.3,"rotation":-6},{"at":1}],"target":[{"at":0},{"at":0.48},{"at":0.53,"x":0.1,"rotation":-6},{"at":1}]}},
+    {"id":"ct-ratio-cleave","name":"Overhead Ratio Cleave","moveIds":["000089"],"family":"ratio","placement":"target","role":"attack","description":"A raised wrapped cleaver drops vertically onto a red 7:3 cross-section, scattering angular fracture chips.",
+     "art":[{"kind":"art:ratio-ruler","rotate":90,"time":[0,0.8]},{"kind":"art:wrapped-cleaver","scale":0.85,"x":48,"y":[11,60],"rotate":[55,120],"time":[0.03,0.8]},{"kind":"slash","palette":"bone","scale":1.1,"rotate":45,"time":[0.45,0.9]},{"kind":"star","palette":"blood","scale":0.5,"y":32,"time":[0.47,0.7]},{"kind":"shard","palette":"bone","scale":0.15,"repeat":5,"radius":[4,35],"y":[39,66],"time":[0.51,1]}],
+     "profile":{"durationSeconds":1.05,"impactSeconds":0.52,"size":1.85,"source":[{"at":0},{"at":0.23,"y":0.12,"rotation":10},{"at":0.5,"x":0.22,"rotation":-8},{"at":1}],"target":[{"at":0},{"at":0.49},{"at":0.55,"scaleY":0.88,"rotation":-4},{"at":1}],"background":[{"at":0},{"at":0.51,"red":0.7,"green":0.62,"blue":0.64,"y":-0.005},{"at":1}]}}
+  ]
+}

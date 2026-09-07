@@ -25,6 +25,8 @@ public enum SoundCue {
         AudioChannel.BATTLE_SFX, "assets/audio/sfx/battle/defense_unleash.wav", 0.68f),
     BATTLE_UTILITY_UNLEASH(
         AudioChannel.BATTLE_SFX, "assets/audio/sfx/battle/utility_unleash.wav", 0.66f),
+    BATTLE_CURSED_SPEECH(
+        AudioChannel.BATTLE_SFX, "assets/audio/sfx/battle/cursed_speech.wav", 0.52f),
     BATTLE_HIT(AudioChannel.BATTLE_SFX, "assets/audio/sfx/battle/hit.wav", 0.78f),
     BATTLE_BLOCK(AudioChannel.BATTLE_SFX, "assets/audio/sfx/battle/block.wav", 1f),
     BATTLE_MISS(AudioChannel.BATTLE_SFX, "assets/audio/sfx/battle/miss.wav", 0.62f),

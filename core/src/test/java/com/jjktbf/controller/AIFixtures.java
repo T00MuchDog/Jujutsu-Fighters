@@ -177,6 +177,29 @@ final class AIFixtures {
             .build();
     }
 
+    // --- Summons ------------------------------------------------------------
+
+    /**
+     * A summon move drawing the given shikigami, mirroring the canonical Ten
+     * Shadows composition (ON_FIRE SUMMON_CHARACTER row, utility technique tags).
+     * Built in code so summon-picking tests stay independent of data renumbering.
+     */
+    static Move summonMove(String id, String characterId, int ceCost) {
+        MoveEffectData effect = AbilityEffectType.SUMMON_CHARACTER.createDefaultMoveEffect();
+        effect.effectId = "effect-" + id;
+        effect.characterId = characterId;
+        effect.trigger = MoveEffectTrigger.ON_FIRE.name();
+        return new Move.Builder(id)
+            .name(id).category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY, MoveTag.INNATE_TECHNIQUE, MoveTag.CURSED_ENERGY))
+            .requiredTechniqueId("Ten Shadows")
+            .prerequisites(java.util.Map.of("cursedTechniqueMastery", 0))
+            .effects(List.of(effect))
+            .apCost(8).unleashPoint(4)
+            .baseCeCost(ceCost)
+            .build();
+    }
+
     // --- Combatants -------------------------------------------------------
 
     static BattleCombatant sorcerer(String id, Move... moves) {

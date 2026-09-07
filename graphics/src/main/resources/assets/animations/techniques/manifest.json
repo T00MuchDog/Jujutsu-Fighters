@@ -1,0 +1,1367 @@
+{
+  "schemaVersion": 1,
+  "sheetOrder": "row-major-top-left",
+  "frameWidth": 192,
+  "frameHeight": 192,
+  "columns": 6,
+  "effects": [
+    {
+      "id": "ct-guided-arrow",
+      "name": "Blood-Guided Arrow",
+      "description": "Blood wets the arrowhead and bends its guide trail; this arms later bow attacks.",
+      "moveIds": [
+        "000093"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-guided-arrow.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-red-scale",
+      "name": "Flowing Red Scale",
+      "description": "Kamo's crossing red eye marking sharpens over a pulsing circulation trace.",
+      "moveIds": [
+        "000094"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-red-scale.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-crimson-binding",
+      "name": "Crimson Binding",
+      "description": "A blood mass opens into a taut diamond-mesh net, not energy chains.",
+      "moveIds": [
+        "000095"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-crimson-binding.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-slicing-exorcism",
+      "name": "Slicing Exorcism",
+      "description": "The hollow four-spiked blood chakram travels across the gap and shears through contact.",
+      "moveIds": [
+        "000096"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-slicing-exorcism.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ]
+    },
+    {
+      "id": "ct-convergence",
+      "name": "Convergence",
+      "description": "Opposed palms squeeze orbiting blood inward to one dense compressed sphere.",
+      "moveIds": [
+        "000097"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-convergence.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-piercing-blood",
+      "name": "Piercing Blood",
+      "description": "A sonic needle of compressed blood drives through a tiny puncture with red splinters.",
+      "moveIds": [
+        "000098"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-piercing-blood.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ]
+    },
+    {
+      "id": "ct-blood-chakram-flight",
+      "name": "Spinning Blood Chakram",
+      "placement": "projectile",
+      "role": "utility",
+      "sheet": "sprites/ct-blood-chakram-flight.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-piercing-stream",
+      "name": "Compressed Blood Stream",
+      "placement": "beam",
+      "role": "utility",
+      "sheet": "sprites/ct-piercing-stream.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-pressure-core",
+      "name": "Compressed Blood Muzzle",
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-pressure-core.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-ratio-mark",
+      "name": "Ratio Mark",
+      "description": "A ten-section white ruler resolves a red weak point precisely seven sections from its left end.",
+      "moveIds": [
+        "000023"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "sheet": "sprites/ct-ratio-mark.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-ratio-strike",
+      "name": "Ratio Strike",
+      "description": "Nanami's dotted, wrapped short cleaver snaps horizontally through the ruler's 7:3 node.",
+      "moveIds": [
+        "000024"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-ratio-strike.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-ratio-cleave",
+      "name": "Overhead Ratio Cleave",
+      "description": "A raised wrapped cleaver drops vertically onto a red 7:3 cross-section, scattering angular fracture chips.",
+      "moveIds": [
+        "000089"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-ratio-cleave.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-shadow-pool",
+      "name": "Liquid Shadow Aperture",
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-shadow-pool.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-tongue-tether",
+      "name": "Elastic Toad Tongue",
+      "placement": "beam",
+      "role": "utility",
+      "sheet": "sprites/ct-tongue-tether.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-water-torrent",
+      "name": "Elephant Water Torrent",
+      "placement": "beam",
+      "role": "utility",
+      "sheet": "sprites/ct-water-torrent.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-nue-flight",
+      "name": "Masked Nue Flight",
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-nue-flight.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-winged-toad-flight",
+      "name": "Winged Toad Flight",
+      "placement": "projectile",
+      "role": "utility",
+      "sheet": "sprites/ct-winged-toad-flight.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-elephant-apparition",
+      "name": "Max Elephant Apparition",
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-elephant-apparition.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-speech-seal",
+      "name": "Cursed Speech Original Symbol",
+      "description": "The existing Snake Eyes and Fangs icon, preserved exactly, grows and fades on every spoken cast.",
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-speech-seal.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-dont-move",
+      "name": "Don't Move",
+      "description": "The command's pressure arrests between hard brackets; an attempt, not confirmation of paralysis.",
+      "moveIds": [
+        "000065"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-dont-move.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-blast-away",
+      "name": "Blast Away",
+      "description": "A directional pressure cone expands in offset rings, visualizing the launch command.",
+      "moveIds": [
+        "000066"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-blast-away.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-sleep",
+      "name": "Sleep",
+      "description": "A closing eyelid and descending crescent convey the sleep command without imposing a false sleeping pose.",
+      "moveIds": [
+        "000067"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-sleep.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-plummet",
+      "name": "Plummet",
+      "description": "Three dense downward pressure fronts end at a fractured ground line.",
+      "moveIds": [
+        "000068"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-plummet.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-get-twisted",
+      "name": "Get Twisted",
+      "description": "Opposing helical pressure bands corkscrew around a clear center, indicating the twisting command.",
+      "moveIds": [
+        "000069"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-get-twisted.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-return",
+      "name": "Return",
+      "description": "A shadow doorway contracts around inward-moving fragments; the summon remains visible until core removes it.",
+      "moveIds": [
+        "000070"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-return.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-explode",
+      "name": "Explode",
+      "description": "A compressed star ruptures outward into angular red pressure fragments, not a premature death animation.",
+      "moveIds": [
+        "000071"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-explode.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-die",
+      "name": "Die",
+      "description": "The command is depicted as a jagged heartbeat collapsing to a terminal line, never a false target defeat.",
+      "moveIds": [
+        "000072"
+      ],
+      "placement": "target",
+      "role": "targeted",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-die.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-run-away",
+      "name": "Run Away",
+      "description": "On the actual ally defense grant, fleeing footprints and acceleration trails accompany a short retreat.",
+      "moveIds": [
+        "000128"
+      ],
+      "placement": "target",
+      "role": "movement",
+      "castEffect": "ct-speech-seal",
+      "sheet": "sprites/ct-run-away.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-miracle-creation",
+      "name": "Miracle Creation",
+      "description": "An everyday 11:11 coincidence is forgotten as its light collects in six gold under-eye marks.",
+      "moveIds": [
+        "000021"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-miracle-creation.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-white-dog",
+      "name": "Summon White Dog",
+      "description": "An ivory wolf with the red triangular forehead mark steps out of liquid shadow.",
+      "moveIds": [
+        "000030"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-white-dog.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-black-dog",
+      "name": "Summon Black Dog",
+      "description": "A charcoal wolf gathers from the ink, red three-part forehead mark and yellow eyes first.",
+      "moveIds": [
+        "000031"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-black-dog.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-summon-nue",
+      "name": "Summon Nue",
+      "description": "Rust-orange feathers unfurl around a toothed ivory mask; violet current runs through the wings.",
+      "moveIds": [
+        "000035"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-summon-nue.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-summon-toad",
+      "name": "Summon Toad",
+      "description": "The broad green toad rises belly-first, exposing pale eyes and its stomach seal.",
+      "moveIds": [
+        "000036"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-summon-toad.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-summon-serpent",
+      "name": "Summon Great Serpent",
+      "description": "A huge ivory snake uncoils from shadow, dark forehead seal and yellow belly plates visible.",
+      "moveIds": [
+        "000037"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-summon-serpent.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-summon-totality",
+      "name": "Summon Divine Dog Totality",
+      "description": "The larger hunched wolf rises on long ivory forearms, with black mane, white cheeks, and red forehead seal.",
+      "moveIds": [
+        "000038"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-summon-totality.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-summon-winged-toads",
+      "name": "Summon Toad/Nue Fusion",
+      "description": "Three green toads with pale feathered wings lift out of the same ink pool.",
+      "moveIds": [
+        "000039"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-summon-winged-toads.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-summon-elephant",
+      "name": "Summon Max Elephant",
+      "description": "Pink Max Elephant emerges with red ear rims, short tusks and gold circular tattoos.",
+      "moveIds": [
+        "000040"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-summon-elephant.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-dog-ambush",
+      "name": "Dog Ambush",
+      "description": "A wolf bursts sideways from the victim's shadow on each of two isolated contacts.",
+      "moveIds": [
+        "000041"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-dog-ambush.png",
+      "frameCount": 48,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12,
+        36
+      ]
+    },
+    {
+      "id": "ct-nue-strike",
+      "name": "Nue Lightning Strike",
+      "description": "Masked Nue hangs above the victim and discharges jagged violet lightning straight down.",
+      "moveIds": [
+        "000042"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-nue-strike.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-toad-pull",
+      "name": "Toad Pull",
+      "description": "A visible toad's purple tongue hooks around the user and pulls them backward.",
+      "moveIds": [
+        "000043"
+      ],
+      "placement": "source",
+      "role": "movement",
+      "sheet": "sprites/ct-toad-pull.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-serpent-snare",
+      "name": "Serpent Snare",
+      "description": "An ivory coil thrusts up from the target's black shadow, closing around the body.",
+      "moveIds": [
+        "000044"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-serpent-snare.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-totality-rush",
+      "name": "Totality Rush",
+      "description": "The long-armed black-and-white wolf lunges through the target with three ivory claw trails.",
+      "moveIds": [
+        "000045"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-totality-rush.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-winged-snare",
+      "name": "Winged Toad Snare",
+      "description": "Each winged toad arrives on its own contact and wraps a purple tongue around the target.",
+      "moveIds": [
+        "000046"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-winged-snare.png",
+      "frameCount": 72,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12,
+        36,
+        60
+      ]
+    },
+    {
+      "id": "ct-elephant-drop",
+      "name": "Elephant Drop",
+      "description": "Pink Max Elephant drops vertically from an overhead shadow and lands in a broad crater.",
+      "moveIds": [
+        "000047"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-elephant-drop.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ]
+    },
+    {
+      "id": "ct-shadow-movement",
+      "name": "Shadow Movement",
+      "description": "The fighter sinks into liquid shadow, travels under the floor and rises a short distance away.",
+      "moveIds": [
+        "000048"
+      ],
+      "placement": "source",
+      "role": "movement",
+      "sheet": "sprites/ct-shadow-movement.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-desummon",
+      "name": "Desummon",
+      "description": "Ink folds inward while the shikigami sinks back into the summoner's shadow.",
+      "moveIds": [
+        "000049"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-desummon.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-dog-bite",
+      "name": "Divine Dog Bite",
+      "description": "Two rows of reinforced wolf fangs snap closed, each triangular tooth individually readable.",
+      "moveIds": [
+        "000050"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-dog-bite.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-tracking-pounce",
+      "name": "Tracking Pounce",
+      "description": "The ivory dog follows two scent streaks into a low, unbroken pounce.",
+      "moveIds": [
+        "000051"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-tracking-pounce.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-rending-pounce",
+      "name": "Rending Pounce",
+      "description": "The charcoal dog crashes down with its forepaws and fractures the contact plane.",
+      "moveIds": [
+        "000052"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-rending-pounce.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-electric-talons",
+      "name": "Electrified Talons",
+      "description": "Nue's hooked dark talons rake diagonally, joined by branching purple current.",
+      "moveIds": [
+        "000053"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-electric-talons.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-lightning-discharge",
+      "name": "Lightning Discharge",
+      "description": "A horizontal purple discharge bridges Nue and the target, branching at the receiving contact.",
+      "moveIds": [
+        "000054"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-lightning-discharge.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ]
+    },
+    {
+      "id": "ct-tongue-lash",
+      "name": "Tongue Lash",
+      "description": "The purple tongue snaps straight across the gap, then curls its broad tip at contact.",
+      "moveIds": [
+        "000055"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-tongue-lash.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-binding-tongue",
+      "name": "Binding Tongue",
+      "description": "A pair of offset purple coils tighten around the target, tethered to Toad's mouth.",
+      "moveIds": [
+        "000056"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-binding-tongue.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-serpent-constrict",
+      "name": "Serpent Constrict",
+      "description": "The marked ivory serpent coils tightly around the target with a yellow plated underside.",
+      "moveIds": [
+        "000057"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-serpent-constrict.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-devouring-lunge",
+      "name": "Devouring Lunge",
+      "description": "The great snake's head surges forward behind widely opening ivory fangs.",
+      "moveIds": [
+        "000058"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-devouring-lunge.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-totality-claw",
+      "name": "Totality Claw",
+      "description": "An ivory long-fingered paw cuts three close parallel trails through the target.",
+      "moveIds": [
+        "000059"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-totality-claw.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-predator-rush",
+      "name": "Predator Rush",
+      "description": "Two opposing lunges of the long-armed wolf rake separate crossing claw cuts.",
+      "moveIds": [
+        "000060"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-predator-rush.png",
+      "frameCount": 48,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12,
+        36
+      ]
+    },
+    {
+      "id": "ct-crushing-stomp",
+      "name": "Crushing Stomp",
+      "description": "Max Elephant braces then stamps downward; gold knee rings stay visible above the impact dust.",
+      "moveIds": [
+        "000061"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-crushing-stomp.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-water-deluge",
+      "name": "Water Deluge",
+      "description": "A high-volume trunk torrent crosses the battlefield and breaks over each enemy as a curling wave.",
+      "moveIds": [
+        "000062"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-water-deluge.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ]
+    },
+    {
+      "id": "ct-winged-tongue",
+      "name": "Winged Tongue Snare",
+      "description": "Three separate airborne tongue contacts curl at different angles around the opponent.",
+      "moveIds": [
+        "000063"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-winged-tongue.png",
+      "frameCount": 72,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12,
+        36,
+        60
+      ]
+    },
+    {
+      "id": "ct-aerial-swarm",
+      "name": "Aerial Swarm",
+      "description": "Three small winged toads wheel across the target's sightline in a pale-feathered swarm.",
+      "moveIds": [
+        "000064"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-aerial-swarm.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-sky-rescue",
+      "name": "Sky Rescue",
+      "description": "Nue opens orange wings above the protected ally and lifts them with its talons.",
+      "moveIds": [
+        "000081"
+      ],
+      "placement": "target",
+      "role": "movement",
+      "sheet": "sprites/ct-sky-rescue.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-coiling-guard",
+      "name": "Coiling Guard",
+      "description": "The marked ivory serpent forms a protective coil around the actual protected ally at collision.",
+      "moveIds": [
+        "000082"
+      ],
+      "placement": "target",
+      "role": "guard",
+      "sheet": "sprites/ct-coiling-guard.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-rescue-sprint",
+      "name": "Rescue Sprint",
+      "description": "Totality's long ivory arm reaches the ally before the wolf carries them out of the attack lane.",
+      "moveIds": [
+        "000083"
+      ],
+      "placement": "target",
+      "role": "movement",
+      "sheet": "sprites/ct-rescue-sprint.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-tongue-rescue",
+      "name": "Tongue Rescue",
+      "description": "A purple rescue loop hooks the ally and retracts toward the real Toad source.",
+      "moveIds": [
+        "000084"
+      ],
+      "placement": "target",
+      "role": "movement",
+      "sheet": "sprites/ct-tongue-rescue.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-violet-current",
+      "name": "Violet Wing Current",
+      "placement": "beam",
+      "role": "utility",
+      "sheet": "sprites/ct-violet-current.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    }
+  ]
+}

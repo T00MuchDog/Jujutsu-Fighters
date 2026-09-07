@@ -73,6 +73,16 @@ public final class BattleAnimationPlayer implements Disposable {
                     if (!ids.add(effect.id())) throw new IllegalArgumentException("duplicate effect id: " + effect.id());
                 }
             }
+            for (BattleEffectPack pack : packs) {
+                for (BattleEffectPack.Effect effect : pack.effects()) {
+                    if (effect.castEffect() != null) {
+                        EffectRef cast = effect(effect.castEffect());
+                        if (cast == null || !cast.effect().placement().equals("source")) {
+                            throw new IllegalArgumentException("cast effect must name a source effect: " + effect.castEffect());
+                        }
+                    }
+                }
+            }
             choreography = new BattleChoreography(file("choreography.json"));
             for (Profile profile : choreography.profiles()) {
                 for (Layer layer : profile.layers()) {
@@ -85,7 +95,7 @@ public final class BattleAnimationPlayer implements Disposable {
         }
     }
 
-    private static FileHandle file(String relative) {
+    static FileHandle file(String relative) {
         if (relative.isBlank() || relative.startsWith("/") || relative.contains("\\")
             || relative.contains(":") || List.of(relative.split("/", -1)).stream()
                 .anyMatch(part -> part.isEmpty() || part.equals(".") || part.equals(".."))) {
@@ -104,7 +114,8 @@ public final class BattleAnimationPlayer implements Disposable {
 
     public boolean hasMove(String moveId) {
         EffectRef ref = moveEffect(moveId);
-        return ref != null && !failedEffects.contains(ref.effect().id());
+        return ref != null && !failedEffects.contains(ref.effect().id())
+            && !failedEffects.contains(ref.effect().castEffect());
     }
 
     public boolean handlesEvent(String event) {
@@ -184,6 +195,26 @@ public final class BattleAnimationPlayer implements Disposable {
                 return true;
             } catch (RuntimeException failure) {
                 report("Cannot play blocked animation for " + moveId, failure);
+                clear();
+                return false;
+            }
+        }
+        EffectRef main = moveEffect(moveId);
+        if (event.equals("MOVE_FIRED") && main != null && main.effect().castEffect() != null) {
+            if (failedEffects.contains(main.effect().castEffect())) return false;
+            try {
+                EffectRef cast = effect(main.effect().castEffect());
+                if (cast == null) return false;
+                // Fire has no resolved recipient. Cast once here, never once per AOE target or recoil hit.
+                Profile castProfile = choreography.forEffect(cast.effect());
+                Sequence sequence = sequence(cast, castProfile, null, false,
+                    source, target, mirrored, reinforced);
+                if (sequence.duration() <= 0) return false;
+                active = new Playback(List.of(sequence));
+                return true;
+            } catch (RuntimeException failure) {
+                failedEffects.add(main.effect().castEffect());
+                report("Cannot play cast animation for " + moveId, failure);
                 clear();
                 return false;
             }

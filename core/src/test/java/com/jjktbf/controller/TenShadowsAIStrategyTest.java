@@ -58,23 +58,29 @@ class TenShadowsAIStrategyTest {
     @Test
     void highDangerPicksStrongestAndLowDangerPicksCheapest() {
         // Fearsome-Womb-style menu: White Dog, Black Dog, Nue, Toad, Great Serpent.
-        Move whiteDog = move("000030"), blackDog = move("000031"), nue = move("000035"),
-            toad = move("000036"), serpent = move("000037");
+        // Summon targets are the strategy's own shikigami ids (Nue is the strongest
+        // of this menu, the Divine Dogs the cheapest), authored in code so the test
+        // does not depend on canonical data numbering.
+        Move whiteDog = AIFixtures.summonMove("summon-white", "000013", 35),
+            blackDog = AIFixtures.summonMove("summon-black", "000014", 35),
+            nue = AIFixtures.summonMove("summon-nue", "000015", 50),
+            toad = AIFixtures.summonMove("summon-toad", "000016", 40),
+            serpent = AIFixtures.summonMove("summon-serpent", "000017", 70);
         BattleCombatant megumi = AIFixtures.tenShadowsSorcerer("megumi",
-            whiteDog, blackDog, nue, toad, serpent, move("000000"));
+            whiteDog, blackDog, nue, toad, serpent);
         BattleState state = state(megumi, AIFixtures.lowCeSorcererEnemy("e"));
         BattlePlan plan = new BattlePlan(megumi.getMaxApBar(), megumi.getCurrentCe(), 60);
 
         List<Move> high = TenShadowsAIStrategy.pickSummons(state, megumi, plan,
             List.of(whiteDog, blackDog, nue, toad, serpent), TenShadowsAIStrategy.DangerTier.HIGH, 1);
         assertEquals(1, high.size());
-        assertEquals("000014", high.get(0).getSummonCharacterId(),
+        assertEquals("000015", high.get(0).getSummonCharacterId(),
             "high danger picks Nue (strongest in this menu)");
 
         List<Move> low = TenShadowsAIStrategy.pickSummons(state, megumi, plan,
             List.of(whiteDog, blackDog, nue, toad, serpent), TenShadowsAIStrategy.DangerTier.LOW, 1);
         assertEquals(1, low.size());
-        assertTrue(Set.of("000012", "000013").contains(low.get(0).getSummonCharacterId()),
+        assertTrue(Set.of("000013", "000014").contains(low.get(0).getSummonCharacterId()),
             "low danger picks a cheap Divine Dog");
     }
 

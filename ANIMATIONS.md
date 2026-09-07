@@ -229,10 +229,31 @@ isolate Barrage, Focused Roots, and Wooden Ball contacts. Guards render on the
 actual protected fighter, including ally-conferred Wooden Bulwark.
 
 Sprite tracks include lunges, compression, recoil, shrinking, winged lift, and
-root trips. Flower Field and Self-Embodiment add battlefield layers; beams and
-projectiles span actual fighter positions. Transformations and scenery are
-transient presentation and restore on completion/skip/exit, not persistent form,
-domain, or status replacements. Existing form/domain systems still own gameplay.
+root trips. Flower Field adds transient battlefield layers; beams and projectiles
+span actual fighter positions. Self-Embodiment's opening hands and halo play over
+persistent domain scenery (below). Existing form/domain systems still own gameplay.
+
+### Persistent Domain Scenery
+
+`domain-backdrops.json` binds domain definition IDs to full-scene images and a
+`fadeSeconds` entry duration. Paths use the same override lookup as animation
+packs. Add another domain here without adding move- or character-specific Java.
+
+`DomainBackdropPlayer` begins the fade during `MOVE_FIRED` only when the resolved
+events confirm a same-owner, same-tick domain establishment. It keeps that scene
+after the opening clip and through subsequent turns until the matching domain
+instance collapses. Failed declarations do not leave scenery behind. Skipping
+reconciles to authoritative state; reconnect playback rewinds domain events from
+the final snapshot before playing them. Overlapping configured domains use the
+most recently established backdrop, restoring the previous one on collapse.
+
+Self-Embodiment uses original 1920x1080 near-black scenery with layered chains of
+stitched, gripping arms. The background is aspect-covered behind fighters and HUD
+in both desktop layouts. Regenerate it with
+`python3 scripts/build_domain_backdrop.py`; provenance is in
+`animations/domain-backdrops/CREDITS.md`.
+
+### Cursed Spirit Export
 
 Reproducible art source and review boards:
 

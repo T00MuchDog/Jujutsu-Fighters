@@ -77,6 +77,7 @@ import com.jjktbf.multiplayer.protocol.RoundStartCharacterState;
 import com.jjktbf.multiplayer.protocol.SocketMessage;
 import com.jjktbf.view.BattleView;
 import com.jjktbf.graphics.animation.BattleAnimationPlayer;
+import com.jjktbf.graphics.animation.DomainBackdropPlayer;
 import com.jjktbf.graphics.animation.BattleChoreography;
 
 import java.time.Duration;
@@ -459,6 +460,7 @@ public class BattleScreen implements Screen, BattleView {
     private final Map<OnlineCombatantKey, List<CodedAbilityState>> onlineAbilityStates =
         new HashMap<>();
     private final BattleAnimationPlayer battleAnimations = new BattleAnimationPlayer();
+    private final DomainBackdropPlayer domainBackdrops = new DomainBackdropPlayer();
     private BattleEventState animatedPlaybackEvent;
 
     public BattleScreen(JJKGame game, AssetLoader assets) {
@@ -478,6 +480,7 @@ public class BattleScreen implements Screen, BattleView {
     public void prepareLocal() {
         abortRequested = true;
         battleAnimations.clear();
+        domainBackdrops.clear();
         animatedPlaybackEvent = null;
         localBattleThread = null;
         detachMultiplayerListener();
@@ -510,6 +513,7 @@ public class BattleScreen implements Screen, BattleView {
     ) {
         abortRequested = true;
         battleAnimations.clear();
+        domainBackdrops.clear();
         animatedPlaybackEvent = null;
         localBattleThread = null;
         detachMultiplayerListener();
@@ -568,6 +572,7 @@ public class BattleScreen implements Screen, BattleView {
     @Override
     public void show() {
         battleAnimations.reload();
+        domainBackdrops.reload();
         animatedPlaybackEvent = null;
         windowsCanvas = WindowsBattleCanvas.fit(
             Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -656,6 +661,7 @@ public class BattleScreen implements Screen, BattleView {
         float presentationDelta = realDelta * playbackSpeedMultiplier();
         frameDelta = presentationDelta;
         battleAnimations.update(presentationDelta);
+        domainBackdrops.update(presentationDelta);
         updateMoveUnleashAnimation(presentationDelta);
         updateHitFlashes(presentationDelta);
         updateFaintAnimations(presentationDelta);
@@ -732,6 +738,7 @@ public class BattleScreen implements Screen, BattleView {
     public void hide() {
         if (mode == BattleMode.LOCAL) abortRequested = true;
         battleAnimations.clear();
+        domainBackdrops.clear();
         animatedPlaybackEvent = null;
         if (mode == BattleMode.MULTIPLAYER) {
             closePlanningPanel();
@@ -745,6 +752,7 @@ public class BattleScreen implements Screen, BattleView {
         disposed = true;
         abortRequested = true;
         battleAnimations.dispose();
+        domainBackdrops.dispose();
         detachMultiplayerListener();
         batch.dispose();
     }
@@ -1060,24 +1068,25 @@ public class BattleScreen implements Screen, BattleView {
     /** Cover one execution rectangle while preserving the backdrop's aspect ratio. */
     private void drawExecutionBackground(Rectangle bounds) {
         Texture background = assets.battleExecutionBackground;
-        if (background == null) return;
-
-        float scale = Math.max(
-            bounds.width / background.getWidth(),
-            bounds.height / background.getHeight()
-        );
-        float width = background.getWidth() * scale;
-        float height = background.getHeight() * scale;
-        BattleChoreography.Pose pose = battleAnimations.backgroundPose();
-        width *= pose.scaleX();
-        height *= pose.scaleY();
-        batch.setColor(pose.red(), pose.green(), pose.blue(), pose.alpha());
-        batch.draw(background,
-            bounds.x + (bounds.width - width) / 2f + pose.x() * bounds.width,
-            bounds.y + (bounds.height - height) / 2f + pose.y() * bounds.height,
-            width / 2, height / 2, width, height, 1, 1, pose.rotation(),
-            0, 0, background.getWidth(), background.getHeight(), false, false);
-        batch.setColor(Color.WHITE);
+        if (background != null) {
+            float scale = Math.max(
+                bounds.width / background.getWidth(),
+                bounds.height / background.getHeight()
+            );
+            float width = background.getWidth() * scale;
+            float height = background.getHeight() * scale;
+            BattleChoreography.Pose pose = battleAnimations.backgroundPose();
+            width *= pose.scaleX();
+            height *= pose.scaleY();
+            batch.setColor(pose.red(), pose.green(), pose.blue(), pose.alpha());
+            batch.draw(background,
+                bounds.x + (bounds.width - width) / 2f + pose.x() * bounds.width,
+                bounds.y + (bounds.height - height) / 2f + pose.y() * bounds.height,
+                width / 2, height / 2, width, height, 1, 1, pose.rotation(),
+                0, 0, background.getWidth(), background.getHeight(), false, false);
+            batch.setColor(Color.WHITE);
+        }
+        domainBackdrops.draw(batch, bounds);
         drawBattleAnimationLayer("background");
     }
 
@@ -1163,6 +1172,7 @@ public class BattleScreen implements Screen, BattleView {
 
     /** Track a local playback event so banners pace with the battle log. */
     private void applyLocalDomainEvent(CombatEvent event) {
+        postLocal(() -> domainBackdrops.apply(event));
         switch (event.getType()) {
             case DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED -> addDomainBanner(
                 event.getDomainInstanceId(), event.getDomainName(),
@@ -1184,6 +1194,7 @@ public class BattleScreen implements Screen, BattleView {
 
     /** Track an online playback event so banners pace with the battle log. */
     private void applyOnlineDomainEvent(BattleEventState event) {
+        domainBackdrops.apply(event);
         switch (event.type()) {
             case DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED -> addDomainBanner(
                 event.domainInstanceId(), event.domainName(),
@@ -1205,6 +1216,10 @@ public class BattleScreen implements Screen, BattleView {
     /** Rebuild banners from the authoritative local battlefield. */
     private void syncLocalDomainBanners(BattleState state) {
         if (state == null) return;
+        Map<String, String> domains = new java.util.LinkedHashMap<>();
+        state.domainBattlefield().activeDomains().forEach(domain ->
+            domains.put(domain.instanceId(), domain.definition().id()));
+        postLocal(() -> domainBackdrops.sync(domains));
         List<DomainBanner> banners = new ArrayList<>();
         for (DomainInstance instance : state.domainBattlefield().activeDomains()) {
             BattleCombatant owner = state.combatant(instance.ownerId());
@@ -2547,7 +2562,7 @@ public class BattleScreen implements Screen, BattleView {
             boolean deferredBlock = battleAnimations.handlesEvent("MOVE_BLOCK_REDUCED")
                 && hasFollowingBlockDamage(events, e);
             if (executionUiActive && !skipRoundRequested && !deferredBlock) {
-                startLocalBattleAnimationAndWaitForImpact(e);
+                startLocalBattleAnimationAndWaitForImpact(events, e);
             }
             // Legacy 1v1 resolution does not emit COMBATANT_DEFEATED. Catch its
             // loser before the BATTLE_OVER line so every KO gets the same exit.
@@ -2649,6 +2664,7 @@ public class BattleScreen implements Screen, BattleView {
                 if (shouldLog(e)) queueLogLine(e.getMessage());
                 if (!skipRoundRequested) {
                     postLocal(() -> {
+                        applyLocalSizeMultiplierEvent(ev);
                         if (!skipRoundRequested) flashLocalDamageSprite(ev);
                         updatePanels();
                     });
@@ -2683,14 +2699,20 @@ public class BattleScreen implements Screen, BattleView {
         }
     }
 
-    private void startLocalBattleAnimationAndWaitForImpact(CombatEvent event) {
-        if (!battleAnimations.handlesEvent(event.getType().name())) return;
+    private void startLocalBattleAnimationAndWaitForImpact(List<CombatEvent> events, CombatEvent event) {
+        if (!battleAnimations.handlesEvent(event.getType().name())
+            && event.getType() != CombatEvent.Type.MOVE_FIRED) return;
         // A start fence prevents the controller outrunning a not-yet-executed GL runnable.
         java.util.concurrent.CountDownLatch started = new java.util.concurrent.CountDownLatch(1);
         postLocal(() -> {
             try {
                 if (!skipRoundRequested) {
+                    domainBackdrops.beginOpening(events, event);
                     CombatantPanel source = panelForCombatant(event.getSource());
+                    if (source != null && event.getType() == CombatEvent.Type.MOVE_FIRED
+                        && changesSourceSize(event.getMove())) {
+                        source.setSizeMultiplier(event.getSource().getSizeMultiplier());
+                    }
                     battleAnimations.play(event.getType().name(),
                         event.getMove() == null ? null : event.getMove().getId(), event.getComponentIndex(),
                         () -> panelForCombatant(event.getSource()), () -> panelForCombatant(event.getTarget()),
@@ -2713,6 +2735,14 @@ public class BattleScreen implements Screen, BattleView {
 
     private static boolean isDamageEvent(String type) {
         return type.equals("DAMAGE_DEALT") || type.equals("DAMAGE_IGNORED");
+    }
+
+    private static boolean changesSourceSize(Move move) {
+        if (move == null) return false;
+        return move.getEffects().stream().anyMatch(effect ->
+            AbilityEffectType.TIMED_SIZE_MULTIPLIER.name().equalsIgnoreCase(effect.type)
+                && MoveEffectTrigger.ON_FIRE.name().equalsIgnoreCase(effect.trigger)
+                && "SELF".equalsIgnoreCase(effect.target));
     }
 
     /** Reduced-block markers and damage may have defense-effect events between them. */
@@ -2755,7 +2785,7 @@ public class BattleScreen implements Screen, BattleView {
         return shouldLog(event) || switch (event.getType()) {
             case DAMAGE_DEALT, HP_RESTORED, MAX_HP_CHANGED,
                  CE_DRAINED, CE_RESTORED, CE_DEPLETED, MAX_CE_CHANGED,
-                 STATUS_APPLIED, STATUS_EXPIRED -> true;
+                 STATUS_APPLIED, STATUS_EXPIRED, SIZE_MULTIPLIER_CHANGED -> true;
             default -> false;
         };
     }
@@ -3147,6 +3177,7 @@ public class BattleScreen implements Screen, BattleView {
         initOnlineMoves(local, opponent);
 
         if (state.phase() == BattlePhase.PRE_BATTLE && !isTerminal(state.status())) {
+            domainBackdrops.sync(state, List.of());
             if (!windowsUnified()) closePlanningPanel();
             resetPlaybackControls();
             awaitingBattleStart = true;
@@ -3198,6 +3229,7 @@ public class BattleScreen implements Screen, BattleView {
                 startMultiplayerPlayback(state, true);
                 return;
             }
+            domainBackdrops.sync(state, List.of());
             resetPlaybackControls();
             awaitingBattleStart = false;
             awaitingNextRound = false;
@@ -3228,6 +3260,7 @@ public class BattleScreen implements Screen, BattleView {
         } else if (state.phase() == BattlePhase.BATTLE_OVER) {
             refreshTerminalPlayback(state);
         }
+        if (!resolvingTicks) domainBackdrops.sync(state, List.of());
         updatePanels();
     }
 
@@ -3681,6 +3714,7 @@ public class BattleScreen implements Screen, BattleView {
         playbackEvents = state.recentEvents().stream()
             .filter(event -> event.roundNumber() == playbackRound)
             .toList();
+        domainBackdrops.sync(state, playbackEvents);
 
         syncOnlineBattlefield(
             roundStartOnlineCombatants(state, multiplayerSetup.playerSide(), onlinePlayer),
@@ -3774,8 +3808,15 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private boolean startOnlineBattleAnimation(BattleEventState event) {
+        domainBackdrops.beginOpening(playbackEvents, event);
         if (!battleAnimations.handlesEvent(event.type().name())) return false;
         if (hasFollowingBlockDamage(playbackEvents, event)) return false;
+        CombatantPanel sourcePanel = onlinePanelFor(event.sourceSide(), onlineVisualForEvent(
+            event.sourceSide(), event.sourceInstanceId(), event.sourceCharacterId()));
+        Integer sizePercent = followingSourceSizeMultiplier(event);
+        if (sourcePanel != null && sizePercent != null) {
+            sourcePanel.setSizeMultiplier(CombatEvent.decodeSizeMultiplier(sizePercent));
+        }
         return battleAnimations.play(event.type().name(), event.moveId(), event.componentIndex(),
             () -> onlinePanelFor(event.sourceSide(), onlineVisualForEvent(
                 event.sourceSide(), event.sourceInstanceId(), event.sourceCharacterId())),
@@ -3783,6 +3824,25 @@ public class BattleScreen implements Screen, BattleView {
                 event.targetSide(), event.targetInstanceId(), event.targetCharacterId())),
             event.sourceSide() != null && event.sourceSide() != multiplayerSetup.playerSide(),
             Boolean.TRUE.equals(event.reinforced()), event.defenseMoveId(), Boolean.TRUE.equals(event.defenseReinforced()));
+    }
+
+    private Integer followingSourceSizeMultiplier(BattleEventState event) {
+        if (event.type() != BattleEventType.MOVE_FIRED) return null;
+        for (int i = playbackEventIndex + 1; i < playbackEvents.size(); i++) {
+            BattleEventState candidate = playbackEvents.get(i);
+            if (candidate.roundNumber() != event.roundNumber() || candidate.tick() != event.tick()) break;
+            if (candidate.type() != BattleEventType.SIZE_MULTIPLIER_CHANGED
+                || candidate.targetSide() != event.sourceSide()
+                || !Objects.equals(candidate.moveId(), event.moveId())) continue;
+            if (event.sourceInstanceId() != null || candidate.targetInstanceId() != null) {
+                if (Objects.equals(event.sourceInstanceId(), candidate.targetInstanceId())) {
+                    return candidate.value();
+                }
+            } else if (Objects.equals(event.sourceCharacterId(), candidate.targetCharacterId())) {
+                return candidate.value();
+            }
+        }
+        return null;
     }
 
     private void refreshTerminalPlayback(MatchState state) {
@@ -3859,6 +3919,10 @@ public class BattleScreen implements Screen, BattleView {
         OnlineCombatantKey sourceKey = onlineKey(event.sourceSide(), source);
         CombatantPanel targetPanel = onlinePanelFor(event.targetSide(), target);
         Integer value = event.value();
+        if (event.type() == BattleEventType.SIZE_MULTIPLIER_CHANGED
+            && targetPanel != null && value != null) {
+            targetPanel.setSizeMultiplier(CombatEvent.decodeSizeMultiplier(value));
+        }
         OnlineResourceState targetResources = onlineResourceStates.get(targetKey);
         if (targetResources != null && value != null) {
             switch (event.type()) {
@@ -4031,6 +4095,7 @@ public class BattleScreen implements Screen, BattleView {
         }
         playbackComplete = true;
         resolvingTicks = false;
+        domainBackdrops.sync(multiplayerState, List.of());
         if (playbackReturnsToPlanning
             && multiplayerState.phase() == BattlePhase.PLANNING
             && !isTerminal(multiplayerState.status())) {
@@ -6139,6 +6204,14 @@ public class BattleScreen implements Screen, BattleView {
         });
     }
 
+    private void applyLocalSizeMultiplierEvent(CombatEvent event) {
+        if (event.getType() != CombatEvent.Type.SIZE_MULTIPLIER_CHANGED) return;
+        CombatantPanel panel = panelForCombatant(event.getTarget());
+        if (panel != null) {
+            panel.setSizeMultiplier(CombatEvent.decodeSizeMultiplier(event.getIntValue()));
+        }
+    }
+
     private void applyLocalAbilityEvent(CombatEvent event) {
         CodedAbilityState changed = event.getCodedAbilityState();
         if (changed == null) return;
@@ -6351,6 +6424,7 @@ public class BattleScreen implements Screen, BattleView {
                     combatant.getCurrentCe(), combatant.getMaxCursedEnergy());
                 panels.get(i).updateStatusEffects(combatant);
             }
+            panels.get(i).setSizeMultiplier(combatant.getSizeMultiplier());
         }
     }
 

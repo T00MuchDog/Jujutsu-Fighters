@@ -1,0 +1,126 @@
+{
+ "motifs":{
+  "speech-halo":[
+   {"ellipse":[14,14,82,82],"fill":"#ece4cd","outline":"#bcb4ad","width":2},
+   {"ellipse":[9,9,87,87],"outline":"#a3bfc4","width":2},
+   {"line":[[4,39],[4,57]],"fill":"#e3e7d8","width":2},
+   {"line":[[91,39],[91,57]],"fill":"#e3e7d8","width":2}
+  ],
+  "halt-pressure":[
+   {"line":[[16,24],[16,72],[30,72]],"fill":"#b2dae0","width":3},
+   {"line":[[80,24],[80,72],[66,72]],"fill":"#b2dae0","width":3},
+   {"line":[[16,24],[30,24]],"fill":"#f3f2e2","width":3},
+   {"line":[[80,24],[66,24]],"fill":"#f3f2e2","width":3},
+   {"rect":[36,32,43,65],"fill":"#eff2e6","outline":"#596477"},
+   {"rect":[52,32,59,65],"fill":"#eff2e6","outline":"#596477"},
+   {"line":[[8,46],[26,46]],"fill":"#b2dae0","width":2},
+   {"line":[[69,46],[88,46]],"fill":"#b2dae0","width":2}
+  ],
+  "sleep-lid":[
+   {"polygon":[[13,38],[31,26],[63,26],[83,37],[65,51],[31,51]],"fill":"#3a314e","outline":"#b9a6d1","width":2},
+   {"line":[[17,38],[33,44],[63,44],[80,37]],"fill":"#e6dbe2","width":2},
+   {"line":[[28,43],[24,50]],"fill":"#e6dbe2","width":2},
+   {"line":[[41,46],[40,54]],"fill":"#e6dbe2","width":2},
+   {"line":[[57,46],[58,54]],"fill":"#e6dbe2","width":2},
+   {"line":[[71,43],[75,49]],"fill":"#e6dbe2","width":2},
+   {"polygon":[[69,60],[65,69],[67,77],[77,81],[86,77],[81,84],[69,87],[60,80],[57,71],[62,63]],"fill":"#d8c8de"}
+  ],
+  "down-pressure":[
+   {"polygon":[[16,11],[24,11],[24,47],[33,47],[20,66],[7,47],[16,47]],"fill":"#a9a8c0","outline":"#373248"},
+   {"polygon":[[43,5],[53,5],[53,51],[64,51],[48,73],[32,51],[43,51]],"fill":"#ede6de","outline":"#55506c"},
+   {"polygon":[[72,11],[80,11],[80,47],[89,47],[76,66],[63,47],[72,47]],"fill":"#a9a8c0","outline":"#373248"},
+   {"line":[[10,80],[31,76],[38,83],[49,79],[62,85],[69,78],[87,81]],"fill":"#bbb4ac","width":2}
+  ],
+  "twist-pressure":[
+   {"line":[[24,15],[64,22],[76,32],[65,42],[28,49],[18,60],[33,72],[74,80]],"fill":"#4e3a66","width":8},
+   {"line":[[24,13],[64,20],[74,30],[64,40],[28,47],[20,59],[34,70],[74,78]],"fill":"#c59dcb","width":4},
+   {"line":[[72,14],[31,22],[20,33],[31,42],[69,49],[79,59],[63,72],[24,81]],"fill":"#eee1dd","width":3},
+   {"polygon":[[68,72],[83,80],[68,88]],"fill":"#c59dcb"},
+   {"polygon":[[26,5],[13,13],[28,22]],"fill":"#eee1dd"}
+  ],
+  "return-door":[
+   {"ellipse":[24,10,72,87],"fill":"#101725","outline":"#878aab","width":3},
+   {"ellipse":[32,20,64,78],"outline":"#44455f","width":2},
+   {"line":[[82,34],[57,34],[50,42],[55,52],[69,53]],"fill":"#dfdce8","width":3},
+   {"polygon":[[74,45],[82,54],[70,62]],"fill":"#dfdce8"},
+   {"line":[[7,64],[35,64],[43,55]],"fill":"#9295bb","width":2}
+  ],
+  "terminal-pulse":[
+   {"line":[[7,49],[24,49],[30,39],[36,62],[44,21],[52,73],[59,43],[65,49],[88,49]],"fill":"#341d38","width":6},
+   {"line":[[7,48],[24,48],[30,38],[36,61],[44,20],[52,72],[59,42],[65,48],[88,48]],"fill":"#d14762","width":3},
+   {"ellipse":[17,17,79,79],"outline":"#6b3b58","width":2},
+   {"line":[[23,80],[36,84],[59,84],[72,80]],"fill":"#e598a0","width":2}
+  ],
+  "flat-pulse":[
+   {"line":[[7,48],[88,48]],"fill":"#44213a","width":6},
+   {"line":[[7,48],[88,48]],"fill":"#e6a8b0","width":2},
+   {"rect":[85,45,90,51],"fill":"#f6dad0"}
+  ],
+  "escape-tracks":[
+   {"polygon":[[16,24],[36,35],[16,46],[21,35]],"fill":"#c0e2d6","outline":"#435664"},
+   {"polygon":[[42,24],[62,35],[42,46],[47,35]],"fill":"#e6edda","outline":"#435664"},
+   {"polygon":[[66,24],[86,35],[66,46],[71,35]],"fill":"#c0e2d6","outline":"#435664"},
+   {"ellipse":[22,61,33,80],"fill":"#dee8d9"},
+   {"ellipse":[43,52,54,70],"fill":"#dee8d9"},
+   {"line":[[3,64],[17,64]],"fill":"#8fb1b9","width":2},
+   {"line":[[9,73],[19,73]],"fill":"#8fb1b9","width":2},
+   {"line":[[56,62],[88,62]],"fill":"#8fb1b9","width":2}
+  ],
+  "miracle-marks":[
+   {"line":[[10,30],[21,25],[33,29]],"fill":"#5e4a45","width":3},
+   {"line":[[62,29],[75,25],[86,30]],"fill":"#5e4a45","width":3},
+   {"line":[[11,34],[21,37],[32,33]],"fill":"#e8cead","width":2},
+   {"line":[[63,33],[75,37],[85,34]],"fill":"#e8cead","width":2},
+   {"polygon":[[12,43],[18,39],[21,45],[17,52],[11,51]],"fill":"#e0b73b","outline":"#8d6731"},
+   {"polygon":[[22,44],[27,41],[31,47],[27,55],[21,52]],"fill":"#f0ca54","outline":"#8d6731"},
+   {"polygon":[[33,44],[38,41],[41,48],[37,56],[31,52]],"fill":"#e0b73b","outline":"#8d6731"},
+   {"polygon":[[57,44],[62,41],[65,48],[61,56],[55,52]],"fill":"#e0b73b","outline":"#8d6731"},
+   {"polygon":[[68,44],[73,41],[76,47],[72,55],[66,52]],"fill":"#f0ca54","outline":"#8d6731"},
+   {"polygon":[[78,43],[84,39],[87,45],[83,52],[77,51]],"fill":"#e0b73b","outline":"#8d6731"}
+  ],
+  "coincidence-clock":[
+   {"rect":[14,33,82,63],"fill":"#292b38","outline":"#bca569","width":2},
+   {"line":[[23,43],[27,39],[27,56]],"fill":"#f7d985","width":2},
+   {"line":[[34,43],[38,39],[38,56]],"fill":"#f7d985","width":2},
+   {"rect":[46,43,48,45],"fill":"#f7d985"},
+   {"rect":[46,51,48,53],"fill":"#f7d985"},
+   {"line":[[55,43],[59,39],[59,56]],"fill":"#f7d985","width":2},
+   {"line":[[66,43],[70,39],[70,56]],"fill":"#f7d985","width":2}
+  ]
+ },
+ "effects":[
+  {"id":"ct-speech-seal","name":"Cursed Speech Original Symbol","placement":"source","role":"utility","description":"The existing Snake Eyes and Fangs icon, preserved exactly, grows and fades on every spoken cast.",
+   "art":[{"kind":"art:speech-halo","scale":[0.4,1]},{"image":"moves/cursedTechniques/cursedSpeech/Attack_Icon.png","scale":[0.3,0.75]}],
+   "profile":{"durationSeconds":0.55,"impactSeconds":0.06,"size":1.3,"source":[{"at":0},{"at":0.25,"scaleY":1.02},{"at":1}]}},
+  {"id":"ct-dont-move","name":"Don't Move","moveIds":["000065"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"The command's pressure arrests between hard brackets; an attempt, not confirmation of paralysis.",
+   "art":[{"kind":"art:halt-pressure","scaleX":[1.25,0.8],"fadeIn":0.06},{"kind":"ring","palette":"bone","scale":[1.1,0.55],"time":[0,0.7],"alpha":0.5}],
+   "profile":{"durationSeconds":0.8,"impactSeconds":0.4,"size":1.45,"background":[{"at":0},{"at":0.5,"red":0.65,"green":0.73,"blue":0.82},{"at":1}]}},
+  {"id":"ct-blast-away","name":"Blast Away","moveIds":["000066"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"A directional pressure cone expands in offset rings, visualizing the launch command.",
+   "art":[{"kind":"ring","palette":"bone","scaleX":[0.12,0.4],"scaleY":[0.2,1],"x":[24,64]},{"kind":"ring","palette":"bone","scaleX":[0.1,0.3],"scaleY":[0.15,0.8],"x":[13,47],"time":[0.12,0.92]},{"kind":"slash","palette":"bone","scale":0.75,"rotate":-48,"x":[23,65],"time":[0.25,0.85]},{"kind":"star","palette":"bone","scale":0.55,"x":30,"time":[0.22,0.58]}],
+   "profile":{"durationSeconds":0.85,"impactSeconds":0.4,"size":1.8}},
+  {"id":"ct-sleep","name":"Sleep","moveIds":["000067"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"A closing eyelid and descending crescent convey the sleep command without imposing a false sleeping pose.",
+   "art":[{"kind":"art:sleep-lid","scale":[0.8,1],"y":[35,50]},{"kind":"star","palette":"soul","scale":0.12,"repeat":4,"radius":34,"y":[31,61],"time":[0.2,1]}],
+   "profile":{"durationSeconds":0.95,"impactSeconds":0.46,"size":1.5,"background":[{"at":0},{"at":0.5,"red":0.64,"green":0.57,"blue":0.76},{"at":1}]}},
+  {"id":"ct-plummet","name":"Plummet","moveIds":["000068"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"Three dense downward pressure fronts end at a fractured ground line.",
+   "art":[{"kind":"art:down-pressure","y":[29,54]},{"kind":"ring","palette":"bone","scaleX":[0.2,1.05],"scaleY":0.2,"y":80,"time":[0.43,1]},{"kind":"shard","palette":"bark","scale":0.12,"repeat":5,"radius":[8,33],"y":76,"time":[0.5,1]}],
+   "profile":{"durationSeconds":0.9,"impactSeconds":0.45,"size":1.85}},
+  {"id":"ct-get-twisted","name":"Get Twisted","moveIds":["000069"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"Opposing helical pressure bands corkscrew around a clear center, indicating the twisting command.",
+   "art":[{"kind":"art:twist-pressure","rotate":[-25,35],"scaleX":[1.05,0.65]},{"kind":"ring","palette":"soul","scaleX":0.8,"scaleY":0.3,"y":74,"rotate":[15,-15],"time":[0.2,0.9]}],
+   "profile":{"durationSeconds":0.98,"impactSeconds":0.48,"size":1.8}},
+  {"id":"ct-return","name":"Return","moveIds":["000070"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"A shadow doorway contracts around inward-moving fragments; the summon remains visible until core removes it.",
+   "art":[{"kind":"art:return-door","scaleX":[1,0.2]},{"kind":"shard","palette":"soul","scale":[0.16,0.05],"repeat":7,"radius":[39,4],"orbit":1.3}],
+   "profile":{"durationSeconds":1.02,"impactSeconds":0.5,"size":1.7,"background":[{"at":0},{"at":0.5,"red":0.58,"green":0.6,"blue":0.73},{"at":1}]}},
+  {"id":"ct-explode","name":"Explode","moveIds":["000071"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"A compressed star ruptures outward into angular red pressure fragments, not a premature death animation.",
+   "art":[{"kind":"orb","palette":"blood","scale":[0.35,0.1],"time":[0,0.4]},{"kind":"burst","palette":"blood","scale":[0.12,1.1],"rotate":[0,25],"time":[0.28,0.87]},{"kind":"shard","palette":"blood","scale":[0.25,0.1],"repeat":9,"radius":[4,42],"orbit":0.3,"time":[0.42,1]},{"kind":"ring","palette":"bone","scale":[0.3,1.2],"time":[0.4,0.95]}],
+   "profile":{"durationSeconds":1.05,"impactSeconds":0.5,"size":2,"background":[{"at":0},{"at":0.33,"red":0.65,"green":0.4,"blue":0.48},{"at":0.5,"red":1,"green":0.77,"blue":0.72},{"at":1}]}},
+  {"id":"ct-die","name":"Die","moveIds":["000072"],"family":"speech","placement":"target","role":"targeted","castEffect":"ct-speech-seal","description":"The command is depicted as a jagged heartbeat collapsing to a terminal line, never a false target defeat.",
+   "art":[{"kind":"art:terminal-pulse","scaleY":[1,0.2],"time":[0,0.64]},{"kind":"art:flat-pulse","time":[0.48,1]},{"kind":"shard","palette":"blood","scale":[0.14,0.05],"repeat":6,"radius":[32,8],"time":[0.1,0.75]}],
+   "profile":{"durationSeconds":1.08,"impactSeconds":0.52,"size":1.65,"background":[{"at":0},{"at":0.45,"red":0.43,"green":0.27,"blue":0.39},{"at":0.75,"red":0.52,"green":0.41,"blue":0.5},{"at":1}]}},
+  {"id":"ct-run-away","name":"Run Away","moveIds":["000128"],"family":"speech","placement":"target","role":"movement","castEffect":"ct-speech-seal","description":"On the actual ally defense grant, fleeing footprints and acceleration trails accompany a short retreat.",
+   "art":[{"kind":"art:escape-tracks","x":[28,64]},{"kind":"slash","palette":"bone","scale":0.55,"rotate":-50,"x":[30,64],"y":71,"time":[0.22,0.9]}],
+   "profile":{"durationSeconds":0.85,"impactSeconds":0.34,"size":1.5,"target":[{"at":0},{"at":0.4,"x":-0.3,"y":0.04,"rotation":7},{"at":0.65,"x":-0.23},{"at":1,"easing":"smooth"}]}},
+  {"id":"ct-miracle-creation","name":"Miracle Creation","moveIds":["000021"],"family":"miracles","placement":"source","role":"utility","description":"An everyday 11:11 coincidence is forgotten as its light collects in six gold under-eye marks.",
+   "art":[{"kind":"art:coincidence-clock","scale":[0.8,0.25],"y":[63,50],"time":[0,0.6]},{"kind":"art:miracle-marks","scale":[0.75,1],"time":[0.22,1]},{"kind":"star","palette":"bone","scale":[0.16,0.05],"repeat":6,"radius":[35,16],"y":[70,49],"orbit":0.7,"time":[0.2,0.85]},{"kind":"star","palette":"bone","scale":0.4,"x":69,"y":48,"time":[0.6,0.88]}],
+   "profile":{"durationSeconds":1.3,"impactSeconds":0.72,"size":1.6,"source":[{"at":0},{"at":0.55,"blue":0.77},{"at":1}],"background":[{"at":0},{"at":0.55,"red":0.9,"green":0.83,"blue":0.65},{"at":1}]}}
+ ]
+}

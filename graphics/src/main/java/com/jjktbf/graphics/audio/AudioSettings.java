@@ -8,17 +8,19 @@ public record AudioSettings(
     float musicVolume,
     float uiSfxVolume,
     float battleSfxVolume,
-    boolean muted
+    boolean muted,
+    BattleMusicSelection battleMusic
 ) {
     public AudioSettings {
         masterVolume = normalize(masterVolume);
         musicVolume = normalize(musicVolume);
         uiSfxVolume = normalize(uiSfxVolume);
         battleSfxVolume = normalize(battleSfxVolume);
+        battleMusic = Objects.requireNonNull(battleMusic, "battleMusic");
     }
 
     public static AudioSettings defaults() {
-        return new AudioSettings(1f, 1f, 1f, 1f, false);
+        return new AudioSettings(1f, 1f, 1f, 1f, false, BattleMusicSelection.RANDOM);
     }
 
     public float channelVolume(AudioChannel channel) {
@@ -35,23 +37,29 @@ public record AudioSettings(
     }
 
     public AudioSettings withMasterVolume(float volume) {
-        return new AudioSettings(volume, musicVolume, uiSfxVolume, battleSfxVolume, muted);
+        return new AudioSettings(
+            volume, musicVolume, uiSfxVolume, battleSfxVolume, muted, battleMusic);
     }
 
     public AudioSettings withChannelVolume(AudioChannel channel, float volume) {
         return switch (Objects.requireNonNull(channel, "channel")) {
             case MUSIC -> new AudioSettings(
-                masterVolume, volume, uiSfxVolume, battleSfxVolume, muted);
+                masterVolume, volume, uiSfxVolume, battleSfxVolume, muted, battleMusic);
             case UI_SFX -> new AudioSettings(
-                masterVolume, musicVolume, volume, battleSfxVolume, muted);
+                masterVolume, musicVolume, volume, battleSfxVolume, muted, battleMusic);
             case BATTLE_SFX -> new AudioSettings(
-                masterVolume, musicVolume, uiSfxVolume, volume, muted);
+                masterVolume, musicVolume, uiSfxVolume, volume, muted, battleMusic);
         };
     }
 
     public AudioSettings withMuted(boolean value) {
         return new AudioSettings(
-            masterVolume, musicVolume, uiSfxVolume, battleSfxVolume, value);
+            masterVolume, musicVolume, uiSfxVolume, battleSfxVolume, value, battleMusic);
+    }
+
+    public AudioSettings withBattleMusic(BattleMusicSelection selection) {
+        return new AudioSettings(
+            masterVolume, musicVolume, uiSfxVolume, battleSfxVolume, muted, selection);
     }
 
     private static float normalize(float volume) {

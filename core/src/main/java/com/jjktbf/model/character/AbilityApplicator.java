@@ -211,7 +211,7 @@ public final class AbilityApplicator {
                     // Applied by AbilityActivationEngine when an active condition is met.
                     case HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE,
                          INSTANT_KILL, APPLY_STATUS, REMOVE_STATUS, CLEAR_STATUSES,
-                          TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
+                           TIMED_STAT_MODIFIER, TIMED_SIZE_MULTIPLIER, TEMP_STAT_SET_VALUE,
                           STUN_CURRENT_ACTION, IGNORE_DAMAGE,
                           DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE, APPLY_NEVER_MISS,
                            APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,

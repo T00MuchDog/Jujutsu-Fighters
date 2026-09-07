@@ -275,6 +275,10 @@ public enum AbilityEffectType {
         "Changes or multiplies a core or battle stat, or sets a battle stat to an exact value, for the configured rounds and ticks.",
         STAT_TYPE, STAT_OPERATION, VALUE_MODE, STAT, BATTLE_STAT,
         TARGET, INTEGER, DECIMAL, DURATION, REFRESH_GROUP),
+    TIMED_SIZE_MULTIPLIER(
+        "Timed size multiplier",
+        "Multiplies the combatant's visible body size for the configured rounds and ticks.",
+        TARGET, DECIMAL, DURATION, REFRESH_GROUP),
     TEMP_STAT_SET_VALUE(
         "Timed character stat set",
         "Sets a character stat to an exact value for the configured rounds and ticks.",
@@ -384,7 +388,7 @@ public enum AbilityEffectType {
             HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE,
             INSTANT_KILL, APPLY_STATUS, MAINTAIN_STATUS_WITH_CE,
             REMOVE_STATUS, CLEAR_STATUSES,
-            TIMED_STAT_MODIFIER, TEMP_STAT_SET_VALUE,
+            TIMED_STAT_MODIFIER, TIMED_SIZE_MULTIPLIER, TEMP_STAT_SET_VALUE,
             IGNORE_DAMAGE, DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE,
             APPLY_NEVER_MISS, APPLY_NEVER_HIT, GUARANTEE_NEXT_BLACK_FLASH,
              CANCEL_NEXT_MOVE, STUN_CURRENT_ACTION, TEMP_LOCK_MOVE_TAG,
@@ -687,6 +691,10 @@ public enum AbilityEffectType {
                 effect.statOperation = StatOperation.CHANGE.name();
                 effect.valueMode = ValueMode.FLAT.name();
                 effect.intValue = 10;
+                timedDefaults(effect);
+            }
+            case TIMED_SIZE_MULTIPLIER -> {
+                effect.doubleValue = 0.5;
                 timedDefaults(effect);
             }
             case TEMP_STAT_SET_VALUE -> {
@@ -1194,6 +1202,8 @@ public enum AbilityEffectType {
             case DAMAGE_SHIELD -> effect.intValue <= 0
                 ? "Amount must be greater than 0." : null;
             case TIMED_STAT_MODIFIER -> timedStatValidationError(effect);
+            case TIMED_SIZE_MULTIPLIER -> effect.doubleValue <= 0.0
+                ? "Size multiplier must be greater than 0." : null;
             case MOVE_BASE_POWER_SCALE_BY_STAT ->
                 effect.minimumStatMultiplier <= 0.0 || effect.maximumStatMultiplier <= 0.0
                     ? "Stat-scaled multipliers must be greater than 0."

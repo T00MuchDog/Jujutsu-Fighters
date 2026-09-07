@@ -1665,6 +1665,7 @@ public final class HeadlessBattleSession {
             case DAMAGE_DEALT, DAMAGE_IGNORED, HP_RESTORED,
                  MAX_HP_CHANGED, MAX_CE_CHANGED, BLACK_FLASH,
                  CE_DRAINED, CE_RESTORED,
+                 SIZE_MULTIPLIER_CHANGED,
                  CHARACTER_TRANSFORMED, CHARACTER_REVERTED,
                  DOMAIN_BARRIER_DAMAGED -> event.getIntValue();
             default -> null;

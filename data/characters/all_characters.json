@@ -132,6 +132,32 @@
   "availableAbilityIds" : [ "000040", "000041", "000042", "000004", "000043", "000059" ]
 }, {
   "id" : "000006",
+  "name" : "Mahito (Vs. Mahito)",
+  "description" : "A special-grade cursed spirit born from humanity's hatred of one another. Mahito toys with bodies and souls alike: his flesh has no fixed shape, his touch rewrites souls, and his awakened Domain closes around everyone.",
+  "spriteAsset" : "assets/sprites/characters/mahito_frontsprite.png",
+  "type" : "CURSED_SPIRIT",
+  "directlySelectable" : true,
+  "innateTechniqueName" : "Idle Transfiguration",
+  "equippedWeaponTypes" : [ ],
+  "equippedCursedToolIds" : [ ],
+  "vitality" : 105,
+  "strength" : 75,
+  "durability" : 85,
+  "speed" : 105,
+  "cursedEnergyReserves" : 145,
+  "cursedEnergyEfficiency" : 110,
+  "cursedEnergyOutput" : 110,
+  "jujutsuSkill" : 145,
+  "combatAbility" : 65,
+  "cursedTechniqueMastery" : 165,
+  "moveIds" : [ "000100", "000101", "000102", "000104", "000105", "000106", "000112", "000113", "000114", "000116", "000120", "000121", "000140", "000141", "000142", "000143", "000144", "000145", "000146", "000147", "000148", "000149", "000150" ],
+  "moveSetIds" : [ "000140", "000143", "000144", "000145", "000146", "000147", "000148", "000149", "000150" ],
+  "availableMoveIds" : [ "000140", "000141", "000142", "000143", "000144", "000145", "000146", "000147", "000148", "000149", "000150" ],
+  "abilityIds" : [ "000049", "000012", "000060", "000061", "000062", "000063" ],
+  "availableAbilityIds" : [ "000060", "000061", "000062", "000063", "000012" ],
+  "availableDomainIds" : [ "000001" ]
+}, {
+  "id" : "000007",
   "name" : "Megumi Fushiguro (Kyoto Goodwill Event)",
   "description" : "A more experienced Megumi who combines close combat, *move:000048*, stronger shikigami, and both *ability:000019* and *ability:000032* to pressure opponents from every range.",
   "spriteAsset" : "assets/sprites/characters/megumi_frontsprite.png",
@@ -153,7 +179,7 @@
   "abilityIds" : [ "000013", "000014", "000019", "000020", "000032", "000059" ],
   "availableAbilityIds" : [ "000013", "000014", "000019", "000020", "000032", "000059" ]
 }, {
-  "id" : "000007",
+  "id" : "000008",
   "name" : "Miwa Kasumi",
   "description" : "A diligent swordswoman without an innate cursed technique. Miwa combines disciplined sword combat with *ability:000005*, holding *move:000026* until an opponent commits to an attack.",
   "spriteAsset" : "assets/sprites/characters/miwa_frontsprite.png",
@@ -173,7 +199,7 @@
   "availableMoveIds" : [ "000000", "000001", "000012", "000019", "000022", "000025", "000026", "000099" ],
   "abilityIds" : [ "000005", "000006", "000007", "000059" ]
 }, {
-  "id" : "000008",
+  "id" : "000009",
   "name" : "Noritoshi Kamo (Kyoto Goodwill Event)",
   "description" : "A semi-grade 1 Kamo clan heir and disciplined marksman. He uses prepared blood, measured archery, bodily enhancement, binding control, and compressed finishing shots to direct a fight from range.",
   "spriteAsset" : "assets/sprites/characters/noritoshiKamo_frontsprite.png",
@@ -198,7 +224,7 @@
   "availableAbilityIds" : [ "000046", "000048", "000059" ],
   "availableDomainIds" : [ ]
 }, {
-  "id" : "000009",
+  "id" : "000010",
   "name" : "Yuji Itadori (Kyoto Goodwill Event)",
   "description" : "After learning to control the flow of his cursed energy, Yuji reinforces his extraordinary close-quarters combat and stands poised to call forth the sparks of Black Flash.",
   "spriteAsset" : "assets/sprites/characters/yuji_frontsprite.png",
@@ -219,7 +245,7 @@
   "abilityIds" : [ "000008", "000010", "000011", "000009", "000033", "000059" ],
   "availableAbilityIds" : [ "000008", "000033", "000059" ]
 }, {
-  "id" : "000010",
+  "id" : "000011",
   "name" : "Haruta Shigemo",
   "description" : "An opportunistic curse user who relies on a hand-shaped cursed tool and attacks distracted opponents. Haruta is quick enough to pressure a weaker target, but lacks the durability and skill to stand against a true grade 1 sorcerer.",
   "spriteAsset" : "assets/sprites/characters/haruta_frontsprite.png",
@@ -241,7 +267,7 @@
   "abilityIds" : [ "000001", "000002", "000003", "000059" ],
   "availableAbilityIds" : [ "000001", "000003", "000002", "000059" ]
 }, {
-  "id" : "000011",
+  "id" : "000012",
   "name" : "Hanami",
   "description" : "A special-grade cursed spirit born from humanity's fear of the land. Hanami endures punishment behind an unnaturally dense core, overwhelms groups with Disaster Plants, implants cursed buds that feed on spent energy, and stores stolen life force in the flower on its shoulder.",
   "spriteAsset" : "assets/sprites/characters/hanami_frontsprite.png",
@@ -267,7 +293,7 @@
   "availableAbilityIds" : [ "000057", "000058", "000059" ],
   "availableDomainIds" : [ ]
 }, {
-  "id" : "000012",
+  "id" : "000013",
   "name" : "Divine Dog White",
   "description" : "A swift Divine Dog shikigami that tracks prey and attacks with cursed-energy reinforced fangs.",
   "spriteAsset" : "assets/sprites/shikigami/DivineDogWhite_frontsprite.png",
@@ -289,7 +315,7 @@
   "abilityIds" : [ "000021", "000022" ],
   "availableAbilityIds" : [ "000021", "000022" ]
 }, {
-  "id" : "000013",
+  "id" : "000014",
   "name" : "Divine Dog Black",
   "description" : "A powerful Divine Dog shikigami that tears into guarded prey with relentless pounces.",
   "spriteAsset" : "assets/sprites/shikigami/DivineDogBlack_frontsprite.png",
@@ -311,7 +337,7 @@
   "abilityIds" : [ "000021", "000023" ],
   "availableAbilityIds" : [ "000021", "000023" ]
 }, {
-  "id" : "000014",
+  "id" : "000015",
   "name" : "Nue",
   "description" : "A winged shikigami that controls the air and discharges cursed lightning through its talons.",
   "spriteAsset" : "assets/sprites/shikigami/Nue_frontsprite.png",
@@ -335,7 +361,7 @@
   "abilityIds" : [ "000021", "000024" ],
   "availableAbilityIds" : [ "000021", "000024" ]
 }, {
-  "id" : "000015",
+  "id" : "000016",
   "name" : "Toad Gamma",
   "description" : "A sturdy shikigami whose long tongue strikes, restrains, and pulls targets from a distance.",
   "spriteAsset" : "assets/sprites/shikigami/Toad_frontsprite.png",
@@ -359,7 +385,7 @@
   "abilityIds" : [ "000021", "000025" ],
   "availableAbilityIds" : [ "000021", "000025" ]
 }, {
-  "id" : "000016",
+  "id" : "000017",
   "name" : "Great Serpent Orochi",
   "description" : "A massive serpentine shikigami that coils around prey before closing in with *move:000058*.",
   "spriteAsset" : "assets/sprites/shikigami/GreatSerpentOrochi_frontsprite.png",
@@ -381,7 +407,7 @@
   "abilityIds" : [ "000021", "000026" ],
   "availableAbilityIds" : [ "000021", "000026" ]
 }, {
-  "id" : "000017",
+  "id" : "000018",
   "name" : "Divine Dog Totality",
   "description" : "A Divine Dog empowered through *ability:000019*, concentrating inherited strength into overwhelming speed and claws.",
   "spriteAsset" : "assets/sprites/shikigami/DivineDogTotality_frontsprite.png",
@@ -405,7 +431,7 @@
   "abilityIds" : [ "000021", "000027" ],
   "availableAbilityIds" : [ "000021", "000027" ]
 }, {
-  "id" : "000018",
+  "id" : "000019",
   "name" : "Max Elephant",
   "description" : "A colossal elephant shikigami that crushes groups beneath its weight and releases torrents of water.",
   "spriteAsset" : "assets/sprites/shikigami/MaxElephant_frontsprite.png",
@@ -427,7 +453,7 @@
   "abilityIds" : [ "000021", "000028" ],
   "availableAbilityIds" : [ "000021", "000028" ]
 }, {
-  "id" : "000019",
+  "id" : "000020",
   "name" : "Toad/Nue Fusion",
   "description" : "A temporary fusion of *ability:000025* and *ability:000024* summoned through *ability:000032* — a winged swarm that binds enemies from above. Weaker than a *ability:000019*, it may be destroyed without losing its component shikigami.",
   "spriteAsset" : "assets/sprites/shikigami/ToadNueFusion_frontsprite.png",
@@ -451,7 +477,7 @@
   "abilityIds" : [ "000021", "000029" ],
   "availableAbilityIds" : [ "000021", "000029" ]
 }, {
-  "id" : "000020",
+  "id" : "000021",
   "name" : "Panda (Gorilla Core)",
   "description" : "Panda's power-oriented *ability:000038*. It overwhelms opponents with greater strength and speed and can channel *move:000087* through their guard, but burns cursed energy rapidly.",
   "spriteAsset" : "assets/sprites/characters/pandaGorilla_frontsprite.png",
@@ -473,32 +499,6 @@
   "availableMoveIds" : [ "000000", "000001", "000002", "000004", "000007", "000012", "000020", "000027", "000029", "000074", "000075", "000076", "000086", "000087", "000088", "000099" ],
   "abilityIds" : [ "000034", "000035", "000038", "000039", "000059" ],
   "availableAbilityIds" : [ "000034", "000035", "000036", "000037", "000038", "000039", "000059" ]
-}, {
-  "id" : "000021",
-  "name" : "Mahito (Vs. Mahito)",
-  "description" : "A special-grade cursed spirit born from humanity's hatred of one another. Mahito toys with bodies and souls alike: his flesh has no fixed shape, his touch rewrites souls, and his awakened Domain closes around everyone.",
-  "spriteAsset" : "assets/sprites/characters/mahito_frontsprite.png",
-  "type" : "CURSED_SPIRIT",
-  "directlySelectable" : true,
-  "innateTechniqueName" : "Idle Transfiguration",
-  "equippedWeaponTypes" : [ ],
-  "equippedCursedToolIds" : [ ],
-  "vitality" : 105,
-  "strength" : 75,
-  "durability" : 85,
-  "speed" : 105,
-  "cursedEnergyReserves" : 145,
-  "cursedEnergyEfficiency" : 110,
-  "cursedEnergyOutput" : 110,
-  "jujutsuSkill" : 145,
-  "combatAbility" : 65,
-  "cursedTechniqueMastery" : 165,
-  "moveIds" : [ "000100", "000101", "000102", "000104", "000105", "000106", "000112", "000113", "000114", "000116", "000120", "000121", "000140", "000141", "000142", "000143", "000144", "000145", "000146", "000147", "000148", "000149", "000150" ],
-  "moveSetIds" : [ "000140", "000143", "000144", "000145", "000146", "000147", "000148", "000149", "000150" ],
-  "availableMoveIds" : [ "000140", "000141", "000142", "000143", "000144", "000145", "000146", "000147", "000148", "000149", "000150" ],
-  "abilityIds" : [ "000049", "000012", "000060", "000061", "000062", "000063" ],
-  "availableAbilityIds" : [ "000060", "000061", "000062", "000063", "000012" ],
-  "availableDomainIds" : [ "000001" ]
 }, {
   "id" : "000022",
   "name" : "Transfigured Human",

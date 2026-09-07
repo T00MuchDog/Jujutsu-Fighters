@@ -365,7 +365,7 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(27, joined.protocolVersion());
+        assertEquals(28, joined.protocolVersion());
         assertEquals(List.of(new SwitchSelection("PLAYER-f2", "PLAYER-f4")),
             command.payload().switches());
         assertEquals(42L, joined.stateVersion());

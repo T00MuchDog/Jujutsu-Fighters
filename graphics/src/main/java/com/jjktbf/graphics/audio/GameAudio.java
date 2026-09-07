@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Application-lifetime owner of all native audio resources.
@@ -29,6 +30,7 @@ public final class GameAudio implements Disposable {
     private static final String UI_VOLUME_KEY = "uiSfxVolume";
     private static final String BATTLE_VOLUME_KEY = "battleSfxVolume";
     private static final String MUTED_KEY = "muted";
+    private static final String BATTLE_MUSIC_KEY = "battleMusic";
     private static final float FIRST_INSTALL_MUSIC_VOLUME = 0.6f;
 
     private final Map<MusicTrack, Music> music = new EnumMap<>(MusicTrack.class);
@@ -74,6 +76,29 @@ public final class GameAudio implements Disposable {
         if (currentMusic != null) currentMusic.stop();
         requestedTrack = null;
         currentMusic = null;
+    }
+
+    /** Starts the configured battle music, or stops music when the choice is None. */
+    public void playBattleMusic() {
+        MusicTrack requested = settings.battleMusic().resolveTrack().orElse(null);
+        if (requested == null) {
+            stopMusic();
+            return;
+        }
+        playMusic(playableBattleTrack(requested, music.keySet()));
+    }
+
+    /**
+     * Returns the requested track when its asset loaded, otherwise the first
+     * loaded battle track, so one missing or invalid battle asset cannot
+     * silence the battles that select it.
+     */
+    static MusicTrack playableBattleTrack(MusicTrack requested, Set<MusicTrack> loadedTracks) {
+        if (loadedTracks.contains(requested)) return requested;
+        for (MusicTrack candidate : MusicTrack.battleTracks()) {
+            if (loadedTracks.contains(candidate)) return candidate;
+        }
+        return requested;
     }
 
     /** Plays a short cue once and returns its LibGDX sound ID, or {@code -1} if unavailable. */
@@ -269,7 +294,9 @@ public final class GameAudio implements Disposable {
                 preferences.getFloat(MUSIC_VOLUME_KEY, defaults.musicVolume()),
                 preferences.getFloat(UI_VOLUME_KEY, defaults.uiSfxVolume()),
                 preferences.getFloat(BATTLE_VOLUME_KEY, defaults.battleSfxVolume()),
-                preferences.getBoolean(MUTED_KEY, defaults.muted())
+                preferences.getBoolean(MUTED_KEY, defaults.muted()),
+                BattleMusicSelection.fromPreference(preferences.getString(
+                    BATTLE_MUSIC_KEY, defaults.battleMusic().name()))
             );
         } catch (RuntimeException failure) {
             reportFailure("Could not read audio preferences", failure);
@@ -285,6 +312,7 @@ public final class GameAudio implements Disposable {
             preferences.putFloat(UI_VOLUME_KEY, settings.uiSfxVolume());
             preferences.putFloat(BATTLE_VOLUME_KEY, settings.battleSfxVolume());
             preferences.putBoolean(MUTED_KEY, settings.muted());
+            preferences.putString(BATTLE_MUSIC_KEY, settings.battleMusic().name());
             preferences.flush();
         } catch (RuntimeException failure) {
             reportFailure("Could not save audio preferences", failure);

@@ -10,8 +10,8 @@ import java.util.Properties;
 public final class ProtocolVersion {
 
     public static final String GAME_VERSION = loadGameVersion();
-    /** Protocol v27 adds resolved per-target move activation events. */
-    public static final int PROTOCOL_VERSION = 27;
+    /** Protocol v28 adds temporary combatant-size change events. */
+    public static final int PROTOCOL_VERSION = 28;
     public static final String STANDARD_RULESET = BattleStatMode.STANDARD.rulesetId();
     public static final String EQUALIZED_STATS_RULESET = BattleStatMode.EQUALIZED.rulesetId();
 

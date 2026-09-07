@@ -15,6 +15,9 @@ import com.jjktbf.model.move.Move;
  */
 public class CombatEvent {
 
+    /** Size multipliers are carried through the integer event field as percentages. */
+    private static final int SIZE_MULTIPLIER_PERCENT = 100;
+
     public enum Type {
         // Move execution
         MOVE_STARTED,
@@ -42,6 +45,7 @@ public class CombatEvent {
         // Generic effect resolution
         EFFECT_FAILED,
         RESOURCE_CHANGED,
+        SIZE_MULTIPLIER_CHANGED,
 
         // Domains
         DOMAIN_DECLARED,
@@ -186,6 +190,36 @@ public class CombatEvent {
         return of(Type.COMBATANT_SUMMONED)
             .source(summoner).target(summon).tick(tick)
             .message(summon.getCharacter().getName() + " joins the battle!")
+            .build();
+    }
+
+    public static int encodeSizeMultiplier(double multiplier) {
+        return (int) Math.round(multiplier * SIZE_MULTIPLIER_PERCENT);
+    }
+
+    public static float decodeSizeMultiplier(int encoded) {
+        return encoded / (float) SIZE_MULTIPLIER_PERCENT;
+    }
+
+    /** Presentation-neutral body-size update consumed by local and online renderers. */
+    public static CombatEvent sizeMultiplierChanged(
+        BattleCombatant source,
+        BattleCombatant target,
+        int tick
+    ) {
+        return sizeMultiplierChanged(source, target, null, tick);
+    }
+
+    /** Body-size update associated with the move that applied the transformation. */
+    public static CombatEvent sizeMultiplierChanged(
+        BattleCombatant source,
+        BattleCombatant target,
+        Move move,
+        int tick
+    ) {
+        return of(Type.SIZE_MULTIPLIER_CHANGED)
+            .source(source).target(target).move(move).tick(tick)
+            .intValue(encodeSizeMultiplier(target == null ? 1.0 : target.getSizeMultiplier()))
             .build();
     }
 

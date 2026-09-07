@@ -23,7 +23,8 @@ import java.util.Set;
 public final class BattleEffectPack implements Disposable {
     public record Effect(String id, String sheet, int frameCount, float frameSeconds,
                          boolean loop, float anchorX, float anchorY, String placement,
-                         String role, List<Integer> impactFrames, String reinforcementSheet) {
+                         String role, List<Integer> impactFrames, String reinforcementSheet,
+                         String castEffect) {
         public Effect {
             impactFrames = List.copyOf(impactFrames == null ? List.of() : impactFrames);
         }
@@ -258,9 +259,10 @@ public final class BattleEffectPack implements Disposable {
                 : requiredString(value, "role");
         List<Integer> impactFrames = impactFrames(value, frameCount, id);
         String reinforcementSheet = readReinforcement(value, id, frameCount, frameSeconds);
+        String castEffect = optionalString(value, "castEffect");
 
         Effect effect = new Effect(id, sheet, frameCount, frameSeconds, loop, anchorX, anchorY,
-                placement, role, impactFrames, reinforcementSheet);
+                placement, role, impactFrames, reinforcementSheet, castEffect);
         effects.put(id, effect);
         bind(moveEffects, bindings(value, "moveIds"), effect, "moveIds");
         bind(eventEffects, bindings(value, "eventTypes"), effect, "eventTypes");
@@ -468,6 +470,15 @@ public final class BattleEffectPack implements Disposable {
         JsonValue value = object.get(field);
         if (value == null || !value.isString() || value.asString().isBlank()) {
             throw invalid(field + " must be a non-empty string");
+        }
+        return value.asString();
+    }
+
+    private static String optionalString(JsonValue object, String field) {
+        JsonValue value = object.get(field);
+        if (value == null) return null;
+        if (!value.isString() || value.asString().isBlank()) {
+            throw invalid(field + " must be a non-empty string when supplied");
         }
         return value.asString();
     }

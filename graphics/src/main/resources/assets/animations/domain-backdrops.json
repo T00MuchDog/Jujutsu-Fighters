@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "domains": {
+    "000001": {
+      "sheet": "domain-backdrops/self-embodiment.png",
+      "fadeSeconds": 0.7
+    }
+  }
+}

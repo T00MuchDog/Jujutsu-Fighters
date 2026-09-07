@@ -60,14 +60,14 @@ public class TenShadowsAIStrategy implements AIStrategy {
      * fixed roster, used to pick the right summon for the danger tier.
      */
     private static final Map<String, Integer> SHIKIGAMI_POWER = Map.of(
-        "000012", 375, // Divine Dog White
-        "000013", 395, // Divine Dog Black
-        "000014", 495, // Nue
-        "000015", 295, // Toad Gamma
-        "000016", 475, // Great Serpent Orochi
-        "000017", 660, // Divine Dog Totality
-        "000018", 601, // Max Elephant
-        "000019", 471  // Toad/Nue Fusion (Well's Unknown Abyss)
+        "000013", 375, // Divine Dog White
+        "000014", 395, // Divine Dog Black
+        "000015", 495, // Nue
+        "000016", 310, // Toad Gamma
+        "000017", 475, // Great Serpent Orochi
+        "000018", 675, // Divine Dog Totality
+        "000019", 601, // Max Elephant
+        "000020", 295  // Toad/Nue Fusion (Well's Unknown Abyss)
     );
 
     /** Danger tier derived from an opponent's base-stat total. */

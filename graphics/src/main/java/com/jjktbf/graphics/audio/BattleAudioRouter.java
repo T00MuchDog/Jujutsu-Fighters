@@ -12,7 +12,17 @@ import java.util.Optional;
 /** Pure mapping from local/online battle events to presentation-only sound cues. */
 public final class BattleAudioRouter {
     /** Add stable move-ID overrides here; all other moves use their category cue. */
-    private static final Map<String, SoundCue> MOVE_UNLEASH_CUES = Map.of();
+    private static final Map<String, SoundCue> MOVE_UNLEASH_CUES = Map.ofEntries(
+        Map.entry("000065", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000066", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000067", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000068", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000069", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000070", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000071", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000072", SoundCue.BATTLE_CURSED_SPEECH),
+        Map.entry("000128", SoundCue.BATTLE_CURSED_SPEECH)
+    );
 
     private BattleAudioRouter() {
     }
@@ -28,7 +38,7 @@ public final class BattleAudioRouter {
             case MOVE_STUNNED -> Optional.of(SoundCue.BATTLE_STUN);
             case MOVE_SUMMON -> Optional.empty();
             case MOVE_TARGETED, TARGET_RETARGETED, TARGETS_EXCHANGED, DEFENSE_GRANTED,
-                 EFFECT_FAILED, RESOURCE_CHANGED -> Optional.empty();
+                 EFFECT_FAILED, RESOURCE_CHANGED, SIZE_MULTIPLIER_CHANGED -> Optional.empty();
             case DAMAGE_DEALT -> Optional.of(SoundCue.BATTLE_HIT);
             case DAMAGE_IGNORED -> Optional.of(SoundCue.BATTLE_DAMAGE_IGNORED);
             case HP_RESTORED -> positiveCue(event.getIntValue(), SoundCue.BATTLE_HEAL);
@@ -68,7 +78,7 @@ public final class BattleAudioRouter {
             case MOVE_STUNNED -> Optional.of(SoundCue.BATTLE_STUN);
             case MOVE_SUMMON -> Optional.empty();
             case MOVE_TARGETED, TARGET_RETARGETED, TARGETS_EXCHANGED, DEFENSE_GRANTED,
-                 EFFECT_FAILED, RESOURCE_CHANGED -> Optional.empty();
+                 EFFECT_FAILED, RESOURCE_CHANGED, SIZE_MULTIPLIER_CHANGED -> Optional.empty();
             case DAMAGE_DEALT -> Optional.of(SoundCue.BATTLE_HIT);
             case DAMAGE_IGNORED -> Optional.of(SoundCue.BATTLE_DAMAGE_IGNORED);
             case HP_RESTORED -> positiveCue(event.value(), SoundCue.BATTLE_HEAL);

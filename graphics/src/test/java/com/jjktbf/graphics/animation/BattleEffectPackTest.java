@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BattleEffectPackTest {
@@ -31,7 +32,7 @@ class BattleEffectPackTest {
                     {"id":"strike", "sheet":"strike.png", "frameCount":10,
                      "frameDurationMs":50, "loop":false, "anchor":[0.25,0.5],
                      "placement":"target", "moveIds":["move-a"],
-                     "impactFrames":[2,7]},
+                      "impactFrames":[2,7], "castEffect":"event"},
                     {"id":"event", "sheet":"event.png", "frameCount":4,
                      "frameDurationMs":125, "loop":true, "anchor":[0.5,1],
                      "placement":"source", "eventTypes":["EVENT_A"]}
@@ -43,7 +44,9 @@ class BattleEffectPackTest {
         BattleEffectPack.Effect strike = pack.effectForMove("move-a");
         assertEquals(0.5f, strike.durationSeconds(), 0.0001f);
         assertEquals("attack", strike.role());
+        assertEquals("event", strike.castEffect());
         assertEquals("utility", pack.effectForEvent("EVENT_A").role());
+        assertNull(pack.effectForEvent("EVENT_A").castEffect());
 
         BattleEffectPack.Clip first = pack.clip(strike, null);
         assertEquals(0, first.firstFrame());
@@ -85,6 +88,14 @@ class BattleEffectPackTest {
                   ]
                 }
                 """);
+        assertThrows(IllegalArgumentException.class,
+                () -> new BattleEffectPack(new FileHandle(root.toFile())));
+    }
+
+    @Test
+    void rejectsBlankOptionalCastEffect() throws IOException {
+        Files.writeString(root.resolve("sheet.png"), "placeholder");
+        writeManifest(baseManifestWithCast("  "));
         assertThrows(IllegalArgumentException.class,
                 () -> new BattleEffectPack(new FileHandle(root.toFile())));
     }
@@ -152,5 +163,17 @@ class BattleEffectPackTest {
                   }]
                 }
                 """.formatted(sheet);
+    }
+
+    private static String baseManifestWithCast(String castEffect) {
+        return """
+                {
+                  "schemaVersion": 1, "frameWidth": 10, "frameHeight": 10, "columns": 1,
+                  "sheetOrder": "row-major-top-left", "effects": [{
+                    "id":"effect", "sheet":"sheet.png", "frameCount":2, "frameDurationMs":50,
+                    "loop":false, "anchor":[0.5,0.5], "placement":"target", "castEffect":"%s"
+                  }]
+                }
+                """.formatted(castEffect);
     }
 }

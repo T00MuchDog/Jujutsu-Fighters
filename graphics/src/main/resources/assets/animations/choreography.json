@@ -64,7 +64,63 @@
     "cs-giant-fist": "cs-giant-fist",
     "cs-spike-form": "cs-spike-form",
     "cs-winged-evasion": "cs-winged-evasion",
-    "cs-self-embodiment": "cs-self-embodiment"
+    "cs-self-embodiment": "cs-self-embodiment",
+    "ct-guided-arrow": "ct-guided-arrow",
+    "ct-red-scale": "ct-red-scale",
+    "ct-crimson-binding": "ct-crimson-binding",
+    "ct-slicing-exorcism": "ct-slicing-exorcism",
+    "ct-convergence": "ct-convergence",
+    "ct-piercing-blood": "ct-piercing-blood",
+    "ct-ratio-mark": "ct-ratio-mark",
+    "ct-ratio-strike": "ct-ratio-strike",
+    "ct-ratio-cleave": "ct-ratio-cleave",
+    "ct-speech-seal": "ct-speech-seal",
+    "ct-dont-move": "ct-dont-move",
+    "ct-blast-away": "ct-blast-away",
+    "ct-sleep": "ct-sleep",
+    "ct-plummet": "ct-plummet",
+    "ct-get-twisted": "ct-get-twisted",
+    "ct-return": "ct-return",
+    "ct-explode": "ct-explode",
+    "ct-die": "ct-die",
+    "ct-run-away": "ct-run-away",
+    "ct-miracle-creation": "ct-miracle-creation",
+    "ct-white-dog": "ct-white-dog",
+    "ct-black-dog": "ct-black-dog",
+    "ct-summon-nue": "ct-summon-nue",
+    "ct-summon-toad": "ct-summon-toad",
+    "ct-summon-serpent": "ct-summon-serpent",
+    "ct-summon-totality": "ct-summon-totality",
+    "ct-summon-winged-toads": "ct-summon-winged-toads",
+    "ct-summon-elephant": "ct-summon-elephant",
+    "ct-dog-ambush": "ct-dog-ambush",
+    "ct-nue-strike": "ct-nue-strike",
+    "ct-toad-pull": "ct-toad-pull",
+    "ct-serpent-snare": "ct-serpent-snare",
+    "ct-totality-rush": "ct-totality-rush",
+    "ct-winged-snare": "ct-winged-snare",
+    "ct-elephant-drop": "ct-elephant-drop",
+    "ct-shadow-movement": "ct-shadow-movement",
+    "ct-desummon": "ct-desummon",
+    "ct-dog-bite": "ct-dog-bite",
+    "ct-tracking-pounce": "ct-tracking-pounce",
+    "ct-rending-pounce": "ct-rending-pounce",
+    "ct-electric-talons": "ct-electric-talons",
+    "ct-lightning-discharge": "ct-lightning-discharge",
+    "ct-tongue-lash": "ct-tongue-lash",
+    "ct-binding-tongue": "ct-binding-tongue",
+    "ct-serpent-constrict": "ct-serpent-constrict",
+    "ct-devouring-lunge": "ct-devouring-lunge",
+    "ct-totality-claw": "ct-totality-claw",
+    "ct-predator-rush": "ct-predator-rush",
+    "ct-crushing-stomp": "ct-crushing-stomp",
+    "ct-water-deluge": "ct-water-deluge",
+    "ct-winged-tongue": "ct-winged-tongue",
+    "ct-aerial-swarm": "ct-aerial-swarm",
+    "ct-sky-rescue": "ct-sky-rescue",
+    "ct-coiling-guard": "ct-coiling-guard",
+    "ct-rescue-sprint": "ct-rescue-sprint",
+    "ct-tongue-rescue": "ct-tongue-rescue"
   },
   "events": {
     "MOVE_DODGED": "dodge",
@@ -1959,14 +2015,10 @@
         },
         {
           "at": 0.45,
-          "scaleX": 0.38,
-          "scaleY": 0.38,
           "easing": "smooth"
         },
         {
           "at": 0.75,
-          "scaleX": 0.38,
-          "scaleY": 0.38,
           "x": 0.12
         },
         {
@@ -2245,38 +2297,1565 @@
       ],
       "layers": [
         {
-          "effect": "cs-palm-cathedral",
-          "placement": "screen",
-          "plane": "background",
-          "startSeconds": 0.25,
-          "durationSeconds": 1.8,
-          "size": 1,
-          "transform": [
-            {
-              "at": 0,
-              "alpha": 0
-            },
-            {
-              "at": 0.22,
-              "alpha": 0.9
-            },
-            {
-              "at": 0.72,
-              "alpha": 0.95
-            },
-            {
-              "at": 1,
-              "alpha": 0
-            }
-          ]
-        },
-        {
           "effect": "cs-soul-halo",
           "placement": "source",
           "plane": "behind",
           "startSeconds": 0.25,
           "durationSeconds": 1.6,
           "size": 2.8
+        }
+      ]
+    },
+    "ct-guided-arrow": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.3,
+      "size": 1.45,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "rotation": -3,
+          "green": 0.85
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ct-red-scale": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.36,
+      "size": 1.5,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "green": 0.6,
+          "blue": 0.6
+        },
+        {
+          "at": 0.5
+        },
+        {
+          "at": 0.65,
+          "green": 0.72,
+          "blue": 0.72
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "green": 0.68,
+          "blue": 0.72
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-crimson-binding": {
+      "durationSeconds": 0.95,
+      "impactSeconds": 0.47,
+      "size": 1.65,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "scaleX": 0.91
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ct-slicing-exorcism": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.61,
+      "size": 1.5,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "rotation": 5
+        },
+        {
+          "at": 0.43,
+          "x": 0.12,
+          "rotation": -6
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.57
+        },
+        {
+          "at": 0.64,
+          "x": 0.14,
+          "rotation": -7
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-blood-chakram-flight",
+          "placement": "projectile",
+          "plane": "front",
+          "durationSeconds": 0.54,
+          "size": 1.2
+        }
+      ]
+    },
+    "ct-convergence": {
+      "durationSeconds": 1.2,
+      "impactSeconds": 0.72,
+      "size": 1.5,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.6,
+          "scaleX": 0.97,
+          "green": 0.85
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.6,
+          "red": 0.6,
+          "green": 0.4,
+          "blue": 0.48
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-piercing-blood": {
+      "durationSeconds": 1.1,
+      "impactSeconds": 0.6,
+      "size": 1.4,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.48
+        },
+        {
+          "at": 0.55,
+          "x": -0.15
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.54
+        },
+        {
+          "at": 0.58,
+          "x": 0.15,
+          "rotation": -4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-pressure-core",
+          "placement": "source",
+          "plane": "front",
+          "durationSeconds": 0.5,
+          "size": 0.8
+        },
+        {
+          "effect": "ct-piercing-stream",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.5,
+          "durationSeconds": 0.36,
+          "size": 0.7
+        }
+      ]
+    },
+    "ct-ratio-mark": {
+      "durationSeconds": 0.88,
+      "impactSeconds": 0.4,
+      "size": 1.6,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.4,
+          "green": 0.46,
+          "blue": 0.52
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-ratio-strike": {
+      "durationSeconds": 0.82,
+      "impactSeconds": 0.41,
+      "size": 1.65,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "x": -0.07,
+          "rotation": 5
+        },
+        {
+          "at": 0.49,
+          "x": 0.3,
+          "rotation": -6
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.48
+        },
+        {
+          "at": 0.53,
+          "x": 0.1,
+          "rotation": -6
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-ratio-cleave": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.52,
+      "size": 1.85,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.23,
+          "y": 0.12,
+          "rotation": 10
+        },
+        {
+          "at": 0.5,
+          "x": 0.22,
+          "rotation": -8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.49
+        },
+        {
+          "at": 0.55,
+          "scaleY": 0.88,
+          "rotation": -4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.51,
+          "red": 0.7,
+          "green": 0.62,
+          "blue": 0.64,
+          "y": -0.005
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-speech-seal": {
+      "durationSeconds": 0.55,
+      "impactSeconds": 0.06,
+      "size": 1.3,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "scaleY": 1.02
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-dont-move": {
+      "durationSeconds": 0.8,
+      "impactSeconds": 0.4,
+      "size": 1.45,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "red": 0.65,
+          "green": 0.73,
+          "blue": 0.82
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-blast-away": {
+      "durationSeconds": 0.85,
+      "impactSeconds": 0.4,
+      "size": 1.8
+    },
+    "ct-sleep": {
+      "durationSeconds": 0.95,
+      "impactSeconds": 0.46,
+      "size": 1.5,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "red": 0.64,
+          "green": 0.57,
+          "blue": 0.76
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-plummet": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.45,
+      "size": 1.85
+    },
+    "ct-get-twisted": {
+      "durationSeconds": 0.98,
+      "impactSeconds": 0.48,
+      "size": 1.8
+    },
+    "ct-return": {
+      "durationSeconds": 1.02,
+      "impactSeconds": 0.5,
+      "size": 1.7,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "red": 0.58,
+          "green": 0.6,
+          "blue": 0.73
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-explode": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.5,
+      "size": 2,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.33,
+          "red": 0.65,
+          "green": 0.4,
+          "blue": 0.48
+        },
+        {
+          "at": 0.5,
+          "red": 1,
+          "green": 0.77,
+          "blue": 0.72
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-die": {
+      "durationSeconds": 1.08,
+      "impactSeconds": 0.52,
+      "size": 1.65,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "red": 0.43,
+          "green": 0.27,
+          "blue": 0.39
+        },
+        {
+          "at": 0.75,
+          "red": 0.52,
+          "green": 0.41,
+          "blue": 0.5
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-run-away": {
+      "durationSeconds": 0.85,
+      "impactSeconds": 0.34,
+      "size": 1.5,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "x": -0.3,
+          "y": 0.04,
+          "rotation": 7
+        },
+        {
+          "at": 0.65,
+          "x": -0.23
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ct-miracle-creation": {
+      "durationSeconds": 1.3,
+      "impactSeconds": 0.72,
+      "size": 1.6,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.55,
+          "blue": 0.77
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.55,
+          "red": 0.9,
+          "green": 0.83,
+          "blue": 0.65
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-white-dog": {
+      "durationSeconds": 1.2,
+      "impactSeconds": 0.62,
+      "size": 1.9,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": -0.06
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.62,
+          "green": 0.67,
+          "blue": 0.76
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-black-dog": {
+      "durationSeconds": 1.22,
+      "impactSeconds": 0.64,
+      "size": 1.9,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "x": -0.08,
+          "blue": 0.85
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "red": 0.45,
+          "green": 0.51,
+          "blue": 0.65
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-summon-nue": {
+      "durationSeconds": 1.4,
+      "impactSeconds": 0.75,
+      "size": 2.2,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "rotation": 3
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "red": 0.5,
+          "green": 0.42,
+          "blue": 0.7
+        },
+        {
+          "at": 0.6,
+          "red": 0.85,
+          "green": 0.75
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-summon-toad": {
+      "durationSeconds": 1.08,
+      "impactSeconds": 0.55,
+      "size": 1.9,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "scaleY": 0.96
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-summon-serpent": {
+      "durationSeconds": 1.3,
+      "impactSeconds": 0.7,
+      "size": 2.35,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": -0.06
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.55,
+          "green": 0.64,
+          "blue": 0.65
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-summon-totality": {
+      "durationSeconds": 1.4,
+      "impactSeconds": 0.75,
+      "size": 2.25,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "x": -0.08
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "red": 0.37,
+          "green": 0.44,
+          "blue": 0.57
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-summon-winged-toads": {
+      "durationSeconds": 1.35,
+      "impactSeconds": 0.7,
+      "size": 2.15,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "y": 0.03
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-summon-elephant": {
+      "durationSeconds": 1.55,
+      "impactSeconds": 0.86,
+      "size": 2.6,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "x": -0.08
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.62,
+          "green": 0.53,
+          "blue": 0.65
+        },
+        {
+          "at": 0.6,
+          "y": -0.004
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-dog-ambush": {
+      "durationSeconds": 0.78,
+      "impactSeconds": 0.39,
+      "size": 1.75,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "x": 0.12,
+          "rotation": -5
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-nue-strike": {
+      "durationSeconds": 1.02,
+      "impactSeconds": 0.51,
+      "size": 2,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "red": 0.85,
+          "green": 0.6,
+          "rotation": -3
+        },
+        {
+          "at": 0.65,
+          "rotation": 3
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.5,
+          "green": 0.4,
+          "blue": 0.7
+        },
+        {
+          "at": 0.51,
+          "red": 0.9,
+          "green": 0.8
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-toad-pull": {
+      "durationSeconds": 0.87,
+      "impactSeconds": 0.35,
+      "size": 1.65,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "x": 0.04
+        },
+        {
+          "at": 0.48,
+          "x": -0.38,
+          "y": 0.07,
+          "rotation": 7
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ct-serpent-snare": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.52,
+      "size": 2.05,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "y": 0.08,
+          "scaleX": 0.92
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-totality-rush": {
+      "durationSeconds": 0.95,
+      "impactSeconds": 0.48,
+      "size": 2,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "x": 0.22,
+          "rotation": -9
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.52,
+          "green": 0.57,
+          "blue": 0.65
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-winged-snare": {
+      "durationSeconds": 0.75,
+      "impactSeconds": 0.38,
+      "size": 1.6,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "rotation": 3,
+          "scaleX": 0.95
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-winged-toad-flight",
+          "placement": "projectile",
+          "plane": "front",
+          "durationSeconds": 0.28,
+          "size": 0.75
+        }
+      ]
+    },
+    "ct-elephant-drop": {
+      "durationSeconds": 1.3,
+      "impactSeconds": 0.73,
+      "size": 2.7,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.55
+        },
+        {
+          "at": 0.6,
+          "scaleY": 0.75,
+          "scaleX": 1.15
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.55
+        },
+        {
+          "at": 0.59,
+          "y": -0.009
+        },
+        {
+          "at": 0.66,
+          "y": 0.006
+        },
+        {
+          "at": 0.73,
+          "y": -0.003
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-shadow-movement": {
+      "durationSeconds": 1.02,
+      "impactSeconds": 0.4,
+      "size": 1.8,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.32,
+          "scaleY": 0.1,
+          "alpha": 0.25,
+          "easing": "smooth"
+        },
+        {
+          "at": 0.55,
+          "x": -0.35,
+          "scaleY": 0.1,
+          "alpha": 0.25
+        },
+        {
+          "at": 0.75,
+          "x": -0.25
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ct-desummon": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.62,
+      "size": 1.55,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.65,
+          "scaleY": 0.08,
+          "alpha": 0.12,
+          "easing": "smooth"
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-dog-bite": {
+      "durationSeconds": 0.66,
+      "impactSeconds": 0.33,
+      "size": 1.35,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "x": 0.22,
+          "rotation": -4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "scaleX": 0.94,
+          "x": 0.07
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-tracking-pounce": {
+      "durationSeconds": 0.8,
+      "impactSeconds": 0.4,
+      "size": 1.7,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "y": 0.08
+        },
+        {
+          "at": 0.5,
+          "x": 0.3,
+          "y": 0.04
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "x": 0.11
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-rending-pounce": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.45,
+      "size": 1.85,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.22,
+          "y": 0.16
+        },
+        {
+          "at": 0.5,
+          "x": 0.25
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "scaleY": 0.9,
+          "x": 0.13
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-electric-talons": {
+      "durationSeconds": 0.86,
+      "impactSeconds": 0.43,
+      "size": 1.7,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "y": 0.2
+        },
+        {
+          "at": 0.5,
+          "x": 0.22
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "rotation": -6,
+          "green": 0.7
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-lightning-discharge": {
+      "durationSeconds": 0.95,
+      "impactSeconds": 0.54,
+      "size": 1.5,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.57,
+          "red": 0.85,
+          "green": 0.63
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-violet-current",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.25,
+          "durationSeconds": 0.4,
+          "size": 0.8
+        }
+      ]
+    },
+    "ct-tongue-lash": {
+      "durationSeconds": 0.8,
+      "impactSeconds": 0.4,
+      "size": 1.3,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "x": 0.08,
+          "rotation": -4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-tongue-tether",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.1,
+          "durationSeconds": 0.42,
+          "size": 0.8
+        }
+      ]
+    },
+    "ct-binding-tongue": {
+      "durationSeconds": 1,
+      "impactSeconds": 0.5,
+      "size": 1.5,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "scaleX": 0.9
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-tongue-tether",
+          "placement": "beam",
+          "plane": "behind",
+          "startSeconds": 0.12,
+          "durationSeconds": 0.62,
+          "size": 0.6
+        }
+      ]
+    },
+    "ct-serpent-constrict": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.53,
+      "size": 2,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "scaleX": 0.87,
+          "scaleY": 1.03
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-devouring-lunge": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.52,
+      "size": 2.25,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "x": -0.1
+        },
+        {
+          "at": 0.5,
+          "x": 0.4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "x": 0.2,
+          "rotation": -8
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-totality-claw": {
+      "durationSeconds": 0.77,
+      "impactSeconds": 0.38,
+      "size": 1.65,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "x": 0.25,
+          "rotation": -5
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "rotation": -7
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-predator-rush": {
+      "durationSeconds": 0.65,
+      "impactSeconds": 0.33,
+      "size": 1.8,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "x": 0.3
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "rotation": -8,
+          "x": 0.13
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-crushing-stomp": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.52,
+      "size": 2.25,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "y": 0.08
+        },
+        {
+          "at": 0.5,
+          "scaleY": 0.94
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "scaleY": 0.82
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "y": -0.006
+        },
+        {
+          "at": 0.6,
+          "y": 0.004
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-water-deluge": {
+      "durationSeconds": 1.25,
+      "impactSeconds": 0.72,
+      "size": 2.1,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.55
+        },
+        {
+          "at": 0.65,
+          "x": 0.26,
+          "rotation": -8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-water-torrent",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.2,
+          "durationSeconds": 0.65,
+          "size": 1.2
+        }
+      ]
+    },
+    "ct-winged-tongue": {
+      "durationSeconds": 0.7,
+      "impactSeconds": 0.35,
+      "size": 1.5,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "rotation": 4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-tongue-tether",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.05,
+          "durationSeconds": 0.42,
+          "size": 0.5
+        }
+      ]
+    },
+    "ct-aerial-swarm": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.52,
+      "size": 1.95,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "rotation": 4
+        },
+        {
+          "at": 0.65,
+          "rotation": -4
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-sky-rescue": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.45,
+      "size": 1.95,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "y": 0.4,
+          "x": -0.1
+        },
+        {
+          "at": 0.7,
+          "y": 0.35
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ct-coiling-guard": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.45,
+      "size": 2.1,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "scaleY": 0.96,
+          "x": -0.03
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "ct-rescue-sprint": {
+      "durationSeconds": 0.88,
+      "impactSeconds": 0.37,
+      "size": 1.85,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "y": 0.08
+        },
+        {
+          "at": 0.5,
+          "x": -0.4,
+          "y": 0.13,
+          "rotation": 7
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ct-tongue-rescue": {
+      "durationSeconds": 0.93,
+      "impactSeconds": 0.39,
+      "size": 1.4,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "x": 0.04
+        },
+        {
+          "at": 0.5,
+          "x": -0.33,
+          "y": 0.07,
+          "rotation": 5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "layers": [
+        {
+          "effect": "ct-tongue-tether",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.08,
+          "durationSeconds": 0.54,
+          "size": 0.6
         }
       ]
     }

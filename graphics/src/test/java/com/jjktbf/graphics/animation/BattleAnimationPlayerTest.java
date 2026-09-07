@@ -430,6 +430,15 @@ class BattleAnimationPlayerTest {
                     };
                     assertTrue(player.hasMove(id), effect.getString("id"));
                     for (boolean mirrored : List.of(false, true)) {
+                        if (effect.has("castEffect")) {
+                            assertTrue(player.play("MOVE_FIRED", id, null,
+                                () -> source, () -> null, mirrored, false), id + " cast");
+                            player.update(0.15f);
+                            BatchRecorder cast = new BatchRecorder();
+                            player.draw(cast.proxy, viewport, "front");
+                            assertFalse(cast.calls.isEmpty(), id + " must draw its cast without a target");
+                            player.clear();
+                        }
                         assertTrue(player.play(event, role.equals("guard") ? null : id, 0,
                             () -> source, () -> target, mirrored, false,
                             role.equals("guard") ? id : null, false), id);
@@ -479,6 +488,91 @@ class BattleAnimationPlayerTest {
     }
 
     @Test
+    void playsMoveCastOnlyOnFireAndPreservesTargetAndDamageRouting() throws IOException {
+        writeCastFixture(root, "cast");
+        player = loadedCastPlayer(root);
+        CombatantPanel source = panel(10, 20, 40, 80);
+        CombatantPanel target = panel(100, 20, 40, 80);
+        BatchRecorder batch = new BatchRecorder();
+
+        assertTrue(player.play("MOVE_FIRED", "castMove", null,
+            () -> source, () -> target, false, false));
+        player.draw(batch.proxy, new Rectangle(0, 0, 320, 200), "front");
+        assertEquals(1, batch.calls.size(), "MOVE_FIRED draws the cast, not the main attack");
+        Texture castTexture = batch.calls.get(0).texture;
+        assertEquals(0.5f, player.poseFor(source).x(), 0.0001f,
+            "cast profile applies to the source");
+        assertEquals(BattleChoreography.Pose.IDENTITY, player.poseFor(target));
+        player.clear();
+        batch.clear();
+
+        assertFalse(player.play("MOVE_TARGETED", "castMove", null,
+            () -> source, () -> target, false, false),
+            "a cast must not recast during target resolution");
+        assertTrue(player.play("DAMAGE_DEALT", "castMove", null,
+            () -> source, () -> target, false, false));
+        player.draw(batch.proxy, new Rectangle(0, 0, 320, 200), "front");
+        assertEquals(1, batch.calls.size(), "damage keeps the main attack visual");
+        assertNotEquals(castTexture, batch.calls.get(0).texture);
+        player.clear();
+        batch.clear();
+
+        assertTrue(player.play("MOVE_FIRED", "targetedMove", null,
+            () -> source, () -> null, false, false));
+        player.draw(batch.proxy, new Rectangle(0, 0, 320, 200), "front");
+        assertEquals(castTexture, batch.calls.get(0).texture);
+        player.clear();
+        batch.clear();
+        for (int recipient = 0; recipient < 3; recipient++) {
+            assertTrue(player.play("MOVE_TARGETED", "targetedMove", null,
+                () -> source, () -> target, false, false));
+            player.draw(batch.proxy, new Rectangle(0, 0, 320, 200), "front");
+            assertEquals(1, batch.calls.size(), "each target gets the command, not another cast");
+            assertNotEquals(castTexture, batch.calls.get(0).texture);
+            player.clear();
+            batch.clear();
+        }
+        assertFalse(player.play("DAMAGE_DEALT", "targetedMove", null,
+            () -> source, () -> source, false, false), "self recoil must not replay the command");
+
+        assertTrue(player.play("DAMAGE_DEALT", "hitMove", null,
+            () -> source, () -> target, false, false));
+        player.draw(batch.proxy, new Rectangle(0, 0, 320, 200), "front");
+        assertEquals(1, batch.calls.size(), "damage keeps attack routing");
+        assertNotEquals(castTexture, batch.calls.get(0).texture);
+    }
+
+    @Test
+    void rejectsCatalogWhenCastEffectIsUnknown() throws IOException {
+        writeCastFixture(root, "missing-cast");
+        System.setProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY, root.toString());
+        player = new BattleAnimationPlayer();
+        assertTimeout(Duration.ofSeconds(1), player::reload);
+        assertFalse(player.hasMove("castMove"));
+        assertFalse(player.play("MOVE_FIRED", "castMove", null,
+            () -> null, () -> null, false, false));
+    }
+
+    @Test
+    void rejectsTargetPlacedCastAndFallsBackAfterCastTextureFailure() throws IOException {
+        writeCastFixture(root, "main");
+        System.setProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY, root.toString());
+        player = new BattleAnimationPlayer();
+        player.reload();
+        assertFalse(player.hasMove("castMove"), "fire cannot position a target-only cast");
+
+        writeCastFixture(root, "cast");
+        Files.writeString(root.resolve("cast-pack/cast.png"), "invalid image data");
+        player.reload();
+        assertTrue(player.hasMove("castMove"), "images load lazily");
+        assertFalse(player.play("MOVE_FIRED", "castMove", null,
+            () -> panel(0, 0, 40, 80), () -> null, false, false));
+        assertFalse(player.hasMove("castMove"), "failed cast permits the existing icon fallback");
+        assertFalse(player.play("MOVE_FIRED", "castMove", null,
+            () -> null, () -> null, false, false), "failed texture is not retried every cast");
+    }
+
+    @Test
     void fallsBackPromptlyForMalformedCatalogAndMissingSheet() throws IOException {
         Path malformed = root.resolve("malformed");
         Files.createDirectories(malformed);
@@ -510,6 +604,14 @@ class BattleAnimationPlayerTest {
         return player;
     }
 
+    private BattleAnimationPlayer loadedCastPlayer(Path directory) {
+        System.setProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY, directory.toString());
+        player = new BattleAnimationPlayer();
+        player.reload();
+        assertTrue(player.hasMove("castMove"));
+        return player;
+    }
+
     private static CombatantPanel panel(float x, float y, float width, float height) {
         return new CombatantPanel(null, null, null, new Rectangle(),
             new Rectangle(x, y, width, height), new Rectangle(0, 0, 100, 100), 1f, false);
@@ -528,6 +630,68 @@ class BattleAnimationPlayerTest {
             """);
         Files.writeString(pack.resolve("manifest.json"), manifest("sheet.png", true));
         Files.writeString(root.resolve("choreography.json"), choreography());
+    }
+
+    private static void writeCastFixture(Path root, String castEffect) throws IOException {
+        Path pack = root.resolve("pack");
+        Path castPack = root.resolve("cast-pack");
+        Files.createDirectories(pack);
+        Files.createDirectories(castPack);
+        for (String sheet : List.of("main.png", "targeted.png", "hit.png", "fallback.png")) {
+            writePng(pack.resolve(sheet), 12, 8);
+        }
+        writePng(castPack.resolve("cast.png"), 12, 8);
+        Files.writeString(root.resolve("catalog.json"), """
+            {"schemaVersion":1,"packs":["pack","cast-pack"]}
+            """);
+        Files.writeString(pack.resolve("manifest.json"), castManifest(castEffect));
+        Files.writeString(castPack.resolve("manifest.json"), """
+            {"schemaVersion":1,"frameWidth":4,"frameHeight":4,"columns":3,
+             "sheetOrder":"row-major-top-left","effects":[
+              {"id":"cast","sheet":"cast.png","frameCount":2,"frameDurationMs":100,
+               "loop":false,"anchor":[0.5,0.5],"placement":"source","role":"utility"}
+             ]}
+            """);
+        Files.writeString(root.resolve("choreography.json"), castChoreography());
+    }
+
+    private static String castManifest(String castEffect) {
+        return """
+            {"schemaVersion":1,"frameWidth":4,"frameHeight":4,"columns":3,
+             "sheetOrder":"row-major-top-left","effects":[
+              {"id":"main","sheet":"main.png","frameCount":2,"frameDurationMs":100,
+               "loop":false,"anchor":[0.5,0.5],"placement":"target","role":"attack",
+               "moveIds":["castMove"],"castEffect":"%s"},
+              {"id":"targeted","sheet":"targeted.png","frameCount":2,"frameDurationMs":100,
+               "loop":false,"anchor":[0.5,0.5],"placement":"target","role":"targeted",
+                "moveIds":["targetedMove"],"castEffect":"%s"},
+              {"id":"hit","sheet":"hit.png","frameCount":2,"frameDurationMs":100,
+               "loop":false,"anchor":[0.5,0.5],"placement":"target","role":"attack",
+               "moveIds":["hitMove"]},
+              {"id":"fallback","sheet":"fallback.png","frameCount":2,"frameDurationMs":100,
+               "loop":false,"anchor":[0.5,0.5],"placement":"source","role":"utility",
+               "eventTypes":["MOVE_FIRED"]}
+             ]}
+            """.formatted(castEffect, castEffect);
+    }
+
+    private static String castChoreography() {
+        return """
+            {"schemaVersion":1,
+             "profiles":{
+              "cast":{"durationSeconds":0.2,"impactSeconds":0.1,
+                "source":[{"at":0,"x":0.5}]},
+              "attack":{"durationSeconds":0.2,"impactSeconds":0.1,
+                "target":[{"at":0,"scaleY":0.7}]},
+              "targeted":{"durationSeconds":0.2,"impactSeconds":0.1,
+                "target":[{"at":0,"x":0.4}]},
+              "fallback":{"durationSeconds":0.2,"impactSeconds":0.1}
+             },
+             "effects":{"cast":"cast","main":"attack","targeted":"targeted","hit":"attack",
+               "fallback":"fallback"},
+             "events":{"MOVE_FIRED":"fallback"},
+             "roles":{"attack":"attack","targeted":"targeted","utility":"fallback"}}
+            """;
     }
 
     private static String manifest(String multiSheet, boolean complete) {

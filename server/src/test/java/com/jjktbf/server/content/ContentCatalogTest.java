@@ -79,7 +79,7 @@ class ContentCatalogTest {
     void loadsPandaAndHiddenGorillaCoreComposition() {
         ContentCatalog catalog = ContentCatalog.load();
         var panda = catalog.findCharacter("000004").orElseThrow();
-        var gorilla = catalog.findCharacter("000020").orElseThrow();
+        var gorilla = catalog.findCharacter("000021").orElseThrow();
 
         assertEquals(CharacterType.CURSED_CORPSE, panda.getType());
         assertEquals(CharacterType.CURSED_CORPSE, gorilla.getType());
@@ -116,7 +116,7 @@ class ContentCatalogTest {
         var gorillaEvents = engine.process(state, AbilityTrigger.amount(
             AbilityTrigger.Type.DAMAGE, enemy, panda, 1, 1));
 
-        assertEquals("000020", panda.getCharacter().getId());
+        assertEquals("000021", panda.getCharacter().getId());
         assertEquals(panda.getMaxHp(), panda.getCurrentHp());
         assertTrue(gorillaEvents.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.CHARACTER_TRANSFORMED));
@@ -125,7 +125,7 @@ class ContentCatalogTest {
         var failedReturn = engine.process(state, AbilityTrigger.amount(
             AbilityTrigger.Type.DAMAGE, enemy, panda, 1, 2));
 
-        assertEquals("000020", panda.getCharacter().getId());
+        assertEquals("000021", panda.getCharacter().getId());
         assertEquals(0, panda.getCurrentHp());
         assertTrue(failedReturn.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.EFFECT_FAILED));

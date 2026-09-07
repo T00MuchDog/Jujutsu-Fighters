@@ -82,7 +82,7 @@ class IdleTransfigurationContentTest {
             .map(domain -> domain.id).collect(Collectors.toSet());
 
         Map<String, Object> mahito = catalogs.characters().stream()
-            .filter(character -> "000021".equals(character.get("id")))
+            .filter(character -> "000006".equals(character.get("id")))
             .findFirst().orElseThrow();
         assertEquals("CURSED_SPIRIT", mahito.get("type"));
         assertEquals(TECHNIQUE, mahito.get("innateTechniqueName"));

@@ -803,7 +803,7 @@
   "effects" : [ {
     "effectId" : "effect-000000",
     "type" : "TRANSFORM_CHARACTER",
-    "characterId" : "000020",
+    "characterId" : "000021",
     "transformationHpMode" : "FULL",
     "target" : "SELF"
   } ],

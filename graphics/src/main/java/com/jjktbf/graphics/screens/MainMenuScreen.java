@@ -29,6 +29,7 @@ import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.audio.AudioChannel;
 import com.jjktbf.graphics.audio.AudioSettings;
+import com.jjktbf.graphics.audio.BattleMusicSelection;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.display.WindowsResolution;
 import com.jjktbf.graphics.ui.ContentSizedDialog;
@@ -375,6 +376,7 @@ public class MainMenuScreen implements Screen {
         Table content = dialog.getContentTable();
         content.pad(10f, 16f, 14f, 16f);
         if (game.supportsResolutionSelection()) addResolutionRow(content);
+        addBattleMusicRow(content, settings);
         addVolumeRow(content, "MUSIC", Math.round(settings.musicVolume() * 100f), value -> {
             AudioSettings current = game.audio().settings();
             game.audio().previewSettings(
@@ -392,6 +394,26 @@ public class MainMenuScreen implements Screen {
 
         settingsDialog = dialog;
         dialog.show(stage);
+    }
+
+    private void addBattleMusicRow(Table content, AudioSettings settings) {
+        Label nameLabel = new Label("BATTLE MUSIC", assets.editorSkin);
+        DynamicSelectBox<BattleMusicSelection> choices = new DynamicSelectBox<>(
+            assets.editorSkin, game.activeUiProfile());
+        choices.setItems(BattleMusicSelection.values());
+        choices.setSelected(settings.battleMusic());
+        choices.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                game.audio().previewSettings(
+                    game.audio().settings().withBattleMusic(choices.getSelected()));
+            }
+        });
+
+        content.add(nameLabel).colspan(4).left().padTop(6f).padBottom(2f);
+        content.row();
+        content.add(choices).colspan(4).growX()
+            .height(windowsLayout ? 66f : 44f).padBottom(8f);
+        content.row();
     }
 
     private void addResolutionRow(Table content) {

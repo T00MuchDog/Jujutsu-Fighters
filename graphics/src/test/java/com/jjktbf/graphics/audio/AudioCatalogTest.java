@@ -6,9 +6,11 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -37,6 +39,27 @@ class AudioCatalogTest {
             assertTrue(MusicTrack.randomBattleTrack().assetPath()
                 .startsWith("assets/audio/music/battle_"));
         }
+    }
+
+    @Test
+    void battleMusicChoicesResolveToTracksOrSilence() {
+        assertTrue(BattleMusicSelection.NONE.resolveTrack().isEmpty());
+        assertTrue(BattleMusicSelection.RANDOM.resolveTrack().isPresent());
+        assertTrue(BattleMusicSelection.AIZO.resolveTrack().isPresent());
+    }
+
+    @Test
+    void battleMusicFallsBackWhenSelectedTrackDidNotLoad() {
+        Set<MusicTrack> loaded = EnumSet.of(MusicTrack.BATTLE_AIZO, MusicTrack.BATTLE_SPECIALZ);
+        assertEquals(MusicTrack.BATTLE_SPECIALZ,
+            GameAudio.playableBattleTrack(MusicTrack.BATTLE_SPECIALZ, loaded));
+        assertEquals(MusicTrack.BATTLE_AIZO,
+            GameAudio.playableBattleTrack(MusicTrack.BATTLE_KAKAI_KITAN, loaded));
+        assertEquals(MusicTrack.BATTLE_AIZO,
+            GameAudio.playableBattleTrack(MusicTrack.MENU, loaded));
+        assertEquals(MusicTrack.BATTLE_KAKAI_KITAN,
+            GameAudio.playableBattleTrack(MusicTrack.BATTLE_KAKAI_KITAN,
+                EnumSet.noneOf(MusicTrack.class)));
     }
 
     @Test

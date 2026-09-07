@@ -17,6 +17,7 @@ public class CombatantPanel {
 
     private static final float DAMAGE_FLASH_DURATION_SECONDS = 0.72f;
     private static final float DAMAGE_FLASH_INTERVAL_SECONDS = 0.12f;
+    private static final float SIZE_TRANSITION_SECONDS = 0.42f;
     /** Size the growing summon entrance starts from, as a fraction of the sprite. */
     private static final float SUMMON_GROW_MIN_SCALE = 0.1f;
 
@@ -37,6 +38,10 @@ public class CombatantPanel {
     private final float textGeometryScale;
     private final boolean showResourceValues;
     private float damageFlashRemaining;
+    private float sizeMultiplier = 1f;
+    private float sizeTransitionStart = 1f;
+    private float targetSizeMultiplier = 1f;
+    private float sizeTransitionElapsed = SIZE_TRANSITION_SECONDS;
 
     /**
      * The plate and sprite occupy the battlefield while the HUD is positioned on
@@ -121,6 +126,7 @@ public class CombatantPanel {
             combatant.getMaxCursedEnergy()
         );
         statusStrip.setEffects(combatant);
+        setSizeMultiplier(combatant.getSizeMultiplier());
     }
 
     /** Updates the shared HUD from an immutable authoritative snapshot. */
@@ -139,6 +145,16 @@ public class CombatantPanel {
         statusStrip.setEffects(combatant);
     }
 
+    /** Smoothly moves the field sprite to a temporary physical-size multiplier. */
+    public void setSizeMultiplier(double multiplier) {
+        float target = Double.isFinite(multiplier)
+            ? Math.max(0.01f, Math.min(10f, (float) multiplier)) : 1f;
+        if (Math.abs(target - targetSizeMultiplier) < 0.0001f) return;
+        sizeTransitionStart = sizeMultiplier;
+        targetSizeMultiplier = target;
+        sizeTransitionElapsed = 0f;
+    }
+
     /** Starts the rapid visible/invisible flicker used when this combatant takes damage. */
     public void flashDamage() {
         damageFlashRemaining = DAMAGE_FLASH_DURATION_SECONDS;
@@ -152,6 +168,8 @@ public class CombatantPanel {
     /** Completes visual-only damage flicker and resource-bar trails immediately. */
     public void snapAnimations() {
         damageFlashRemaining = 0f;
+        sizeMultiplier = targetSizeMultiplier;
+        sizeTransitionElapsed = SIZE_TRANSITION_SECONDS;
         hpBar.snapToCurrent();
         ceBar.snapToCurrent();
     }
@@ -199,15 +217,31 @@ public class CombatantPanel {
         boolean spriteVisible = damageFlashRemaining <= 0f
             || (int) ((DAMAGE_FLASH_DURATION_SECONDS - damageFlashRemaining)
                 / DAMAGE_FLASH_INTERVAL_SECONDS) % 2 != 0;
+        updateSizeMultiplier(delta);
         if (spriteVisible) {
             batch.draw(sprite, spriteBounds.x + pose.x() * spriteBounds.height,
                 spriteBounds.y + pose.y() * spriteBounds.height,
                 spriteBounds.width / 2f, 0f, spriteBounds.width, spriteBounds.height,
-                pose.scaleX(), pose.scaleY(), pose.rotation(),
+                pose.scaleX() * sizeMultiplier, pose.scaleY() * sizeMultiplier, pose.rotation(),
                 0, 0, sprite.getWidth(), sprite.getHeight(), false, false);
         }
         damageFlashRemaining = Math.max(0f, damageFlashRemaining - Math.max(0f, delta));
         batch.setPackedColor(previous);
+    }
+
+    void updateSizeMultiplier(float delta) {
+        if (sizeTransitionElapsed >= SIZE_TRANSITION_SECONDS) return;
+        sizeTransitionElapsed = Math.min(
+            SIZE_TRANSITION_SECONDS,
+            sizeTransitionElapsed + Math.max(0f, delta));
+        float progress = sizeTransitionElapsed / SIZE_TRANSITION_SECONDS;
+        float eased = progress * progress * (3f - 2f * progress);
+        sizeMultiplier = sizeTransitionStart
+            + (targetSizeMultiplier - sizeTransitionStart) * eased;
+    }
+
+    float sizeMultiplier() {
+        return sizeMultiplier;
     }
 
     /** Draws a restrained white silhouette edge behind the fighter being planned. */

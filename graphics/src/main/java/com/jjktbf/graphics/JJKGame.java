@@ -446,7 +446,7 @@ public class JJKGame extends Game {
     public void showMultiplayerBattle(MatchSetup setup) {
         multiplayerSession.setMatchSetup(setup);
         battleScreen.prepareMultiplayer(setup, multiplayerSession, multiplayerMatchService);
-        showScreen(battleScreen, MusicTrack.randomBattleTrack());
+        showBattleScreen(battleScreen);
     }
 
     public void showMultiplayerDisconnected(String error) {
@@ -555,6 +555,11 @@ public class JJKGame extends Game {
     private void showScreen(Screen screen, MusicTrack musicTrack) {
         setScreen(screen);
         audio.playMusic(musicTrack);
+    }
+
+    private void showBattleScreen(Screen screen) {
+        setScreen(screen);
+        audio.playBattleMusic();
     }
 
     public void reloadMultiplayerRoster() {
@@ -766,7 +771,7 @@ public class JJKGame extends Game {
         battleScreen.setCombatantSprites(
             assets.characterBattleSprite(playerData.spriteAsset, false, assets.playerSprite),
             assets.characterBattleSprite(cpuData.spriteAsset, true, assets.enemySprite));
-        showScreen(battleScreen, MusicTrack.randomBattleTrack());
+        showBattleScreen(battleScreen);
 
         Thread battleThread = new Thread(() -> {
             try {
@@ -893,7 +898,7 @@ public class JJKGame extends Game {
             cpuTeam.stream()
                 .map(d -> assets.characterBattleSprite(d.spriteAsset, true, assets.enemySprite))
                 .toList());
-        showScreen(battleScreen, MusicTrack.randomBattleTrack());
+        showBattleScreen(battleScreen);
 
         Thread battleThread = new Thread(() -> {
             try {

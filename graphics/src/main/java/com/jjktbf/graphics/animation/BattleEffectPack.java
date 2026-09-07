@@ -358,8 +358,8 @@ public final class BattleEffectPack implements Disposable {
             return;
         }
         try {
-            Path base = root.file().getCanonicalFile().toPath();
-            Path candidate = root.child(relative).file().getCanonicalFile().toPath();
+            Path base = root.file().toPath().toRealPath();
+            Path candidate = root.child(relative).file().toPath().toRealPath();
             if (!candidate.startsWith(base)) {
                 throw invalid("path escapes effect-pack root: " + relative);
             }

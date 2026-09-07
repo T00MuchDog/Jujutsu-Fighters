@@ -79,6 +79,7 @@ authority. Do not create LibGDX dependencies in core.**
 | Canonical online content | `server/.../content/ContentCatalog.java` |
 | DB/schema/persistence | `server/.../db/`, feature repository, Flyway migrations |
 | Audio | `graphics/.../audio/` + `AUDIO.md` |
+| Battle animation files, move bindings, choreography | `graphics/.../animation/` + `ANIMATIONS.md` |
 | Desktop launch/platform | `GraphicsMain.java`, `graphics/.../launch/` |
 | Packaging/release | root `pom.xml`, `RELEASE.md`, `release.sh`, `packaging/` |
 
@@ -375,6 +376,7 @@ graphics/src/main/java/com/jjktbf/graphics/
 ├── AssetLoader.java
 ├── BattleSpriteScaleConfig.java
 ├── audio/
+├── animation/
 ├── launch/
 ├── multiplayer/
 ├── screens/
@@ -957,6 +959,7 @@ mvn clean verify
 - `MULTIPLAYER_ARCHITECTURE.md` — protocol/authority/lifecycle architecture.
 - `MULTIPLAYER.md` — multiplayer setup/operation.
 - `AUDIO.md` — audio architecture/assets.
+- `ANIMATIONS.md` — battle animation packs, move bindings, choreography and playback timing.
 - `RELEASE.md` — packaging/release.
 - `README.md` — high-level build/architecture.
 

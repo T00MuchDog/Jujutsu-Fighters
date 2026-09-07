@@ -148,8 +148,11 @@ public class Move {
     /** Accepted MELEE/RANGED hit tags. Empty means every range, including untagged hits. */
     private final Set<MoveTag> blockRanges;
 
-    /** Blockable elements. Every elemental tag on a hit must be present; empty means all. */
-    private final Set<MoveTag> blockElementalTags;
+    /**
+     * Blockable damage types. Every damage-type tag on a hit must be present;
+     * empty means all.
+     */
+    private final Set<MoveTag> blockDamageTypeTags;
 
     /** Percentage of damage reduced (0-100). 100 = full block. Used by {@link BlockStyle#PERCENTAGE}. */
     private final int blockDamageReduction;
@@ -353,8 +356,8 @@ public class Move {
         this.blockStyle           = b.blockStyle != null ? b.blockStyle : BlockStyle.PERCENTAGE;
         this.blockDuration        = b.blockDuration;
         this.blockRanges          = immutableBlockTags(b.blockRanges, MoveTag.RANGE_TAGS);
-        this.blockElementalTags   = immutableBlockTags(
-            b.blockElementalTags, MoveTag.ELEMENTAL_TAGS);
+        this.blockDamageTypeTags  = immutableBlockTags(
+            b.blockDamageTypeTags, MoveTag.DAMAGE_TYPE_TAGS);
         this.blockDamageReduction = b.blockDamageReduction;
         this.blockFlatReduction   = b.blockFlatReduction;
         this.dodgeChance          = b.dodgeChance;
@@ -561,7 +564,7 @@ public class Move {
     public BlockStyle getBlockStyle()             { return blockStyle; }
     public int getBlockDuration()                 { return blockDuration; }
     public Set<MoveTag> getBlockRanges()          { return blockRanges; }
-    public Set<MoveTag> getBlockElementalTags()   { return blockElementalTags; }
+    public Set<MoveTag> getBlockDamageTypeTags()    { return blockDamageTypeTags; }
     public int getBlockDamageReduction()          { return blockDamageReduction; }
     public int getBlockFlatReduction()            { return blockFlatReduction; }
     public int getDodgeChance()                   { return dodgeChance; }
@@ -820,8 +823,8 @@ public class Move {
 
     /**
      * Whether this block or parry covers one incoming hit. Attack category is an
-     * exact one-of-three match; every authored range and elemental tag on the hit
-     * must be accepted by its corresponding defense dimension.
+     * exact one-of-three match; every authored range and damage-type tag on the
+     * hit must be accepted by its corresponding defense dimension.
      */
     public boolean blocksAttack(Move incoming, HitComponent component) {
         if (incoming == null) return false;
@@ -829,12 +832,12 @@ public class Move {
             : incoming.hitComponents.isEmpty() ? null : incoming.hitComponents.get(0);
         if (incomingComponent == null) return false;
         return incoming.coveredByBlockProfile(
-            blockRanges, blockElementalTags, incomingComponent);
+            blockRanges, blockDamageTypeTags, incomingComponent);
     }
 
     private boolean coveredByBlockProfile(
         Set<MoveTag> acceptedRanges,
-        Set<MoveTag> acceptedElements,
+        Set<MoveTag> acceptedDamageTypes,
         HitComponent component
     ) {
         EnumSet<MoveTag> incomingRanges = EnumSet.noneOf(MoveTag.class);
@@ -845,10 +848,11 @@ public class Move {
             return false;
         }
 
-        EnumSet<MoveTag> incomingElements = EnumSet.noneOf(MoveTag.class);
-        incomingElements.addAll(component.getTags());
-        incomingElements.retainAll(MoveTag.ELEMENTAL_TAGS);
-        return acceptedElements.isEmpty() || acceptedElements.containsAll(incomingElements);
+        EnumSet<MoveTag> incomingDamageTypes = EnumSet.noneOf(MoveTag.class);
+        incomingDamageTypes.addAll(component.getTags());
+        incomingDamageTypes.retainAll(MoveTag.DAMAGE_TYPE_TAGS);
+        return acceptedDamageTypes.isEmpty()
+            || acceptedDamageTypes.containsAll(incomingDamageTypes);
     }
 
     public boolean isDefensive() {
@@ -1003,7 +1007,7 @@ public class Move {
         private BlockStyle blockStyle          = BlockStyle.PERCENTAGE;
         private int blockDuration              = 0;
         private Set<MoveTag> blockRanges = Set.of();
-        private Set<MoveTag> blockElementalTags = Set.of();
+        private Set<MoveTag> blockDamageTypeTags = Set.of();
         private int blockDamageReduction       = 100;
         private int blockFlatReduction         = 0;
         private int dodgeChance                = 0;
@@ -1099,8 +1103,8 @@ public class Move {
             this.blockRanges = v == null ? Set.of() : Set.copyOf(v);
             return this;
         }
-        public Builder blockElementalTags(Set<MoveTag> v) {
-            this.blockElementalTags = v == null ? Set.of() : Set.copyOf(v);
+        public Builder blockDamageTypeTags(Set<MoveTag> v) {
+            this.blockDamageTypeTags = v == null ? Set.of() : Set.copyOf(v);
             return this;
         }
         public Builder blockDamageReduction(int v)         { this.blockDamageReduction = v; return this; }

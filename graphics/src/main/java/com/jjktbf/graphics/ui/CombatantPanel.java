@@ -164,6 +164,8 @@ public class CombatantPanel {
         return spriteBounds.y + spriteBounds.height / 2f;
     }
 
+    public float spriteHeight() { return spriteBounds.height; }
+
     /** The fighter's sprite texture, e.g. to derive a tinted copy for entrances. */
     public Texture spriteTexture() {
         return sprite;
@@ -186,14 +188,26 @@ public class CombatantPanel {
 
     /** Draws only the fighter sprite, including its damage flicker. */
     public void drawSprite(Batch batch, float delta) {
-        batch.setColor(Color.WHITE);
+        drawSprite(batch, delta, com.jjktbf.graphics.animation.BattleChoreography.Pose.IDENTITY);
+    }
+
+    /** Transforms only the sprite; base geometry and HUD hitboxes remain unchanged. */
+    public void drawSprite(Batch batch, float delta,
+                           com.jjktbf.graphics.animation.BattleChoreography.Pose pose) {
+        float previous = batch.getPackedColor();
+        batch.setColor(pose.red(), pose.green(), pose.blue(), pose.alpha());
         boolean spriteVisible = damageFlashRemaining <= 0f
             || (int) ((DAMAGE_FLASH_DURATION_SECONDS - damageFlashRemaining)
                 / DAMAGE_FLASH_INTERVAL_SECONDS) % 2 != 0;
         if (spriteVisible) {
-            batch.draw(sprite, spriteBounds.x, spriteBounds.y, spriteBounds.width, spriteBounds.height);
+            batch.draw(sprite, spriteBounds.x + pose.x() * spriteBounds.height,
+                spriteBounds.y + pose.y() * spriteBounds.height,
+                spriteBounds.width / 2f, 0f, spriteBounds.width, spriteBounds.height,
+                pose.scaleX(), pose.scaleY(), pose.rotation(),
+                0, 0, sprite.getWidth(), sprite.getHeight(), false, false);
         }
         damageFlashRemaining = Math.max(0f, damageFlashRemaining - Math.max(0f, delta));
+        batch.setPackedColor(previous);
     }
 
     /** Draws a restrained white silhouette edge behind the fighter being planned. */

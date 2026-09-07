@@ -1485,10 +1485,23 @@ public class CombatResolver {
         events.add(CombatEvent.of(CombatEvent.Type.MOVE_FIRED)
             .source(attacker)
             .move(move)
+            .reinforced(segment.isReinforced())
             .tick(tick)
             .message(attacker.getCharacter().getName() + (reaction ? " reacted with " : " used ")
                 + move.getName() + "!")
             .build());
+        // Targeting is an activation semantic, not a hit result. Emit it only
+        // once this move has actually fired, after any target exchange has
+        // produced the final recipient set. Targetless activations emit none.
+        for (BattleCombatant target : targets.all()) {
+            events.add(CombatEvent.of(CombatEvent.Type.MOVE_TARGETED)
+                .source(attacker)
+                .target(target)
+                .move(move)
+                .reinforced(segment.isReinforced())
+                .tick(tick)
+                .build());
+        }
         events.addAll(state.domainBattlefield().onOwnerMove(
             state, attacker, abilityActivations::executeDomainEffect, tick));
         if (finishBattleIfNeeded(state, events, tick)) return;
@@ -1868,6 +1881,7 @@ public class CombatResolver {
             if (reaction != null) {
                 events.add(CombatEvent.of(CombatEvent.Type.MOVE_FIRED)
                     .source(defender).move(reaction.getMove()).tick(tick)
+                    .reinforced(reaction.isReinforced())
                     .message(defender.getCharacter().getName() + "'s "
                         + reaction.getMove().getName() + " reacted to " + move.getName() + "!")
                     .build());
@@ -1904,6 +1918,7 @@ public class CombatResolver {
         if (result.isMiss()) {
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_MISSED)
                 .source(attacker).target(defender).move(move).componentIndex(componentIndex)
+                .reinforced(execution.entry.segment.isReinforced())
                 .tick(tick)
                 .message(move.getName() + " missed " + defender.getCharacter().getName() + "!")
                 .build());
@@ -1916,6 +1931,7 @@ public class CombatResolver {
             Move defenseMove = defenseMove(result);
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_DODGED)
                 .source(attacker).target(defender).move(move).componentIndex(componentIndex)
+                .reinforced(execution.entry.segment.isReinforced())
                 .tick(tick)
                 .message((result.isPerfectRead() ? "PERFECT READ! " : "")
                     + defender.getCharacter().getName() + " dodged " + move.getName() + "!")
@@ -1929,8 +1945,12 @@ public class CombatResolver {
 
         if (result.isParried()) {
             Move defenseMove = defenseMove(result);
+            ActionSegment defenseSegment = result.getDefenseSegment();
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_PARRIED)
                 .source(attacker).target(defender).move(move).componentIndex(componentIndex)
+                .reinforced(execution.entry.segment.isReinforced())
+                .defenseMoveId(defenseSegment == null ? null : defenseSegment.getMove().getId())
+                .defenseReinforced(defenseSegment == null ? null : defenseSegment.isReinforced())
                 .tick(tick)
                 .message((result.isPerfectRead() ? "PERFECT READ! " : "")
                     + defender.getCharacter().getName() + " parried " + move.getName() + "!")
@@ -1949,6 +1969,7 @@ public class CombatResolver {
                 events.add(CombatEvent.of(reflected == 0
                         ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
                     .source(defender).target(attacker).move(move).componentIndex(componentIndex)
+                    .reinforced(execution.entry.segment.isReinforced())
                     .intValue(reflected).tick(tick)
                     .message(reflected == 0
                         ? attacker.getCharacter().getName() + " ignored the reflected "
@@ -1988,8 +2009,12 @@ public class CombatResolver {
 
         if (result.isBlocked()) {
             Move defenseMove = defenseMove(result);
+            ActionSegment defenseSegment = result.getDefenseSegment();
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_BLOCKED)
                 .source(attacker).target(defender).move(move).componentIndex(componentIndex)
+                .reinforced(execution.entry.segment.isReinforced())
+                .defenseMoveId(defenseSegment == null ? null : defenseSegment.getMove().getId())
+                .defenseReinforced(defenseSegment == null ? null : defenseSegment.isReinforced())
                 .tick(tick)
                 .message((result.isPerfectRead() ? "PERFECT READ! " : "")
                     + defender.getCharacter().getName() + " blocked " + move.getName() + "!")
@@ -2015,8 +2040,12 @@ public class CombatResolver {
         events.addAll(defender.getCodedAbilities().drainPendingEvents(tick));
 
         if (wasBlocked) {
+            ActionSegment defenseSegment = result.getDefenseSegment();
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_BLOCK_REDUCED)
                 .source(attacker).target(defender).move(move).componentIndex(componentIndex)
+                .reinforced(execution.entry.segment.isReinforced())
+                .defenseMoveId(defenseSegment.getMove().getId())
+                .defenseReinforced(defenseSegment.isReinforced())
                 .tick(tick)
                 .message(defender.getCharacter().getName()
                     + " blocked " + move.getName() + "! (damage reduced)"
@@ -2030,10 +2059,18 @@ public class CombatResolver {
         }
 
         if (component.getBasePower() > 0 || appliedDamage > 0) {
-            events.add(CombatEvent.of(appliedDamage == 0
+            CombatEvent.Builder damageEvent = CombatEvent.of(appliedDamage == 0
                     ? CombatEvent.Type.DAMAGE_IGNORED : CombatEvent.Type.DAMAGE_DEALT)
                 .source(attacker).target(defender).move(move).componentIndex(componentIndex)
-                .intValue(appliedDamage)
+                .reinforced(execution.entry.segment.isReinforced())
+                .intValue(appliedDamage);
+            if (wasBlocked) {
+                ActionSegment defenseSegment = result.getDefenseSegment();
+                damageEvent
+                    .defenseMoveId(defenseSegment.getMove().getId())
+                    .defenseReinforced(defenseSegment.isReinforced());
+            }
+            events.add(damageEvent
                 .tick(tick)
                 .message(wasBlocked ? "" : appliedDamage == 0
                     ? defender.getCharacter().getName() + " ignored " + move.getName() + "!"
@@ -2074,6 +2111,7 @@ public class CombatResolver {
 
             events.add(CombatEvent.of(CombatEvent.Type.BLACK_FLASH)
                 .source(attacker).target(defender).move(move).componentIndex(componentIndex)
+                .reinforced(execution.entry.segment.isReinforced())
                 .intValue(result.getFinalDamage())
                 .tick(tick)
                 .message("*** BLACK FLASH! *** " + attacker.getCharacter().getName()

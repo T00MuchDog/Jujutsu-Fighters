@@ -7,7 +7,7 @@
   "basePower" : 25,
   "hitComponents" : [ {
     "basePower" : 25,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -124,7 +124,7 @@
   "basePower" : 15,
   "hitComponents" : [ {
     "basePower" : 15,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -193,7 +193,7 @@
   "basePower" : 30,
   "hitComponents" : [ {
     "basePower" : 30,
-    "tags" : [ "PHYSICAL", "MELEE", "GUARD_BREAK" ],
+    "tags" : [ "PHYSICAL", "MELEE", "GUARD_BREAK", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -261,7 +261,7 @@
   "basePower" : 25,
   "hitComponents" : [ {
     "basePower" : 25,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -340,7 +340,7 @@
   "basePower" : 32,
   "hitComponents" : [ {
     "basePower" : 32,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -876,7 +876,7 @@
   "basePower" : 65,
   "hitComponents" : [ {
     "basePower" : 65,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -1067,7 +1067,7 @@
   "basePower" : 45,
   "hitComponents" : [ {
     "basePower" : 45,
-    "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "MELEE" ],
+    "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -1154,7 +1154,7 @@
   "basePower" : 70,
   "hitComponents" : [ {
     "basePower" : 70,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -1418,7 +1418,7 @@
   "basePower" : 35,
   "hitComponents" : [ {
     "basePower" : 25,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -1428,7 +1428,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 10,
-    "tags" : [ "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 2,
     "requiresPreviousConnection" : true,
     "avoidable" : false,
@@ -1639,7 +1639,7 @@
   "basePower" : 90,
   "hitComponents" : [ {
     "basePower" : 30,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -1649,7 +1649,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 30,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 1,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -1659,7 +1659,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 30,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 2,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2287,7 +2287,7 @@
   "basePower" : 48,
   "hitComponents" : [ {
     "basePower" : 24,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2297,7 +2297,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 24,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2538,7 +2538,7 @@
   "basePower" : 45,
   "hitComponents" : [ {
     "basePower" : 45,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2625,7 +2625,7 @@
   "basePower" : 70,
   "hitComponents" : [ {
     "basePower" : 70,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2704,7 +2704,7 @@
   "basePower" : 45,
   "hitComponents" : [ {
     "basePower" : 15,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2714,7 +2714,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 15,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2724,7 +2724,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 15,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -2806,7 +2806,7 @@
   "basePower" : 94,
   "hitComponents" : [ {
     "basePower" : 94,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3004,7 +3004,7 @@
   "basePower" : 42,
   "hitComponents" : [ {
     "basePower" : 42,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3068,7 +3068,7 @@
   "basePower" : 40,
   "hitComponents" : [ {
     "basePower" : 40,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3132,7 +3132,7 @@
   "basePower" : 55,
   "hitComponents" : [ {
     "basePower" : 55,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3202,7 +3202,7 @@
   "basePower" : 40,
   "hitComponents" : [ {
     "basePower" : 40,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "ELECTRIC" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "ELECTRIC", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3351,7 +3351,7 @@
   "basePower" : 24,
   "hitComponents" : [ {
     "basePower" : 24,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3415,7 +3415,7 @@
   "basePower" : 18,
   "hitComponents" : [ {
     "basePower" : 18,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3493,7 +3493,7 @@
   "basePower" : 50,
   "hitComponents" : [ {
     "basePower" : 50,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3574,7 +3574,7 @@
   "basePower" : 70,
   "hitComponents" : [ {
     "basePower" : 70,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3643,7 +3643,7 @@
   "basePower" : 70,
   "hitComponents" : [ {
     "basePower" : 70,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3707,7 +3707,7 @@
   "basePower" : 84,
   "hitComponents" : [ {
     "basePower" : 42,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3717,7 +3717,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 42,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3781,7 +3781,7 @@
   "basePower" : 80,
   "hitComponents" : [ {
     "basePower" : 80,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3922,7 +3922,7 @@
   "basePower" : 42,
   "hitComponents" : [ {
     "basePower" : 14,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3933,7 +3933,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 14,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -3944,7 +3944,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 14,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -4019,7 +4019,7 @@
   "basePower" : 28,
   "hitComponents" : [ {
     "basePower" : 28,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -4231,7 +4231,7 @@
   "basePower" : 40,
   "hitComponents" : [ {
     "basePower" : 40,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -4451,7 +4451,7 @@
   "basePower" : 65,
   "hitComponents" : [ {
     "basePower" : 65,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -4557,7 +4557,7 @@
   "basePower" : 90,
   "hitComponents" : [ {
     "basePower" : 90,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -4767,7 +4767,7 @@
   "basePower" : 160,
   "hitComponents" : [ {
     "basePower" : 160,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "INTANGIBLE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -4978,7 +4978,7 @@
   "basePower" : 10,
   "hitComponents" : [ {
     "basePower" : 10,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5043,7 +5043,7 @@
   "basePower" : 54,
   "hitComponents" : [ {
     "basePower" : 18,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5053,7 +5053,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 18,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 1,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5063,7 +5063,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 18,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 2,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5127,7 +5127,7 @@
   "basePower" : 29,
   "hitComponents" : [ {
     "basePower" : 29,
-    "tags" : [ "PHYSICAL", "MELEE" ],
+    "tags" : [ "PHYSICAL", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5623,7 +5623,7 @@
   "basePower" : 72,
   "hitComponents" : [ {
     "basePower" : 24,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5633,7 +5633,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 24,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 1,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5643,7 +5643,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 24,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 2,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5702,7 +5702,7 @@
   "basePower" : 80,
   "hitComponents" : [ {
     "basePower" : 80,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5820,7 +5820,7 @@
   "basePower" : 75,
   "hitComponents" : [ {
     "basePower" : 75,
-    "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "MELEE" ],
+    "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5924,7 +5924,7 @@
   "basePower" : 75,
   "hitComponents" : [ {
     "basePower" : 75,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -5996,7 +5996,7 @@
   "basePower" : 52,
   "hitComponents" : [ {
     "basePower" : 52,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6068,7 +6068,7 @@
   "basePower" : 50,
   "hitComponents" : [ {
     "basePower" : 50,
-    "tags" : [ "PHYSICAL", "RANGED" ],
+    "tags" : [ "PHYSICAL", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6135,7 +6135,7 @@
   "basePower" : 70,
   "hitComponents" : [ {
     "basePower" : 70,
-    "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6311,7 +6311,7 @@
   "basePower" : 20,
   "hitComponents" : [ {
     "basePower" : 20,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6393,7 +6393,7 @@
   "basePower" : 65,
   "hitComponents" : [ {
     "basePower" : 65,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6534,7 +6534,7 @@
   "basePower" : 110,
   "hitComponents" : [ {
     "basePower" : 110,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6689,7 +6689,7 @@
   "basePower" : 28,
   "hitComponents" : [ {
     "basePower" : 28,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6753,7 +6753,7 @@
   "basePower" : 60,
   "hitComponents" : [ {
     "basePower" : 18,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6763,7 +6763,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 18,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 1,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6773,7 +6773,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 24,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "SLASHING" ],
     "delayTicks" : 2,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6837,7 +6837,7 @@
   "basePower" : 55,
   "hitComponents" : [ {
     "basePower" : 55,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "GUARD_BREAK", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6901,7 +6901,7 @@
   "basePower" : 24,
   "hitComponents" : [ {
     "basePower" : 24,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -6978,7 +6978,7 @@
   "basePower" : 48,
   "hitComponents" : [ {
     "basePower" : 48,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -7315,7 +7315,7 @@
   "basePower" : 45,
   "hitComponents" : [ {
     "basePower" : 45,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -7394,7 +7394,7 @@
   "basePower" : 90,
   "hitComponents" : [ {
     "basePower" : 90,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -7866,7 +7866,7 @@
   "basePower" : 42,
   "hitComponents" : [ {
     "basePower" : 42,
-    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE" ],
+    "tags" : [ "PHYSICAL", "CURSED_ENERGY", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -8607,7 +8607,7 @@
   "basePower" : 84,
   "hitComponents" : [ {
     "basePower" : 62,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -8617,7 +8617,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 22,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 6,
     "requiresPreviousConnection" : true,
     "avoidable" : true,
@@ -8698,7 +8698,7 @@
   "basePower" : 54,
   "hitComponents" : [ {
     "basePower" : 54,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -8766,7 +8766,7 @@
   "basePower" : 72,
   "hitComponents" : [ {
     "basePower" : 36,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -8776,7 +8776,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 36,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -8909,7 +8909,7 @@
   "basePower" : 8,
   "hitComponents" : [ {
     "basePower" : 8,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -9363,7 +9363,7 @@
     "soulDamage" : false
   }, {
     "basePower" : 78,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "GUARD_BREAK", "PIERCING" ],
     "delayTicks" : 4,
     "requiresPreviousConnection" : true,
     "avoidable" : false,
@@ -9525,7 +9525,7 @@
   "basePower" : 45,
   "hitComponents" : [ {
     "basePower" : 45,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -9880,7 +9880,7 @@
   "basePower" : 75,
   "hitComponents" : [ {
     "basePower" : 75,
-    "tags" : [ "INNATE_TECHNIQUE", "MELEE" ],
+    "tags" : [ "INNATE_TECHNIQUE", "MELEE", "SLASHING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -9951,7 +9951,7 @@
   "basePower" : 57,
   "hitComponents" : [ {
     "basePower" : 57,
-    "tags" : [ "INNATE_TECHNIQUE", "RANGED" ],
+    "tags" : [ "INNATE_TECHNIQUE", "RANGED", "PIERCING" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,
@@ -10022,7 +10022,7 @@
   "basePower" : 45,
   "hitComponents" : [ {
     "basePower" : 45,
-    "tags" : [ "INNATE_TECHNIQUE", "MELEE" ],
+    "tags" : [ "INNATE_TECHNIQUE", "MELEE", "BLUNT" ],
     "delayTicks" : 0,
     "requiresPreviousConnection" : false,
     "avoidable" : true,

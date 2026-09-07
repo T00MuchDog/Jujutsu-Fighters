@@ -116,6 +116,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         MoveTag.RANGED,
         MoveTag.GUARD_BREAK,
         MoveTag.INTANGIBLE,
+        MoveTag.BLUNT,
+        MoveTag.SLASHING,
+        MoveTag.PIERCING,
         MoveTag.ICE,
         MoveTag.ELECTRIC,
         MoveTag.FIRE,
@@ -181,7 +184,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         m.blockStyle = BlockStyle.PERCENTAGE.name();
         m.blockDuration = 0;
         m.blockRanges = null;
-        m.blockElementalTags = null;
+        m.blockDamageTypeTags = null;
         m.blockDamageReduction = 100;
         m.blockFlatReduction = 0;
         m.dodgeChance = 0;
@@ -249,8 +252,8 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         d.blockDuration         = s.blockDuration;
         d.blockRanges           = s.blockRanges != null
                                   ? new ArrayList<>(s.blockRanges) : null;
-        d.blockElementalTags    = s.blockElementalTags != null
-                                  ? new ArrayList<>(s.blockElementalTags) : null;
+        d.blockDamageTypeTags   = s.blockDamageTypeTags != null
+                                  ? new ArrayList<>(s.blockDamageTypeTags) : null;
         d.blockDamageReduction  = s.blockDamageReduction;
         d.blockFlatReduction    = s.blockFlatReduction;
         d.dodgeChance           = s.dodgeChance;
@@ -2287,12 +2290,13 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             List.of(MoveTag.MELEE.name(), MoveTag.RANGED.name()),
             value -> move.blockRanges = value)).growX().row();
 
-        table.add(new Label("Blockable Elements (blank = all)", skin)).padTop(4).row();
+        table.add(new Label("Blockable Damage Types (blank = all)", skin)).padTop(4).row();
         table.add(buildBlockCoverageToggles(
-            move.blockElementalTags,
-            List.of(MoveTag.ICE.name(), MoveTag.ELECTRIC.name(),
+            move.blockDamageTypeTags,
+            List.of(MoveTag.BLUNT.name(), MoveTag.SLASHING.name(),
+                MoveTag.PIERCING.name(), MoveTag.ICE.name(), MoveTag.ELECTRIC.name(),
                 MoveTag.FIRE.name(), MoveTag.WATER.name()),
-            value -> move.blockElementalTags = value)).growX().row();
+            value -> move.blockDamageTypeTags = value)).growX().row();
     }
 
     /**
@@ -3657,7 +3661,7 @@ static void applyRequiredTechnique(MoveData d, String text) {
             d.blockStyle = BlockStyle.PERCENTAGE.name();
             d.blockDuration = 0;
             d.blockRanges = null;
-            d.blockElementalTags = null;
+            d.blockDamageTypeTags = null;
             d.blockDamageReduction = 100;
             d.blockFlatReduction = 0;
             d.dodgeChance = 0;

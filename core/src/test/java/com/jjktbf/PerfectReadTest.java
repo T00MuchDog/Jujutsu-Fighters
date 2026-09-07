@@ -3,6 +3,7 @@ package com.jjktbf;
 import com.jjktbf.model.character.CharacterStats;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.ActionSegment;
+import com.jjktbf.model.combat.BattlePlan;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattleState;
 import com.jjktbf.model.combat.CombatEvent;
@@ -59,6 +60,7 @@ public class PerfectReadTest {
         .blockStyle(BlockStyle.PERCENTAGE)
         .blockDamageReduction(50)
         .blockDuration(4)
+        .canBeReinforced(true)
         .apCost(5)
         .unleashPoint(1)
         .build();
@@ -107,6 +109,55 @@ public class PerfectReadTest {
             "No perfect read one tick off — no full negate.");
         assertEquals(1, count(events, CombatEvent.Type.DAMAGE_DEALT),
             "A 50% block still lets damage through.");
+    }
+
+    @Test
+    void blockAndReducedDamageEventsCarryTheActualDefenseMetadata() {
+        Resolution blocked = resolveRoundWithCombatants(ATTACK, PARTIAL_BLOCK, 1, 1, true);
+        CombatEvent blockedEvent = blocked.events().stream()
+            .filter(e -> e.getType() == CombatEvent.Type.MOVE_BLOCKED)
+            .findFirst().orElseThrow();
+
+        assertEquals("PR_BLOCK", blockedEvent.getDefenseMoveId());
+        assertEquals(Boolean.TRUE, blockedEvent.getDefenseReinforced());
+        assertEquals("PR_ATTACK", blockedEvent.getMove().getId());
+
+        Resolution reduced = resolveRoundWithCombatants(ATTACK, PARTIAL_BLOCK, 1, 2, false);
+        CombatEvent reducedEvent = reduced.events().stream()
+            .filter(e -> e.getType() == CombatEvent.Type.MOVE_BLOCK_REDUCED)
+            .findFirst().orElseThrow();
+        CombatEvent reducedDamage = reduced.events().stream()
+            .filter(e -> e.getType() == CombatEvent.Type.DAMAGE_DEALT)
+            .findFirst().orElseThrow();
+
+        assertEquals("PR_BLOCK", reducedEvent.getDefenseMoveId());
+        assertEquals(Boolean.FALSE, reducedEvent.getDefenseReinforced());
+        assertEquals("PR_BLOCK", reducedDamage.getDefenseMoveId());
+        assertEquals(Boolean.FALSE, reducedDamage.getDefenseReinforced());
+
+        CombatEvent unblockedDamage = resolveRoundWithCombatants(ATTACK, null, 1, 1)
+            .events().stream()
+            .filter(e -> e.getType() == CombatEvent.Type.DAMAGE_DEALT)
+            .findFirst().orElseThrow();
+        assertNull(unblockedDamage.getDefenseMoveId());
+        assertNull(unblockedDamage.getDefenseReinforced());
+    }
+
+    @Test
+    void parryMetadataIsNotCopiedToItsReflectedDamageEvent() {
+        Resolution resolution = resolveRoundWithCombatants(RANGED_ATTACK, PARRY, 1, 1);
+        CombatEvent parried = resolution.events().stream()
+            .filter(e -> e.getType() == CombatEvent.Type.MOVE_PARRIED)
+            .findFirst().orElseThrow();
+        CombatEvent reflected = resolution.events().stream()
+            .filter(e -> e.getType() == CombatEvent.Type.DAMAGE_DEALT
+                && e.getTarget() == resolution.attacker())
+            .findFirst().orElseThrow();
+
+        assertEquals("PR_PARRY", parried.getDefenseMoveId());
+        assertEquals(Boolean.FALSE, parried.getDefenseReinforced());
+        assertNull(reflected.getDefenseMoveId());
+        assertNull(reflected.getDefenseReinforced());
     }
 
     /** Exact-tick dodge auto-succeeds despite a 10% authored chance. */
@@ -198,11 +249,17 @@ public class PerfectReadTest {
     private static Resolution resolveRoundWithCombatants(
         Move defense, int defenseStart, int attackStart
     ) {
-        return resolveRoundWithCombatants(ATTACK, defense, defenseStart, attackStart);
+        return resolveRoundWithCombatants(ATTACK, defense, defenseStart, attackStart, false);
     }
 
     private static Resolution resolveRoundWithCombatants(
         Move attack, Move defense, int defenseStart, int attackStart
+    ) {
+        return resolveRoundWithCombatants(attack, defense, defenseStart, attackStart, false);
+    }
+
+    private static Resolution resolveRoundWithCombatants(
+        Move attack, Move defense, int defenseStart, int attackStart, boolean defenseReinforced
     ) {
         // Faster defender so an exact-tick defence wins the same-tick ordering
         // and has fired before the attack resolves.
@@ -214,13 +271,19 @@ public class PerfectReadTest {
         BattleCombatant defender = new BattleCombatant(new SorcererCharacter(
             "D", "Defender",
             new CharacterStats.Builder().vitality(300).speed(120).build(),
-            null, List.of(defense), List.of(),
-            defense.isParry() ? Equipment.base(WeaponType.KATANA) : Equipment.NONE));
+            null, defense == null ? List.of() : List.of(defense), List.of(),
+            defense != null && defense.isParry()
+                ? Equipment.base(WeaponType.KATANA) : Equipment.NONE));
 
         Timeline attackerTimeline = new Timeline(10);
         assertNotNull(attackerTimeline.placeAt(attack, attackStart, 0));
         Timeline defenderTimeline = new Timeline(10);
-        assertNotNull(defenderTimeline.placeAt(defense, defenseStart, 0));
+        if (defense != null) {
+            BattlePlan defenderPlan = new BattlePlan(100, 100);
+            assertNotNull(defenderPlan.placeWithTargets(
+                defense, defenseStart, 0, List.of(), defenseReinforced, 0));
+            defenderTimeline = defenderPlan.toLegacyTimeline();
+        }
         attacker.setTimeline(attackerTimeline);
         defender.setTimeline(defenderTimeline);
 

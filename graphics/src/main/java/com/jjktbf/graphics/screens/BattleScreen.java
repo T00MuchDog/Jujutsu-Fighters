@@ -76,6 +76,8 @@ import com.jjktbf.multiplayer.protocol.PlayerState;
 import com.jjktbf.multiplayer.protocol.RoundStartCharacterState;
 import com.jjktbf.multiplayer.protocol.SocketMessage;
 import com.jjktbf.view.BattleView;
+import com.jjktbf.graphics.animation.BattleAnimationPlayer;
+import com.jjktbf.graphics.animation.BattleChoreography;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -456,6 +458,8 @@ public class BattleScreen implements Screen, BattleView {
     /** Event-synchronised ability states for multiplayer playback. */
     private final Map<OnlineCombatantKey, List<CodedAbilityState>> onlineAbilityStates =
         new HashMap<>();
+    private final BattleAnimationPlayer battleAnimations = new BattleAnimationPlayer();
+    private BattleEventState animatedPlaybackEvent;
 
     public BattleScreen(JJKGame game, AssetLoader assets) {
         this(game, assets, BattleUiLayout.defaults(UiProfile.MAC));
@@ -473,6 +477,8 @@ public class BattleScreen implements Screen, BattleView {
     /** Selects the blocking local controller path before this reusable screen is shown. */
     public void prepareLocal() {
         abortRequested = true;
+        battleAnimations.clear();
+        animatedPlaybackEvent = null;
         localBattleThread = null;
         detachMultiplayerListener();
         mode = BattleMode.LOCAL;
@@ -503,6 +509,8 @@ public class BattleScreen implements Screen, BattleView {
         MultiplayerMatchService matchService
     ) {
         abortRequested = true;
+        battleAnimations.clear();
+        animatedPlaybackEvent = null;
         localBattleThread = null;
         detachMultiplayerListener();
         mode = BattleMode.MULTIPLAYER;
@@ -559,6 +567,8 @@ public class BattleScreen implements Screen, BattleView {
 
     @Override
     public void show() {
+        battleAnimations.reload();
+        animatedPlaybackEvent = null;
         windowsCanvas = WindowsBattleCanvas.fit(
             Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         applyPhysicalBatchTransform();
@@ -645,6 +655,7 @@ public class BattleScreen implements Screen, BattleView {
         skipActiveFlashRemaining = Math.max(0f, skipActiveFlashRemaining - realDelta);
         float presentationDelta = realDelta * playbackSpeedMultiplier();
         frameDelta = presentationDelta;
+        battleAnimations.update(presentationDelta);
         updateMoveUnleashAnimation(presentationDelta);
         updateHitFlashes(presentationDelta);
         updateFaintAnimations(presentationDelta);
@@ -719,6 +730,9 @@ public class BattleScreen implements Screen, BattleView {
     @Override public void resume() {}
     @Override
     public void hide() {
+        if (mode == BattleMode.LOCAL) abortRequested = true;
+        battleAnimations.clear();
+        animatedPlaybackEvent = null;
         if (mode == BattleMode.MULTIPLAYER) {
             closePlanningPanel();
             detachMultiplayerListener();
@@ -729,6 +743,8 @@ public class BattleScreen implements Screen, BattleView {
     public void dispose() {
         if (disposed) return;
         disposed = true;
+        abortRequested = true;
+        battleAnimations.dispose();
         detachMultiplayerListener();
         batch.dispose();
     }
@@ -856,12 +872,14 @@ public class BattleScreen implements Screen, BattleView {
 
         batch.begin();
         drawExecutionBackground(sw, sh);
+        drawBattleAnimationLayer("behind");
         List<CombatantHud> enemyHuds = enemyPanel != null && hasEnemyRenderState()
             ? combatantHuds(false) : List.of();
         List<CombatantHud> playerHuds = playerPanel != null && hasPlayerRenderState()
             ? combatantHuds(true) : List.of();
         drawCombatantField(enemyPanels, enemyHuds.size());
         drawCombatantField(playerPanels, playerHuds.size());
+        drawBattleAnimationLayer("front");
         drawCombatantHuds(enemyPanels, enemyHuds, false);
         if (!playerHuds.isEmpty()) {
             drawCombatantHuds(playerPanels, playerHuds, true);
@@ -899,8 +917,10 @@ public class BattleScreen implements Screen, BattleView {
         beginUnifiedClip(windowsExecutionClip, WindowsBattleCanvas.Anchor.TOP);
         try {
             drawExecutionBackground(windowsExecutionClip);
+            drawBattleAnimationLayer("behind");
             drawCombatantField(enemyPanels, enemyHuds.size(), plannedPanel);
             drawCombatantField(playerPanels, playerHuds.size(), plannedPanel);
+            drawBattleAnimationLayer("front");
             drawCombatantHuds(enemyPanels, enemyHuds, false);
             if (!playerHuds.isEmpty()) {
                 drawCombatantHuds(playerPanels, playerHuds, true);
@@ -985,7 +1005,7 @@ public class BattleScreen implements Screen, BattleView {
                 panel.drawEnteringSpriteGrow(
                     batch, entrance.progress(), entrance.whiteSprite);
             } else {
-                panel.drawSprite(batch, frameDelta);
+                panel.drawSprite(batch, frameDelta, battleAnimations.poseFor(panel));
             }
         }
     }
@@ -1048,12 +1068,23 @@ public class BattleScreen implements Screen, BattleView {
         );
         float width = background.getWidth() * scale;
         float height = background.getHeight() * scale;
-        batch.setColor(Color.WHITE);
+        BattleChoreography.Pose pose = battleAnimations.backgroundPose();
+        width *= pose.scaleX();
+        height *= pose.scaleY();
+        batch.setColor(pose.red(), pose.green(), pose.blue(), pose.alpha());
         batch.draw(background,
-            bounds.x + (bounds.width - width) / 2f,
-            bounds.y + (bounds.height - height) / 2f,
-            width,
-            height);
+            bounds.x + (bounds.width - width) / 2f + pose.x() * bounds.width,
+            bounds.y + (bounds.height - height) / 2f + pose.y() * bounds.height,
+            width / 2, height / 2, width, height, 1, 1, pose.rotation(),
+            0, 0, background.getWidth(), background.getHeight(), false, false);
+        batch.setColor(Color.WHITE);
+        drawBattleAnimationLayer("background");
+    }
+
+    private void drawBattleAnimationLayer(String plane) {
+        Rectangle viewport = windowsUnified() ? windowsExecutionClip
+            : new Rectangle(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        battleAnimations.draw(batch, viewport, plane);
     }
 
     private void drawWindowsPlanningSectionBackground() {
@@ -1668,6 +1699,8 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void clearTransientAnimations() {
+        battleAnimations.clear();
+        animatedPlaybackEvent = null;
         unleashedMoveIcon = null;
         unleashedMoveTargetPanel = null;
         hitFlashes.clear();
@@ -1731,7 +1764,7 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void playMoveUnleashAnimation(Move move) {
-        if (move == null) return;
+        if (move == null || battleAnimations.hasMove(move.getId())) return;
         unleashedMoveIcon = assets.battleUi.moveEffectIcon(move);
         unleashedMoveElapsed = 0f;
         unleashedMoveDurationSeconds = MOVE_EFFECT_DURATION_SECONDS;
@@ -1747,7 +1780,7 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void playSuccessfulBlockAnimation(CombatantPanel targetPanel) {
-        if (targetPanel == null) return;
+        if (targetPanel == null || battleAnimations.isPlaying()) return;
         unleashedMoveIcon = assets.battleUi.defenseEffectIcon;
         unleashedMoveElapsed = 0f;
         unleashedMoveDurationSeconds = BLOCK_EFFECT_DURATION_SECONDS;
@@ -1755,6 +1788,7 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private void playSuccessfulBlockAnimation(CombatEvent event) {
+        if (battleAnimations.isPlaying()) return;
         CombatantPanel panel = panelForCombatant(event.getTarget());
         if (panel == null) return;
         unleashedMoveIcon = assets.battleUi.defenseEffectIcon;
@@ -1779,6 +1813,7 @@ public class BattleScreen implements Screen, BattleView {
         CombatEvent.Type type,
         CombatantPanel targetPanel
     ) {
+        if (battleAnimations.isPlaying() && battleAnimations.hasMove(move.getId())) return;
         // Only multi-hit moves need per-hit flashes; single-hit moves already
         // get the center-screen unleash + this would double up the visual.
         if (move.getHitComponents().size() <= 1 || targetPanel == null) return;
@@ -2509,15 +2544,23 @@ public class BattleScreen implements Screen, BattleView {
 
         for (CombatEvent e : events) {
             if (abortRequested || !isCurrentLocalBattleThread()) return;
+            boolean deferredBlock = battleAnimations.handlesEvent("MOVE_BLOCK_REDUCED")
+                && hasFollowingBlockDamage(events, e);
+            if (executionUiActive && !skipRoundRequested && !deferredBlock) {
+                startLocalBattleAnimationAndWaitForImpact(e);
+            }
             // Legacy 1v1 resolution does not emit COMBATANT_DEFEATED. Catch its
             // loser before the BATTLE_OVER line so every KO gets the same exit.
             if (e.getType() == CombatEvent.Type.BATTLE_OVER) {
                 playMissingLocalFaints(state);
             }
             applyLocalDomainEvent(e);
-            if (!skipRoundRequested) {
+            if (!skipRoundRequested && !deferredBlock) {
                 BattleAudioRouter.cueFor(e)
                     .ifPresent(cue -> postLocal(() -> game.audio().play(cue)));
+                if (isDamageEvent(e.getType().name()) && e.getDefenseMoveId() != null) {
+                    postLocal(() -> game.audio().play(SoundCue.BATTLE_BLOCK));
+                }
             }
             if (!skipRoundRequested && e.getType() == CombatEvent.Type.MOVE_FIRED) {
                 Move unleashedMove = e.getMove();
@@ -2527,7 +2570,7 @@ public class BattleScreen implements Screen, BattleView {
             // (damage, block, dodge, parry) spawns its own targeted flash so the
             // hits read as distinct strikes; single-hit moves keep using the
             // shared center-screen unleash slot.
-            if (!skipRoundRequested && (e.getType() == CombatEvent.Type.DAMAGE_DEALT
+            if (!skipRoundRequested && !deferredBlock && (e.getType() == CombatEvent.Type.DAMAGE_DEALT
                 || e.getType() == CombatEvent.Type.DAMAGE_IGNORED
                 || e.getType() == CombatEvent.Type.MOVE_BLOCKED
                 || e.getType() == CombatEvent.Type.MOVE_BLOCK_REDUCED
@@ -2536,8 +2579,9 @@ public class BattleScreen implements Screen, BattleView {
                 final CombatEvent impactEvent = e;
                 postLocal(() -> spawnHitFlash(impactEvent));
             }
-            if (!skipRoundRequested && (e.getType() == CombatEvent.Type.MOVE_BLOCKED
-                || e.getType() == CombatEvent.Type.MOVE_BLOCK_REDUCED)) {
+            if (!skipRoundRequested && !deferredBlock && (e.getType() == CombatEvent.Type.MOVE_BLOCKED
+                || e.getType() == CombatEvent.Type.MOVE_BLOCK_REDUCED
+                || (isDamageEvent(e.getType().name()) && e.getDefenseMoveId() != null))) {
                 CombatEvent blockEvent = e;
                 // Single-hit blocked moves use the shared center unleash; a
                 // multi-hit move's per-hit blocks are drawn as flashes above.
@@ -2630,12 +2674,81 @@ public class BattleScreen implements Screen, BattleView {
                     removeLocalCombatantAndWait(e.getTarget());
                 }
             }
+            if (executionUiActive) waitForBattleAnimation(false);
         }
         // Authoritative re-sync: playback banner updates pace with the log,
         // this corrects any drift (durations, barriers, clashes) after the round.
         if (!abortRequested && isCurrentLocalBattleThread()) {
             syncLocalDomainBanners(state);
         }
+    }
+
+    private void startLocalBattleAnimationAndWaitForImpact(CombatEvent event) {
+        if (!battleAnimations.handlesEvent(event.getType().name())) return;
+        // A start fence prevents the controller outrunning a not-yet-executed GL runnable.
+        java.util.concurrent.CountDownLatch started = new java.util.concurrent.CountDownLatch(1);
+        postLocal(() -> {
+            try {
+                if (!skipRoundRequested) {
+                    CombatantPanel source = panelForCombatant(event.getSource());
+                    battleAnimations.play(event.getType().name(),
+                        event.getMove() == null ? null : event.getMove().getId(), event.getComponentIndex(),
+                        () -> panelForCombatant(event.getSource()), () -> panelForCombatant(event.getTarget()),
+                        source != null && enemyPanels.contains(source), Boolean.TRUE.equals(event.getReinforced()),
+                        event.getDefenseMoveId(), Boolean.TRUE.equals(event.getDefenseReinforced()));
+                }
+            } finally {
+                started.countDown();
+            }
+        });
+        while (started.getCount() > 0 && !skipRoundRequested
+            && !abortRequested && isCurrentLocalBattleThread()) sleepMs(16);
+        waitForBattleAnimation(true);
+    }
+
+    private void waitForBattleAnimation(boolean impactOnly) {
+        while ((impactOnly ? battleAnimations.isBeforeImpact() : battleAnimations.isPlaying())
+            && !skipRoundRequested && !abortRequested && isCurrentLocalBattleThread()) sleepMs(16);
+    }
+
+    private static boolean isDamageEvent(String type) {
+        return type.equals("DAMAGE_DEALT") || type.equals("DAMAGE_IGNORED");
+    }
+
+    /** Reduced-block markers and damage may have defense-effect events between them. */
+    static boolean hasFollowingBlockDamage(List<CombatEvent> events, CombatEvent block) {
+        if (block.getType() != CombatEvent.Type.MOVE_BLOCK_REDUCED || block.getDefenseMoveId() == null) return false;
+        int index = events.indexOf(block);
+        if (index < 0) return false;
+        for (int i = index + 1; i < events.size(); i++) {
+            CombatEvent damage = events.get(i);
+            if (isDamageEvent(damage.getType().name()) && damage.getTick() == block.getTick()
+                && damage.getSource() == block.getSource() && damage.getTarget() == block.getTarget()
+                && damage.getMove() == block.getMove()
+                && Objects.equals(damage.getComponentIndex(), block.getComponentIndex())
+                && Objects.equals(damage.getDefenseMoveId(), block.getDefenseMoveId())) return true;
+        }
+        return false;
+    }
+
+    static boolean hasFollowingBlockDamage(List<BattleEventState> events, BattleEventState block) {
+        if (block.type() != BattleEventType.MOVE_BLOCK_REDUCED || block.defenseMoveId() == null) return false;
+        int index = events.indexOf(block);
+        if (index < 0) return false;
+        for (int i = index + 1; i < events.size(); i++) {
+            BattleEventState damage = events.get(i);
+            if (isDamageEvent(damage.type().name()) && damage.tick() == block.tick()
+                && damage.roundNumber() == block.roundNumber()
+                && damage.sourceSide() == block.sourceSide() && damage.targetSide() == block.targetSide()
+                && Objects.equals(damage.sourceInstanceId(), block.sourceInstanceId())
+                && Objects.equals(damage.targetInstanceId(), block.targetInstanceId())
+                && Objects.equals(damage.sourceCharacterId(), block.sourceCharacterId())
+                && Objects.equals(damage.targetCharacterId(), block.targetCharacterId())
+                && Objects.equals(damage.moveId(), block.moveId())
+                && Objects.equals(damage.componentIndex(), block.componentIndex())
+                && Objects.equals(damage.defenseMoveId(), block.defenseMoveId())) return true;
+        }
+        return false;
     }
 
     private static boolean hasLocalPlaybackEffect(CombatEvent event) {
@@ -3606,6 +3719,7 @@ public class BattleScreen implements Screen, BattleView {
             finishMultiplayerPlayback();
             return;
         }
+        if (battleAnimations.isPlaying() && animatedPlaybackEvent == null) return;
         // Don't advance (or accumulate) while a log line is still typing, so
         // a tick that just queued messages can't outpace the typewriter.
         if (typingInProgress() || faintAnimationInProgress() || entranceAnimationInProgress()) return;
@@ -3632,10 +3746,21 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private boolean processPlaybackEventsThrough(int tick) {
+        if (!skipRoundRequested && battleAnimations.isPlaying() && animatedPlaybackEvent == null) return true;
         while (playbackEventIndex < playbackEvents.size()
             && playbackEvents.get(playbackEventIndex).tick() <= tick) {
-            BattleEventState event = playbackEvents.get(playbackEventIndex++);
+            BattleEventState event = playbackEvents.get(playbackEventIndex);
+            if (!skipRoundRequested && animatedPlaybackEvent != event && startOnlineBattleAnimation(event)) {
+                animatedPlaybackEvent = event;
+            }
+            if (!skipRoundRequested && battleAnimations.isBeforeImpact()) return true;
+            playbackEventIndex++;
+            animatedPlaybackEvent = null;
             if (applyPlaybackEvent(event)) {
+                updatePanels();
+                return true;
+            }
+            if (!skipRoundRequested && battleAnimations.isPlaying()) {
                 updatePanels();
                 return true;
             }
@@ -3646,6 +3771,18 @@ public class BattleScreen implements Screen, BattleView {
         }
         updatePanels();
         return false;
+    }
+
+    private boolean startOnlineBattleAnimation(BattleEventState event) {
+        if (!battleAnimations.handlesEvent(event.type().name())) return false;
+        if (hasFollowingBlockDamage(playbackEvents, event)) return false;
+        return battleAnimations.play(event.type().name(), event.moveId(), event.componentIndex(),
+            () -> onlinePanelFor(event.sourceSide(), onlineVisualForEvent(
+                event.sourceSide(), event.sourceInstanceId(), event.sourceCharacterId())),
+            () -> onlinePanelFor(event.targetSide(), onlineVisualForEvent(
+                event.targetSide(), event.targetInstanceId(), event.targetCharacterId())),
+            event.sourceSide() != null && event.sourceSide() != multiplayerSetup.playerSide(),
+            Boolean.TRUE.equals(event.reinforced()), event.defenseMoveId(), Boolean.TRUE.equals(event.defenseReinforced()));
     }
 
     private void refreshTerminalPlayback(MatchState state) {
@@ -3681,6 +3818,8 @@ public class BattleScreen implements Screen, BattleView {
     }
 
     private boolean applyPlaybackEvent(BattleEventState event) {
+        boolean deferredBlock = battleAnimations.handlesEvent("MOVE_BLOCK_REDUCED")
+            && hasFollowingBlockDamage(playbackEvents, event);
         // Domain banners track playback so the status strip paces with the log
         // instead of snapping to the post-round snapshot.
         applyOnlineDomainEvent(event);
@@ -3792,7 +3931,7 @@ public class BattleScreen implements Screen, BattleView {
             playMoveUnleashAnimation(unleashedMove);
         }
         // Per-hit impact flash for multi-hit moves (online path mirrors local).
-        if (!skipRoundRequested && unleashedMove != null
+        if (!skipRoundRequested && !deferredBlock && unleashedMove != null
             && unleashedMove.getHitComponents().size() > 1
             && (event.type() == BattleEventType.DAMAGE_DEALT
                 || event.type() == BattleEventType.MOVE_BLOCKED
@@ -3805,8 +3944,9 @@ public class BattleScreen implements Screen, BattleView {
                 spawnHitFlash(unleashedMove, flashType, targetPanel);
             }
         }
-        if (!skipRoundRequested && (event.type() == BattleEventType.MOVE_BLOCKED
-            || event.type() == BattleEventType.MOVE_BLOCK_REDUCED)) {
+        if (!skipRoundRequested && !deferredBlock && (event.type() == BattleEventType.MOVE_BLOCKED
+            || event.type() == BattleEventType.MOVE_BLOCK_REDUCED
+            || (isDamageEvent(event.type().name()) && event.defenseMoveId() != null))) {
             // Only single-hit moves use the shared center-slot block animation;
             // multi-hit per-hit blocks are rendered as flashes above.
             if (unleashedMove == null
@@ -3815,8 +3955,11 @@ public class BattleScreen implements Screen, BattleView {
             }
         }
         if (event.eventId() == null || soundedOnlineEventIds.add(event.eventId())) {
-            if (!skipRoundRequested) {
+            if (!skipRoundRequested && !deferredBlock) {
                 BattleAudioRouter.cueFor(event, unleashedMove).ifPresent(game.audio()::play);
+                if (isDamageEvent(event.type().name()) && event.defenseMoveId() != null) {
+                    game.audio().play(SoundCue.BATTLE_BLOCK);
+                }
             }
         }
         if (!skipRoundRequested && event.type() == BattleEventType.RATIO_TRIGGERED) {

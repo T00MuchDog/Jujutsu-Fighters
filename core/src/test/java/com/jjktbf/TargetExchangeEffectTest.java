@@ -53,6 +53,11 @@ class TargetExchangeEffectTest {
             event.getType() == CombatEvent.Type.TARGETS_EXCHANGED
                 && event.getTarget() == todo
                 && event.getRelatedTarget() == replacement));
+        assertEquals(List.of(replacement), events.stream()
+            .filter(event -> event.getType() == CombatEvent.Type.MOVE_TARGETED
+                && event.getSource() == attacker)
+            .map(CombatEvent::getTarget).toList(),
+            "presentation must receive the exchanged recipient, not the planned target");
     }
 
     @Test
@@ -123,10 +128,15 @@ class TargetExchangeEffectTest {
 
         int todoHp = todo.getCurrentHp();
         int replacementHp = replacement.getCurrentHp();
-        resolve(state);
+        List<CombatEvent> events = resolve(state);
 
         assertEquals(todoHp, todo.getCurrentHp());
         assertTrue(replacement.getCurrentHp() < replacementHp);
+        assertEquals(List.of(replacement), events.stream()
+            .filter(event -> event.getType() == CombatEvent.Type.MOVE_TARGETED
+                && event.getMove() == launched)
+            .map(CombatEvent::getTarget).toList(),
+            "launched moves must emit their own final target activation");
     }
 
     @Test

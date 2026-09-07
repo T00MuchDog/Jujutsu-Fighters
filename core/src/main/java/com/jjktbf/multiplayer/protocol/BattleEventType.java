@@ -4,6 +4,7 @@ package com.jjktbf.multiplayer.protocol;
 public enum BattleEventType {
     MOVE_STARTED,
     MOVE_FIRED,
+    MOVE_TARGETED,
     MOVE_MISSED,
     MOVE_BLOCKED,
     MOVE_BLOCK_REDUCED,

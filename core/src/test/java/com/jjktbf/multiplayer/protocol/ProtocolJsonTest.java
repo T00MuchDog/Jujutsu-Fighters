@@ -90,6 +90,51 @@ class ProtocolJsonTest {
     }
 
     @Test
+    void combatEventBuilderCapturesNullableReinforcementSnapshot() {
+        CombatEvent reinforced = CombatEvent.of(CombatEvent.Type.MOVE_FIRED)
+            .reinforced(true)
+            .build();
+        CombatEvent unspecified = CombatEvent.of(CombatEvent.Type.MOVE_FIRED).build();
+
+        assertEquals(Boolean.TRUE, reinforced.getReinforced());
+        assertNull(unspecified.getReinforced());
+    }
+
+    @Test
+    void legacyWireEventJsonDefaultsMissingReinforcementToNull() throws Exception {
+        BattleEventState restored = mapper.readValue(
+            "{\"eventId\":\"legacy\",\"type\":\"MOVE_FIRED\","
+                + "\"roundNumber\":1,\"tick\":1}",
+            BattleEventState.class);
+
+        assertNull(restored.reinforced());
+        assertNull(restored.defenseMoveId());
+        assertNull(restored.defenseReinforced());
+        assertFalse(mapper.readTree(mapper.writeValueAsString(restored)).has("reinforced"));
+        assertFalse(mapper.readTree(mapper.writeValueAsString(restored)).has("defenseMoveId"));
+        assertFalse(mapper.readTree(mapper.writeValueAsString(restored)).has("defenseReinforced"));
+    }
+
+    @Test
+    void defenseEventMetadataRoundTrips() throws Exception {
+        BattleEventState event = new BattleEventState(
+            "blocked-event", BattleEventType.MOVE_BLOCK_REDUCED, 2, 4,
+            PlayerSide.PLAYER_ONE, "attacker", "Attacker",
+            PlayerSide.PLAYER_TWO, "defender", "Defender",
+            "ATTACK", "Attack", 0, 12, null, "blocked",
+            "PLAYER-f1", "ENEMY-f1", null, null, null, null,
+            null, null, null, null, null,
+            true, "GUARD", false);
+
+        BattleEventState restored = mapper.readValue(
+            mapper.writeValueAsString(event), BattleEventState.class);
+
+        assertEquals(event, restored);
+        assertEquals("GUARD", restored.defenseMoveId());
+        assertEquals(Boolean.FALSE, restored.defenseReinforced());
+    }
+
+    @Test
     void domainEventMetadataRoundTrips() throws Exception {
         BattleEventState event = new BattleEventState(
             "domain-event", BattleEventType.DOMAIN_COLLAPSED, 3, 7,
@@ -320,7 +365,7 @@ class ProtocolJsonTest {
         SocketMessage joined = messages.get(1);
         assertEquals(ProtocolVersion.GAME_VERSION, joined.gameVersion());
         assertEquals(ProtocolVersion.PROTOCOL_VERSION, joined.protocolVersion());
-        assertEquals(24, joined.protocolVersion());
+        assertEquals(27, joined.protocolVersion());
         assertEquals(List.of(new SwitchSelection("PLAYER-f2", "PLAYER-f4")),
             command.payload().switches());
         assertEquals(42L, joined.stateVersion());
@@ -330,6 +375,8 @@ class ProtocolJsonTest {
             joined.gameVersion(), joined.protocolVersion(), joined.ruleset()));
         assertFalse(ProtocolVersion.isCompatible(
             joined.gameVersion(), 11, joined.ruleset()));
+        assertFalse(ProtocolVersion.isCompatible(
+            joined.gameVersion(), 26, joined.ruleset()));
         assertTrue(ProtocolVersion.isCompatible(
             ProtocolVersion.GAME_VERSION,
             ProtocolVersion.PROTOCOL_VERSION,

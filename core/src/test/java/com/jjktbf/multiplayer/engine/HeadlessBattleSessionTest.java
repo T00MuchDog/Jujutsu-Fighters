@@ -9,6 +9,7 @@ import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.CharacterStats;
+import com.jjktbf.model.character.ReinforcementAbility;
 import com.jjktbf.model.character.ShikigamiCharacter;
 import com.jjktbf.model.character.SorcererCharacter;
 import com.jjktbf.model.combat.CeEfficiencyCalculator;
@@ -16,6 +17,8 @@ import com.jjktbf.model.combat.BattleCharacterLookup;
 import com.jjktbf.model.combat.DomainDefinitionLookup;
 import com.jjktbf.model.domain.DomainData;
 import com.jjktbf.model.domain.DomainDefinition;
+import com.jjktbf.model.move.BlockStyle;
+import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.AoeType;
 import com.jjktbf.model.move.Targeting;
 import com.jjktbf.model.move.HitComponent;
@@ -122,6 +125,196 @@ class HeadlessBattleSessionTest {
         assertTrue(result.events().stream().anyMatch(event ->
             event.type() == BattleEventType.ROUND_START && event.roundNumber() == 1));
         assertEquals(2, result.state().roundStartCharacterStates().size());
+    }
+
+    @Test
+    void reinforcedNormalAttackSnapshotIsForwardedToWireEvents() {
+        Move attack = reinforcedWireAttack();
+        AbilityData reinforcementData = new AbilityData();
+        reinforcementData.id = ReinforcementAbility.ID;
+        reinforcementData.name = ReinforcementAbility.NAME;
+        Ability reinforcement = new Ability(reinforcementData);
+        CharacterStats stats = new CharacterStats.Builder()
+            .cursedEnergyEfficiency(160)
+            .build();
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One",
+                new SorcererCharacter("character-1", "Character One", stats, null,
+                    List.of(attack), List.of(reinforcement)), PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two",
+                new SorcererCharacter("character-2", "Character Two", stats, null,
+                    List.of(attack), List.of(reinforcement)), PlayerSide.PLAYER_TWO),
+            19L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK
+        );
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+
+        PlanPlacement reinforced = new PlanPlacement(
+            attack.getId(), 1, PLAYER_ONE_ID, List.of(PLAYER_TWO_ID), true);
+        assertTrue(session.applyCommand(
+            "player-1", command(session, "reinforced-plan", reinforced)).accepted());
+        CommandResult result = session.applyCommand(
+            "player-2", command(session, "normal-plan", targeted(
+                attack, 1, PlayerSide.PLAYER_TWO)));
+
+        assertTrue(result.accepted());
+        assertTrue(result.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.MOVE_FIRED
+                && PlayerSide.PLAYER_ONE == event.sourceSide()
+                && Boolean.TRUE.equals(event.reinforced())));
+        assertTrue(result.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.DAMAGE_DEALT
+                && PlayerSide.PLAYER_ONE == event.sourceSide()
+                && Boolean.TRUE.equals(event.reinforced())));
+        assertTrue(result.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.MOVE_TARGETED
+                && PlayerSide.PLAYER_ONE == event.sourceSide()
+                && Boolean.TRUE.equals(event.reinforced())));
+    }
+
+    @Test
+    void moveTargetedEventsUseResolvedTargetsAndPreserveWireIdentities() {
+        Move singleTarget = targetedZeroPowerUtility("TARGETED_SINGLE");
+        Move selfActivation = new Move.Builder("TARGETED_SELF")
+            .name("Targeted Self")
+            .category(MoveCategory.DEFENSIVE)
+            .apCost(5)
+            .unleashPoint(1)
+            .freeMove(true)
+            .build();
+        HeadlessBattleSession singleSession = session(27L, singleTarget, selfActivation);
+
+        assertTrue(singleSession.applyCommand(
+            "player-1", command(singleSession, "single-targeted",
+                targeted(singleTarget, 1, PlayerSide.PLAYER_ONE))).accepted());
+        CommandResult singleResult = singleSession.applyCommand(
+            "player-2", command(singleSession, "single-empty"));
+        assertTrue(singleResult.accepted());
+        var singleEvents = singleResult.events().stream()
+            .filter(event -> event.type() == BattleEventType.MOVE_TARGETED)
+            .toList();
+        assertEquals(1, singleEvents.size());
+        assertEquals(PLAYER_TWO_ID, singleEvents.get(0).targetInstanceId());
+        assertEquals("character-2", singleEvents.get(0).targetCharacterId());
+        int firedIndex = indexOf(singleResult, BattleEventType.MOVE_FIRED, PlayerSide.PLAYER_ONE);
+        int targetedIndex = indexOf(singleResult, BattleEventType.MOVE_TARGETED, PlayerSide.PLAYER_ONE);
+        assertEquals(firedIndex + 1, targetedIndex);
+        assertTrue(singleResult.events().stream().noneMatch(event ->
+            event.type() == BattleEventType.DAMAGE_DEALT
+                && event.sourceSide() == PlayerSide.PLAYER_ONE));
+
+        HeadlessBattleSession selfSession = session(28L, selfActivation, selfActivation);
+        assertTrue(selfSession.applyCommand(
+            "player-1", command(selfSession, "self-activation",
+                new PlanPlacement(selfActivation.getId(), 1, PLAYER_ONE_ID, List.of()))).accepted());
+        CommandResult selfResult = selfSession.applyCommand(
+            "player-2", command(selfSession, "self-empty"));
+        assertTrue(selfResult.accepted());
+        assertTrue(selfResult.events().stream().anyMatch(event ->
+            event.type() == BattleEventType.MOVE_FIRED
+                && event.sourceSide() == PlayerSide.PLAYER_ONE));
+        assertTrue(selfResult.events().stream().noneMatch(event ->
+            event.type() == BattleEventType.MOVE_TARGETED
+                && event.sourceSide() == PlayerSide.PLAYER_ONE));
+
+        Move allEnemies = multipleAttack("TARGETED_ALL", AoeType.ALL_ENEMIES, 2);
+        CharacterStats stats = new CharacterStats.Builder().cursedEnergyEfficiency(160).build();
+        HeadlessBattleSession aoeSession = new HeadlessBattleSession(
+            "targeted-roster",
+            new MatchParticipant("player-1", "Player One",
+                new SorcererCharacter("source", "Source", stats, null, List.of(allEnemies)),
+                PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two", List.of(
+                new SorcererCharacter("enemy-one", "Enemy One", stats, null, List.of(selfActivation)),
+                new SorcererCharacter("enemy-two", "Enemy Two", stats, null, List.of(selfActivation))),
+                PlayerSide.PLAYER_TWO),
+            29L, HeadlessBattleSession.DEFAULT_MAX_ROUNDS, FIXED_CLOCK);
+        aoeSession.setConnected("player-1", true);
+        aoeSession.setConnected("player-2", true);
+        startBattle(aoeSession, "targeted-roster");
+
+        assertTrue(aoeSession.applyCommand("player-1", ActionCommand.submitPlan(
+            "aoe-targeted", "targeted-roster", aoeSession.getStateVersion(), List.of(
+                new PlanPlacement(allEnemies.getId(), 1, PLAYER_ONE_ID, List.of())))).accepted());
+        CommandResult aoeResult = aoeSession.applyCommand("player-2", ActionCommand.submitPlan(
+            "aoe-empty", "targeted-roster", aoeSession.getStateVersion(), List.of()));
+        assertTrue(aoeResult.accepted());
+        var aoeEvents = aoeResult.events().stream()
+            .filter(event -> event.type() == BattleEventType.MOVE_TARGETED
+                && event.sourceSide() == PlayerSide.PLAYER_ONE)
+            .toList();
+        assertEquals(Set.of("ENEMY-f1", "ENEMY-f2"), aoeEvents.stream()
+            .map(event -> event.targetInstanceId()).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(Set.of("enemy-one", "enemy-two"), aoeEvents.stream()
+            .map(event -> event.targetCharacterId()).collect(java.util.stream.Collectors.toSet()));
+    }
+
+    @Test
+    void defenseMetadataIsForwardedToWireEvents() {
+        Move attack = new Move.Builder("WIRE_ATTACK")
+            .name("Wire Attack")
+            .description("A test attack.")
+            .category(MoveCategory.PHYSICAL)
+            .basePower(30)
+            .neverMiss(true)
+            .apCost(2)
+            .unleashPoint(1)
+            .freeMove(true)
+            .build();
+        Move block = new Move.Builder("WIRE_BLOCK")
+            .name("Wire Block")
+            .description("A test block.")
+            .category(MoveCategory.DEFENSIVE)
+            .defenseType(DefenseType.BLOCK)
+            .blockStyle(BlockStyle.PERCENTAGE)
+            .blockDamageReduction(50)
+            .blockDuration(5)
+            .apCost(2)
+            .unleashPoint(1)
+            .freeMove(true)
+            .build();
+        HeadlessBattleSession session = new HeadlessBattleSession(
+            "match-1",
+            new MatchParticipant("player-1", "Player One",
+                new SorcererCharacter("character-1", "Character One",
+                    new CharacterStats.Builder().speed(80).build(), null, List.of(attack)),
+                PlayerSide.PLAYER_ONE),
+            new MatchParticipant("player-2", "Player Two",
+                new SorcererCharacter("character-2", "Character Two",
+                    new CharacterStats.Builder().speed(120).build(), null, List.of(block)),
+                PlayerSide.PLAYER_TWO),
+            20L,
+            HeadlessBattleSession.DEFAULT_MAX_ROUNDS,
+            FIXED_CLOCK
+        );
+        session.setConnected("player-1", true);
+        session.setConnected("player-2", true);
+        startBattle(session, "match-1");
+
+        assertTrue(session.applyCommand(
+            "player-1", command(session, "wire-attack", targeted(
+                attack, 2, PlayerSide.PLAYER_ONE))).accepted());
+        CommandResult result = session.applyCommand(
+            "player-2", command(session, "wire-block",
+                new PlanPlacement(block.getId(), 1, PLAYER_TWO_ID, List.of())));
+
+        assertTrue(result.accepted());
+        var reduced = result.events().stream()
+            .filter(event -> event.type() == BattleEventType.MOVE_BLOCK_REDUCED)
+            .findFirst().orElseThrow();
+        var damage = result.events().stream()
+            .filter(event -> event.type() == BattleEventType.DAMAGE_DEALT
+                && PlayerSide.PLAYER_ONE == event.sourceSide())
+            .findFirst().orElseThrow();
+        assertEquals("WIRE_ATTACK", reduced.moveId());
+        assertEquals("WIRE_BLOCK", reduced.defenseMoveId());
+        assertFalse(Boolean.TRUE.equals(reduced.defenseReinforced()));
+        assertEquals("WIRE_BLOCK", damage.defenseMoveId());
+        assertFalse(Boolean.TRUE.equals(damage.defenseReinforced()));
     }
 
     @Test
@@ -1569,6 +1762,29 @@ class HeadlessBattleSessionTest {
             .build();
     }
 
+    private static Move targetedZeroPowerUtility(String id) {
+        return new Move.Builder(id)
+            .name(id)
+            .description("A target-bearing utility activation with no damage component.")
+            .moveTypes(Set.of(MoveType.SORCERER))
+            .category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.UTILITY, MoveTag.ATTACK))
+            .apCost(5)
+            .unleashPoint(1)
+            .freeMove(true)
+            .build();
+    }
+
+    private static int indexOf(
+        CommandResult result, BattleEventType type, PlayerSide sourceSide
+    ) {
+        for (int index = 0; index < result.events().size(); index++) {
+            var event = result.events().get(index);
+            if (event.type() == type && event.sourceSide() == sourceSide) return index;
+        }
+        throw new AssertionError("Missing " + type + " event from " + sourceSide);
+    }
+
     private static Ability boundedResourceAbility() {
         AbilityEffectData supply = AbilityEffectType.DEFINE_BOUNDED_RESOURCE.createDefault();
         supply.resourceKey = "SUPPLY";
@@ -1624,6 +1840,23 @@ class HeadlessBattleSessionTest {
             .basePower(power)
             .baseAccuracy(0.75)
             .neverMiss(neverMiss)
+            .apCost(5)
+            .unleashPoint(1)
+            .freeMove(true)
+            .build();
+    }
+
+    private static Move reinforcedWireAttack() {
+        return new Move.Builder("REINFORCED_WIRE_ATTACK")
+            .name("Reinforced Wire Attack")
+            .description("A test reinforced attack.")
+            .category(MoveCategory.PHYSICAL)
+            .hitComponents(List.of(new com.jjktbf.model.move.HitComponent(
+                30, Set.of(MoveTag.PHYSICAL), 0, false, true,
+                com.jjktbf.model.move.HitComponent.INHERIT_MOVE_ACCURACY,
+                List.of(), true, 10)))
+            .canBeReinforced(true)
+            .reinforcementCeCosts(20, 4, 60)
             .apCost(5)
             .unleashPoint(1)
             .freeMove(true)

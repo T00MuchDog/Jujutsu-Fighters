@@ -161,8 +161,12 @@ public class MoveData {
     public int     blockDuration = 0;
     /** Accepted hit ranges (MELEE / RANGED). Null/empty = both and untagged hits. */
     public List<String> blockRanges;
-    /** Blockable elemental tags. Every element on a hit must be selected. Null/empty = all. */
-    public List<String> blockElementalTags;
+    /**
+     * Blockable damage-type tags. Every damage-type tag on a hit must be selected.
+     * Null/empty = all. Legacy saves named this field {@code blockElementalTags}.
+     */
+    @com.fasterxml.jackson.annotation.JsonAlias("blockElementalTags")
+    public List<String> blockDamageTypeTags;
     /** PERCENTAGE block only: percentage of damage reduced (0-100). 100 = full block. */
     public int     blockDamageReduction = 100;
     /** FLAT block only: flat damage amount subtracted from incoming attacks. */
@@ -745,7 +749,7 @@ public class MoveData {
             .blockStyle(resolveBlockStyle())
             .blockDuration(blockDuration)
             .blockRanges(effectiveBlockRanges())
-            .blockElementalTags(effectiveBlockElementalTags())
+            .blockDamageTypeTags(effectiveBlockDamageTypeTags())
             .blockDamageReduction(blockDamageReduction)
             .blockFlatReduction(blockFlatReduction)
             .dodgeChance(dodgeChance)
@@ -844,9 +848,9 @@ public class MoveData {
         return parsedBlockTags(blockRanges, MoveTag.RANGE_TAGS, "range", true);
     }
 
-    private Set<MoveTag> effectiveBlockElementalTags() {
+    private Set<MoveTag> effectiveBlockDamageTypeTags() {
         return parsedBlockTags(
-            blockElementalTags, MoveTag.ELEMENTAL_TAGS, "elemental", true);
+            blockDamageTypeTags, MoveTag.DAMAGE_TYPE_TAGS, "damage type", true);
     }
 
     private static Set<MoveTag> parsedBlockTags(
@@ -1224,8 +1228,8 @@ public class MoveData {
         d.blockRanges           = move.getBlockRanges().isEmpty() ? null
             : move.getBlockRanges().stream().map(MoveTag::name)
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
-        d.blockElementalTags    = move.getBlockElementalTags().isEmpty() ? null
-            : move.getBlockElementalTags().stream().map(MoveTag::name)
+        d.blockDamageTypeTags   = move.getBlockDamageTypeTags().isEmpty() ? null
+            : move.getBlockDamageTypeTags().stream().map(MoveTag::name)
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         d.blockDamageReduction  = move.getBlockDamageReduction();
         d.blockFlatReduction    = move.getBlockFlatReduction();

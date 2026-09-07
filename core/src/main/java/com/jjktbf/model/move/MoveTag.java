@@ -195,16 +195,42 @@ public enum MoveTag {
      */
     INTANGIBLE,
 
-    /** Ice-element hit modifier. Ice hits can freeze, cure Burned, and react with Wet. */
+    /**
+     * Blunt damage-type hit modifier — the hit deals its damage through impact
+     * or crushing force (fists, kicks, hammers, staves, constrictions, blasts).
+     *
+     * <p>A pure classification modifier: like the elemental damage types, it does
+     * not affect the Power formula, move category, or Black Flash eligibility,
+     * and carries no connected-hit reaction. It gates BLOCK/PARRY coverage
+     * through the block damage-type profile and can be referenced by tag
+     * conditions and AI scoring.
+     */
+    BLUNT,
+
+    /**
+     * Slashing damage-type hit modifier — the hit deals its damage through
+     * cutting edges (blades, claws, slicing projectiles).
+     * See {@link #BLUNT} for the damage-type tag semantics.
+     */
+    SLASHING,
+
+    /**
+     * Piercing damage-type hit modifier — the hit deals its damage through
+     * penetration (thrusts, stabs, arrows, spears, drills).
+     * See {@link #BLUNT} for the damage-type tag semantics.
+     */
+    PIERCING,
+
+    /** Ice damage-type hit modifier. Ice hits can freeze, cure Burned, and react with Wet. */
     ICE,
 
-    /** Electric-element hit modifier. Electric hits can stun and deal more damage to Wet targets. */
+    /** Electric damage-type hit modifier. Electric hits can stun and deal more damage to Wet targets. */
     ELECTRIC,
 
-    /** Fire-element hit modifier. Fire hits can burn and cure Frozen and Wet. */
+    /** Fire damage-type hit modifier. Fire hits can burn and cure Frozen and Wet. */
     FIRE,
 
-    /** Water-element hit modifier. Water hits cure Burned and apply Wet. */
+    /** Water damage-type hit modifier. Water hits cure Burned and apply Wet. */
     WATER;
 
     // -------------------------------------------------------------------------
@@ -218,12 +244,21 @@ public enum MoveTag {
     /** Range tags — only meaningful on ATTACK moves. */
     public static final Set<MoveTag> RANGE_TAGS = Set.of(MELEE, RANGED);
 
-    /** Elemental tags that belong to an individual hit component. */
+    /**
+     * Damage-type tags that belong to an individual hit component. The four
+     * elemental types (ICE, ELECTRIC, FIRE, WATER) additionally carry connected
+     * hit reactions; BLUNT, SLASHING, and PIERCING are pure classification.
+     */
+    public static final Set<MoveTag> DAMAGE_TYPE_TAGS = Set.of(
+        BLUNT, SLASHING, PIERCING, ICE, ELECTRIC, FIRE, WATER);
+
+    /** The elemental subset of {@link #DAMAGE_TYPE_TAGS} that carries hit reactions. */
     public static final Set<MoveTag> ELEMENTAL_TAGS = Set.of(ICE, ELECTRIC, FIRE, WATER);
 
     /** Tags that belong only to an individual attack hit, never the parent move. */
     public static final Set<MoveTag> HIT_ONLY_TAGS = Set.of(
-        MELEE, RANGED, GUARD_BREAK, INTANGIBLE, ICE, ELECTRIC, FIRE, WATER);
+        MELEE, RANGED, GUARD_BREAK, INTANGIBLE,
+        BLUNT, SLASHING, PIERCING, ICE, ELECTRIC, FIRE, WATER);
 
     /** Every tag that may be authored on a hit component. */
     public static final Set<MoveTag> HIT_TAGS = hitTags();

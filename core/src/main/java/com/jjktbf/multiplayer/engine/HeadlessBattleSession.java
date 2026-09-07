@@ -1597,7 +1597,10 @@ public final class HeadlessBattleSession {
                 event.getRelatedDomainInstanceId(),
                 event.getDomainId(),
                 event.getDomainName(),
-                event.getDomainCollapseReason()
+                event.getDomainCollapseReason(),
+                event.getReinforced(),
+                event.getDefenseMoveId(),
+                event.getDefenseReinforced()
             ));
         }
         return wireEvents;

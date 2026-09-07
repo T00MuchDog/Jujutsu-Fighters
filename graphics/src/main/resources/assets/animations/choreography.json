@@ -1,0 +1,2284 @@
+{
+  "schemaVersion": 1,
+  "roles": {
+    "attack": "impact",
+    "guard": "guard",
+    "utility": "focus",
+    "movement": "sidestep"
+  },
+  "effects": {
+    "sidestep": "sidestep",
+    "evasive-dash": "dash",
+    "out-of-the-way": "ally-dodge",
+    "black-flash": "black-flash",
+    "cursed-energy-burst": "energy",
+    "cursed-energy-surge": "energy",
+    "simple-domain": "domain",
+    "new-shadow-style-simple-domain": "domain",
+    "shadow-summon": "domain",
+    "cs-rend": "cs-rend",
+    "cs-barrage": "cs-barrage",
+    "cs-hammerblow": "cs-hammerblow",
+    "cs-clinch": "cs-clinch",
+    "cs-lunge": "cs-lunge",
+    "cs-discharge": "cs-discharge",
+    "cs-energy-beam": "cs-energy-beam",
+    "cs-wither": "cs-wither",
+    "cs-venom": "cs-venom",
+    "cs-crush": "cs-crush",
+    "cs-recoil-shot": "cs-recoil-shot",
+    "cs-pulse": "cs-pulse",
+    "cs-guard": "cs-guard",
+    "cs-footwork": "cs-footwork",
+    "cs-deflect": "cs-deflect",
+    "cs-regroup": "cs-regroup",
+    "cs-fortify": "cs-fortify",
+    "cs-screen": "cs-screen",
+    "cs-counter": "cs-counter",
+    "cs-reprisal": "cs-reprisal",
+    "cs-reconstitute": "cs-reconstitute",
+    "cs-focus": "cs-focus",
+    "cs-overflow": "cs-overflow",
+    "cs-absorb": "cs-absorb",
+    "cs-pressure": "cs-pressure",
+    "cs-purge": "cs-purge",
+    "cs-harden": "cs-harden",
+    "cs-conversion": "cs-conversion",
+    "cs-focused-roots": "cs-focused-roots",
+    "cs-spreading-roots": "cs-spreading-roots",
+    "cs-wooden-ball": "cs-wooden-ball",
+    "cs-wooden-bulwark": "cs-wooden-bulwark",
+    "cs-cursed-bud": "cs-cursed-bud",
+    "cs-flower-field": "cs-flower-field",
+    "cs-life-force-absorption": "cs-life-force-absorption",
+    "cs-flower-offering": "cs-flower-offering",
+    "cs-root-barrier": "cs-root-barrier",
+    "cs-root-trip": "cs-root-trip",
+    "cs-release-human": "cs-release-human",
+    "cs-human-assault": "cs-human-assault",
+    "cs-hooved-legs": "cs-hooved-legs",
+    "cs-idle-transfiguration": "cs-idle-transfiguration",
+    "cs-miniature-form": "cs-miniature-form",
+    "cs-blade-mill": "cs-blade-mill",
+    "cs-flesh-drill": "cs-flesh-drill",
+    "cs-giant-fist": "cs-giant-fist",
+    "cs-spike-form": "cs-spike-form",
+    "cs-winged-evasion": "cs-winged-evasion",
+    "cs-self-embodiment": "cs-self-embodiment"
+  },
+  "events": {
+    "MOVE_DODGED": "dodge",
+    "MOVE_MISSED": "miss",
+    "MOVE_BLOCKED": "blocked",
+    "MOVE_PARRIED": "blocked"
+  },
+  "profiles": {
+    "impact": {
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.22,
+          "x": 0.12,
+          "easing": "smooth"
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.48,
+          "x": 0.06,
+          "rotation": -3
+        },
+        {
+          "at": 0.65,
+          "x": -0.025
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "guard": {
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "scaleX": 1.05,
+          "scaleY": 0.94,
+          "blue": 0.82
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "focus": {
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "y": 0.025,
+          "red": 0.72
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "sidestep": {
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": -0.28,
+          "alpha": 0.5,
+          "easing": "smooth"
+        },
+        {
+          "at": 0.65,
+          "x": -0.28,
+          "alpha": 0.75
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "dash": {
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "x": -0.7,
+          "y": 0.08,
+          "alpha": 0.3
+        },
+        {
+          "at": 0.6,
+          "x": -0.7,
+          "alpha": 0.6
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "ally-dodge": {
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": -0.5,
+          "y": 0.08,
+          "alpha": 0.45
+        },
+        {
+          "at": 0.6,
+          "x": -0.5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "dodge": {
+      "durationSeconds": 0.5,
+      "impactSeconds": 0.15,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": 0.45,
+          "y": 0.06,
+          "alpha": 0.45,
+          "easing": "smooth"
+        },
+        {
+          "at": 0.55,
+          "x": 0.45
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "miss": {
+      "durationSeconds": 0.35,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "x": 0.18,
+          "rotation": -5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "blocked": {
+      "durationSeconds": 0.4,
+      "impactSeconds": 0.12,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": 0.06,
+          "scaleX": 1.04,
+          "scaleY": 0.93
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "energy": {
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "red": 0.3,
+          "green": 0.5,
+          "blue": 0.65,
+          "scaleX": 1.025,
+          "scaleY": 1.025
+        },
+        {
+          "at": 0.65,
+          "red": 0.6,
+          "green": 0.8
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "domain": {
+      "size": 2.2,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "red": 0.25,
+          "green": 0.3,
+          "blue": 0.5
+        },
+        {
+          "at": 0.7,
+          "red": 0.25,
+          "green": 0.3,
+          "blue": 0.5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "black-flash": {
+      "size": 2,
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "red": 0.08,
+          "green": 0.02,
+          "blue": 0.04
+        },
+        {
+          "at": 0.42,
+          "red": 0.7,
+          "green": 0.12,
+          "blue": 0.18,
+          "x": 0.006,
+          "scaleX": 1.025,
+          "scaleY": 1.025
+        },
+        {
+          "at": 0.5,
+          "red": 0.12,
+          "green": 0.04,
+          "blue": 0.06,
+          "x": -0.006,
+          "scaleX": 1.025,
+          "scaleY": 1.025
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "x": 0.15,
+          "rotation": -7
+        },
+        {
+          "at": 0.6,
+          "x": -0.03
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-rend": {
+      "durationSeconds": 0.64,
+      "impactSeconds": 0.27,
+      "size": 1.35,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "x": 0.22,
+          "rotation": -5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "x": 0.08,
+          "rotation": -7
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-barrage": {
+      "durationSeconds": 0.48,
+      "impactSeconds": 0.2,
+      "size": 1.3,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.38,
+          "x": 0.13
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "x": 0.06,
+          "scaleY": 0.96
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-hammerblow": {
+      "durationSeconds": 0.86,
+      "impactSeconds": 0.36,
+      "size": 1.65,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "y": 0.08,
+          "rotation": 8
+        },
+        {
+          "at": 0.42,
+          "x": 0.16,
+          "scaleY": 0.92
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleY": 0.8,
+          "scaleX": 1.12
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "y": -0.008,
+          "scaleX": 1.02,
+          "scaleY": 1.02
+        },
+        {
+          "at": 0.55,
+          "y": 0.005
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-clinch": {
+      "durationSeconds": 0.82,
+      "impactSeconds": 0.35,
+      "size": 1.45,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "x": 0.17
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.43,
+          "scaleX": 0.86,
+          "scaleY": 1.04,
+          "green": 0.82
+        },
+        {
+          "at": 0.7,
+          "scaleX": 0.86
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-lunge": {
+      "durationSeconds": 0.8,
+      "impactSeconds": 0.33,
+      "size": 1.45,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.18,
+          "x": -0.12,
+          "scaleY": 0.94
+        },
+        {
+          "at": 0.4,
+          "x": 0.55,
+          "rotation": -8
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "x": 0.15,
+          "rotation": -5
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-mend-motes",
+          "placement": "source",
+          "plane": "behind",
+          "startSeconds": 0.35,
+          "durationSeconds": 0.4,
+          "size": 1.4
+        }
+      ]
+    },
+    "cs-discharge": {
+      "durationSeconds": 1,
+      "impactSeconds": 0.42,
+      "size": 1.9,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "scaleX": 1.06,
+          "scaleY": 1.06,
+          "red": 0.65
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "x": 0.2,
+          "rotation": -8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "red": 0.2,
+          "green": 0.4,
+          "blue": 0.5
+        },
+        {
+          "at": 0.45,
+          "scaleX": 1.04,
+          "scaleY": 1.04,
+          "x": 0.008
+        },
+        {
+          "at": 0.58,
+          "x": -0.006
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-charge-core",
+          "placement": "source",
+          "plane": "behind",
+          "durationSeconds": 0.5,
+          "size": 1.9
+        }
+      ]
+    },
+    "cs-energy-beam": {
+      "durationSeconds": 1.15,
+      "impactSeconds": 0.67,
+      "size": 1.8,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "red": 0.5,
+          "blue": 0.85
+        },
+        {
+          "at": 0.52,
+          "x": -0.15
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.56
+        },
+        {
+          "at": 0.62,
+          "x": 0.18,
+          "rotation": -6
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "red": 0.22,
+          "green": 0.36,
+          "blue": 0.45
+        },
+        {
+          "at": 0.7,
+          "red": 0.5,
+          "green": 0.75,
+          "blue": 0.8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-charge-core",
+          "placement": "source",
+          "plane": "front",
+          "durationSeconds": 0.44,
+          "size": 1.2
+        },
+        {
+          "effect": "cs-energy-tracer",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.28,
+          "durationSeconds": 0.35,
+          "size": 0.6
+        },
+        {
+          "effect": "cs-energy-stream",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.57,
+          "durationSeconds": 0.38,
+          "size": 0.9
+        }
+      ]
+    },
+    "cs-wither": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.37,
+      "size": 1.5,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "scaleY": 0.93,
+          "red": 0.7,
+          "green": 0.5,
+          "blue": 0.85
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "red": 0.68,
+          "green": 0.58,
+          "blue": 0.78
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-venom": {
+      "durationSeconds": 0.96,
+      "impactSeconds": 0.52,
+      "size": 1.4,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.22,
+          "scaleX": 1.07,
+          "scaleY": 0.95
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.54,
+          "green": 0.48,
+          "red": 0.88
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-venom-bolt",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.06,
+          "durationSeconds": 0.43,
+          "size": 0.7
+        }
+      ]
+    },
+    "cs-crush": {
+      "durationSeconds": 0.85,
+      "impactSeconds": 0.35,
+      "size": 1.6,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleX": 0.8,
+          "scaleY": 0.94
+        },
+        {
+          "at": 0.6,
+          "x": 0.03,
+          "rotation": 4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.38,
+          "x": 0.2
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-recoil-shot": {
+      "durationSeconds": 1.02,
+      "impactSeconds": 0.59,
+      "size": 1.7,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.24,
+          "red": 1,
+          "green": 0.4,
+          "blue": 0.5
+        },
+        {
+          "at": 0.35,
+          "x": -0.32,
+          "rotation": 9
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.57
+        },
+        {
+          "at": 0.64,
+          "x": 0.24,
+          "rotation": -8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-blood-flare",
+          "placement": "source",
+          "plane": "front",
+          "durationSeconds": 0.43,
+          "size": 1.2
+        },
+        {
+          "effect": "cs-red-bolt",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.22,
+          "durationSeconds": 0.34,
+          "size": 0.85
+        }
+      ]
+    },
+    "cs-pulse": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.37,
+      "size": 1.7,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "x": 0.06,
+          "alpha": 0.7
+        },
+        {
+          "at": 0.6,
+          "x": -0.04
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleX": 1.025,
+          "red": 0.5,
+          "green": 0.72
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-guard": {
+      "durationSeconds": 0.64,
+      "impactSeconds": 0.27,
+      "size": 1.45,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "x": -0.05,
+          "scaleY": 0.93,
+          "scaleX": 1.04
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-footwork": {
+      "durationSeconds": 0.65,
+      "impactSeconds": 0.24,
+      "size": 1.4,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": -0.28,
+          "scaleY": 0.9,
+          "alpha": 0.55
+        },
+        {
+          "at": 0.65,
+          "x": 0.1,
+          "y": 0.04
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-deflect": {
+      "durationSeconds": 0.58,
+      "impactSeconds": 0.24,
+      "size": 1.4,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "rotation": -6,
+          "scaleX": 0.96
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-regroup": {
+      "durationSeconds": 0.86,
+      "impactSeconds": 0.36,
+      "size": 1.5,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": -0.48,
+          "alpha": 0.35
+        },
+        {
+          "at": 0.65,
+          "x": -0.35,
+          "red": 0.65,
+          "blue": 0.8
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-fortify": {
+      "durationSeconds": 0.92,
+      "impactSeconds": 0.38,
+      "size": 1.75,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleX": 1.12,
+          "scaleY": 0.86,
+          "red": 0.8,
+          "green": 0.85
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-screen": {
+      "durationSeconds": 0.76,
+      "impactSeconds": 0.32,
+      "size": 1.7,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "x": -0.03,
+          "blue": 0.8
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-counter": {
+      "durationSeconds": 0.78,
+      "impactSeconds": 0.32,
+      "size": 1.5,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "x": -0.27,
+          "scaleY": 0.78,
+          "alpha": 0.55
+        },
+        {
+          "at": 0.6,
+          "x": 0.18,
+          "rotation": -5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-reprisal": {
+      "durationSeconds": 0.82,
+      "impactSeconds": 0.34,
+      "size": 1.55,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "x": -0.07,
+          "scaleY": 0.93
+        },
+        {
+          "at": 0.65,
+          "x": 0.11
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-reconstitute": {
+      "durationSeconds": 1,
+      "impactSeconds": 0.42,
+      "size": 1.6,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "alpha": 0.5,
+          "scaleX": 0.94
+        },
+        {
+          "at": 0.65,
+          "red": 0.55,
+          "green": 1,
+          "blue": 0.8
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-mend-motes",
+          "placement": "source",
+          "plane": "behind",
+          "startSeconds": 0.25,
+          "durationSeconds": 0.7,
+          "size": 1.7
+        }
+      ]
+    },
+    "cs-focus": {
+      "durationSeconds": 0.84,
+      "impactSeconds": 0.35,
+      "size": 1.5,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "y": 0.025,
+          "red": 0.7
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "red": 0.72,
+          "green": 0.82,
+          "blue": 0.85
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-overflow": {
+      "durationSeconds": 0.98,
+      "impactSeconds": 0.41,
+      "size": 1.75,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "y": 0.06,
+          "scaleY": 1.05,
+          "red": 0.6
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.4,
+          "green": 0.6,
+          "blue": 0.65
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-absorb": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.44,
+      "size": 0.75,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.55,
+          "red": 0.6,
+          "blue": 0.75,
+          "scaleY": 1.03
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "alpha": 0.7,
+          "red": 0.65,
+          "green": 0.8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-charge-core",
+          "placement": "target",
+          "plane": "behind",
+          "durationSeconds": 0.5,
+          "size": 1.3
+        },
+        {
+          "effect": "cs-mend-motes",
+          "placement": "source",
+          "plane": "front",
+          "startSeconds": 0.4,
+          "durationSeconds": 0.6,
+          "size": 1.5
+        }
+      ]
+    },
+    "cs-pressure": {
+      "durationSeconds": 0.98,
+      "impactSeconds": 0.41,
+      "size": 1.85,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "scaleY": 0.88,
+          "red": 0.75,
+          "green": 0.6
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "red": 0.28,
+          "green": 0.2,
+          "blue": 0.4
+        },
+        {
+          "at": 0.75,
+          "red": 0.4,
+          "green": 0.3,
+          "blue": 0.5
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-purge": {
+      "durationSeconds": 0.9,
+      "impactSeconds": 0.37,
+      "size": 1.75,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "red": 1,
+          "green": 0.35,
+          "blue": 0.45,
+          "scaleX": 0.96
+        },
+        {
+          "at": 0.42,
+          "scaleX": 1.08,
+          "scaleY": 1.05
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-harden": {
+      "durationSeconds": 0.92,
+      "impactSeconds": 0.38,
+      "size": 1.55,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "scaleX": 1.1,
+          "scaleY": 0.96,
+          "red": 0.7,
+          "green": 0.75,
+          "blue": 0.8
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-conversion": {
+      "durationSeconds": 1,
+      "impactSeconds": 0.42,
+      "size": 1.6,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "red": 1,
+          "green": 0.45,
+          "blue": 0.55
+        },
+        {
+          "at": 0.65,
+          "red": 0.55,
+          "green": 1,
+          "blue": 0.85,
+          "y": 0.03
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-focused-roots": {
+      "durationSeconds": 0.76,
+      "impactSeconds": 0.32,
+      "size": 1.85,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "x": 0.06,
+          "scaleY": 0.96
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "y": 0.08,
+          "scaleX": 0.9
+        },
+        {
+          "at": 0.65,
+          "y": 0.04,
+          "rotation": -4
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-spreading-roots": {
+      "durationSeconds": 1.05,
+      "impactSeconds": 0.44,
+      "size": 2.2,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "y": 0.16,
+          "rotation": -5
+        },
+        {
+          "at": 0.68,
+          "y": 0.02
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "red": 0.55,
+          "green": 0.7,
+          "blue": 0.5
+        },
+        {
+          "at": 0.42,
+          "y": -0.008,
+          "scaleY": 1.025,
+          "scaleX": 1.025
+        },
+        {
+          "at": 0.54,
+          "y": 0.006
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-wooden-ball": {
+      "durationSeconds": 0.82,
+      "impactSeconds": 0.44,
+      "size": 1.5,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.53
+        },
+        {
+          "at": 0.6,
+          "x": 0.1,
+          "rotation": -4
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-wood-spear",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.05,
+          "durationSeconds": 0.37,
+          "size": 1.1
+        }
+      ]
+    },
+    "cs-wooden-bulwark": {
+      "durationSeconds": 1,
+      "impactSeconds": 0.42,
+      "size": 2.05,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleX": 1.05,
+          "scaleY": 0.92,
+          "red": 0.8,
+          "blue": 0.65
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-cursed-bud": {
+      "durationSeconds": 1.12,
+      "impactSeconds": 0.65,
+      "size": 1.6,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.55
+        },
+        {
+          "at": 0.65,
+          "scaleX": 0.94,
+          "green": 0.8,
+          "blue": 0.65
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-bud-seed",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.06,
+          "durationSeconds": 0.48,
+          "size": 0.65
+        }
+      ]
+    },
+    "cs-flower-field": {
+      "durationSeconds": 1.35,
+      "impactSeconds": 0.56,
+      "size": 2.2,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "rotation": 3,
+          "red": 1,
+          "green": 0.85,
+          "blue": 0.85
+        },
+        {
+          "at": 0.7,
+          "rotation": -2
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "red": 0.8,
+          "green": 0.63,
+          "blue": 0.65
+        },
+        {
+          "at": 0.75,
+          "red": 0.85,
+          "green": 0.73,
+          "blue": 0.7
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-meadow",
+          "placement": "screen",
+          "plane": "background",
+          "durationSeconds": 1.3,
+          "size": 1,
+          "transform": [
+            {
+              "at": 0,
+              "alpha": 0
+            },
+            {
+              "at": 0.3,
+              "alpha": 0.55
+            },
+            {
+              "at": 0.75,
+              "alpha": 0.4
+            },
+            {
+              "at": 1,
+              "alpha": 0
+            }
+          ]
+        }
+      ]
+    },
+    "cs-life-force-absorption": {
+      "durationSeconds": 1.16,
+      "impactSeconds": 0.48,
+      "size": 1.8,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "y": 0.05,
+          "red": 0.8,
+          "blue": 0.65
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.5,
+          "red": 0.5,
+          "green": 0.63,
+          "blue": 0.4
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-flower-offering": {
+      "durationSeconds": 1.4,
+      "impactSeconds": 0.82,
+      "size": 2.15,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "red": 0.8,
+          "blue": 0.55,
+          "y": 0.04
+        },
+        {
+          "at": 0.56,
+          "x": -0.2
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.56
+        },
+        {
+          "at": 0.64,
+          "x": 0.25,
+          "rotation": -9,
+          "scaleY": 0.92
+        },
+        {
+          "at": 1
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "red": 0.25,
+          "green": 0.4,
+          "blue": 0.2
+        },
+        {
+          "at": 0.59,
+          "red": 0.8,
+          "green": 0.9,
+          "blue": 0.55,
+          "scaleX": 1.035,
+          "scaleY": 1.035
+        },
+        {
+          "at": 0.68,
+          "x": -0.007
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-offering-bloom",
+          "placement": "source",
+          "plane": "front",
+          "durationSeconds": 0.65,
+          "size": 1.5
+        },
+        {
+          "effect": "cs-pollen-lance",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.4,
+          "durationSeconds": 0.35,
+          "size": 1
+        },
+        {
+          "effect": "cs-life-stream",
+          "placement": "beam",
+          "plane": "front",
+          "startSeconds": 0.74,
+          "durationSeconds": 0.48,
+          "size": 1.3
+        }
+      ]
+    },
+    "cs-root-barrier": {
+      "durationSeconds": 0.88,
+      "impactSeconds": 0.37,
+      "size": 1.85,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleX": 0.96,
+          "scaleY": 0.93,
+          "blue": 0.75
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-root-trip": {
+      "durationSeconds": 0.88,
+      "impactSeconds": 0.37,
+      "size": 1.8,
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "x": -0.04,
+          "rotation": 8
+        },
+        {
+          "at": 0.43,
+          "y": 0.1,
+          "rotation": -16
+        },
+        {
+          "at": 0.7,
+          "y": 0.02,
+          "rotation": -5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-release-human": {
+      "durationSeconds": 1.1,
+      "impactSeconds": 0.46,
+      "size": 1.9,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "scaleX": 1.08,
+          "scaleY": 0.94
+        },
+        {
+          "at": 0.6,
+          "x": -0.08
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "red": 0.55,
+          "green": 0.4,
+          "blue": 0.65
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-human-assault": {
+      "durationSeconds": 1.02,
+      "impactSeconds": 0.55,
+      "size": 1.75,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "x": 0.12,
+          "rotation": -6
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.53
+        },
+        {
+          "at": 0.61,
+          "x": 0.18,
+          "rotation": -8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-human-projectile",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.08,
+          "durationSeconds": 0.43,
+          "size": 1
+        }
+      ]
+    },
+    "cs-hooved-legs": {
+      "durationSeconds": 0.92,
+      "impactSeconds": 0.38,
+      "size": 1.65,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "scaleY": 0.9,
+          "scaleX": 1.06
+        },
+        {
+          "at": 0.5,
+          "scaleY": 1.18,
+          "scaleX": 0.9,
+          "y": 0.04
+        },
+        {
+          "at": 0.75,
+          "y": 0.1,
+          "x": 0.08
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-idle-transfiguration": {
+      "durationSeconds": 1.12,
+      "impactSeconds": 0.47,
+      "size": 1.75,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "x": 0.25,
+          "rotation": -5
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.35,
+          "scaleX": 0.9,
+          "scaleY": 1.08
+        },
+        {
+          "at": 0.55,
+          "scaleX": 1.1,
+          "scaleY": 0.9,
+          "red": 0.9,
+          "green": 0.65
+        },
+        {
+          "at": 0.7,
+          "scaleX": 0.95,
+          "scaleY": 1.03
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "red": 0.4,
+          "green": 0.26,
+          "blue": 0.55
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-miniature-form": {
+      "durationSeconds": 1.02,
+      "impactSeconds": 0.42,
+      "size": 1.65,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.45,
+          "scaleX": 0.38,
+          "scaleY": 0.38,
+          "easing": "smooth"
+        },
+        {
+          "at": 0.75,
+          "scaleX": 0.38,
+          "scaleY": 0.38,
+          "x": 0.12
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-blade-mill": {
+      "durationSeconds": 0.98,
+      "impactSeconds": 0.41,
+      "size": 1.9,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "x": 0.2,
+          "rotation": -10,
+          "scaleX": 1.12
+        },
+        {
+          "at": 0.65,
+          "rotation": 8
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "rotation": -8,
+          "x": 0.12
+        },
+        {
+          "at": 0.65,
+          "rotation": 4
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-flesh-drill": {
+      "durationSeconds": 1.08,
+      "impactSeconds": 0.63,
+      "size": 1.65,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "scaleX": 0.88,
+          "scaleY": 1.08
+        },
+        {
+          "at": 0.55,
+          "x": 0.24,
+          "scaleX": 1.14,
+          "scaleY": 0.96
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.57
+        },
+        {
+          "at": 0.65,
+          "x": 0.18,
+          "scaleX": 0.9
+        },
+        {
+          "at": 1
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-drill-lance",
+          "placement": "projectile",
+          "plane": "front",
+          "startSeconds": 0.18,
+          "durationSeconds": 0.42,
+          "size": 1.2
+        },
+        {
+          "effect": "cs-tendon-stream",
+          "placement": "beam",
+          "plane": "behind",
+          "startSeconds": 0.2,
+          "durationSeconds": 0.65,
+          "size": 0.6
+        }
+      ]
+    },
+    "cs-giant-fist": {
+      "durationSeconds": 1.12,
+      "impactSeconds": 0.47,
+      "size": 2.15,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.22,
+          "scaleX": 1.16,
+          "scaleY": 1.08
+        },
+        {
+          "at": 0.42,
+          "x": 0.2,
+          "rotation": -8
+        },
+        {
+          "at": 1
+        }
+      ],
+      "target": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleY": 0.68,
+          "scaleX": 1.18,
+          "rotation": -6
+        },
+        {
+          "at": 0.7,
+          "scaleY": 0.85
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.4,
+          "red": 0.55,
+          "green": 0.4,
+          "blue": 0.5
+        },
+        {
+          "at": 0.45,
+          "y": -0.01,
+          "scaleX": 1.03,
+          "scaleY": 1.03
+        },
+        {
+          "at": 0.56,
+          "y": 0.007
+        },
+        {
+          "at": 1
+        }
+      ]
+    },
+    "cs-spike-form": {
+      "durationSeconds": 0.92,
+      "impactSeconds": 0.38,
+      "size": 1.95,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.42,
+          "scaleX": 1.14,
+          "scaleY": 0.95,
+          "green": 0.8
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-winged-evasion": {
+      "durationSeconds": 1,
+      "impactSeconds": 0.42,
+      "size": 2.15,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.2,
+          "scaleY": 0.9
+        },
+        {
+          "at": 0.48,
+          "y": 0.45,
+          "x": -0.22,
+          "rotation": 7,
+          "alpha": 0.75
+        },
+        {
+          "at": 0.72,
+          "y": 0.3,
+          "x": -0.15
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ]
+    },
+    "cs-self-embodiment": {
+      "durationSeconds": 2.1,
+      "impactSeconds": 0.9,
+      "size": 2.1,
+      "source": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.3,
+          "y": 0.08,
+          "red": 0.8,
+          "green": 0.55,
+          "blue": 0.95
+        },
+        {
+          "at": 0.7,
+          "y": 0.08,
+          "red": 0.8,
+          "green": 0.55,
+          "blue": 0.95
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "background": [
+        {
+          "at": 0
+        },
+        {
+          "at": 0.25,
+          "red": 0.12,
+          "green": 0.06,
+          "blue": 0.2,
+          "scaleX": 1.03,
+          "scaleY": 1.03
+        },
+        {
+          "at": 0.72,
+          "red": 0.1,
+          "green": 0.04,
+          "blue": 0.18,
+          "scaleX": 1.06,
+          "scaleY": 1.06
+        },
+        {
+          "at": 1,
+          "easing": "smooth"
+        }
+      ],
+      "layers": [
+        {
+          "effect": "cs-palm-cathedral",
+          "placement": "screen",
+          "plane": "background",
+          "startSeconds": 0.25,
+          "durationSeconds": 1.8,
+          "size": 1,
+          "transform": [
+            {
+              "at": 0,
+              "alpha": 0
+            },
+            {
+              "at": 0.22,
+              "alpha": 0.9
+            },
+            {
+              "at": 0.72,
+              "alpha": 0.95
+            },
+            {
+              "at": 1,
+              "alpha": 0
+            }
+          ]
+        },
+        {
+          "effect": "cs-soul-halo",
+          "placement": "source",
+          "plane": "behind",
+          "startSeconds": 0.25,
+          "durationSeconds": 1.6,
+          "size": 2.8
+        }
+      ]
+    }
+  }
+}

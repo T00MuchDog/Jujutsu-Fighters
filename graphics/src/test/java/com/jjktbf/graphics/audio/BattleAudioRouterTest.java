@@ -116,6 +116,10 @@ class BattleAudioRouterTest {
     @Test
     void actionStartAndBattleResultEventsRemainSilent() {
         assertTrue(BattleAudioRouter.cueFor(
+            CombatEvent.of(CombatEvent.Type.MOVE_TARGETED).move(move("TARGETED", "UTILITY")).build()).isEmpty());
+        assertTrue(BattleAudioRouter.cueFor(
+            event(BattleEventType.MOVE_TARGETED), move("TARGETED", "UTILITY")).isEmpty());
+        assertTrue(BattleAudioRouter.cueFor(
             CombatEvent.of(CombatEvent.Type.BATTLE_OVER).build()).isEmpty());
         assertTrue(BattleAudioRouter.cueFor(event(BattleEventType.MOVE_STARTED), null).isEmpty());
         assertTrue(BattleAudioRouter.cueFor(event(BattleEventType.ROUND_START), null).isEmpty());

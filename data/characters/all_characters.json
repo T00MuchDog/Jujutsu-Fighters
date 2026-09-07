@@ -475,8 +475,9 @@
   "availableAbilityIds" : [ "000034", "000035", "000036", "000037", "000038", "000039", "000059" ]
 }, {
   "id" : "000021",
-  "name" : "Mahito (Vs. Mahito Arc)",
+  "name" : "Mahito (Vs. Mahito)",
   "description" : "A special-grade cursed spirit born from humanity's hatred of one another. Mahito toys with bodies and souls alike: his flesh has no fixed shape, his touch rewrites souls, and his awakened Domain closes around everyone.",
+  "spriteAsset" : "assets/sprites/characters/mahito_frontsprite.png",
   "type" : "CURSED_SPIRIT",
   "directlySelectable" : true,
   "innateTechniqueName" : "Idle Transfiguration",

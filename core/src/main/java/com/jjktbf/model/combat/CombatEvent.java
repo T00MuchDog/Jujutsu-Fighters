@@ -19,6 +19,7 @@ public class CombatEvent {
         // Move execution
         MOVE_STARTED,
         MOVE_FIRED,         // move unleashed — attack resolved
+        MOVE_TARGETED,      // a resolved target was selected for a move activation
         MOVE_MISSED,
         MOVE_BLOCKED,        // block fully negated the damage (BLOCK at 100% reduction)
         MOVE_BLOCK_REDUCED,  // block reduced but did not fully negate damage
@@ -111,6 +112,12 @@ public class CombatEvent {
     private final String          domainId;
     private final String          domainName;
     private final String          domainCollapseReason;
+    /** Reinforcement state captured when this event was emitted, if applicable. */
+    private final Boolean         reinforced;
+    /** Id of the defense move that produced this event, if applicable. */
+    private final String          defenseMoveId;
+    /** Reinforcement state of the defense move that produced this event, if applicable. */
+    private final Boolean         defenseReinforced;
     private final String          message;    // human-readable description
 
     private CombatEvent(Builder b) {
@@ -131,6 +138,9 @@ public class CombatEvent {
         this.domainId = b.domainId;
         this.domainName = b.domainName;
         this.domainCollapseReason = b.domainCollapseReason;
+        this.reinforced = b.reinforced;
+        this.defenseMoveId = b.defenseMoveId;
+        this.defenseReinforced = b.defenseReinforced;
         this.message   = b.message;
     }
 
@@ -151,6 +161,9 @@ public class CombatEvent {
     public String          getDomainId() { return domainId; }
     public String          getDomainName() { return domainName; }
     public String          getDomainCollapseReason() { return domainCollapseReason; }
+    public Boolean         getReinforced() { return reinforced; }
+    public String          getDefenseMoveId() { return defenseMoveId; }
+    public Boolean         getDefenseReinforced() { return defenseReinforced; }
     public String          getMessage()  { return message; }
 
     @Override
@@ -194,6 +207,9 @@ public class CombatEvent {
         private String          domainId;
         private String          domainName;
         private String          domainCollapseReason;
+        private Boolean         reinforced;
+        private String          defenseMoveId;
+        private Boolean         defenseReinforced;
         private String          message = "";
 
         private Builder(Type type) { this.type = type; }
@@ -224,6 +240,12 @@ public class CombatEvent {
         public Builder domainName(String v) { this.domainName = v; return this; }
         public Builder domainCollapseReason(String v) {
             this.domainCollapseReason = v;
+            return this;
+        }
+        public Builder reinforced(Boolean v) { this.reinforced = v; return this; }
+        public Builder defenseMoveId(String v) { this.defenseMoveId = v; return this; }
+        public Builder defenseReinforced(Boolean v) {
+            this.defenseReinforced = v;
             return this;
         }
         public Builder message(String v)          { this.message  = v; return this; }

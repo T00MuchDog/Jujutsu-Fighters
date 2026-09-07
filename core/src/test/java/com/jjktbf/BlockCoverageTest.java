@@ -72,7 +72,7 @@ class BlockCoverageTest {
             .category(MoveCategory.DEFENSIVE)
             .defenseType(DefenseType.PARRY)
             .blockRanges(Set.of(MoveTag.RANGED))
-            .blockElementalTags(Set.of(MoveTag.FIRE))
+            .blockDamageTypeTags(Set.of(MoveTag.FIRE))
             .apCost(5)
             .unleashPoint(1)
             .build();
@@ -82,6 +82,38 @@ class BlockCoverageTest {
             MoveCategory.PHYSICAL_CURSED_ENERGY,
             MoveTag.RANGED,
             MoveTag.ICE)));
+    }
+
+    @Test
+    void physicalDamageTypesGateCoverage() {
+        Move bluntBlock = block(
+            "BLUNT_BLOCK", Set.of(), Set.of(MoveTag.BLUNT), 100, List.of());
+        Move slashingParry = new Move.Builder("SLASHING_PARRY")
+            .name("Slashing Parry")
+            .category(MoveCategory.DEFENSIVE)
+            .defenseType(DefenseType.PARRY)
+            .blockDamageTypeTags(Set.of(MoveTag.SLASHING))
+            .apCost(5)
+            .unleashPoint(1)
+            .build();
+
+        Move bluntHit = attack(
+            "BLUNT_ATTACK", MoveCategory.PHYSICAL, MoveTag.MELEE, MoveTag.BLUNT);
+        Move slashingHit = attack(
+            "SLASHING_ATTACK", MoveCategory.PHYSICAL, MoveTag.MELEE, MoveTag.SLASHING);
+        Move piercingHit = attack(
+            "PIERCING_ATTACK", MoveCategory.PHYSICAL, MoveTag.RANGED, MoveTag.PIERCING);
+        Move untypedHit = attack("UNTYPED_ATTACK", MoveCategory.CURSED_ENERGY, MoveTag.RANGED);
+
+        assertTrue(bluntBlock.blocksAttack(bluntHit));
+        assertFalse(bluntBlock.blocksAttack(slashingHit));
+        assertFalse(bluntBlock.blocksAttack(piercingHit));
+        assertTrue(bluntBlock.blocksAttack(untypedHit),
+            "An untyped hit remains accepted by a selective damage-type block.");
+
+        assertTrue(slashingParry.blocksAttack(slashingHit));
+        assertFalse(slashingParry.blocksAttack(bluntHit));
+        assertFalse(slashingParry.blocksAttack(piercingHit));
     }
 
     @Test
@@ -139,7 +171,7 @@ class BlockCoverageTest {
             .defenseType(DefenseType.BLOCK)
             .blockStyle(BlockStyle.PERCENTAGE)
             .blockRanges(ranges)
-            .blockElementalTags(elements)
+            .blockDamageTypeTags(elements)
             .blockDamageReduction(reduction)
             .blockDuration(5)
             .apCost(5)

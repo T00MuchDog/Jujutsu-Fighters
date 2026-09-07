@@ -1,0 +1,2058 @@
+{
+  "schemaVersion": 1,
+  "name": "JJK / Pixel FX - Vol. 01",
+  "frameWidth": 192,
+  "frameHeight": 192,
+  "columns": 8,
+  "pixelScale": 2,
+  "authoringResolution": 96,
+  "sheetOrder": "row-major-top-left",
+  "effects": [
+    {
+      "id": "basic-strike",
+      "name": "Basic Strike",
+      "description": "A quick, hollow white impact ring. Uneven spikes snap outward, then break apart.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000000"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 3,
+      "impactFrames": [
+        3
+      ],
+      "group": "basics",
+      "frameCount": 12,
+      "sheet": "sprites/basic-strike.png",
+      "preview": "gifs/basic-strike.gif",
+      "sound": "audio/basic-strike.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#d4deea",
+      "palette": [
+        "#363e50",
+        "#727d91",
+        "#a5b1c2",
+        "#d4deea",
+        "#edf4fb",
+        "#ffffff"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/basic-strike-reinforcement.png",
+        "layerPreview": "gifs/basic-strike-reinforcement.gif",
+        "compositeSheet": "variants/basic-strike-reinforced.png",
+        "preview": "gifs/basic-strike-reinforced.gif",
+        "frameCount": 12,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Basic Strike",
+      "role": "attack",
+      "posterFrame": 3
+    },
+    {
+      "id": "jab",
+      "name": "Jab",
+      "description": "A compact orange fist snaps forward with three short speed lines. No charge-up.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000002"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 4,
+      "impactFrames": [
+        4
+      ],
+      "group": "basics",
+      "frameCount": 10,
+      "sheet": "sprites/jab.png",
+      "preview": "gifs/jab.gif",
+      "sound": "audio/jab.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#f5a647",
+      "palette": [
+        "#51281d",
+        "#a34822",
+        "#d7782f",
+        "#f5a647",
+        "#ffd77e",
+        "#fff3c2"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/jab-reinforcement.png",
+        "layerPreview": "gifs/jab-reinforcement.gif",
+        "compositeSheet": "variants/jab-reinforced.png",
+        "preview": "gifs/jab-reinforced.gif",
+        "frameCount": 10,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Jab",
+      "role": "attack",
+      "posterFrame": 4
+    },
+    {
+      "id": "uppercut",
+      "name": "Uppercut",
+      "description": "An upright blue-gray fist drives upward with two stepped afterimages and a small impact.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000076"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 7,
+      "impactFrames": [
+        7
+      ],
+      "group": "basics",
+      "frameCount": 16,
+      "sheet": "sprites/uppercut.png",
+      "preview": "gifs/uppercut.gif",
+      "sound": "audio/uppercut.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a6cada",
+      "palette": [
+        "#2c3e58",
+        "#4b6988",
+        "#759bb7",
+        "#a6cada",
+        "#d4e6ef",
+        "#f3fcff"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/uppercut-reinforcement.png",
+        "layerPreview": "gifs/uppercut-reinforcement.gif",
+        "compositeSheet": "variants/uppercut-reinforced.png",
+        "preview": "gifs/uppercut-reinforced.gif",
+        "frameCount": 16,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Upper Cut",
+      "role": "attack",
+      "posterFrame": 7
+    },
+    {
+      "id": "triple-kick",
+      "name": "Triple Kick",
+      "description": "Three separate footprint hits: low, high, then center. Each lands with its own orange burst.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000075"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 4,
+      "impactFrames": [
+        4,
+        11,
+        18
+      ],
+      "group": "basics",
+      "frameCount": 24,
+      "sheet": "sprites/triple-kick.png",
+      "preview": "gifs/triple-kick.gif",
+      "sound": "audio/triple-kick.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#ff9f45",
+      "palette": [
+        "#581e27",
+        "#a8342c",
+        "#df6230",
+        "#ff9f45",
+        "#ffcf72",
+        "#fff0b0"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/triple-kick-reinforcement.png",
+        "layerPreview": "gifs/triple-kick-reinforcement.gif",
+        "compositeSheet": "variants/triple-kick-reinforced.png",
+        "preview": "gifs/triple-kick-reinforced.gif",
+        "frameCount": 24,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Triple Kick",
+      "role": "attack",
+      "posterFrame": 18
+    },
+    {
+      "id": "cursed-energy-burst",
+      "name": "Cursed Energy Burst",
+      "description": "A compressed teal core ruptures into a serrated shockwave and hot motes.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000011"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "techniques",
+      "sheet": "sprites/cursed-energy-burst.png",
+      "preview": "gifs/cursed-energy-burst.gif",
+      "sound": "audio/cursed-energy-burst.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#389cb1",
+      "palette": [
+        "#111b31",
+        "#243657",
+        "#285b82",
+        "#389cb1",
+        "#80e9de",
+        "#efffe3"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Shadow Ball.png"
+      ],
+      "isSorcerer": true,
+      "sorcererMoveName": "Cursed Energy Burst",
+      "role": "attack",
+      "posterFrame": 15
+    },
+    {
+      "id": "cursed-slash",
+      "name": "Cursed Slash",
+      "description": "Three offset silver-lilac cuts, sharp leading edges and dissolving afterimages.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000022"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "techniques",
+      "sheet": "sprites/cursed-slash.png",
+      "preview": "gifs/cursed-slash.gif",
+      "sound": "audio/cursed-slash.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a59be8",
+      "palette": [
+        "#19182c",
+        "#393057",
+        "#62568e",
+        "#a59be8",
+        "#dedbff",
+        "#fff9ee"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Slash.png"
+      ],
+      "isSorcerer": true,
+      "sorcererMoveName": "Cursed Slash",
+      "role": "attack",
+      "posterFrame": 15
+    },
+    {
+      "id": "black-flash",
+      "name": "Black Flash",
+      "description": "A pinprick wind-up, ink-black impact and branching carmine lightning.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [],
+      "eventTypes": [
+        "BLACK_FLASH"
+      ],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "techniques",
+      "sheet": "sprites/black-flash.png",
+      "preview": "gifs/black-flash.gif",
+      "sound": "audio/black-flash.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#d92e50",
+      "palette": [
+        "#120d21",
+        "#32132d",
+        "#801c40",
+        "#d92e50",
+        "#ff6b73",
+        "#fff0de"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Thunder Shock.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 10
+    },
+    {
+      "id": "divergent-fist",
+      "name": "Divergent Fist",
+      "description": "A physical knuckle strike followed by a visibly delayed cursed-energy detonation.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000029"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 9,
+      "impactFrames": [
+        9,
+        18
+      ],
+      "group": "techniques",
+      "sheet": "sprites/divergent-fist.png",
+      "preview": "gifs/divergent-fist.gif",
+      "sound": "audio/divergent-fist.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#389cb1",
+      "palette": [
+        "#111b31",
+        "#243657",
+        "#285b82",
+        "#389cb1",
+        "#80e9de",
+        "#efffe3"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Slash.png"
+      ],
+      "isSorcerer": true,
+      "sorcererMoveName": "Divergent Fist",
+      "role": "attack",
+      "posterFrame": 19
+    },
+    {
+      "id": "piercing-blood",
+      "name": "Piercing Blood",
+      "description": "Converging blood beads become a needle-thin lance and a splintered red impact.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000098"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 12,
+      "impactFrames": [
+        12
+      ],
+      "group": "techniques",
+      "sheet": "sprites/piercing-blood.png",
+      "preview": "gifs/piercing-blood.gif",
+      "sound": "audio/piercing-blood.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#e04959",
+      "palette": [
+        "#251227",
+        "#55182f",
+        "#98233e",
+        "#e04959",
+        "#ff8e8c",
+        "#ffe8bf"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Slash.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 13
+    },
+    {
+      "id": "nue-lightning",
+      "name": "Nue Lightning",
+      "description": "Descending forked lightning with a pale-yellow core and violet electrical echoes.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000042",
+        "000053",
+        "000054"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 11,
+      "impactFrames": [
+        11
+      ],
+      "group": "techniques",
+      "sheet": "sprites/nue-lightning.png",
+      "preview": "gifs/nue-lightning.gif",
+      "sound": "audio/nue-lightning.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#d5a0d4",
+      "palette": [
+        "#201c35",
+        "#42365f",
+        "#80639b",
+        "#d5a0d4",
+        "#ffe07b",
+        "#fffcde"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Thunder Shock.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 12
+    },
+    {
+      "id": "cursed-flame",
+      "name": "Cursed Flame",
+      "description": "A corkscrewing ember ignites a crown of amber flame. Generic future-move template.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 12,
+      "impactFrames": [
+        12
+      ],
+      "group": "techniques",
+      "sheet": "sprites/cursed-flame.png",
+      "preview": "gifs/cursed-flame.gif",
+      "sound": "audio/cursed-flame.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#ef773b",
+      "palette": [
+        "#311a30",
+        "#712746",
+        "#ba3f3d",
+        "#ef773b",
+        "#ffc86c",
+        "#fff2ba"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Ember.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 15
+    },
+    {
+      "id": "reverse-healing",
+      "name": "Reverse Healing",
+      "description": "Two ascending jade helices weave through bright recovery stars. Generic heal template.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 13,
+      "impactFrames": [
+        13
+      ],
+      "group": "techniques",
+      "sheet": "sprites/reverse-healing.png",
+      "preview": "gifs/reverse-healing.gif",
+      "sound": "audio/reverse-healing.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#79cb94",
+      "palette": [
+        "#122a32",
+        "#20554b",
+        "#368b64",
+        "#79cb94",
+        "#c2efb0",
+        "#f7ffda"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Health Up.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 15
+    },
+    {
+      "id": "simple-domain",
+      "name": "Simple Domain",
+      "description": "A floor seal opens into a faceted protective dome and recedes into runic sparks.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000138"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 12,
+      "impactFrames": [
+        12
+      ],
+      "group": "techniques",
+      "sheet": "sprites/simple-domain.png",
+      "preview": "gifs/simple-domain.gif",
+      "sound": "audio/simple-domain.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#95c7d2",
+      "palette": [
+        "#192639",
+        "#334d6a",
+        "#5f89a1",
+        "#95c7d2",
+        "#d1eeec",
+        "#ffffe3"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Health Up.png"
+      ],
+      "isSorcerer": true,
+      "sorcererMoveName": "Simple Domain",
+      "role": "utility",
+      "posterFrame": 15
+    },
+    {
+      "id": "shadow-summon",
+      "name": "Shadow Summon",
+      "description": "A rippling ink pool, rising shadow tendrils and a pair of shikigami eyes.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000030",
+        "000031",
+        "000035",
+        "000036",
+        "000037",
+        "000038",
+        "000039",
+        "000040",
+        "000048"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 13,
+      "impactFrames": [
+        13
+      ],
+      "group": "techniques",
+      "sheet": "sprites/shadow-summon.png",
+      "preview": "gifs/shadow-summon.gif",
+      "sound": "audio/shadow-summon.wav",
+      "frameCount": 32,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#82569c",
+      "palette": [
+        "#131324",
+        "#29213f",
+        "#4c3969",
+        "#82569c",
+        "#c092cb",
+        "#f6ddf0"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Shadow Ball.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 15
+    },
+    {
+      "id": "burned",
+      "name": "Burned",
+      "description": "Three cycling flame tongues shed upward embers.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "BURNED"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/burned.png",
+      "preview": "gifs/burned.gif",
+      "sound": "audio/burned.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#ef773b",
+      "palette": [
+        "#311a30",
+        "#712746",
+        "#ba3f3d",
+        "#ef773b",
+        "#ffc86c",
+        "#fff2ba"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Status Burn.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "poison",
+      "name": "Poison",
+      "description": "Violet poison bubbles swell, rise and pop.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "POISON"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/poison.png",
+      "preview": "gifs/poison.gif",
+      "sound": "audio/poison.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#ab78b0",
+      "palette": [
+        "#211a32",
+        "#433355",
+        "#795587",
+        "#ab78b0",
+        "#dba9d0",
+        "#ffe0eb"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Toxic.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "frozen",
+      "name": "Frozen",
+      "description": "An angular ice prison with traveling frost glints.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "FROZEN"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/frozen.png",
+      "preview": "gifs/frozen.gif",
+      "sound": "audio/frozen.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#7ecadd",
+      "palette": [
+        "#132b42",
+        "#23577e",
+        "#478fb4",
+        "#7ecadd",
+        "#bef0ed",
+        "#f4ffff"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Status Freeze.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "sleep",
+      "name": "Sleep",
+      "description": "A crescent moon and three rising, pixel-lettered Zs.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "SLEEP"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/sleep.png",
+      "preview": "gifs/sleep.gif",
+      "sound": "audio/sleep.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a198d5",
+      "palette": [
+        "#241d42",
+        "#443a67",
+        "#7565a1",
+        "#a198d5",
+        "#d1c8ef",
+        "#fff1d9"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "stagger",
+      "name": "Stagger",
+      "description": "Three gold stars orbit an interrupted halo.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "STAGGER"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/stagger.png",
+      "preview": "gifs/stagger.gif",
+      "sound": "audio/stagger.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#e4b65b",
+      "palette": [
+        "#332036",
+        "#704441",
+        "#aa7445",
+        "#e4b65b",
+        "#ffe292",
+        "#fff8d8"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Status Confusion.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "restrained",
+      "name": "Restrained",
+      "description": "Two crossing chains tighten around a pulsing central lock.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "RESTRAINED"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/restrained.png",
+      "preview": "gifs/restrained.gif",
+      "sound": "audio/restrained.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a4b2c6",
+      "palette": [
+        "#242338",
+        "#414661",
+        "#737c98",
+        "#a4b2c6",
+        "#d8e2df",
+        "#fffae6"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "wet",
+      "name": "Wet",
+      "description": "Descending water beads feed concentric foot-level ripples.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "WET"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/wet.png",
+      "preview": "gifs/wet.gif",
+      "sound": "audio/wet.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#7ecadd",
+      "palette": [
+        "#132b42",
+        "#23577e",
+        "#478fb4",
+        "#7ecadd",
+        "#bef0ed",
+        "#f4ffff"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "energy-parasite",
+      "name": "CE Parasite",
+      "description": "A violet seed leeches energy through orbiting tendrils.",
+      "kind": "status",
+      "placement": "target",
+      "moveIds": [],
+      "statusTypes": [
+        "CURSED_ENERGY_PARASITE"
+      ],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "status",
+      "sheet": "sprites/energy-parasite.png",
+      "preview": "gifs/energy-parasite.gif",
+      "sound": "audio/energy-parasite.wav",
+      "frameCount": 24,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#82569c",
+      "palette": [
+        "#131324",
+        "#29213f",
+        "#4c3969",
+        "#82569c",
+        "#c092cb",
+        "#f6ddf0"
+      ],
+      "sourceGraphics": [
+        "Graphics/Animations/Shadow Ball.png"
+      ],
+      "isSorcerer": false,
+      "posterFrame": 9
+    },
+    {
+      "id": "basic-block",
+      "name": "Basic Block",
+      "description": "A small steel shield snaps into place and catches a short white contact spark.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000001"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 6,
+      "impactFrames": [
+        6
+      ],
+      "group": "guards",
+      "frameCount": 16,
+      "role": "guard",
+      "sheet": "sprites/basic-block.png",
+      "preview": "gifs/basic-block.gif",
+      "sound": "audio/basic-block.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a6cada",
+      "palette": [
+        "#2c3e58",
+        "#4b6988",
+        "#759bb7",
+        "#a6cada",
+        "#d4e6ef",
+        "#f3fcff"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/basic-block-reinforcement.png",
+        "layerPreview": "gifs/basic-block-reinforcement.gif",
+        "compositeSheet": "variants/basic-block-reinforced.png",
+        "preview": "gifs/basic-block-reinforced.gif",
+        "frameCount": 16,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Basic Block",
+      "posterFrame": 6
+    },
+    {
+      "id": "body-blow",
+      "name": "Body Blow",
+      "description": "A compact body-level fist crushes a split guard plate, scattering two blunt fragments.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000004"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 6,
+      "impactFrames": [
+        6
+      ],
+      "group": "attacks",
+      "frameCount": 16,
+      "role": "attack",
+      "sheet": "sprites/body-blow.png",
+      "preview": "gifs/body-blow.gif",
+      "sound": "audio/body-blow.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#f5a647",
+      "palette": [
+        "#51281d",
+        "#a34822",
+        "#d7782f",
+        "#f5a647",
+        "#ffd77e",
+        "#fff3c2"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Body Blow",
+      "posterFrame": 6
+    },
+    {
+      "id": "sweeping-kick",
+      "name": "Sweeping Kick",
+      "description": "An orange footprint sweeps through a low semicircle, leaving a cream-colored floor arc.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000005"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 9,
+      "impactFrames": [
+        9
+      ],
+      "group": "attacks",
+      "frameCount": 18,
+      "role": "attack",
+      "sheet": "sprites/sweeping-kick.png",
+      "preview": "gifs/sweeping-kick.gif",
+      "sound": "audio/sweeping-kick.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#ff9f45",
+      "palette": [
+        "#581e27",
+        "#a8342c",
+        "#df6230",
+        "#ff9f45",
+        "#ffcf72",
+        "#fff0b0"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Sweeping Kick",
+      "posterFrame": 9
+    },
+    {
+      "id": "overhand-punch",
+      "name": "Overhand Punch",
+      "description": "A heavy fist arcs overhead and drops diagonally into a downward impact fan.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000007"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "attacks",
+      "frameCount": 18,
+      "role": "attack",
+      "sheet": "sprites/overhand-punch.png",
+      "preview": "gifs/overhand-punch.gif",
+      "sound": "audio/overhand-punch.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#f5a647",
+      "palette": [
+        "#51281d",
+        "#a34822",
+        "#d7782f",
+        "#f5a647",
+        "#ffd77e",
+        "#fff3c2"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Overhand Punch",
+      "posterFrame": 10
+    },
+    {
+      "id": "deflection",
+      "name": "Deflection",
+      "description": "An open palm turns an incoming streak sharply upward along a silver deflection arc.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000012"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 8,
+      "impactFrames": [
+        8
+      ],
+      "group": "guards",
+      "frameCount": 18,
+      "role": "guard",
+      "sheet": "sprites/deflection.png",
+      "preview": "gifs/deflection.gif",
+      "sound": "audio/deflection.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a6cada",
+      "palette": [
+        "#2c3e58",
+        "#4b6988",
+        "#759bb7",
+        "#a6cada",
+        "#d4e6ef",
+        "#f3fcff"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/deflection-reinforcement.png",
+        "layerPreview": "gifs/deflection-reinforcement.gif",
+        "compositeSheet": "variants/deflection-reinforced.png",
+        "preview": "gifs/deflection-reinforced.gif",
+        "frameCount": 18,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Deflection",
+      "posterFrame": 8
+    },
+    {
+      "id": "cross-guard",
+      "name": "Cross Guard",
+      "description": "Two braced forearms cross into an X; a contact spark splits along the locked guard.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000014"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 8,
+      "impactFrames": [
+        8
+      ],
+      "group": "guards",
+      "frameCount": 20,
+      "role": "guard",
+      "sheet": "sprites/cross-guard.png",
+      "preview": "gifs/cross-guard.gif",
+      "sound": "audio/cross-guard.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a4b2c6",
+      "palette": [
+        "#242338",
+        "#414661",
+        "#737c98",
+        "#a4b2c6",
+        "#d8e2df",
+        "#fffae6"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/cross-guard-reinforcement.png",
+        "layerPreview": "gifs/cross-guard-reinforcement.gif",
+        "compositeSheet": "variants/cross-guard-reinforced.png",
+        "preview": "gifs/cross-guard-reinforced.gif",
+        "frameCount": 20,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Cross Guard",
+      "posterFrame": 8
+    },
+    {
+      "id": "braced-guard",
+      "name": "Braced Guard",
+      "description": "Three heavy steel plates lock onto a wide foot brace with a grounded compression pulse.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000016"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 9,
+      "impactFrames": [
+        9
+      ],
+      "group": "guards",
+      "frameCount": 22,
+      "role": "guard",
+      "sheet": "sprites/braced-guard.png",
+      "preview": "gifs/braced-guard.gif",
+      "sound": "audio/braced-guard.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a4b2c6",
+      "palette": [
+        "#242338",
+        "#414661",
+        "#737c98",
+        "#a4b2c6",
+        "#d8e2df",
+        "#fffae6"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/braced-guard-reinforcement.png",
+        "layerPreview": "gifs/braced-guard-reinforcement.gif",
+        "compositeSheet": "variants/braced-guard-reinforced.png",
+        "preview": "gifs/braced-guard-reinforced.gif",
+        "frameCount": 22,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Braced Guard",
+      "posterFrame": 9
+    },
+    {
+      "id": "cursed-energy-focus",
+      "name": "Cursed Energy Focus",
+      "description": "Four precise reticle corners converge onto a steady teal focus point. Calm, not explosive.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000019"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 12,
+      "impactFrames": [
+        12
+      ],
+      "group": "utility",
+      "frameCount": 24,
+      "role": "utility",
+      "sheet": "sprites/cursed-energy-focus.png",
+      "preview": "gifs/cursed-energy-focus.gif",
+      "sound": "audio/cursed-energy-focus.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#389cb1",
+      "palette": [
+        "#111b31",
+        "#243657",
+        "#285b82",
+        "#389cb1",
+        "#80e9de",
+        "#efffe3"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Cursed Energy Focus",
+      "posterFrame": 12
+    },
+    {
+      "id": "cursed-energy-surge",
+      "name": "Cursed Energy Surge",
+      "description": "A faceted cursed-energy core drives three rising power chevrons above a pulsing base.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000020"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 12,
+      "impactFrames": [
+        12
+      ],
+      "group": "utility",
+      "frameCount": 24,
+      "role": "utility",
+      "sheet": "sprites/cursed-energy-surge.png",
+      "preview": "gifs/cursed-energy-surge.gif",
+      "sound": "audio/cursed-energy-surge.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#389cb1",
+      "palette": [
+        "#111b31",
+        "#243657",
+        "#285b82",
+        "#389cb1",
+        "#80e9de",
+        "#efffe3"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Cursed Energy Surge",
+      "posterFrame": 12
+    },
+    {
+      "id": "sword-quick-draw",
+      "name": "Sword Quick Draw",
+      "description": "A katana clears its dark scabbard in one narrow horizontal flash, followed by a clean return.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000025"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 5,
+      "impactFrames": [
+        5
+      ],
+      "group": "attacks",
+      "frameCount": 14,
+      "role": "attack",
+      "sheet": "sprites/sword-quick-draw.png",
+      "preview": "gifs/sword-quick-draw.gif",
+      "sound": "audio/sword-quick-draw.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a59be8",
+      "palette": [
+        "#19182c",
+        "#393057",
+        "#62568e",
+        "#a59be8",
+        "#dedbff",
+        "#fff9ee"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Sword Quick Draw",
+      "posterFrame": 5
+    },
+    {
+      "id": "new-shadow-style-simple-domain",
+      "name": "New Shadow Style Simple Domain",
+      "description": "A thin floor seal forms around a sheathed katana, ending in a draw-ready guard glint.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000026"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 12,
+      "impactFrames": [
+        12
+      ],
+      "group": "guards",
+      "frameCount": 26,
+      "role": "guard",
+      "sheet": "sprites/new-shadow-style-simple-domain.png",
+      "preview": "gifs/new-shadow-style-simple-domain.gif",
+      "sound": "audio/new-shadow-style-simple-domain.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#95c7d2",
+      "palette": [
+        "#192639",
+        "#334d6a",
+        "#5f89a1",
+        "#95c7d2",
+        "#d1eeec",
+        "#ffffe3"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "New Shadow Style Simple Domain",
+      "posterFrame": 12
+    },
+    {
+      "id": "sidestep",
+      "name": "Sidestep",
+      "description": "A hollow body afterimage slips sideways between two footprint markers.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000027"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 6,
+      "impactFrames": [
+        6
+      ],
+      "group": "movement",
+      "frameCount": 16,
+      "role": "movement",
+      "sheet": "sprites/sidestep.png",
+      "preview": "gifs/sidestep.gif",
+      "sound": "audio/sidestep.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a6cada",
+      "palette": [
+        "#2c3e58",
+        "#4b6988",
+        "#759bb7",
+        "#a6cada",
+        "#d4e6ef",
+        "#f3fcff"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Sidestep",
+      "posterFrame": 6
+    },
+    {
+      "id": "evasive-dash",
+      "name": "Evasive Dash",
+      "description": "Three leaning afterimages streak horizontally through a long, low speed-line wake.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000028"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 7,
+      "impactFrames": [
+        7
+      ],
+      "group": "movement",
+      "frameCount": 18,
+      "role": "movement",
+      "sheet": "sprites/evasive-dash.png",
+      "preview": "gifs/evasive-dash.gif",
+      "sound": "audio/evasive-dash.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a4b2c6",
+      "palette": [
+        "#242338",
+        "#414661",
+        "#737c98",
+        "#a4b2c6",
+        "#d8e2df",
+        "#fffae6"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Evasive Dash",
+      "posterFrame": 7
+    },
+    {
+      "id": "cursed-katana-combination",
+      "name": "Cursed Katana Combination",
+      "description": "Three visible katana passes: descending cut, reverse rising cut, then a horizontal finish.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000032"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 5,
+      "impactFrames": [
+        5,
+        12,
+        19
+      ],
+      "group": "attacks",
+      "frameCount": 26,
+      "role": "attack",
+      "sheet": "sprites/cursed-katana-combination.png",
+      "preview": "gifs/cursed-katana-combination.gif",
+      "sound": "audio/cursed-katana-combination.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a59be8",
+      "palette": [
+        "#19182c",
+        "#393057",
+        "#62568e",
+        "#a59be8",
+        "#dedbff",
+        "#fff9ee"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Cursed Katana Combination",
+      "posterFrame": 19
+    },
+    {
+      "id": "parry",
+      "name": "Parry",
+      "description": "Two narrow blades meet at one precise white spark, then the incoming blade recoils.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000033"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 6,
+      "impactFrames": [
+        6
+      ],
+      "group": "guards",
+      "frameCount": 14,
+      "role": "guard",
+      "sheet": "sprites/parry.png",
+      "preview": "gifs/parry.gif",
+      "sound": "audio/parry.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a6cada",
+      "palette": [
+        "#2c3e58",
+        "#4b6988",
+        "#759bb7",
+        "#a6cada",
+        "#d4e6ef",
+        "#f3fcff"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/parry-reinforcement.png",
+        "layerPreview": "gifs/parry-reinforcement.gif",
+        "compositeSheet": "variants/parry-reinforced.png",
+        "preview": "gifs/parry-reinforced.gif",
+        "frameCount": 14,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Parry",
+      "posterFrame": 6
+    },
+    {
+      "id": "keen-observation",
+      "name": "Keen Observation",
+      "description": "An amber eye opens and scans between four observation brackets before locking its pupil.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000034"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "utility",
+      "frameCount": 22,
+      "role": "utility",
+      "sheet": "sprites/keen-observation.png",
+      "preview": "gifs/keen-observation.gif",
+      "sound": "audio/keen-observation.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#e4b65b",
+      "palette": [
+        "#332036",
+        "#704441",
+        "#aa7445",
+        "#e4b65b",
+        "#ffe292",
+        "#fff8d8"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Keen Observation",
+      "posterFrame": 10
+    },
+    {
+      "id": "grapple",
+      "name": "Grapple",
+      "description": "Two opposing hands close inward and clamp together inside a short white locking bracket.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000074"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 9,
+      "impactFrames": [
+        9
+      ],
+      "group": "attacks",
+      "frameCount": 20,
+      "role": "attack",
+      "sheet": "sprites/grapple.png",
+      "preview": "gifs/grapple.gif",
+      "sound": "audio/grapple.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#f5a647",
+      "palette": [
+        "#51281d",
+        "#a34822",
+        "#d7782f",
+        "#f5a647",
+        "#ffd77e",
+        "#fff3c2"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Grapple",
+      "posterFrame": 9
+    },
+    {
+      "id": "taunt",
+      "name": "Taunt",
+      "description": "A beckoning finger and sharp red attention mark pull a curved aggro arrow toward the caster.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000079"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 9,
+      "impactFrames": [
+        9
+      ],
+      "group": "utility",
+      "frameCount": 20,
+      "role": "utility",
+      "sheet": "sprites/taunt.png",
+      "preview": "gifs/taunt.gif",
+      "sound": "audio/taunt.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#f5a647",
+      "palette": [
+        "#51281d",
+        "#a34822",
+        "#d7782f",
+        "#f5a647",
+        "#ffd77e",
+        "#fff3c2"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Taunt",
+      "posterFrame": 9
+    },
+    {
+      "id": "out-of-the-way",
+      "name": "Out of the way",
+      "description": "Two helping palms shove a friendly afterimage away from danger along a bright sideways arrow.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000080"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 7,
+      "impactFrames": [
+        7
+      ],
+      "group": "movement",
+      "frameCount": 18,
+      "role": "movement",
+      "targetRole": "ally",
+      "sheet": "sprites/out-of-the-way.png",
+      "preview": "gifs/out-of-the-way.gif",
+      "sound": "audio/out-of-the-way.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#95c7d2",
+      "palette": [
+        "#192639",
+        "#334d6a",
+        "#5f89a1",
+        "#95c7d2",
+        "#d1eeec",
+        "#ffffe3"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Out of the way",
+      "posterFrame": 7
+    },
+    {
+      "id": "spear-throw",
+      "name": "Spear Throw",
+      "description": "A long, broad-headed spear sails diagonally with a short built-in teal energy wake.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000090"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 11,
+      "impactFrames": [
+        11
+      ],
+      "group": "attacks",
+      "frameCount": 20,
+      "role": "attack",
+      "sheet": "sprites/spear-throw.png",
+      "preview": "gifs/spear-throw.gif",
+      "sound": "audio/spear-throw.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a4b2c6",
+      "palette": [
+        "#242338",
+        "#414661",
+        "#737c98",
+        "#a4b2c6",
+        "#d8e2df",
+        "#fffae6"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Spear Throw",
+      "posterFrame": 11
+    },
+    {
+      "id": "thrusting-stab",
+      "name": "Thrusting Stab",
+      "description": "A reinforced polearm extends in a straight thrust and prises apart a broken guard plate.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000091"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 8,
+      "impactFrames": [
+        8
+      ],
+      "group": "attacks",
+      "frameCount": 18,
+      "role": "attack",
+      "sheet": "sprites/thrusting-stab.png",
+      "preview": "gifs/thrusting-stab.gif",
+      "sound": "audio/thrusting-stab.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#a4b2c6",
+      "palette": [
+        "#242338",
+        "#414661",
+        "#737c98",
+        "#a4b2c6",
+        "#d8e2df",
+        "#fffae6"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Thrusting Stab",
+      "posterFrame": 8
+    },
+    {
+      "id": "arrow",
+      "name": "Arrow",
+      "description": "A slim fletched arrow crosses the cel and lands in a small, sharp white puncture.",
+      "kind": "move",
+      "placement": "target",
+      "moveIds": [
+        "000092"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 9,
+      "impactFrames": [
+        9
+      ],
+      "group": "attacks",
+      "frameCount": 16,
+      "role": "attack",
+      "sheet": "sprites/arrow.png",
+      "preview": "gifs/arrow.gif",
+      "sound": "audio/arrow.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#e4b65b",
+      "palette": [
+        "#332036",
+        "#704441",
+        "#aa7445",
+        "#e4b65b",
+        "#ffe292",
+        "#fff8d8"
+      ],
+      "sourceGraphics": [],
+      "reinforcement": {
+        "type": "cursed-energy-coating",
+        "sheet": "overlays/arrow-reinforcement.png",
+        "layerPreview": "gifs/arrow-reinforcement.gif",
+        "compositeSheet": "variants/arrow-reinforced.png",
+        "preview": "gifs/arrow-reinforced.gif",
+        "frameCount": 16,
+        "frameDurationMs": 50,
+        "drawOrder": "behind",
+        "palette": [
+          "#14203a",
+          "#204e78",
+          "#2a80ae",
+          "#36bed1",
+          "#85f6e2",
+          "#d9fff5"
+        ]
+      },
+      "isSorcerer": true,
+      "sorcererMoveName": "Arrow",
+      "posterFrame": 9
+    },
+    {
+      "id": "cover-ears",
+      "name": "Cover Ears",
+      "description": "Two ear-covering palms close inside a cyan ward, stopping an incoming sound-wave symbol.",
+      "kind": "move",
+      "placement": "source",
+      "moveIds": [
+        "000099"
+      ],
+      "statusTypes": [],
+      "eventTypes": [],
+      "impactFrame": 10,
+      "impactFrames": [
+        10
+      ],
+      "group": "utility",
+      "frameCount": 22,
+      "role": "utility",
+      "sheet": "sprites/cover-ears.png",
+      "preview": "gifs/cover-ears.gif",
+      "sound": "audio/cover-ears.wav",
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": "#95c7d2",
+      "palette": [
+        "#192639",
+        "#334d6a",
+        "#5f89a1",
+        "#95c7d2",
+        "#d1eeec",
+        "#ffffe3"
+      ],
+      "sourceGraphics": [],
+      "isSorcerer": true,
+      "sorcererMoveName": "Cover Ears",
+      "posterFrame": 10
+    }
+  ],
+  "coverage": {
+    "scope": "SORCERER",
+    "moveCount": 31,
+    "coveredCount": 31,
+    "reinforceableCount": 10,
+    "report": "sorcerer-coverage.json"
+  }
+}

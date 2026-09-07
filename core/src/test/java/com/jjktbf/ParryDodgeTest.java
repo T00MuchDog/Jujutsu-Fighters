@@ -366,7 +366,7 @@ public class ParryDodgeTest {
             .defenseType(DefenseType.PARRY)
             .parryStaggerTicks(4)
             .blockRanges(java.util.Set.of(MoveTag.RANGED))
-            .blockElementalTags(java.util.Set.of(MoveTag.FIRE))
+            .blockDamageTypeTags(java.util.Set.of(MoveTag.FIRE))
             .potency(2)
             .apCost(10)
             .unleashPoint(1)
@@ -377,7 +377,7 @@ public class ParryDodgeTest {
         assertEquals(4, dto.parryStaggerTicks);
         assertEquals(2, dto.potency);
         assertEquals(List.of(MoveTag.RANGED.name()), dto.blockRanges);
-        assertEquals(List.of(MoveTag.FIRE.name()), dto.blockElementalTags);
+        assertEquals(List.of(MoveTag.FIRE.name()), dto.blockDamageTypeTags);
         assertTrue(dto.tags.contains(MoveTag.KATANA.name()),
             "The weapon tag should round-trip through MoveData.");
 
@@ -386,7 +386,7 @@ public class ParryDodgeTest {
         assertEquals(4, restored.getParryStaggerTicks());
         assertEquals(2, restored.getPotency());
         assertEquals(java.util.Set.of(MoveTag.RANGED), restored.getBlockRanges());
-        assertEquals(java.util.Set.of(MoveTag.FIRE), restored.getBlockElementalTags());
+        assertEquals(java.util.Set.of(MoveTag.FIRE), restored.getBlockDamageTypeTags());
         assertEquals(MoveTag.KATANA, restored.weaponTag());
     }
 

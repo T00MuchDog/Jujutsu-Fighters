@@ -97,7 +97,7 @@ DEFEND
     merely sharing a tick is not enough if the faster attack resolves first.
   • A REACTION defense arms on its fire tick and opens when a matching attack
     arrives. It is easier to time but cannot earn a Perfect Read.
-  • Read every defense card for its Potency, attack/range/element coverage,
+  • Read every defense card for its Potency, attack/range/damage-type coverage,
     duration, use limit, and timing. These properties are move-specific.
 
 RESOLVE AND WIN
@@ -308,7 +308,7 @@ are the Move/MoveData field names.
                           HIT TAGS, a delayTicks offset from unleash,
                           requiresPreviousConnection, avoidable, and optional
                           accuracy. Hit tags may include damage type, MELEE/RANGED,
-                          GUARD_BREAK, INTANGIBLE, and elemental tags. Power,
+                          GUARD_BREAK, INTANGIBLE, and damage-type tags. Power,
                           defense coverage, reactions, and Black Flash are resolved
                           from the current component, so different hits in one move
                           can behave differently. Legacy attacks without this list
@@ -363,7 +363,8 @@ are the Move/MoveData field names.
                           unlimited. The use cap does not shorten the time window.
     blockRanges           Accepted MELEE/RANGED hit tags. Empty = all, including
                           untagged hits.
-    blockElementalTags    Accepted ICE/ELECTRIC/FIRE/WATER hit tags. Empty = all.
+    blockDamageTypeTags   Accepted BLUNT/SLASHING/PIERCING/ICE/ELECTRIC/FIRE/WATER
+                          hit tags. Empty = all.
                           These per-hit profiles apply to BLOCK and PARRY.
     blockDamageReduction  0–100, PERCENTAGE block only; conditional effectiveness
                           determines whether the live reduction reaches 100.
@@ -502,7 +503,7 @@ MOVE TAGS describe the parent action: ATTACK / UTILITY / DEFENSIVE, AOE,
 FRIENDLY_FIRE, HEAVY, weapon requirements, and learning/filtering metadata.
 
 HIT TAGS describe one damage instance: damage type, range, GUARD_BREAK,
-INTANGIBLE, and elements. A HitComponent validates and derives its own category.
+INTANGIBLE, and damage types. A HitComponent validates and derives its own category.
 Power, Black Flash, block/parry coverage, and elemental reactions use that current
 hit. Move.hasTag and Move.isMelee/isRanged/isGuardBreak/isIntangible aggregate
 hit-only tags for filtering convenience; that does not make them parent-owned.
@@ -563,7 +564,17 @@ Parent type tags are normally synchronized from the union of component type tags
                           accuracy, ordinary Defense, coded resistance, and damage
                           immunity are unaffected. Lives only in the tag set.
 
-  ELEMENTAL HIT TAGS (MoveTag.ELEMENTAL_TAGS; authored per hit component):
+  DAMAGE TYPE HIT TAGS (MoveTag.DAMAGE_TYPE_TAGS; authored per hit component).
+  The first three are pure classification; the four elemental types also carry
+  connected-hit reactions (MoveTag.ELEMENTAL_TAGS):
+    BLUNT                 The hit deals damage through impact or crushing force
+                          (fists, kicks, hammers, staves, constrictions, blasts).
+                          No connected-hit reaction.
+    SLASHING              The hit deals damage through cutting edges (blades,
+                          claws, slicing projectiles). No connected-hit reaction.
+    PIERCING              The hit deals damage through penetration (thrusts,
+                          stabs, arrows, spears, drills). No connected-hit
+                          reaction.
     ICE                   A connected hit has a 5% chance to apply FROZEN, raised
                           to 50% when the target is WET. An ICE hit always cures
                           BURNED.
@@ -576,9 +587,9 @@ Parent type tags are normally synchronized from the union of component type tags
     WATER                 A connected hit always cures BURNED and applies WET for
                           one round.
     Elemental reactions occur on connected hits, including hits fully negated by
-    BLOCK, but not on misses, dodges, or parries. Elemental tags do not affect the
-    Power formula, move category, or Black Flash eligibility. They can gate a
-    BLOCK/PARRY through blockElementalTags and can alter a block through an
+    BLOCK, but not on misses, dodges, or parries. Damage-type tags do not affect
+    the Power formula, move category, or Black Flash eligibility. They can gate a
+    BLOCK/PARRY through blockDamageTypeTags and can alter a block through an
     INCOMING_HIT_HAS_TAG condition.
 
   IMMEDIATE EFFECTS:
@@ -699,8 +710,9 @@ DEFENSE COVERAGE PROFILE — BLOCK and PARRY
 
     blockRanges           Every MELEE/RANGED tag on the hit must be selected. A
                           nonempty range set rejects a hit with no range tag.
-    blockElementalTags    Every ICE/ELECTRIC/FIRE/WATER tag on the hit must be
-                          selected. A non-elemental hit remains accepted.
+    blockDamageTypeTags   Every BLUNT/SLASHING/PIERCING/ICE/ELECTRIC/FIRE/WATER
+                          tag on the hit must be selected. An untyped hit remains
+                          accepted.
   Damage nature (PHYSICAL, CURSED_ENERGY, or technique) does not affect coverage.
 
 POTENCY GATE — attack vs defence
@@ -744,7 +756,7 @@ BLOCK
 
 PARRY
   A defense that negates a covered hit entirely (outcome PARRIED, no damage roll).
-  Parries use the same attack-type, range, and elemental profile as blocks; only a
+  Parries use the same attack-type, range, and damage-type profile as blocks; only a
   profile with all three dimensions empty is unrestricted. Some parries require a
   weapon because that authored move carries a weapon tag, but weapon use is not a
   universal PARRY rule.
@@ -1534,7 +1546,7 @@ MOVE EDITOR  (MoveEditorScreen)
   Saves data/moves/all_moves.json. Parent move tags and per-component hit tags are
   edited separately. Attack authoring includes ordered hit components, AOE shape,
   and pair targeting. Defense authoring includes FIXED/REACTION timing, use cap,
-  attack-type/range/element coverage, ally targeting, and Conditional Block
+  attack-type/range/damage-type coverage, ally targeting, and Conditional Block
   Effectiveness rows. Unified effects expose every valid trigger, including
   ON_START and BLOCK_CALCULATION, plus effect types such as ESTABLISH_DOMAIN.
   Validation runs MoveData.toMove(), the same conversion used by the engine.

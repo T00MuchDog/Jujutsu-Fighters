@@ -1,0 +1,1433 @@
+{
+  "schemaVersion": 1,
+  "sheetOrder": "row-major-top-left",
+  "frameWidth": 192,
+  "frameHeight": 192,
+  "columns": 6,
+  "effects": [
+    {
+      "id": "cs-rend",
+      "name": "Rend",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000100"
+      ],
+      "description": "Three hooked mint talons rake diagonally; the attacker snaps forward and the victim twists.",
+      "sheet": "sprites/cs-rend.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-barrage",
+      "name": "Barrage",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000101"
+      ],
+      "description": "Alternating spectral knuckles strike from three angles with sharp, separate contact stars.",
+      "sheet": "sprites/cs-barrage.png",
+      "frameCount": 72,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10,
+        34,
+        58
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-hammerblow",
+      "name": "Hammerblow",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000102"
+      ],
+      "description": "A massive vertical cursed fist drops through a fractured plate and a low shock ring.",
+      "sheet": "sprites/cs-hammerblow.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-clinch",
+      "name": "Clinch",
+      "placement": "target",
+      "role": "targeted",
+      "moveIds": [
+        "000103"
+      ],
+      "description": "Two hooked spirit hands close around the opponent and lock a narrow cursed ring.",
+      "sheet": "sprites/cs-clinch.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-lunge",
+      "name": "Lunge",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000104"
+      ],
+      "description": "A predatory jaw snaps shut; vitality motes flare on the lunging user after contact.",
+      "sheet": "sprites/cs-lunge.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-discharge",
+      "name": "Discharge",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000105"
+      ],
+      "description": "A rupturing energy sphere throws jagged rings outward from the user across the battlefield.",
+      "sheet": "sprites/cs-discharge.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-energy-beam",
+      "name": "Cursed Energy Beam",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000106"
+      ],
+      "description": "A mint core charges, launches a tracer, then sustains a serrated beam into a white-hot impact.",
+      "sheet": "sprites/cs-energy-beam.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-wither",
+      "name": "Wither",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000107"
+      ],
+      "description": "A collapsing violet eye exhales falling ash and a contracting fatigue halo over the target.",
+      "sheet": "sprites/cs-wither.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-venom",
+      "name": "Venom",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000108"
+      ],
+      "description": "A viscous purple projectile crosses the gap and breaks into poison droplets and bubbles.",
+      "sheet": "sprites/cs-venom.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        13
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-crush",
+      "name": "Crush",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000109"
+      ],
+      "description": "Opposing slabs of cursed energy compress into a blunt fist and spray angular fragments.",
+      "sheet": "sprites/cs-crush.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-recoil-shot",
+      "name": "Recoil Shot",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000110"
+      ],
+      "description": "A blood-red muzzle rupture kicks the caster backward and fires a dense, unstable bolt.",
+      "sheet": "sprites/cs-recoil-shot.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-pulse",
+      "name": "Pulse",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000111"
+      ],
+      "description": "Offset pressure hoops and a broken targeting eye ripple across each enemy's silhouette.",
+      "sheet": "sprites/cs-pulse.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-guard",
+      "name": "Guard",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000112"
+      ],
+      "description": "A scalloped spirit shield catches the incoming hit with a compact mint fracture.",
+      "sheet": "sprites/cs-guard.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-footwork",
+      "name": "Footwork",
+      "placement": "source",
+      "role": "movement",
+      "moveIds": [
+        "000113"
+      ],
+      "description": "Two spectral clawed footprints trade places as the user dips, sidesteps, and returns.",
+      "sheet": "sprites/cs-footwork.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-deflect",
+      "name": "Deflect",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000114"
+      ],
+      "description": "A taloned palm turns a diagonal streak upward, scattering a precise silver spark.",
+      "sheet": "sprites/cs-deflect.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-regroup",
+      "name": "Regroup",
+      "placement": "source",
+      "role": "movement",
+      "moveIds": [
+        "000115"
+      ],
+      "description": "The spirit retreats into paired afterimages while a spiral of restorative motes rises.",
+      "sheet": "sprites/cs-regroup.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-fortify",
+      "name": "Fortify",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000116"
+      ],
+      "description": "Three heavy carapace plates interlock around a low, grounded cursed seal.",
+      "sheet": "sprites/cs-fortify.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-screen",
+      "name": "Screen",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000117"
+      ],
+      "description": "A thin hexagonal cursed screen splits an incoming projectile into mirrored shards.",
+      "sheet": "sprites/cs-screen.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-counter",
+      "name": "Counter",
+      "placement": "source",
+      "role": "movement",
+      "moveIds": [
+        "000118"
+      ],
+      "description": "A fading outline slips under a low arc; a hooked fist coils into the return position.",
+      "sheet": "sprites/cs-counter.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-reprisal",
+      "name": "Reprisal",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000119"
+      ],
+      "description": "A split shield rebounds into two hooked talons, signaling stored retaliation rather than damage.",
+      "sheet": "sprites/cs-reprisal.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-reconstitute",
+      "name": "Reconstitute",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000120"
+      ],
+      "description": "Loose spirit fragments knit into a body outline as luminous seams close upward.",
+      "sheet": "sprites/cs-reconstitute.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-focus",
+      "name": "Focus",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000121"
+      ],
+      "description": "An inhuman eye sharpens within four converging shards and settles into a steady core.",
+      "sheet": "sprites/cs-focus.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-overflow",
+      "name": "Overflow",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000122"
+      ],
+      "description": "An overfilled reservoir spills rising droplets through a tall crown of cursed lightning.",
+      "sheet": "sprites/cs-overflow.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-absorb",
+      "name": "Absorb",
+      "placement": "beam",
+      "role": "targeted",
+      "moveIds": [
+        "000123"
+      ],
+      "description": "Inward-running chevrons siphon energy along a narrow tether from the victim to the user.",
+      "sheet": "sprites/cs-absorb.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-pressure",
+      "name": "Pressure",
+      "placement": "target",
+      "role": "targeted",
+      "moveIds": [
+        "000124"
+      ],
+      "description": "Downward spirit palms and narrowing halos bear on each enemy under a darkened backdrop.",
+      "sheet": "sprites/cs-pressure.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-purge",
+      "name": "Purge",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000125"
+      ],
+      "description": "A blood-red shudder cracks the inner seal; violet contaminants are expelled in an outward ring.",
+      "sheet": "sprites/cs-purge.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-harden",
+      "name": "Harden",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000126"
+      ],
+      "description": "Faceted carapace shards fold inward and fuse into a dense, dark armor shell.",
+      "sheet": "sprites/cs-harden.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-conversion",
+      "name": "Conversion",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000127"
+      ],
+      "description": "A crimson life droplet collapses into a mint energy core, then vents thin upward sparks.",
+      "sheet": "sprites/cs-conversion.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-focused-roots",
+      "name": "Focused Roots",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000129"
+      ],
+      "description": "Two hooked roots spear upward in succession, then curl into a leaf-lit binding collar.",
+      "sheet": "sprites/cs-focused-roots.png",
+      "frameCount": 48,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10,
+        34
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-spreading-roots",
+      "name": "Spreading Roots",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000130"
+      ],
+      "description": "A broad fan of branching roots tears through the ground under each enemy, scattering leaves.",
+      "sheet": "sprites/cs-spreading-roots.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-wooden-ball",
+      "name": "Wooden Ball",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000131"
+      ],
+      "description": "A rotating wooden seed releases two long spears, each landing with its own splinter burst.",
+      "sheet": "sprites/cs-wooden-ball.png",
+      "frameCount": 48,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        13,
+        37
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-wooden-bulwark",
+      "name": "Wooden Bulwark",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000132"
+      ],
+      "description": "Interwoven trunks rise into a broad living barricade around the actual protected fighter.",
+      "sheet": "sprites/cs-wooden-bulwark.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-cursed-bud",
+      "name": "Cursed Bud",
+      "placement": "target",
+      "role": "targeted",
+      "moveIds": [
+        "000133"
+      ],
+      "description": "A barbed seed crosses to each selected victim, sprouts pink petals, and closes its parasite roots.",
+      "sheet": "sprites/cs-cursed-bud.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-flower-field",
+      "name": "Flower Field",
+      "placement": "target",
+      "role": "targeted",
+      "moveIds": [
+        "000134"
+      ],
+      "description": "Pink flowers unfurl at the enemy's feet; drifting pollen softens the scene into an entrancing meadow.",
+      "sheet": "sprites/cs-flower-field.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-life-force-absorption",
+      "name": "Life Force Absorption",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000135"
+      ],
+      "description": "Living motes rise from the ground, converge on a shoulder bloom, and leave one luminous offering.",
+      "sheet": "sprites/cs-life-force-absorption.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-flower-offering",
+      "name": "Flower Offering: Life-Force Beam",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000136"
+      ],
+      "description": "A shoulder flower opens into a golden-green lance, ending in a petal-shaped detonation.",
+      "sheet": "sprites/cs-flower-offering.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-root-barrier",
+      "name": "Root Barrier",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000137"
+      ],
+      "description": "Two curved roots close into an oval cage and catch the blow against a compact wooden knot.",
+      "sheet": "sprites/cs-root-barrier.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-root-trip",
+      "name": "Root Trip",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000139"
+      ],
+      "description": "A low hooked root snares the ankle, pitching the target into a rising wooden spike.",
+      "sheet": "sprites/cs-root-trip.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-release-human",
+      "name": "Release Transfigured Human",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000140"
+      ],
+      "description": "A stitched marble unfurls into a distorted human silhouette beside a widening soul aperture.",
+      "sheet": "sprites/cs-release-human.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-human-assault",
+      "name": "Transfigured Human Assault",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000141"
+      ],
+      "description": "A compressed, weaponized human hurtles across the field and uncoils into a many-limbed impact.",
+      "sheet": "sprites/cs-human-assault.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        13
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-hooved-legs",
+      "name": "Hooved Legs",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000142"
+      ],
+      "description": "The lower body stretches into paired dark hooves; a springing step trails pale tendon seams.",
+      "sheet": "sprites/cs-hooved-legs.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-idle-transfiguration",
+      "name": "Idle Transfiguration",
+      "placement": "target",
+      "role": "targeted",
+      "moveIds": [
+        "000143"
+      ],
+      "description": "A pale palm reaches toward the soul outline; offset stitches and a warped halo visualize the attempt.",
+      "sheet": "sprites/cs-idle-transfiguration.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-miniature-form",
+      "name": "Miniature Form",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000144"
+      ],
+      "description": "Concentric soul seams close inward as the actual fighter shrinks to a tiny, evasive silhouette.",
+      "sheet": "sprites/cs-miniature-form.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-blade-mill",
+      "name": "Blade Mill",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000145"
+      ],
+      "description": "Four elongated arm blades spin into an asymmetric ivory mill, leaving crossing flesh-edged cuts.",
+      "sheet": "sprites/cs-blade-mill.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-flesh-drill",
+      "name": "Flesh Drill",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000146"
+      ],
+      "description": "A helical flesh lance extends across the gap and bores through a tight ivory puncture ring.",
+      "sheet": "sprites/cs-flesh-drill.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-giant-fist",
+      "name": "Giant Fist",
+      "placement": "target",
+      "role": "attack",
+      "moveIds": [
+        "000147"
+      ],
+      "description": "An oversized stitched fist balloons overhead and pins the opponent in a wide bone-white shock ring.",
+      "sheet": "sprites/cs-giant-fist.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-spike-form",
+      "name": "Spike Form",
+      "placement": "source",
+      "role": "guard",
+      "moveIds": [
+        "000148"
+      ],
+      "description": "Ivory spikes burst from a stitched carapace and hold outward around the braced defender.",
+      "sheet": "sprites/cs-spike-form.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-winged-evasion",
+      "name": "Winged Evasion",
+      "placement": "source",
+      "role": "movement",
+      "moveIds": [
+        "000149"
+      ],
+      "description": "Asymmetric pale wings unfold, lift the fighter clear of the floor, then fold into falling feathers.",
+      "sheet": "sprites/cs-winged-evasion.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-self-embodiment",
+      "name": "Domain Expansion: Self-Embodiment of Perfection",
+      "placement": "source",
+      "role": "utility",
+      "moveIds": [
+        "000150"
+      ],
+      "description": "Prayer hands open a black-violet aperture; a cathedral of reaching palms replaces the battlefield briefly.",
+      "sheet": "sprites/cs-self-embodiment.png",
+      "frameCount": 40,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        17
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-charge-core",
+      "name": "Cursed Charge Core",
+      "placement": "source",
+      "role": "utility",
+      "description": "Reusable contracting charge rings.",
+      "sheet": "sprites/cs-charge-core.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-mend-motes",
+      "name": "Vitality Motes",
+      "placement": "source",
+      "role": "utility",
+      "description": "Reusable rising restoration particles.",
+      "sheet": "sprites/cs-mend-motes.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-energy-tracer",
+      "name": "Cursed Tracer",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "Right-facing energy head and trailing slivers.",
+      "sheet": "sprites/cs-energy-tracer.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-energy-stream",
+      "name": "Cursed Stream",
+      "placement": "beam",
+      "role": "utility",
+      "description": "Full-width serrated mint energy stream.",
+      "sheet": "sprites/cs-energy-stream.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-venom-bolt",
+      "name": "Venom Bolt",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "Viscous poison head with a three-droplet trail.",
+      "sheet": "sprites/cs-venom-bolt.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-blood-flare",
+      "name": "Blood Flare",
+      "placement": "source",
+      "role": "utility",
+      "description": "A contained crimson muzzle rupture.",
+      "sheet": "sprites/cs-blood-flare.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-red-bolt",
+      "name": "Recoil Bolt",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "A pointed red projectile with unstable lightning.",
+      "sheet": "sprites/cs-red-bolt.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-wood-spear",
+      "name": "Wooden Spear",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "Long wooden spear tipped with pale sapwood.",
+      "sheet": "sprites/cs-wood-spear.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-bud-seed",
+      "name": "Barbed Bud Seed",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "A compact seed with two thorn barbs.",
+      "sheet": "sprites/cs-bud-seed.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-meadow",
+      "name": "Pollen Meadow",
+      "placement": "source",
+      "role": "utility",
+      "description": "Screen-layer flowering ground and drifting pollen.",
+      "sheet": "sprites/cs-meadow.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-offering-bloom",
+      "name": "Offering Bloom",
+      "placement": "source",
+      "role": "utility",
+      "description": "A shoulder flower opening around its stored life-force core.",
+      "sheet": "sprites/cs-offering-bloom.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-pollen-lance",
+      "name": "Life-Force Lance",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "Gold-green lance flanked by trailing rose petals.",
+      "sheet": "sprites/cs-pollen-lance.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-life-stream",
+      "name": "Life-Force Stream",
+      "placement": "beam",
+      "role": "utility",
+      "description": "Sustained golden saplight with petal highlights.",
+      "sheet": "sprites/cs-life-stream.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-human-projectile",
+      "name": "Weaponized Human",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "A compressed human with trailing elongated limbs.",
+      "sheet": "sprites/cs-human-projectile.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-drill-lance",
+      "name": "Flesh Drill Lance",
+      "placement": "projectile",
+      "role": "utility",
+      "description": "Right-facing tendon helix around an ivory drill tip.",
+      "sheet": "sprites/cs-drill-lance.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-tendon-stream",
+      "name": "Tendon Stream",
+      "placement": "beam",
+      "role": "utility",
+      "description": "Thin elastic tendons tether a launched limb to its user.",
+      "sheet": "sprites/cs-tendon-stream.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-palm-cathedral",
+      "name": "Cathedral of Palms",
+      "placement": "source",
+      "role": "utility",
+      "description": "Layered archways of pale hands around a black-violet soul aperture.",
+      "sheet": "sprites/cs-palm-cathedral.png",
+      "frameCount": 40,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    },
+    {
+      "id": "cs-soul-halo",
+      "name": "Soul Halo",
+      "placement": "source",
+      "role": "utility",
+      "description": "A rotating stitched halo for layered soul effects.",
+      "sheet": "sprites/cs-soul-halo.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ],
+      "sourceGraphics": []
+    }
+  ]
+}

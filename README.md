@@ -268,7 +268,7 @@ the full process; the short version:
 ```bash
 git commit -am "Release 1.5.0"
 
-mvn -Drevision=1.4.9 clean verify
+mvn -Drevision=1.5.0 clean verify
 
 git tag v1.5.0
 

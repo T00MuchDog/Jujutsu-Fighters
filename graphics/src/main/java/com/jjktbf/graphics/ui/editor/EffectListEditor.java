@@ -1617,6 +1617,7 @@ public class EffectListEditor extends Table {
         List<AbilityEffectTarget> targets = new ArrayList<>(List.of(
             AbilityEffectTarget.SELF,
             AbilityEffectTarget.ENEMY,
+            AbilityEffectTarget.CURRENT_ENEMY,
             AbilityEffectTarget.ALLY,
             AbilityEffectTarget.BOTH,
             AbilityEffectTarget.SELF_AND_ALLY));
@@ -1633,6 +1634,7 @@ public class EffectListEditor extends Table {
         return switch (target) {
             case SELF -> "Move user";
             case ENEMY -> "Move target";
+            case CURRENT_ENEMY -> "Current enemy";
             case ALLY -> "Move ally";
             case BOTH -> "User and target";
             case SELF_AND_ALLY -> "User and ally";
@@ -1648,6 +1650,9 @@ public class EffectListEditor extends Table {
     }
 
     private static AbilityEffectTarget targetFromLabel(String label) {
+        if ("Current enemy".equals(label) || AbilityEffectTarget.CURRENT_ENEMY.name().equals(label)) {
+            return AbilityEffectTarget.CURRENT_ENEMY;
+        }
         if ("Move target".equals(label) || AbilityEffectTarget.ENEMY.name().equals(label)) {
             return AbilityEffectTarget.ENEMY;
         }

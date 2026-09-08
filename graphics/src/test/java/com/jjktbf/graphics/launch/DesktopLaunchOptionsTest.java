@@ -20,6 +20,7 @@ class DesktopLaunchOptionsTest {
             new String[0], new Properties(), DesktopPlatform.WINDOWS);
 
         assertEquals(UiProfile.MAC, mac.uiProfile());
+        assertEquals(DesktopPlatform.MAC, mac.hostPlatform());
         assertEquals(UiProfile.WINDOWS, windows.uiProfile());
         assertFalse(mac.windowed());
         assertEquals(1366, windows.windowWidth());
@@ -34,6 +35,17 @@ class DesktopLaunchOptionsTest {
             DesktopPlatform.MAC);
 
         assertEquals(UiProfile.WINDOWS, options.uiProfile());
+        assertEquals(DesktopPlatform.MAC, options.hostPlatform());
+    }
+
+    @Test
+    void menuProfileCanBeExplicitlySelectedOnMac() {
+        DesktopLaunchOptions options = DesktopLaunchOptions.parse(
+            new String[] {"--ui-profile=MAC"},
+            new Properties(),
+            DesktopPlatform.MAC);
+
+        assertEquals(UiProfile.MAC, options.uiProfile());
         assertEquals(DesktopPlatform.MAC, options.hostPlatform());
     }
 

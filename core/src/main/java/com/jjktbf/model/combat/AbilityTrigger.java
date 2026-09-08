@@ -31,6 +31,7 @@ public record AbilityTrigger(
         TIMELINE_TICK,
         MOVE_USED,
         ATTACK_HIT,
+        SOUL_MANIPULATION_ATTEMPT,
         ATTACK_MISSED,
         MOVE_BLOCKED,
         BLACK_FLASH,

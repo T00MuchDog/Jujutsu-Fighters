@@ -20,17 +20,17 @@ class RatioMeterTest {
     void onlyActiveRatioStacksShowTheGraphicAndMultiplierCount() {
         RatioMeter meter = new RatioMeter();
 
-        meter.setState(new CodedAbilityState("OTHER", "Other", 2, 3));
+        meter.setState(new CodedAbilityState("OTHER", "Other", 2, 3, false));
         assertFalse(meter.isVisible());
 
-        meter.setState(new CodedAbilityState(RatioAbility.KEY, "Ratio", 0, 3));
+        meter.setState(new CodedAbilityState(RatioAbility.KEY, "Ratio", 0, 3, false));
         assertFalse(meter.isVisible());
 
-        meter.setState(new CodedAbilityState(RatioAbility.KEY, "Ratio", 2, 3));
+        meter.setState(new CodedAbilityState(RatioAbility.KEY, "Ratio", 2, 3, false));
         assertTrue(meter.isVisible());
         assertEquals(2, meter.stackCount());
 
-        meter.setState(new CodedAbilityState(RatioAbility.KEY, "Ratio", 5, 5));
+        meter.setState(new CodedAbilityState(RatioAbility.KEY, "Ratio", 5, 5, false));
         assertEquals(5, meter.stackCount());
     }
 }

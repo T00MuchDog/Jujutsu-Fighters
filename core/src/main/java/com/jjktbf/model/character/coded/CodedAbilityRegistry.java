@@ -67,6 +67,13 @@ public final class CodedAbilityRegistry {
         if (owner != null && owner.getCharacter() != null) {
             for (Move move : owner.getCharacter().getKnownMoves()) {
                 if (move == null) continue;
+                // A stance move that establishes the real Simple Domain carries
+                // no coded row, yet must still instantiate its runtime so the
+                // parry works for fighters without the optional binding vow.
+                if (NewShadowStyleAbility.activatesSimpleDomain(move)) {
+                    featuresByKey.computeIfAbsent(
+                        NewShadowStyleAbility.KEY, ignored -> new LinkedHashSet<>());
+                }
                 if (move.usesUnifiedEffects()) {
                     for (MoveEffectData effect : move.getEffects()) {
                         if (!AbilityEffectType.CODED_MOVE_ACTION.name()

@@ -251,8 +251,9 @@ public final class BattleEffectPack implements Disposable {
 
         String placement = requiredString(value, "placement");
         if (!placement.equals("source") && !placement.equals("target")
+                && !placement.equals("source-feet") && !placement.equals("target-feet")
                 && !placement.equals("beam") && !placement.equals("projectile")) {
-            throw invalid("placement must be source, target, beam, or projectile for effect: " + id);
+            throw invalid("invalid effect placement: " + id);
         }
         String role = value.get("role") == null
                 ? (placement.equals("target") ? "attack" : "utility")

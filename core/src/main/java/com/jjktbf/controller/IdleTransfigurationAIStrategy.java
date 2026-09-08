@@ -31,8 +31,8 @@ import java.util.Optional;
  *       the pressure.</li>
  *   <li>Combos control into transfiguration: a stunning attack placed a
  *       couple of ticks ahead of the touch.</li>
- *   <li>Shapes legs for mobility only when outsped, and answers melee swings
- *       with the spiked counter while avoiding everything else with wings.</li>
+ *   <li>Shapes legs for mobility only when outsped, and leans on the spike
+ *       ball as wide offence once the shaping is done.</li>
  *   <li>Considers the Domain once the target's soul resistance is low.</li>
  * </ul>
  *
@@ -353,8 +353,8 @@ public class IdleTransfigurationAIStrategy implements AIStrategy {
     private void placeDefenses(
         BattleCombatant ai, BattlePlan plan, Kit kit, OpponentIntel intel,
         BattleCombatant opponent) {
-        // Answer melee pressure with the spike ball; everything else — or a
-        // ranged-leaning enemy — gets the wings.
+        // A block-counter answers melee pressure when the kit carries one;
+        // everything else — or a ranged-leaning enemy — gets the wings.
         boolean meleeHeavy = !intel.attacks.isEmpty()
             && intel.attacks.stream().filter(IdleTransfigurationAIStrategy::isMelee).count()
                 > intel.attacks.size() / 2;

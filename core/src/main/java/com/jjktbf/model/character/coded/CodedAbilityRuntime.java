@@ -13,6 +13,7 @@ import com.jjktbf.model.move.StatusEffect;
 
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.function.Function;
 
 /**
  * Battle-time behavior for an ability whose mechanics cannot be composed in the editor.
@@ -44,6 +45,14 @@ public interface CodedAbilityRuntime {
         RandomSource rng
     ) {
         return onTrigger(state, trigger, featureActive);
+    }
+
+    /** Allows compiled primitives to resolve semantic reactions before continuing. */
+    default List<CombatEvent> onTrigger(
+        BattleState state, AbilityTrigger trigger, Predicate<String> featureActive,
+        RandomSource rng, Function<AbilityTrigger, List<CombatEvent>> reactions
+    ) {
+        return onTrigger(state, trigger, featureActive, rng);
     }
 
     /**
@@ -85,6 +94,14 @@ public interface CodedAbilityRuntime {
         RandomSource rng
     ) {
         return onEffectFired(state, effect, attacker, defender, tick);
+    }
+
+    default List<CombatEvent> onEffectFired(
+        BattleState state, StatusEffect effect, BattleCombatant attacker,
+        BattleCombatant defender, int tick, RandomSource rng,
+        Function<AbilityTrigger, List<CombatEvent>> reactions
+    ) {
+        return onEffectFired(state, effect, attacker, defender, tick, rng);
     }
 
     /** Supply modifiers after an attacking move connects but before block and defense. */

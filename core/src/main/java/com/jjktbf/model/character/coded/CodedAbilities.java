@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.function.Function;
 
 /** Generic dispatcher and state holder for compiled ability runtimes on one combatant. */
 public final class CodedAbilities {
@@ -53,13 +54,21 @@ public final class CodedAbilities {
         Predicate<CodedAbilityBinding> activationGate,
         RandomSource rng
     ) {
+        return onTrigger(state, trigger, activationGate, rng, ignored -> List.of());
+    }
+
+    public List<CombatEvent> onTrigger(
+        BattleState state, AbilityTrigger trigger,
+        Predicate<CodedAbilityBinding> activationGate, RandomSource rng,
+        Function<AbilityTrigger, List<CombatEvent>> reactions
+    ) {
         List<CombatEvent> events = new ArrayList<>();
         for (RuntimeEntry entry : runtimes) {
             events.addAll(rng == null
                 ? entry.runtime().onTrigger(
                     state, trigger, featureGate(entry, activationGate))
                 : entry.runtime().onTrigger(
-                    state, trigger, featureGate(entry, activationGate), rng));
+                    state, trigger, featureGate(entry, activationGate), rng, reactions));
         }
         return events;
     }
@@ -88,12 +97,20 @@ public final class CodedAbilities {
         int tick,
         RandomSource rng
     ) {
+        return onEffectFired(state, effect, attacker, defender, tick, rng, ignored -> List.of());
+    }
+
+    public List<CombatEvent> onEffectFired(
+        BattleState state, StatusEffect effect, BattleCombatant attacker,
+        BattleCombatant defender, int tick, RandomSource rng,
+        Function<AbilityTrigger, List<CombatEvent>> reactions
+    ) {
         List<CombatEvent> events = new ArrayList<>();
         for (RuntimeEntry entry : runtimes) {
             events.addAll(rng == null
                 ? entry.runtime().onEffectFired(state, effect, attacker, defender, tick)
                 : entry.runtime().onEffectFired(
-                    state, effect, attacker, defender, tick, rng));
+                    state, effect, attacker, defender, tick, rng, reactions));
         }
         return events;
     }

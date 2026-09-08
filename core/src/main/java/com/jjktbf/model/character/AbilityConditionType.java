@@ -44,6 +44,7 @@ public enum AbilityConditionType {
     MOVE_WEAPON_REQUIRED("Move requires weapon", "The selected combatant uses a move carrying one of the weapon-type tags (Katana, Bow, Great Axe, Polearm, Staff).", ACTOR),
     MOVE_TYPE_TAGS_EXACTLY("Move damage tags match exactly", "The selected combatant uses a move with exactly these damage-type tags. Modifier tags are ignored.", ACTOR, MOVE_TAGS),
     ATTACK_HIT("Attack hit", "The selected combatant lands an attack.", ACTOR),
+    SOUL_MANIPULATION_TARGETED("Soul manipulation targeted", "A soul manipulation attempt reaches the selected combatant, before its success roll.", ACTOR),
     ATTACK_MISSED("Attack missed", "The selected combatant misses an attack.", ACTOR),
     MOVE_BLOCKED("Attack blocked", "The selected combatant's attack is fully blocked.", ACTOR),
     EVENT_TARGET("Current event targets combatant", "The selected combatant is the target of the current battle event.", ACTOR),

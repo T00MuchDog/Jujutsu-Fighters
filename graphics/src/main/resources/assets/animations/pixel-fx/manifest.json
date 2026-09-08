@@ -580,49 +580,6 @@
       "posterFrame": 15
     },
     {
-      "id": "simple-domain",
-      "name": "Simple Domain",
-      "description": "A floor seal opens into a faceted protective dome and recedes into runic sparks.",
-      "kind": "move",
-      "placement": "source",
-      "moveIds": [
-        "000138"
-      ],
-      "statusTypes": [],
-      "eventTypes": [],
-      "impactFrame": 12,
-      "impactFrames": [
-        12
-      ],
-      "group": "techniques",
-      "sheet": "sprites/simple-domain.png",
-      "preview": "gifs/simple-domain.gif",
-      "sound": "audio/simple-domain.wav",
-      "frameCount": 32,
-      "frameDurationMs": 50,
-      "loop": false,
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "color": "#95c7d2",
-      "palette": [
-        "#192639",
-        "#334d6a",
-        "#5f89a1",
-        "#95c7d2",
-        "#d1eeec",
-        "#ffffe3"
-      ],
-      "sourceGraphics": [
-        "Graphics/Animations/Health Up.png"
-      ],
-      "isSorcerer": true,
-      "sorcererMoveName": "Simple Domain",
-      "role": "utility",
-      "posterFrame": 15
-    },
-    {
       "id": "shadow-summon",
       "name": "Shadow Summon",
       "description": "A rippling ink pool, rising shadow tendrils and a pair of shikigami eyes.",
@@ -1474,47 +1431,6 @@
       "isSorcerer": true,
       "sorcererMoveName": "Sword Quick Draw",
       "posterFrame": 5
-    },
-    {
-      "id": "new-shadow-style-simple-domain",
-      "name": "New Shadow Style Simple Domain",
-      "description": "A thin floor seal forms around a sheathed katana, ending in a draw-ready guard glint.",
-      "kind": "move",
-      "placement": "source",
-      "moveIds": [
-        "000026"
-      ],
-      "statusTypes": [],
-      "eventTypes": [],
-      "impactFrame": 12,
-      "impactFrames": [
-        12
-      ],
-      "group": "guards",
-      "frameCount": 26,
-      "role": "guard",
-      "sheet": "sprites/new-shadow-style-simple-domain.png",
-      "preview": "gifs/new-shadow-style-simple-domain.gif",
-      "sound": "audio/new-shadow-style-simple-domain.wav",
-      "frameDurationMs": 50,
-      "loop": false,
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "color": "#95c7d2",
-      "palette": [
-        "#192639",
-        "#334d6a",
-        "#5f89a1",
-        "#95c7d2",
-        "#d1eeec",
-        "#ffffe3"
-      ],
-      "sourceGraphics": [],
-      "isSorcerer": true,
-      "sorcererMoveName": "New Shadow Style Simple Domain",
-      "posterFrame": 12
     },
     {
       "id": "sidestep",

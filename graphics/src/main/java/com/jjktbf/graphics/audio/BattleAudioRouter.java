@@ -4,13 +4,22 @@ import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
 import com.jjktbf.multiplayer.protocol.BattleEventState;
+import com.jjktbf.multiplayer.protocol.BattleEventType;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Pure mapping from local/online battle events to presentation-only sound cues. */
+/** Pure mapping from local/online battle events to presentation-only audio. */
 public final class BattleAudioRouter {
+    private static final String SELF_EMBODIMENT_DOMAIN_ID = "000001";
+
+    public record EventMusicCue(MusicTrack track, String ownerId) {
+        public EventMusicCue {
+            Objects.requireNonNull(track, "track");
+        }
+    }
+
     /** Add stable move-ID overrides here; all other moves use their category cue. */
     private static final Map<String, SoundCue> MOVE_UNLEASH_CUES = Map.ofEntries(
         Map.entry("000065", SoundCue.BATTLE_CURSED_SPEECH),
@@ -38,7 +47,8 @@ public final class BattleAudioRouter {
             case MOVE_STUNNED -> Optional.of(SoundCue.BATTLE_STUN);
             case MOVE_SUMMON -> Optional.empty();
             case MOVE_TARGETED, TARGET_RETARGETED, TARGETS_EXCHANGED, DEFENSE_GRANTED,
-                 EFFECT_FAILED, RESOURCE_CHANGED, SIZE_MULTIPLIER_CHANGED -> Optional.empty();
+                 EFFECT_FAILED, RESOURCE_CHANGED, SIZE_MULTIPLIER_CHANGED,
+                 SOUL_MANIPULATION_NEGATED -> Optional.empty();
             case DAMAGE_DEALT -> Optional.of(SoundCue.BATTLE_HIT);
             case DAMAGE_IGNORED -> Optional.of(SoundCue.BATTLE_DAMAGE_IGNORED);
             case HP_RESTORED -> positiveCue(event.getIntValue(), SoundCue.BATTLE_HEAL);
@@ -62,7 +72,8 @@ public final class BattleAudioRouter {
             case MOVE_STARTED, ROUND_START, BATTLE_OVER,
                  DOMAIN_DECLARED, DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED,
                  DOMAIN_CLASH_STARTED, DOMAIN_CLASH_ENDED, DOMAIN_BARRIER_DAMAGED,
-                 DOMAIN_SURE_HIT_APPLIED, DOMAIN_SURE_HIT_NEGATED, DOMAIN_COLLAPSED ->
+                 DOMAIN_BARRIER_MILESTONE, DOMAIN_SURE_HIT_APPLIED,
+                 DOMAIN_SURE_HIT_NEGATED, DOMAIN_COLLAPSED ->
                 Optional.empty();
         };
     }
@@ -78,7 +89,8 @@ public final class BattleAudioRouter {
             case MOVE_STUNNED -> Optional.of(SoundCue.BATTLE_STUN);
             case MOVE_SUMMON -> Optional.empty();
             case MOVE_TARGETED, TARGET_RETARGETED, TARGETS_EXCHANGED, DEFENSE_GRANTED,
-                 EFFECT_FAILED, RESOURCE_CHANGED, SIZE_MULTIPLIER_CHANGED -> Optional.empty();
+                 EFFECT_FAILED, RESOURCE_CHANGED, SIZE_MULTIPLIER_CHANGED,
+                 SOUL_MANIPULATION_NEGATED -> Optional.empty();
             case DAMAGE_DEALT -> Optional.of(SoundCue.BATTLE_HIT);
             case DAMAGE_IGNORED -> Optional.of(SoundCue.BATTLE_DAMAGE_IGNORED);
             case HP_RESTORED -> positiveCue(event.value(), SoundCue.BATTLE_HEAL);
@@ -102,9 +114,46 @@ public final class BattleAudioRouter {
             case MOVE_STARTED, ROUND_START, BATTLE_OVER,
                  DOMAIN_DECLARED, DOMAIN_ESTABLISHED, DOMAIN_COUNTER_ESTABLISHED,
                  DOMAIN_CLASH_STARTED, DOMAIN_CLASH_ENDED, DOMAIN_BARRIER_DAMAGED,
-                 DOMAIN_SURE_HIT_APPLIED, DOMAIN_SURE_HIT_NEGATED, DOMAIN_COLLAPSED ->
+                 DOMAIN_BARRIER_MILESTONE, DOMAIN_SURE_HIT_APPLIED,
+                 DOMAIN_SURE_HIT_NEGATED, DOMAIN_COLLAPSED ->
                 Optional.empty();
         };
+    }
+
+    /** Returns contextual music started by a local event. */
+    public static Optional<EventMusicCue> musicFor(CombatEvent event) {
+        Objects.requireNonNull(event, "event");
+        if (event.getType() != CombatEvent.Type.DOMAIN_ESTABLISHED
+            || !SELF_EMBODIMENT_DOMAIN_ID.equals(event.getDomainId())) return Optional.empty();
+        return Optional.of(new EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, event.getDomainInstanceId()));
+    }
+
+    /** Returns contextual music started by authoritative online playback. */
+    public static Optional<EventMusicCue> musicFor(BattleEventState event) {
+        Objects.requireNonNull(event, "event");
+        if (event.type() != BattleEventType.DOMAIN_ESTABLISHED
+            || !SELF_EMBODIMENT_DOMAIN_ID.equals(event.domainId())) return Optional.empty();
+        return Optional.of(new EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, event.domainInstanceId()));
+    }
+
+    /** Returns contextual music released by a local lifecycle event. */
+    public static Optional<EventMusicCue> musicToStopFor(CombatEvent event) {
+        Objects.requireNonNull(event, "event");
+        if (event.getType() != CombatEvent.Type.DOMAIN_COLLAPSED
+            || !SELF_EMBODIMENT_DOMAIN_ID.equals(event.getDomainId())) return Optional.empty();
+        return Optional.of(new EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, event.getDomainInstanceId()));
+    }
+
+    /** Returns contextual music released by authoritative online playback. */
+    public static Optional<EventMusicCue> musicToStopFor(BattleEventState event) {
+        Objects.requireNonNull(event, "event");
+        if (event.type() != BattleEventType.DOMAIN_COLLAPSED
+            || !SELF_EMBODIMENT_DOMAIN_ID.equals(event.domainId())) return Optional.empty();
+        return Optional.of(new EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, event.domainInstanceId()));
     }
 
     private static Optional<SoundCue> positiveCue(Integer value, SoundCue cue) {

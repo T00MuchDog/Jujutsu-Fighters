@@ -13,8 +13,7 @@
     "black-flash": "black-flash",
     "cursed-energy-burst": "energy",
     "cursed-energy-surge": "energy",
-    "simple-domain": "domain",
-    "new-shadow-style-simple-domain": "domain",
+    "simple-domain-establish": "simple-domain-establish",
     "shadow-summon": "domain",
     "cs-rend": "cs-rend",
     "cs-barrage": "cs-barrage",
@@ -129,6 +128,15 @@
     "MOVE_PARRIED": "blocked"
   },
   "profiles": {
+    "simple-domain-establish": {
+      "durationSeconds": 1.2,
+      "impactSeconds": 0.5,
+      "size": 2.4,
+      "layers": [
+        {"effect": "simple-domain-establish-back", "placement": "source-feet",
+         "plane": "behind", "durationSeconds": 1.2, "size": 2.4}
+      ]
+    },
     "impact": {
       "source": [
         {

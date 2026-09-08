@@ -150,12 +150,11 @@ The resulting launcher is `graphics/target/graphics-1.4.1.jar`.
 
 ### Normal game
 
-The launcher selects one UI profile at startup. macOS defaults to `MAC` and
-Windows defaults to `WINDOWS`. The game, battle state, rules, networking, and
-all other gameplay code remain shared.
+Battle and Character Select use one shared responsive design on every host,
+based on the original Windows `2560 x 1440` design. They adapt to the actual
+viewport, not an operating-system profile. Menus and editors retain their existing
+`MAC`/`WINDOWS` presentation profiles; the launcher selects those at startup.
 
-The Windows profile uses a fixed `2560 x 1440` reference canvas. Windows screens
-are uniformly fitted to the live window without reflowing their authored layout.
 The launcher detects the native monitor mode and Windows display scale, then picks
 and persists the largest supported resolution that fits (`1366 x 768`,
 `1920 x 1080`, or `2560 x 1440`). It does not apply the Windows DPI scale a second
@@ -175,9 +174,9 @@ mvn "-Drevision=1.4.1" -pl core,graphics -am clean verify
 java "-Djjktbf.authoring=true" -jar graphics/target/graphics-1.4.1.jar
 ```
 
-The profile can be overridden independently of the host OS. For example, this
-launches the normal game with the Windows presentation on a Mac:
-
+The **menu/editor** profile can be overridden independently of the host OS with
+`--ui-profile=MAC` or `--ui-profile=WINDOWS`. Neither option changes Battle or
+Character Select, and neither changes native fullscreen/window handling.
 
 Use `--windowed --width=1600 --height=900` when a windowed normal-game launch is
 more convenient. The equivalent persistent JVM override is
@@ -187,16 +186,19 @@ more convenient. The equivalent persistent JVM override is
 > `-XstartOnFirstThread`. The packaged `.app`/`.dmg` supplies it automatically.
 > Do not pass this option on Windows.
 
-### Battle UI profiles
+### Shared gameplay UI
 
-Battle layout values are edited manually in two independent tracked files:
-
-The tracked profile files are:
+Battle layout metrics are edited in one tracked resource:
 
 ```text
-graphics/src/main/resources/assets/ui/battle-layouts/mac.json
-graphics/src/main/resources/assets/ui/battle-layouts/windows.json
+graphics/src/main/resources/assets/ui/battle-layouts/shared.json
 ```
+
+`UiScaleSystem` owns shared reference dimensions and small-viewport text sizing.
+Character Select expands its logical viewport and content panels. `BattleCanvas`
+anchors planning to the bottom, preserves the battlefield proportions, and extends
+background/log surfaces into extra aspect-ratio space instead of adding black bars.
+See [Shared Gameplay UI](docs/SHARED_GAMEPLAY_UI.md) for ownership and rendered validation.
 
 ### Run multiplayer locally
 

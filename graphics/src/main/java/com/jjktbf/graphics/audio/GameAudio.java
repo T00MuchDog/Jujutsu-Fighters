@@ -11,6 +11,7 @@ import com.jjktbf.AppPaths;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -24,6 +25,7 @@ import java.util.Set;
  */
 public final class GameAudio implements Disposable {
     private static final int MUSIC_HEADER_BYTES = 96;
+    private static final float EVENT_MUSIC_FADE_SECONDS = 1f;
     private static final String PREFERENCES_NAME = "jjktbf-audio";
     private static final String MASTER_VOLUME_KEY = "masterVolume";
     private static final String MUSIC_VOLUME_KEY = "musicVolume";
@@ -39,7 +41,12 @@ public final class GameAudio implements Disposable {
 
     private AudioSettings settings;
     private MusicTrack requestedTrack;
-    private Music currentMusic;
+    private Music backgroundMusic;
+    private MusicTrack eventTrack;
+    private Music eventMusic;
+    private final Set<String> eventMusicOwners = new HashSet<>();
+    private float eventMusicMix;
+    private float eventMusicTarget;
     private boolean paused;
     private boolean disposed;
 
@@ -49,33 +56,92 @@ public final class GameAudio implements Disposable {
         loadAssets();
     }
 
+    GameAudio(AudioSettings settings, Map<MusicTrack, Music> loadedMusic) {
+        this.preferences = null;
+        this.settings = Objects.requireNonNull(settings, "settings");
+        this.music.putAll(Objects.requireNonNull(loadedMusic, "loadedMusic"));
+    }
+
     /** Switches looped music without restarting an already active track. */
     public void playMusic(MusicTrack track) {
         Objects.requireNonNull(track, "track");
         if (disposed) return;
 
-        if (track == requestedTrack) {
-            updateMusicVolume();
-            if (!paused && currentMusic != null && !currentMusic.isPlaying()) {
-                currentMusic.play();
+        cancelEventMusic();
+        if (track == requestedTrack && backgroundMusic == music.get(track)) {
+            updateMusicVolumes();
+            if (!paused && backgroundMusic != null && !backgroundMusic.isPlaying()) {
+                backgroundMusic.play();
             }
             return;
         }
 
-        if (currentMusic != null) currentMusic.stop();
+        stopBackgroundMusic();
         requestedTrack = track;
-        currentMusic = music.get(track);
-        if (currentMusic == null) return;
+        backgroundMusic = music.get(track);
+        if (backgroundMusic == null) return;
 
-        currentMusic.setLooping(true);
-        updateMusicVolume();
-        if (!paused) currentMusic.play();
+        backgroundMusic.setLooping(true);
+        backgroundMusic.setOnCompletionListener(null);
+        updateMusicVolumes();
+        if (!paused) backgroundMusic.play();
+    }
+
+    /**
+     * Cross-fades from screen music to a looping event track. Owners let
+     * overlapping instances share one track without the first collapse
+     * stopping music still owned by another instance.
+     */
+    public void playEventMusic(MusicTrack track, String ownerId) {
+        Objects.requireNonNull(track, "track");
+        if (disposed) return;
+
+        Music nextMusic = music.get(track);
+        if (nextMusic == null) return;
+        if (track == eventTrack && eventMusic == nextMusic) {
+            eventMusicOwners.add(ownerId);
+            eventMusicTarget = 1f;
+            updateMusicVolumes();
+            if (!paused && !eventMusic.isPlaying()) eventMusic.play();
+            return;
+        }
+
+        cancelEventMusic();
+        eventTrack = track;
+        eventMusic = nextMusic;
+        eventMusicOwners.add(ownerId);
+        eventMusicMix = 0f;
+        eventMusicTarget = 1f;
+        eventMusic.setLooping(true);
+        eventMusic.setOnCompletionListener(null);
+        updateMusicVolumes();
+        if (!paused) eventMusic.play();
+    }
+
+    /** Fades an event track out once its last owning event instance ends. */
+    public void stopEventMusic(MusicTrack track, String ownerId) {
+        Objects.requireNonNull(track, "track");
+        if (disposed || track != eventTrack || !eventMusicOwners.remove(ownerId)) return;
+        if (eventMusicOwners.isEmpty()) eventMusicTarget = 0f;
+    }
+
+    /** Advances event/background cross-fades in real time. */
+    public void update(float deltaSeconds) {
+        if (disposed || paused || eventMusic == null || !Float.isFinite(deltaSeconds)) return;
+        float step = Math.max(0f, deltaSeconds) / EVENT_MUSIC_FADE_SECONDS;
+        if (eventMusicMix < eventMusicTarget) {
+            eventMusicMix = Math.min(eventMusicTarget, eventMusicMix + step);
+        } else if (eventMusicMix > eventMusicTarget) {
+            eventMusicMix = Math.max(eventMusicTarget, eventMusicMix - step);
+        }
+        updateMusicVolumes();
+        if (eventMusicTarget == 0f && eventMusicMix == 0f) cancelEventMusic();
     }
 
     public void stopMusic() {
-        if (currentMusic != null) currentMusic.stop();
+        cancelEventMusic();
+        stopBackgroundMusic();
         requestedTrack = null;
-        currentMusic = null;
     }
 
     /** Starts the configured battle music, or stops music when the choice is None. */
@@ -145,7 +211,7 @@ public final class GameAudio implements Disposable {
         boolean newlyMuted = settings.muted() && !this.settings.muted();
         this.settings = settings;
         if (newlyMuted) stopAllSounds();
-        updateMusicVolume();
+        updateMusicVolumes();
     }
 
     public void setMasterVolume(float volume) {
@@ -175,17 +241,17 @@ public final class GameAudio implements Disposable {
     public void pause() {
         if (disposed || paused) return;
         paused = true;
-        if (currentMusic != null && currentMusic.isPlaying()) currentMusic.pause();
+        if (backgroundMusic != null && backgroundMusic.isPlaying()) backgroundMusic.pause();
+        if (eventMusic != null && eventMusic.isPlaying()) eventMusic.pause();
         stopAllSounds();
     }
 
     public void resume() {
         if (disposed || !paused) return;
         paused = false;
-        if (currentMusic != null) {
-            updateMusicVolume();
-            currentMusic.play();
-        }
+        updateMusicVolumes();
+        if (backgroundMusic != null && !backgroundMusic.isPlaying()) backgroundMusic.play();
+        if (eventMusic != null && !eventMusic.isPlaying()) eventMusic.play();
     }
 
     @Override
@@ -262,10 +328,37 @@ public final class GameAudio implements Disposable {
         return true;
     }
 
-    private void updateMusicVolume() {
-        if (currentMusic == null || requestedTrack == null) return;
-        currentMusic.setVolume(
-            settings.effectiveVolume(AudioChannel.MUSIC, requestedTrack.gain()));
+    private void updateMusicVolumes() {
+        if (backgroundMusic != null && requestedTrack != null) {
+            backgroundMusic.setVolume(settings.effectiveVolume(
+                AudioChannel.MUSIC, requestedTrack.gain()) * (1f - eventMusicMix));
+        }
+        if (eventMusic != null && eventTrack != null) {
+            eventMusic.setVolume(settings.effectiveVolume(
+                AudioChannel.MUSIC, eventTrack.gain()) * eventMusicMix);
+        }
+    }
+
+    private void cancelEventMusic() {
+        Music playing = eventMusic;
+        eventMusic = null;
+        eventTrack = null;
+        eventMusicOwners.clear();
+        eventMusicMix = 0f;
+        eventMusicTarget = 0f;
+        if (playing != null) {
+            playing.setOnCompletionListener(null);
+            playing.stop();
+        }
+        updateMusicVolumes();
+    }
+
+    private void stopBackgroundMusic() {
+        Music playing = backgroundMusic;
+        backgroundMusic = null;
+        if (playing == null) return;
+        playing.setOnCompletionListener(null);
+        playing.stop();
     }
 
     private void stopAllSounds() {

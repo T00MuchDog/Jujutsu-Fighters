@@ -62,7 +62,7 @@ authority. Do not create LibGDX dependencies in core.**
 | Battle planning UI | `graphics/.../ui/battle/PlanningPanel.java` |
 | Move cards | `graphics/.../ui/battle/MoveCardView.java` |
 | HUD/status bars/meters | `graphics/.../ui/CombatantPanel.java`, `StatusBar.java`, meter class |
-| Mac/Windows battle geometry | `graphics/.../ui/profile/` + battle-layout JSON |
+| Shared Battle/Character Select geometry | `UiScaleSystem`, `BattleCanvas`, `ui/profile/BattleUiLayout` |
 | Battle integration/render lifecycle | relevant methods in `BattleScreen.java` |
 | Main navigation/screens | `JJKGame.java` + relevant `screens/*Screen.java` |
 | Move editor | `MoveEditorScreen.java` (+ `MoveData` if schema changes) |
@@ -429,7 +429,7 @@ graphics/.../ui/battle/
 - `ActionSegmentView` — action segment view.
 - `TimelineBar` — timeline bar.
 - `BattleUiAssets` — battle-specific UI assets.
-- `WindowsBattleCanvas` — Windows battle canvas concerns.
+- `BattleCanvas` — shared battle anchors, surfaces, scaling, and input transforms.
 
 General HUD/UI:
 
@@ -443,7 +443,7 @@ Useful owners:
 
 ---
 
-## 12. Mac/Windows Battle Layout
+## 12. Shared Gameplay Layout
 
 Package:
 
@@ -453,17 +453,22 @@ graphics/.../ui/profile/
 
 - `BattleUiLayout`
 - `BattleUiLayoutStore`
-- `UiProfile`
+- `UiScaleSystem` (in `ui/`) — shared gameplay reference dimensions, expandable
+  Character Select viewport, and body-text sizing.
+- `BattleCanvas` (in `ui/battle/`) — bottom-anchored planner and safe
+  battlefield with full-viewport surrounding surfaces.
+- `UiProfile` — retained menu/editor profiles only, not Battle/Character Select.
 
 Tracked layout files:
 
 ```text
-graphics/src/main/resources/assets/ui/battle-layouts/mac.json
-graphics/src/main/resources/assets/ui/battle-layouts/windows.json
+graphics/src/main/resources/assets/ui/battle-layouts/shared.json
 ```
 
-For platform geometry, start with the relevant JSON + `BattleUiLayout`.
-Do not change game rules.
+For gameplay geometry, start with `UiScaleSystem`, `BattleCanvas`, the shared JSON,
+and the target screen. `AssetLoader.gameplayFont*` is independent of shell fonts.
+Native host behavior stays in `GraphicsMain`/`DesktopPlatform`/`display/`.
+See `docs/SHARED_GAMEPLAY_UI.md`. Do not change game rules.
 
 ---
 
@@ -887,11 +892,11 @@ model/character/coded/<NamedAbility>
  → tests
 ```
 
-## 33. Platform UI Geometry
+## 33. Gameplay UI Geometry
 
 ```text
-mac.json OR windows.json
- → BattleUiLayout
+UiScaleSystem / BattleCanvas / shared.json
+  → BattleUiLayout / target screen layout
  → specific small UI component
  → relevant BattleScreen method only if required
 ```
@@ -982,7 +987,7 @@ Do not read all docs for every task.
 9. Shared repository behavior belongs in `BaseRepository`.
 10. Slot-budget rules belong in `SlotBudgetEnforcer`.
 11. Stat aliases/name mapping belong in `StatKey`.
-12. Platform battle geometry belongs in layout/profile resources.
+12. Battle/Character Select geometry is shared and viewport-driven; native window policy is separate.
 13. `GLOSSARY.txt` is canonical terminology.
 14. Prefer one behavior owner over duplicated checks across modules.
 15. Preserve injected/deterministic randomness in battle resolution.

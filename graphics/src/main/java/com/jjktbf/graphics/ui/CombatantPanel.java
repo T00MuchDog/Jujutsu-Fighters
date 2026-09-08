@@ -2,6 +2,8 @@ package com.jjktbf.graphics.ui;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.TextureData;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
@@ -42,6 +44,7 @@ public class CombatantPanel {
     private float sizeTransitionStart = 1f;
     private float targetSizeMultiplier = 1f;
     private float sizeTransitionElapsed = SIZE_TRANSITION_SECONDS;
+    private Rectangle spriteContentBounds;
 
     /**
      * The plate and sprite occupy the battlefield while the HUD is positioned on
@@ -183,6 +186,49 @@ public class CombatantPanel {
     }
 
     public float spriteHeight() { return spriteBounds.height; }
+
+    /** Visible pixel height, excluding padding in the sprite's texture canvas. */
+    public float spriteContentHeight() {
+        return spriteHeight() * contentBounds().height * sizeMultiplier;
+    }
+
+    /** Actual soles after the same foot-pivot transform used by drawSprite. */
+    public float[] spriteGroundAnchor(com.jjktbf.graphics.animation.BattleChoreography.Pose pose) {
+        float unit = spriteHeight();
+        float padding = contentBounds().y * unit * sizeMultiplier * pose.scaleY();
+        float angle = pose.rotation() * com.badlogic.gdx.math.MathUtils.degreesToRadians;
+        return new float[] {spriteCenterX() + pose.x() * unit - (float) Math.sin(angle) * padding,
+            spriteBounds.y + pose.y() * unit + (float) Math.cos(angle) * padding};
+    }
+
+    private Rectangle contentBounds() {
+        if (spriteContentBounds != null) return spriteContentBounds;
+        spriteContentBounds = new Rectangle(0, 0, 1, 1);
+        if (sprite == null) return spriteContentBounds;
+        TextureData data = sprite.getTextureData();
+        if (data.getType() != TextureData.TextureDataType.Pixmap) return spriteContentBounds;
+        if (!data.isPrepared()) data.prepare();
+        Pixmap pixels = data.consumePixmap();
+        try {
+            int top = pixels.getHeight();
+            int bottom = -1;
+            for (int y = 0; y < pixels.getHeight(); y++) {
+                for (int x = 0; x < pixels.getWidth(); x++) {
+                    if ((pixels.getPixel(x, y) & 0xff) != 0) {
+                        top = Math.min(top, y);
+                        bottom = y;
+                        break;
+                    }
+                }
+            }
+            if (bottom >= top) spriteContentBounds.set(0,
+                (pixels.getHeight() - bottom - 1f) / pixels.getHeight(), 1,
+                (bottom - top + 1f) / pixels.getHeight());
+        } finally {
+            if (data.disposePixmap()) pixels.dispose();
+        }
+        return spriteContentBounds;
+    }
 
     /** The fighter's sprite texture, e.g. to derive a tinted copy for entrances. */
     public Texture spriteTexture() {

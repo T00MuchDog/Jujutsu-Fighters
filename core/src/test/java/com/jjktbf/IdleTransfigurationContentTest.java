@@ -166,7 +166,7 @@ class IdleTransfigurationContentTest {
                 moveId + " must consume its stock when the move starts");
         }
         AbilityData stockpile = catalogs.abilities().stream()
-            .filter(ability -> "000063".equals(ability.id))
+            .filter(ability -> "000062".equals(ability.id))
             .findFirst().orElseThrow();
         assertTrue(stockpile.effects.stream().anyMatch(effect ->
             AbilityEffectType.DEFINE_BOUNDED_RESOURCE.name().equalsIgnoreCase(effect.type)
@@ -276,7 +276,7 @@ class IdleTransfigurationContentTest {
     @Test
     void theCodedAbilitiesValidateAgainstTheRegistry() throws IOException {
         Catalogs catalogs = catalogs();
-        for (String abilityId : List.of("000060", "000061", "000062")) {
+        for (String abilityId : List.of("000060", "000061")) {
             AbilityData ability = catalogs.abilities().stream()
                 .filter(entry -> abilityId.equals(entry.id))
                 .findFirst().orElseThrow();

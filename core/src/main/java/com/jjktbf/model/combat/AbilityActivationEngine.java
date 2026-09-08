@@ -105,7 +105,19 @@ public final class AbilityActivationEngine {
         return events;
     }
 
+    private int reactionDepth;
+
     public List<CombatEvent> process(BattleState state, AbilityTrigger initialTrigger) {
+        if (reactionDepth >= MAX_CHAINED_TRIGGERS) return List.of();
+        reactionDepth++;
+        try {
+            return processTriggers(state, initialTrigger);
+        } finally {
+            reactionDepth--;
+        }
+    }
+
+    private List<CombatEvent> processTriggers(BattleState state, AbilityTrigger initialTrigger) {
         List<CombatEvent> events = new ArrayList<>();
         ArrayDeque<AbilityTrigger> triggers = new ArrayDeque<>();
         Set<RuleActivationKey> activatedThisChain = new HashSet<>();
@@ -242,6 +254,10 @@ public final class AbilityActivationEngine {
                 ? move.getHitComponents().get(componentIndex) : null;
         AbilityTrigger trigger = moveEffectTrigger(
             owner, currentTarget, move, component, moveTrigger, tick);
+        // An effect row that defeats the current target outright (a successful
+        // Soul Manipulation becomes an instant kill) preempts the move's
+        // remaining rows: nothing follows the kill on this tick.
+        boolean targetDefeatedOnEntry = currentTarget != null && currentTarget.isDefeated();
         List<CombatEvent> events = new ArrayList<>();
         ArrayDeque<AbilityTrigger> followUps = new ArrayDeque<>();
         int mastery = TechniqueMasteryResolver.masteryOf(owner);
@@ -286,6 +302,10 @@ public final class AbilityActivationEngine {
             AbilityEffectData effect = TechniqueMasteryResolver.resolve(authored, mastery);
             applyEffect(state, owner, currentTarget, effect, tick, events, followUps,
                 true, move, component, moveTargets, moveAllies, pairTargets);
+            if (!targetDefeatedOnEntry
+                && currentTarget != null && currentTarget.isDefeated()) {
+                break;
+            }
         }
         while (!followUps.isEmpty()) {
             events.addAll(process(state, followUps.removeFirst()));
@@ -561,7 +581,7 @@ public final class AbilityActivationEngine {
             trigger,
             binding -> allowsCodedBinding(
                 binding, owner, enemy, state, trigger, activationCache),
-            rng);
+            rng, reaction -> process(state, reaction));
     }
 
     /** Preserve event facts even when a coded runtime does not query its gate yet. */
@@ -824,7 +844,7 @@ public final class AbilityActivationEngine {
                   TIMELINE_POINT_REACHED -> history.stream().anyMatch(candidate ->
                 eventLeafMatches(type, condition, owner, enemy, state, candidate, targetLocal));
             case ATTACK_CONNECTED, CONNECTED_HIT_HAS_TAG, INCOMING_HIT_HAS_TAG, FATAL_DAMAGE,
-                 INCOMING_HIT_LACKS_CURSED_ENERGY ->
+                 INCOMING_HIT_LACKS_CURSED_ENERGY, SOUL_MANIPULATION_TARGETED ->
                 eventLeafMatches(type, condition, owner, enemy, state, trigger, targetLocal);
             case ROUND_REACHED -> state.getRoundNumber() >= conditionRound(condition, owner);
             case TIMELINE_POINT_ON_ROUND, EVERY_N_ROUNDS, PHASE_REACHED, HEALED,
@@ -964,7 +984,9 @@ public final class AbilityActivationEngine {
                     if (damage > 0) {
                         followUps.add(AbilityTrigger.damage(
                             owner, target, damage,
-                            Boolean.TRUE.equals(effect.soulDamage), tick));
+                            Boolean.TRUE.equals(effect.soulDamage)
+                                || move != null && move.hasTag(MoveTag.ATTACK.name())
+                                    && target != owner && owner.hasSoulAwareAttacks(), tick));
                         if (target.removeStatusEffects(StatusEffectType.SLEEP) > 0) {
                             events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
                                 .source(owner).target(target).move(move)
@@ -980,6 +1002,12 @@ public final class AbilityActivationEngine {
                         state, target, this::executeDomainEffect, tick));
                 }
             }
+            case NEGATE_SOUL_MANIPULATION -> events.add(CombatEvent.of(
+                    CombatEvent.Type.SOUL_MANIPULATION_NEGATED)
+                .source(owner).target(enemy).tick(tick)
+                .message(owner.getCharacter().getName()
+                    + " prevents Soul Manipulation from taking hold.")
+                .build());
             case APPLY_STATUS -> {
                 StatusEffectType status = status(effect.stringValue, effect.magnitude);
                 if (status == null) return;
@@ -1296,7 +1324,8 @@ public final class AbilityActivationEngine {
                     effect.masteryProgression);
                 for (BattleCombatant target : targets) {
                     events.addAll(owner.getCodedAbilities().onEffectFired(
-                        state, coded, owner, target, tick, rng));
+                        state, coded, owner, target, tick, rng,
+                        reaction -> process(state, reaction)));
                 }
             }
             case MAX_ACTIVE_SUMMONS, SUMMON_CE_UPKEEP_PER_ACTIVE_TICK,
@@ -1400,7 +1429,7 @@ public final class AbilityActivationEngine {
         boolean eventCondition = switch (type) {
             case BLACK_FLASH_HIT, MOVE_USED, MOVE_TAG_USED, MOVE_WEAPON_REQUIRED,
                   MOVE_TYPE_TAGS_EXACTLY, ATTACK_HIT, ATTACK_MISSED, MOVE_BLOCKED,
-                  EVENT_TARGET,
+                  EVENT_TARGET, SOUL_MANIPULATION_TARGETED,
                   TIMELINE_POINT_REACHED, TIMELINE_POINT_ON_ROUND,
                   EVERY_N_ROUNDS, PHASE_REACHED, HEALED, DAMAGE_DEALT_AT_LEAST,
                   DAMAGE_TAKEN_AT_LEAST, CE_SPENT_AT_LEAST, CE_LOST_AT_LEAST,
@@ -1458,6 +1487,9 @@ public final class AbilityActivationEngine {
                 && eventActorMatches(condition, owner, state, trigger.actor());
             case EVENT_TARGET -> trigger.target() != null
                 && eventActorMatches(condition, owner, state, trigger.target());
+            case SOUL_MANIPULATION_TARGETED ->
+                trigger.type() == AbilityTrigger.Type.SOUL_MANIPULATION_ATTEMPT
+                    && eventActorMatches(condition, owner, state, trigger.target());
             case ATTACK_CONNECTED -> (trigger.type() == AbilityTrigger.Type.ATTACK_CONNECTED
                     || moveContext && trigger.type() == AbilityTrigger.Type.ATTACK_HIT)
                 && eventActorMatches(condition, owner, state, trigger.actor());
@@ -1545,6 +1577,8 @@ public final class AbilityActivationEngine {
             case ENEMY -> moveContext
                 ? moveTargets
                 : state.activeEnemiesOf(owner);
+            case CURRENT_ENEMY -> currentTarget != null && currentTarget.isActive()
+                && !currentTarget.isAlliedWith(owner) ? List.of(currentTarget) : List.of();
             case ALLY -> allies;
             case BOTH -> {
                 List<BattleCombatant> out = new ArrayList<>();

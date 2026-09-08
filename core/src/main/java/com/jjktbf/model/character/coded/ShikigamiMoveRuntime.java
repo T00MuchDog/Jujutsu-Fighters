@@ -47,6 +47,6 @@ public final class ShikigamiMoveRuntime implements CodedAbilityRuntime {
 
     @Override
     public CodedAbilityState state() {
-        return new CodedAbilityState(KEY, "Shikigami", 0, 0);
+        return new CodedAbilityState(KEY, "Shikigami", 0, 0, false);
     }
 }

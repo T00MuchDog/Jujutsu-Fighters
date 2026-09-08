@@ -6,33 +6,39 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Resolves {@code *move:id*} / {@code *ability:id*} reference tokens in
- * player-facing text to the referenced content's current display name, so
- * descriptions never hardcode names that drift when content is renamed.
+ * Resolves {@code *move:id*} / {@code *ability:id*} / {@code *domain:id*}
+ * reference tokens in player-facing text to the referenced content's current
+ * display name, so descriptions never hardcode names that drift when content
+ * is renamed.
  *
- * Move and ability IDs share the same numeric namespace, so every token
- * carries a type prefix. Unknown references are left verbatim, mirroring how
- * {@link MoveDescriptionVariables} treats unknown {@code :effect-x.y:} tokens.
+ * Move, ability, and Domain IDs share the same numeric namespace, so every
+ * token carries a type prefix. Unknown references are left verbatim, mirroring
+ * how {@link MoveDescriptionVariables} treats unknown {@code :effect-x.y:}
+ * tokens.
  */
 public final class ContentNameTokens {
 
     public static final String MOVE_PREFIX = "move";
     public static final String ABILITY_PREFIX = "ability";
+    public static final String DOMAIN_PREFIX = "domain";
+
+    private static final String PREFIXES =
+        MOVE_PREFIX + "|" + ABILITY_PREFIX + "|" + DOMAIN_PREFIX;
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile(
-        "\\*(" + MOVE_PREFIX + "|" + ABILITY_PREFIX + "):([A-Za-z0-9_-]+)\\*",
+        "\\*(" + PREFIXES + "):([A-Za-z0-9_-]+)\\*",
         Pattern.CASE_INSENSITIVE);
     private static final Pattern TOKEN_CANDIDATE = Pattern.compile(
-        "\\*(" + MOVE_PREFIX + "|" + ABILITY_PREFIX + "):\\S*\\*",
+        "\\*(" + PREFIXES + "):\\S*\\*",
         Pattern.CASE_INSENSITIVE);
     private static final Pattern UNCLOSED_START = Pattern.compile(
-        "\\*(" + MOVE_PREFIX + "|" + ABILITY_PREFIX + "):",
+        "\\*(" + PREFIXES + "):",
         Pattern.CASE_INSENSITIVE);
 
     private ContentNameTokens() {
     }
 
-    /** Supplies the display name for a {@link #MOVE_PREFIX}/{@link #ABILITY_PREFIX} id; null when unknown. */
+    /** Supplies the display name for a {@link #MOVE_PREFIX}/{@link #ABILITY_PREFIX}/{@link #DOMAIN_PREFIX} id; null when unknown. */
     @FunctionalInterface
     public interface NameLookup {
         String nameOf(String type, String id);
@@ -43,9 +49,19 @@ public final class ContentNameTokens {
         Map<String, ? extends String> moveNamesById,
         Map<String, ? extends String> abilityNamesById
     ) {
+        return of(moveNamesById, abilityNamesById, null);
+    }
+
+    /** Builds a lookup over ready-made id-to-name maps; null maps resolve nothing. */
+    public static NameLookup of(
+        Map<String, ? extends String> moveNamesById,
+        Map<String, ? extends String> abilityNamesById,
+        Map<String, ? extends String> domainNamesById
+    ) {
         return (type, id) -> {
             Map<String, ? extends String> names = MOVE_PREFIX.equalsIgnoreCase(type)
-                ? moveNamesById : abilityNamesById;
+                ? moveNamesById
+                : ABILITY_PREFIX.equalsIgnoreCase(type) ? abilityNamesById : domainNamesById;
             return names != null && id != null ? names.get(id) : null;
         };
     }
@@ -55,9 +71,19 @@ public final class ContentNameTokens {
         Function<String, String> moveNameById,
         Function<String, String> abilityNameById
     ) {
+        return of(moveNameById, abilityNameById, null);
+    }
+
+    /** Builds a lookup over three id-to-name functions (e.g. repository {@code findById} chains). */
+    public static NameLookup of(
+        Function<String, String> moveNameById,
+        Function<String, String> abilityNameById,
+        Function<String, String> domainNameById
+    ) {
         return (type, id) -> {
             Function<String, String> names = MOVE_PREFIX.equalsIgnoreCase(type)
-                ? moveNameById : abilityNameById;
+                ? moveNameById
+                : ABILITY_PREFIX.equalsIgnoreCase(type) ? abilityNameById : domainNameById;
             return names != null && id != null ? names.apply(id) : null;
         };
     }

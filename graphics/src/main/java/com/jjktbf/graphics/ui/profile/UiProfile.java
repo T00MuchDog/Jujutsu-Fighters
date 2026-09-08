@@ -2,7 +2,7 @@ package com.jjktbf.graphics.ui.profile;
 
 import java.util.Locale;
 
-/** Stable UI presentation profiles. Gameplay and battle state remain shared. */
+/** Legacy menu/editor presentation profiles. Battle and Character Select do not use these. */
 public enum UiProfile {
     MAC("mac", 1512, 982, 1.0f),
     WINDOWS("windows", 2560, 1440, 1.5f);

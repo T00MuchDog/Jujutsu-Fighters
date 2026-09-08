@@ -201,7 +201,7 @@ public final class RatioAbility implements CodedAbilityRuntime {
     @Override
     public CodedAbilityState state() {
         int capacity = maximumStacks == null ? configuredCapacity() : maximumStacks;
-        return new CodedAbilityState(KEY, "Ratio", stacks.size(), Math.max(0, capacity));
+        return new CodedAbilityState(KEY, "Ratio", stacks.size(), Math.max(0, capacity), false);
     }
 
     public static boolean supportsFeature(String feature) {

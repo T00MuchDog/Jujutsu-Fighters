@@ -3,11 +3,11 @@ package com.jjktbf.graphics.ui.battle;
 import com.badlogic.gdx.math.Rectangle;
 import com.jjktbf.graphics.ui.UiScaleSystem;
 
-/** Maps the fixed Windows battle composition to the live desktop viewport. */
-public final class WindowsBattleCanvas {
+/** Uniformly scales the shared battle composition while its surfaces fill the viewport. */
+public final class BattleCanvas {
 
-    public static final float WIDTH = UiScaleSystem.WINDOWS_REFERENCE_WIDTH;
-    public static final float HEIGHT = UiScaleSystem.WINDOWS_REFERENCE_HEIGHT;
+    public static final float WIDTH = UiScaleSystem.GAMEPLAY_REFERENCE_WIDTH;
+    public static final float HEIGHT = UiScaleSystem.GAMEPLAY_REFERENCE_HEIGHT;
     public static final float PLANNING_HEIGHT_REDUCTION = 47.04f;
     public static final float BOTTOM_SECTION_HEIGHT = 537.96f;
     public static final float LEFT_COLUMN_WIDTH = 581f;
@@ -29,19 +29,21 @@ public final class WindowsBattleCanvas {
     private final float bottomOffsetY;
     private final float topOffsetY;
 
-    private WindowsBattleCanvas(float viewportWidth, float viewportHeight) {
+    private BattleCanvas(float viewportWidth, float viewportHeight) {
         this.viewportWidth = Math.max(1f, viewportWidth);
         this.viewportHeight = Math.max(1f, viewportHeight);
-        UiScaleSystem.Fit fit = UiScaleSystem.fitWindows(
+        var metrics = UiScaleSystem.gameplayMetrics(
             this.viewportWidth, this.viewportHeight);
-        this.scale = fit.scale();
-        this.offsetX = fit.offsetX();
-        this.bottomOffsetY = fit.offsetY();
-        this.topOffsetY = fit.offsetY();
+        this.scale = metrics.scale();
+        this.offsetX = (this.viewportWidth - WIDTH * scale) / 2f;
+        this.bottomOffsetY = 0f;
+        // The foreground back sprites are cropped at the planner edge. Moving the
+        // field independently exposes their flat bottoms on taller viewports.
+        this.topOffsetY = this.bottomOffsetY;
     }
 
-    public static WindowsBattleCanvas fit(float viewportWidth, float viewportHeight) {
-        return new WindowsBattleCanvas(viewportWidth, viewportHeight);
+    public static BattleCanvas fit(float viewportWidth, float viewportHeight) {
+        return new BattleCanvas(viewportWidth, viewportHeight);
     }
 
     public float viewportWidth() { return viewportWidth; }
@@ -50,6 +52,25 @@ public final class WindowsBattleCanvas {
     public float offsetX() { return offsetX; }
     public float offsetY(Anchor anchor) {
         return anchor == Anchor.TOP ? topOffsetY : bottomOffsetY;
+    }
+
+    /** Bottom-anchored chrome extends into side margins; controls remain in the safe canvas. */
+    public Rectangle planningSurface() {
+        return new Rectangle(logicalX(0f), 0f, viewportWidth / scale, BOTTOM_SECTION_HEIGHT);
+    }
+
+    /** Upper surfaces use the battlefield transform, but meet the bottom-fixed planner exactly. */
+    public Rectangle executionSurface() {
+        float bottom = BOTTOM_SECTION_HEIGHT - topOffsetY / scale;
+        return new Rectangle(LEFT_COLUMN_WIDTH, bottom,
+            logicalX(viewportWidth) - LEFT_COLUMN_WIDTH,
+            logicalY(viewportHeight, Anchor.TOP) - bottom);
+    }
+
+    public Rectangle logSurface() {
+        Rectangle execution = executionSurface();
+        float left = logicalX(0f);
+        return new Rectangle(left, execution.y, LEFT_COLUMN_WIDTH - left, execution.height);
     }
 
     public float logicalX(float physicalX) {

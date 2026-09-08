@@ -904,6 +904,17 @@ public class CombatResolver {
                     segment.stun();
                     continue;
                 }
+                // Instant moves fire this same tick and already log "used";
+                // only wind-up moves get the "prepares" broadcast at their start.
+                if (segment.getFireTick() > tick) {
+                    events.add(CombatEvent.of(CombatEvent.Type.MOVE_STARTED)
+                        .source(combatant)
+                        .move(segment.getMove())
+                        .tick(tick)
+                        .message(combatant.getCharacter().getName() + " prepares "
+                            + segment.getMove().getName() + "!")
+                        .build());
+                }
                 events.addAll(abilityActivations.processMoveEffects(
                     state, combatant, List.of(), segment.getMove(),
                     MoveEffectTrigger.ON_START, -1, tick,
@@ -1985,8 +1996,9 @@ public class CombatResolver {
                             + " back at " + attacker.getCharacter().getName() + "!")
                     .build());
                 if (reflected > 0) {
-                    events.addAll(abilityActivations.process(state, AbilityTrigger.amount(
-                        AbilityTrigger.Type.DAMAGE, defender, attacker, reflected, tick)));
+                    events.addAll(abilityActivations.process(state, AbilityTrigger.damage(
+                        defender, attacker, reflected,
+                        component.isSoulDamage() || attacker.hasSoulAwareAttacks(), tick)));
                     wakeFromSleep(state, defender, attacker, move, componentIndex, tick, events);
                 }
                 events.addAll(state.domainBattlefield().onOwnerHealthChanged(
@@ -2046,6 +2058,12 @@ public class CombatResolver {
                     attacker, defender, move, component, fatalAmount, tick)));
         events.addAll(defender.getCodedAbilities().drainPendingEvents(tick));
 
+        // The hit's own damage has landed by now. Any defeat from here on is
+        // caused by a triggered effect — a successful Soul Manipulation turns
+        // into an instant kill that must occur immediately, before anything
+        // else on the tick.
+        boolean defenderDownFromHitDamage = defender.isDefeated();
+
         if (wasBlocked) {
             ActionSegment defenseSegment = result.getDefenseSegment();
             events.add(CombatEvent.of(CombatEvent.Type.MOVE_BLOCK_REDUCED)
@@ -2089,9 +2107,18 @@ public class CombatResolver {
             state, defender, appliedDamage, abilityActivations::executeDomainEffect, tick));
         events.addAll(abilityActivations.process(state, AbilityTrigger.attackHit(
             attacker, defender, move, component, tick)));
+        if (!defenderDownFromHitDamage && defender.isDefeated()) {
+            // An instant kill resolved during the hit (e.g. a successful Soul
+            // Manipulation): reconcile the defeat now and let nothing else —
+            // damage reactions, elemental riders, on-hit rows — follow it.
+            events.addAll(defender.getCodedAbilities().drainPendingEvents(tick));
+            reconcileLifecycle(state, tick, events);
+            return true;
+        }
         if (appliedDamage > 0) {
             events.addAll(abilityActivations.process(state, AbilityTrigger.damage(
-                attacker, defender, appliedDamage, component.isSoulDamage(), tick)));
+                attacker, defender, appliedDamage,
+                component.isSoulDamage() || attacker.hasSoulAwareAttacks(), tick)));
             wakeFromSleep(state, attacker, defender, move, componentIndex, tick, events);
         }
 
@@ -2141,6 +2168,7 @@ public class CombatResolver {
         // battle mid-batch — a friendly-fire AOE must be able to wipe both teams
         // simultaneously for a draw. Team victory is checked after the batch.
         reconcileLifecycle(state, tick, events);
+        if (!attacker.isActive() || attacker.isDefeated()) return true;
         if (move.usesUnifiedEffects()) {
             events.addAll(abilityActivations.processMoveEffects(
                 state, attacker, defender, move,
@@ -2148,6 +2176,15 @@ public class CombatResolver {
         } else {
             applyOnHitEffects(
                 state, attacker, defender, move, component, componentIndex, tick, events);
+        }
+        reconcileLifecycle(state, tick, events);
+        if (!attacker.isActive() || attacker.isDefeated()) return true;
+        if (!defenderDownFromHitDamage && defender.isDefeated()) {
+            // The on-hit rows killed the defender outright (a successful Soul
+            // Manipulation): the defeat is already reconciled above and the
+            // remaining ability on-hit effects must not land after it.
+            events.addAll(defender.getCodedAbilities().drainPendingEvents(tick));
+            return true;
         }
         applyAbilityOnHitEffects(
             state, attacker, defender, move, componentIndex, tick, events);

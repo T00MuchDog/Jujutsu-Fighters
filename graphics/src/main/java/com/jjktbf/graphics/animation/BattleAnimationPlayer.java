@@ -156,7 +156,19 @@ public final class BattleAnimationPlayer implements Disposable {
     public boolean play(String event, String moveId, Integer componentIndex,
                         Supplier<CombatantPanel> source, Supplier<CombatantPanel> target,
                         boolean mirrored, boolean reinforced, String defenseMoveId, boolean defenseReinforced) {
+        return play(event, moveId, componentIndex, source, target, mirrored, reinforced,
+            defenseMoveId, defenseReinforced, false);
+    }
+
+    /** Domain openings require confirmation from the resolved lifecycle event batch. */
+    public boolean play(String event, String moveId, Integer componentIndex,
+                        Supplier<CombatantPanel> source, Supplier<CombatantPanel> target,
+                        boolean mirrored, boolean reinforced, String defenseMoveId, boolean defenseReinforced,
+                        boolean domainEstablished) {
         if (choreography == null) return false;
+        EffectRef opening = moveEffect(moveId);
+        if (opening != null && opening.effect().role().equals("domain")
+            && (!event.equals("MOVE_FIRED") || !domainEstablished)) return false;
         boolean damage = event.equals("DAMAGE_DEALT") || event.equals("DAMAGE_IGNORED");
         boolean blocked = event.equals("MOVE_BLOCKED") || event.equals("MOVE_BLOCK_REDUCED")
             || event.equals("MOVE_PARRIED") || (damage && defenseMoveId != null);
@@ -172,7 +184,7 @@ public final class BattleAnimationPlayer implements Disposable {
                     sequences.add(sequence(attack, profile, componentIndex, true, source, target, mirrored, reinforced));
                 }
                 EffectRef guard = moveEffect(defenseMoveId);
-                if (guard != null) {
+                if (guard != null && !guard.effect().role().equals("domain")) {
                     boolean targetPlaced = guard.effect().placement().equals("target");
                     sequences.add(sequence(guard, choreography.forEffect(guard.effect()), null, false,
                         targetPlaced ? source : target, targetPlaced ? target : source, !mirrored, defenseReinforced));
@@ -244,8 +256,8 @@ public final class BattleAnimationPlayer implements Disposable {
                 if (!contact) return false;
             } else if (ref.effect().role().equals("targeted")) {
                 if (!event.equals("MOVE_TARGETED")) return false;
-            } else if (!(event.equals("MOVE_FIRED") && ref.effect().placement().equals("source"))
-                && !(event.equals("DEFENSE_GRANTED") && ref.effect().placement().equals("target"))) {
+            } else if (!(event.equals("MOVE_FIRED") && ref.effect().placement().startsWith("source"))
+                && !(event.equals("DEFENSE_GRANTED") && ref.effect().placement().startsWith("target"))) {
                 return false;
             }
         }
@@ -348,6 +360,15 @@ public final class BattleAnimationPlayer implements Disposable {
 
     /** Called around fighter rendering, before the HUD, in the existing viewport/clip. */
     public void draw(Batch batch, Rectangle viewport, String plane) {
+        draw(batch, viewport, plane, null);
+    }
+
+    /** Foot layers must be above the owner's plate and depth-sorted with its sprite. */
+    public void drawOwner(Batch batch, CombatantPanel owner, String plane) {
+        if (owner != null) draw(batch, null, plane, owner);
+    }
+
+    private void draw(Batch batch, Rectangle viewport, String plane, CombatantPanel owner) {
         Playback playback = active;
         if (playback == null) return;
         float previous = batch.getPackedColor();
@@ -357,10 +378,12 @@ public final class BattleAnimationPlayer implements Disposable {
                 float time = playback.time(sequence) - visual.start();
                 if (!visual.plane().equals(plane) || time < 0 || time >= visual.duration()) continue;
                 CombatantPanel panel = switch (visual.placement()) {
-                    case "source" -> sequence.source().get();
-                    case "target" -> sequence.target().get();
+                    case "source", "source-feet" -> sequence.source().get();
+                    case "target", "target-feet" -> sequence.target().get();
                     default -> null;
                 };
+                boolean feetPlaced = visual.placement().endsWith("-feet");
+                if (feetPlaced ? panel != owner || owner == null : owner != null) continue;
                 boolean screen = visual.placement().equals("screen");
                 boolean path = visual.placement().equals("beam") || visual.placement().equals("projectile");
                 CombatantPanel source = path ? sequence.source().get() : null;
@@ -393,6 +416,11 @@ public final class BattleAnimationPlayer implements Disposable {
                         heightScale = thickness * visual.ref().pack().aspectRatio() / (width * pose.scaleX());
                     }
                     rotation += direction;
+                } else if (feetPlaced) {
+                    float[] feet = transformedFeet(panel);
+                    x = feet[0];
+                    y = feet[1];
+                    width = panel.spriteContentHeight() * visual.size();
                 } else {
                     float angle = fighter.rotation() * com.badlogic.gdx.math.MathUtils.degreesToRadians;
                     x = screen ? viewport.x + viewport.width / 2 : panel.spriteCenterX()
@@ -408,10 +436,10 @@ public final class BattleAnimationPlayer implements Disposable {
                 float clipTime = visual.ref().effect().loop() ? time
                     : Math.min(Math.nextDown(visual.clip().durationSeconds()),
                         time / visual.duration() * visual.clip().durationSeconds());
-                // Path rotation already faces the recipient, including right-to-left shots.
+                // Paths face the recipient; ground layers retain world orientation for persistent handoff.
                 visual.ref().pack().draw(batch, visual.clip(), clipTime,
                     x + pose.x() * unit, y + pose.y() * unit, width * pose.scaleX(),
-                    !screen && !path && sequence.mirrored(), sequence.reinforced(),
+                    !screen && !path && !feetPlaced && sequence.mirrored(), sequence.reinforced(),
                     heightScale, rotation);
                 }
             }
@@ -429,6 +457,34 @@ public final class BattleAnimationPlayer implements Disposable {
             panel.spriteCenterX() + pose.x() * unit - (float) Math.sin(angle) * unit / 2 * pose.scaleY(),
             panel.spriteCenterY() + pose.y() * unit + ((float) Math.cos(angle) * pose.scaleY() - 1) * unit / 2
         };
+    }
+
+    /** Ground effects translate with the foot pivot, without becoming a rotating body aura. */
+    public float[] transformedFeet(CombatantPanel panel) {
+        return panel.spriteGroundAnchor(poseFor(panel));
+    }
+
+    /** Reuses catalog sheets/texture ownership, but never starts or clears a finite clip. */
+    public void drawPersistent(Batch batch, String effectId, CombatantPanel owner, float seconds,
+                               float size, float offsetX, float offsetY, float alpha) {
+        EffectRef ref = effect(effectId);
+        if (ref == null || owner == null || failedEffects.contains(effectId)) return;
+        float previous = batch.getPackedColor();
+        try {
+            float[] feet = transformedFeet(owner);
+            float unit = owner.spriteHeight();
+            batch.setColor(1, 1, 1, alpha);
+            float time = ref.effect().loop() ? seconds
+                : Math.min(seconds, Math.nextDown(ref.effect().durationSeconds()));
+            ref.pack().draw(batch, ref.pack().fullClip(ref.effect()), time,
+                feet[0] + offsetX * unit, feet[1] + offsetY * unit,
+                size * owner.spriteContentHeight(), false, false);
+        } catch (RuntimeException failure) {
+            failedEffects.add(effectId);
+            report("Cannot draw persistent effect " + effectId, failure);
+        } finally {
+            batch.setPackedColor(previous);
+        }
     }
 
     private static void report(String message, RuntimeException failure) {

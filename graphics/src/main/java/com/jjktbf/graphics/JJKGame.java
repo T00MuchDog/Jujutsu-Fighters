@@ -194,11 +194,11 @@ public class JJKGame extends Game {
     public void create() {
         BattleUiLayoutStore battleUiLayoutStore = new BattleUiLayoutStore();
         try {
-            battleUiLayout = battleUiLayoutStore.load(launchOptions.uiProfile());
+            battleUiLayout = battleUiLayoutStore.load();
         } catch (IOException | IllegalArgumentException failure) {
-            System.err.println("Warning: could not load " + launchOptions.uiProfile()
-                + " UI layout: " + failure.getMessage() + "; using defaults.");
-            battleUiLayout = BattleUiLayout.defaults(launchOptions.uiProfile());
+            System.err.println("Warning: could not load shared battle UI layout: "
+                + failure.getMessage() + "; using defaults.");
+            battleUiLayout = BattleUiLayout.defaults();
         }
         assets = new AssetLoader(launchOptions.uiProfile());
         assets.load();
@@ -282,6 +282,7 @@ public class JJKGame extends Game {
     @Override
     public void render() {
         super.render();
+        if (audio != null) audio.update(Gdx.graphics.getDeltaTime());
         if (overlayBatch == null) return;
         overlayViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         overlayViewport.apply();
@@ -780,10 +781,10 @@ public class JJKGame extends Game {
                 DomainRepository domainRepo = new DomainRepository("data/domains");
                 domainRepo.load();
                 Character player = playerData.toCharacter(
-                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo, domainRepo,
                     playerMoveSetIds);
                 Character cpu    = cpuData.toCharacter(
-                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                    moveRepo, abilityRepo, techniqueRepo, cursedToolRepo, domainRepo,
                     cpuMoveSetIds);
                 BattleController controller = new BattleController(
                     battleScreen,
@@ -909,14 +910,14 @@ public class JJKGame extends Game {
                 java.util.List<BattleCombatant> playerFighters = java.util.stream.IntStream
                     .range(0, playerTeam.size())
                     .mapToObj(index -> playerTeam.get(index).toCharacter(
-                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo, domainRepo,
                         moveSetAt(playerMoveSets, index)))
                     .map(c -> new BattleCombatant(c, c.getAbilities(), statMode))
                     .toList();
                 java.util.List<BattleCombatant> cpuFighters = java.util.stream.IntStream
                     .range(0, cpuTeam.size())
                     .mapToObj(index -> cpuTeam.get(index).toCharacter(
-                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo,
+                        moveRepo, abilityRepo, techniqueRepo, cursedToolRepo, domainRepo,
                         moveSetAt(cpuMoveSets, index)))
                     .map(c -> new BattleCombatant(c, c.getAbilities(), statMode))
                     .toList();

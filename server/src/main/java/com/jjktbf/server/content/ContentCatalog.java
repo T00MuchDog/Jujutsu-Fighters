@@ -277,8 +277,14 @@ public final class ContentCatalog implements BattleCharacterLookup, DomainDefini
                 abilityNamesById.put(definition.id, definition.name);
             }
         }
+        Map<String, String> domainNamesById = new LinkedHashMap<>();
+        for (DomainData definition : domainDefinitions) {
+            if (definition != null) {
+                domainNamesById.put(definition.id, definition.name);
+            }
+        }
         ContentNameTokens.NameLookup descriptionNames =
-            ContentNameTokens.of(moveNamesById, abilityNamesById);
+            ContentNameTokens.of(moveNamesById, abilityNamesById, domainNamesById);
         for (MoveData definition : moveDefinitions) {
             if (definition.requiredCursedToolId != null
                 && !definition.requiredCursedToolId.isBlank()

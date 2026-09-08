@@ -15,13 +15,14 @@ class AbilityStateMeterTest {
         AbilityStateMeter meter = new AbilityStateMeter();
 
         meter.setStates(CodedAbilityRegistry.stateKeys().stream()
-            .map(state -> new CodedAbilityState(state.key(), state.label(), 1, 1))
+            .map(state -> new CodedAbilityState(state.key(), state.label(), 1, 1, false))
             .toList());
-        assertEquals(1, meter.stateCount());
+        assertEquals(0, meter.stateCount());
 
         meter.setStates(List.of(
-            new CodedAbilityState("BLOOD_SUPPLY", "Blood Supply", 4, 5),
-            new CodedAbilityState("COMPRESSION", "Compression", 1, 3)));
+            new CodedAbilityState("BLOOD_SUPPLY", "Blood Supply", 4, 5, true),
+            new CodedAbilityState("COMPRESSION", "Compression", 1, 3, true),
+            new CodedAbilityState("STANCE", "Stance", 1, 1, false)));
         assertEquals(2, meter.stateCount());
     }
 }

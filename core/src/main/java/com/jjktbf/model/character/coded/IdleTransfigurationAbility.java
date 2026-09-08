@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.Function;
 
 /**
  * Runtime implementation for Idle Transfiguration.
@@ -100,6 +101,14 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
         Predicate<String> featureActive,
         RandomSource rng
     ) {
+        return onTrigger(state, trigger, featureActive, rng, ignored -> List.of());
+    }
+
+    @Override
+    public List<CombatEvent> onTrigger(
+        BattleState state, AbilityTrigger trigger, Predicate<String> featureActive,
+        RandomSource rng, Function<AbilityTrigger, List<CombatEvent>> reactions
+    ) {
         if (owner == null || !owner.isActive()) return List.of();
         switch (trigger.type()) {
             case TIMELINE_TICK: {
@@ -118,7 +127,7 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
                 if (trigger.hitComponent() == null || !trigger.hitComponent().isMelee()) {
                     return List.of();
                 }
-                return rollPassiveSoulProc(trigger.target(), rng, trigger.tick());
+                return rollPassiveSoulProc(trigger.target(), rng, trigger.tick(), reactions);
             }
             default:
                 return List.of();
@@ -145,6 +154,15 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
         int tick,
         RandomSource rng
     ) {
+        return onEffectFired(state, effect, attacker, defender, tick, rng, ignored -> List.of());
+    }
+
+    @Override
+    public List<CombatEvent> onEffectFired(
+        BattleState state, StatusEffect effect, BattleCombatant attacker,
+        BattleCombatant defender, int tick, RandomSource rng,
+        Function<AbilityTrigger, List<CombatEvent>> reactions
+    ) {
         if (!KEY.equalsIgnoreCase(effect.getCodedAbilityKey())
             || !ACTION_SOUL_MANIPULATION.equalsIgnoreCase(effect.getCodedAction())) {
             return List.of();
@@ -154,7 +172,7 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
             return List.of();
         }
         if (rng == null) return List.of();
-        return attemptSoulManipulation(defender, rng, tick);
+        return attemptSoulManipulation(defender, rng, tick, reactions);
     }
 
     // ── Maintaining the Soul ──────────────────────────────────────────────────
@@ -234,7 +252,8 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
     private List<CombatEvent> rollPassiveSoulProc(
         BattleCombatant defender,
         RandomSource rng,
-        int tick
+        int tick,
+        Function<AbilityTrigger, List<CombatEvent>> reactions
     ) {
         if (!defender.isActive() || defender.isDefeated() || defender.isAlliedWith(owner)) {
             return List.of();
@@ -242,7 +261,7 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
         int procChance = featureParameter(
             SOUL_MANIPULATION, PROC_CHANCE_PERCENT, DEFAULT_PROC_CHANCE_PERCENT);
         if (rng.nextDouble() >= procChance / 100.0) return List.of();
-        return attemptSoulManipulation(defender, rng, tick);
+        return attemptSoulManipulation(defender, rng, tick, reactions);
     }
 
     /**
@@ -258,6 +277,23 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
         RandomSource rng,
         int tick
     ) {
+        return attemptSoulManipulation(defender, rng, tick, ignored -> List.of());
+    }
+
+    private List<CombatEvent> attemptSoulManipulation(
+        BattleCombatant defender, RandomSource rng, int tick,
+        Function<AbilityTrigger, List<CombatEvent>> reactions
+    ) {
+        if (!owner.isActive() || owner.isDefeated() || !defender.isActive()
+            || defender.isDefeated() || defender.isAlliedWith(owner)) {
+            return List.of();
+        }
+        List<CombatEvent> events = new ArrayList<>(reactions.apply(AbilityTrigger.move(
+            AbilityTrigger.Type.SOUL_MANIPULATION_ATTEMPT, owner, defender, null, tick)));
+        if (events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.SOUL_MANIPULATION_NEGATED)) return events;
+        if (!owner.isActive() || owner.isDefeated()
+            || !defender.isActive() || defender.isDefeated()) return events;
         int chance = successChancePercent(defender);
         boolean succeeds = rng.nextDouble() < chance / 100.0;
         String defenderName = defender.getCharacter().getName();
@@ -268,23 +304,41 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
                 defender.getCodedAbilities().preventFatalDamage(feature -> true));
             if (defender.isDefeated()) {
                 soulManipulationStacks.remove(defender.getInstanceId());
-                return List.of(CombatEvent.of(CombatEvent.Type.ABILITY_ACTIVATED)
+                events.add(CombatEvent.of(CombatEvent.Type.ABILITY_ACTIVATED)
                     .source(owner).target(defender).tick(tick)
                     .intValue(chance)
-                    .message(owner.getCharacter().getName() + " transfigures "
-                        + defenderName + "'s soul (" + chance + "%)! "
-                        + defenderName + " is reshaped into something inhuman.")
+                    .message(owner.getCharacter().getName()
+                        + "'s Soul Manipulation activates. " + defenderName
+                        + " fails to resist and is transformed into something inhuman.")
                     .build());
+                return events;
             }
+            // The roll succeeded, so the soul did not resist: fatal protection
+            // averted the kill itself. A landed attempt teaches nothing new,
+            // so unlike a resisted roll it leaves no stack behind.
+            events.add(CombatEvent.of(CombatEvent.Type.ABILITY_ACTIVATED)
+                .source(owner).target(defender).tick(tick)
+                .intValue(chance)
+                .message(owner.getCharacter().getName()
+                    + "'s Soul Manipulation activates. " + defenderName
+                    + " fails to resist and the transformation turns fatal — but "
+                    + "death is averted.")
+                .build());
+            // The aversion belongs to this instant, not the next drain
+            // checkpoint, so the attempt narrates as one atomic exchange.
+            events.addAll(defender.getCodedAbilities().drainPendingEvents(tick));
+            return events;
         }
-        int stacks = soulManipulationStacks.merge(defender.getInstanceId(), 1, Integer::sum);
-        return List.of(CombatEvent.of(CombatEvent.Type.ABILITY_ACTIVATED)
+        soulManipulationStacks.merge(defender.getInstanceId(), 1, Integer::sum);
+        events.add(CombatEvent.of(CombatEvent.Type.ABILITY_ACTIVATED)
             .source(owner).target(defender).tick(tick)
             .intValue(chance)
-            .message(defenderName + "'s soul resists transfiguration (" + chance
-                + "%) — " + owner.getCharacter().getName() + " learns its shape (stack "
-                + stacks + ").")
+            .message(owner.getCharacter().getName()
+                + "'s Soul Manipulation activates. " + defenderName + " resists. "
+                + owner.getCharacter().getName() + " gains a deeper understanding of "
+                + defenderName + "'s soul.")
             .build());
+        return events;
     }
 
     /** Success probability in percent for one attempt against the target. */
@@ -334,7 +388,7 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
         // AI valuation and serialized snapshots can see soul vulnerability.
         int learnedShapes = soulManipulationStacks.values().stream()
             .mapToInt(Integer::intValue).sum();
-        return new CodedAbilityState(KEY, "Idle Transfiguration", learnedShapes, 0);
+        return new CodedAbilityState(KEY, "Idle Transfiguration", learnedShapes, 0, false);
     }
 
     private int featureParameter(String feature, String parameter, int fallback) {

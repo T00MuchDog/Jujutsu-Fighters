@@ -1,6 +1,7 @@
 package com.jjktbf.graphics.ui.profile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -8,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -17,85 +19,69 @@ class BattleUiLayoutStoreTest {
     Path temporaryDirectory;
 
     @Test
-    void bundledProfilesAreIndependentAndValid() throws Exception {
+    void bundledSharedLayoutLoadsAndValidates() throws Exception {
         BattleUiLayoutStore store = new BattleUiLayoutStore(
             null, getClass().getClassLoader());
 
-        BattleUiLayout mac = store.load(UiProfile.MAC);
-        BattleUiLayout windows = store.load(UiProfile.WINDOWS);
-
-        assertEquals(1512, mac.referenceWidth);
-        assertEquals(982, mac.referenceHeight);
-        assertEquals(2560, windows.referenceWidth);
-        assertEquals(1440, windows.referenceHeight);
-        assertEquals(1f, mac.execution.textGeometryScale, 0.0001f);
-        assertEquals(1f, mac.planner.textGeometryScale, 0.0001f);
-        assertEquals(1.5f, windows.execution.textGeometryScale, 0.0001f);
-        assertEquals(1.5f, windows.planner.textGeometryScale, 0.0001f);
-        assertEquals(217.5f, windows.execution.logHeightMax, 0.0001f);
-        assertEquals(162f, windows.execution.hudHeightMax, 0.0001f);
-        assertEquals(315f, windows.execution.nextRoundWidthMax, 0.0001f);
-        assertEquals(87f, windows.planner.headerHeight, 0.0001f);
-        assertEquals(213f, windows.planner.lockButtonWidth, 0.0001f);
-        assertNotSame(mac.execution, windows.execution);
+        assertNotNull(store.load());
     }
 
     @Test
-    void defaultsKeepMacGeometryAndApplyWindowsFallbacks() {
-        BattleUiLayout mac = BattleUiLayout.defaults(UiProfile.MAC);
-        BattleUiLayout windows = BattleUiLayout.defaults(UiProfile.WINDOWS);
+    void defaultsUseSharedReferenceGeometry() {
+        BattleUiLayout layout = BattleUiLayout.defaults();
 
-        assertEquals(145f, mac.execution.logHeightMax, 0.0001f);
-        assertEquals(108f, mac.execution.hudHeightMax, 0.0001f);
-        assertEquals(58f, mac.planner.headerHeight, 0.0001f);
-        assertEquals(1f, mac.planner.textGeometryScale, 0.0001f);
-        assertEquals(217.5f, windows.execution.logHeightMax, 0.0001f);
-        assertEquals(162f, windows.execution.hudHeightMax, 0.0001f);
-        assertEquals(87f, windows.planner.headerHeight, 0.0001f);
-        assertEquals(1.5f, windows.planner.textGeometryScale, 0.0001f);
+        assertEquals((int) UiScaleSystem.GAMEPLAY_REFERENCE_WIDTH, layout.referenceWidth);
+        assertEquals((int) UiScaleSystem.GAMEPLAY_REFERENCE_HEIGHT, layout.referenceHeight);
+        layout.validate();
     }
 
     @Test
-    void profileTextGeometryInvariantIsValidated() {
-        BattleUiLayout windows = BattleUiLayout.defaults(UiProfile.WINDOWS);
-        windows.planner.textGeometryScale = 1f;
+    void sharedTextGeometryInvariantIsValidated() {
+        BattleUiLayout layout = BattleUiLayout.defaults();
+        layout.planner.textGeometryScale = 1f;
 
         assertThrows(IllegalArgumentException.class,
-            () -> windows.validate(UiProfile.WINDOWS));
+            layout::validate);
     }
 
     @Test
-    void omittedAdditiveSchemaOneFieldsResolveToWindowsFallbacks() {
-        BattleUiLayout windows = BattleUiLayout.defaults(UiProfile.WINDOWS);
-        windows.execution.textGeometryScale = 0f;
-        windows.planner.textGeometryScale = 0f;
-        windows.planner.shortViewportHeightThreshold = 0f;
-
-        windows.validate(UiProfile.WINDOWS);
-
-        assertEquals(1.5f, windows.execution.textGeometryScale, 0.0001f);
-        assertEquals(1.5f, windows.planner.textGeometryScale, 0.0001f);
-        assertEquals(800f, windows.planner.shortViewportHeightThreshold, 0.0001f);
-        assertEquals(272f, windows.planner.shortMoveCardHeight, 0.0001f);
-    }
-
-    @Test
-    void sourceProfilesLoadIndependently() throws Exception {
+    void omittedSurvivingFieldsUseCanonicalDefaultsViaJson() throws Exception {
         BattleUiLayoutStore store = new BattleUiLayoutStore(
             temporaryDirectory, getClass().getClassLoader());
-        BattleUiLayout mac = BattleUiLayout.defaults(UiProfile.MAC);
-        BattleUiLayout windows = BattleUiLayout.defaults(UiProfile.WINDOWS);
-        mac.execution.hudScale = 1.37f;
-        windows.execution.hudScale = 1.82f;
+        Path sourceDirectory = temporaryDirectory.resolve(
+            "graphics/src/main/resources/assets/ui/battle-layouts");
+        Files.createDirectories(sourceDirectory);
+        Files.writeString(sourceDirectory.resolve("shared.json"), """
+            {
+              "schemaVersion": 1,
+              "referenceWidth": 2560,
+              "referenceHeight": 1440,
+              "execution": { "hudScale": 1.82 },
+              "planner": {}
+            }
+            """);
+
+        BattleUiLayout layout = store.load();
+
+        assertEquals(1.82f, layout.execution.hudScale, 0.0001f);
+        assertEquals(0.035f, layout.execution.outerMarginFraction, 0.0001f);
+        assertEquals(UiScaleSystem.GAMEPLAY_TEXT_SCALE,
+            layout.planner.textGeometryScale, 0.0001f);
+    }
+
+    @Test
+    void sourceOverrideLoadsSharedLayout() throws Exception {
+        BattleUiLayoutStore store = new BattleUiLayoutStore(
+            temporaryDirectory, getClass().getClassLoader());
+        BattleUiLayout layout = BattleUiLayout.defaults();
+        layout.execution.hudScale = 1.82f;
         Path sourceDirectory = temporaryDirectory.resolve(
             "graphics/src/main/resources/assets/ui/battle-layouts");
         Files.createDirectories(sourceDirectory);
         ObjectMapper mapper = new ObjectMapper();
-        mapper.writeValue(sourceDirectory.resolve("mac.json").toFile(), mac);
-        mapper.writeValue(sourceDirectory.resolve("windows.json").toFile(), windows);
+        mapper.writeValue(sourceDirectory.resolve("shared.json").toFile(), layout);
 
-        assertEquals(1.37f, store.load(UiProfile.MAC).execution.hudScale, 0.0001f);
-        assertEquals(1.82f, store.load(UiProfile.WINDOWS).execution.hudScale, 0.0001f);
+        assertEquals(1.82f, store.load().execution.hudScale, 0.0001f);
     }
 
     @Test
@@ -107,12 +93,12 @@ class BattleUiLayoutStoreTest {
         Files.writeString(moves, "{}");
         Files.writeString(characters, "{}");
 
-        BattleUiLayout mac = BattleUiLayout.defaults(UiProfile.MAC);
-        mac.execution.hudScale = 1.63f;
+        BattleUiLayout layout = BattleUiLayout.defaults();
+        layout.execution.hudScale = 1.63f;
         Path sourceDirectory = temporaryDirectory.resolve(
             "graphics/src/main/resources/assets/ui/battle-layouts");
         Files.createDirectories(sourceDirectory);
-        new ObjectMapper().writeValue(sourceDirectory.resolve("mac.json").toFile(), mac);
+        new ObjectMapper().writeValue(sourceDirectory.resolve("shared.json").toFile(), layout);
 
         String previousAuthoring = System.getProperty("jjktbf.authoring");
         String previousRoot = System.getProperty("jjktbf.authoring.root");
@@ -121,7 +107,7 @@ class BattleUiLayoutStoreTest {
             System.setProperty("jjktbf.authoring.root", temporaryDirectory.toString());
 
             assertEquals(1.63f,
-                new BattleUiLayoutStore().load(UiProfile.MAC).execution.hudScale,
+                new BattleUiLayoutStore().load().execution.hudScale,
                 0.0001f);
         } finally {
             restoreProperty("jjktbf.authoring", previousAuthoring);
@@ -130,28 +116,33 @@ class BattleUiLayoutStoreTest {
     }
 
     @Test
-    void mismatchedSourceProfileIsRejected() throws Exception {
+    void invalidSourceSharedLayoutIsRejected() throws Exception {
         BattleUiLayoutStore store = new BattleUiLayoutStore(
             temporaryDirectory, getClass().getClassLoader());
-        BattleUiLayout windows = BattleUiLayout.defaults(UiProfile.WINDOWS);
+        BattleUiLayout layout = BattleUiLayout.defaults();
+        layout.execution.textGeometryScale = 1f;
         Path sourceDirectory = temporaryDirectory.resolve(
             "graphics/src/main/resources/assets/ui/battle-layouts");
         Files.createDirectories(sourceDirectory);
-        new ObjectMapper().writeValue(sourceDirectory.resolve("mac.json").toFile(), windows);
+        new ObjectMapper().writeValue(sourceDirectory.resolve("shared.json").toFile(), layout);
 
         assertThrows(IllegalArgumentException.class,
-            () -> store.load(UiProfile.MAC));
+            store::load);
     }
 
     @Test
     void copyIsDeepEnoughForIndependentLiveDrafts() {
-        BattleUiLayout original = BattleUiLayout.defaults(UiProfile.MAC);
+        BattleUiLayout original = BattleUiLayout.defaults();
         BattleUiLayout copy = original.copy();
+        float originalHudScale = original.execution.hudScale;
+        float originalTextScale = original.planner.textGeometryScale;
         copy.execution.hudScale = 2f;
-        copy.planner.headerHeight = 90f;
+        copy.planner.textGeometryScale = 2f;
 
-        assertEquals(1.25f, original.execution.hudScale, 0.0001f);
-        assertEquals(58f, original.planner.headerHeight, 0.0001f);
+        assertNotSame(original.execution, copy.execution);
+        assertNotSame(original.planner, copy.planner);
+        assertEquals(originalHudScale, original.execution.hudScale, 0.0001f);
+        assertEquals(originalTextScale, original.planner.textGeometryScale, 0.0001f);
     }
 
     private static void restoreProperty(String name, String value) {

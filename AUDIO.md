@@ -5,7 +5,7 @@ channels:
 
 | Channel | Content | Asset loading |
 |---|---|---|
-| `MUSIC` | Menu and battle music | Streamed and looped with LibGDX `Music` |
+| `MUSIC` | Menu, battle, and event music | Streamed with LibGDX `Music`; contextual tracks cross-fade over screen music |
 | `UI_SFX` | Navigation, confirmation, back, and planner feedback | Preloaded with LibGDX `Sound` |
 | `BATTLE_SFX` | Move, impact, defense, and result effects | Preloaded with LibGDX `Sound` |
 
@@ -29,7 +29,9 @@ graphics/src/main/resources/assets/audio/
 |   |-- battle_aizo.ogg
 |   |-- battle_AbodeOfBlue.ogg
 |   |-- battle_specialz.ogg
-|   `-- battle_KakaiKitan.ogg
+|   |-- battle_KakaiKitan.ogg
+|   `-- events/
+|       `-- self_embodiment_of_perfection.ogg
 `-- sfx/
     |-- ui/
     |   |-- navigate.wav
@@ -73,9 +75,10 @@ graphics/src/main/resources/assets/audio/
 The existing Maven resource configuration packages this directory into the
 desktop JAR. Music must be an actual Ogg Vorbis stream, not WebM/Opus renamed to
 `.ogg`; a valid file begins with the `OggS` container header and contains a
-Vorbis identification packet. WAV or short OGG files are suitable for effects.
-If a supplied file uses another supported extension, update its catalog path to
-match the real filename.
+Vorbis identification packet. MP3, OGG Vorbis, and WAV files are supported by
+the desktop backend. Use streamed music for songs and `Sound` for short effects;
+OGG or WAV is preferred for low-latency effects. Update a catalog path to match
+the real filename and extension.
 
 ## Drop-In Slots
 
@@ -86,6 +89,7 @@ of those exact paths is enough to enable it:
 |---|---|
 | `music/menu.ogg` | Main menu, selection, multiplayer menus, and editors |
 | `music/battle_*.ogg` | Local and multiplayer battles; one battle track is chosen uniformly at random each time a battle starts, and a track whose file is missing or invalid is substituted by another loaded battle track |
+| `music/events/self_embodiment_of_perfection.ogg` | Self-Embodiment of Perfection establishment; loops after a one-second cross-fade and fades out when its domain instance collapses |
 | `sfx/ui/navigate.wav` | Main-menu, character, and editor keyboard navigation |
 | `sfx/ui/confirm.wav` | Menu actions, selections, shared multiplayer actions, and next round |
 | `sfx/ui/back.wav` | Back, cancel, shared editor dialog dismissal, and battle exit |
@@ -118,6 +122,19 @@ are ready.
 
 Online confirmation cues acknowledge that the local command was valid and sent.
 Authoritative rejection remains a separate server response and UI state change.
+
+Event songs run at the same visual playback boundary through
+`GameAudio.playEventMusic`. The event and screen tracks remain active together:
+the event track fades in while the selected battle track fades out, then the
+mix reverses when `stopEventMusic` receives the matching lifecycle event. Music
+ownership is tracked by domain instance, so one collapsing domain cannot stop a
+track still used by another active instance. Missing event assets leave the
+current battle music uninterrupted.
+
+`self_embodiment_of_perfection.ogg` was converted from the user-supplied
+Ogg/Opus download to a real 48 kHz stereo Ogg Vorbis stream. The catalog test
+checks its packaged Vorbis header so an incompatible Opus replacement fails
+verification before runtime.
 
 ## Included Effects
 
@@ -180,6 +197,18 @@ paths. For another music context:
 
 `GameAudio.playMusic` is idempotent for the active track and loops it until a
 different track is requested.
+
+For music triggered by a battle event:
+
+1. Put the MP3, OGG Vorbis, or WAV file under `assets/audio/music/events/`.
+2. Add a `MusicTrack` constant without adding it to `BATTLE_TRACKS`.
+3. Map local and online start events in `BattleAudioRouter.musicFor` and matching
+   lifecycle end events in `musicToStopFor`.
+
+`BattleScreen` passes the event instance ID into `GameAudio`, which loops and
+cross-fades the contextual track until every owning instance ends. Do not call
+`playMusic` for an event song because that API performs a hard screen-music
+transition.
 
 ## Mixer Settings
 

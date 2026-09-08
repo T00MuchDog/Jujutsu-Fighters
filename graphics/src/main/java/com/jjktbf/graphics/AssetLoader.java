@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.jjktbf.graphics.ui.battle.BattleUiAssets;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.pixel.PixelSkin;
 import com.jjktbf.graphics.ui.profile.UiProfile;
 
@@ -52,6 +53,13 @@ public class AssetLoader {
 
     /** Medium-plus pixel font — used for the execution battle log body text. */
     public BitmapFont fontLog;
+
+    /** Profile-independent Battle/Character Select typography; textures remain shared. */
+    public BitmapFont gameplayFontSmall;
+    public BitmapFont gameplayFontMedium;
+    public BitmapFont gameplayFontLarge;
+    public BitmapFont gameplayFontXLarge;
+    public BitmapFont gameplayFontLog;
 
     // ── Sprites ───────────────────────────────────────────────────────────────
 
@@ -135,8 +143,15 @@ public class AssetLoader {
                                                   FreeTypeFontParameter p,
                                                   int logicalSize,
                                                   UiProfile uiProfile) {
+        return generateOversampled(gen, p, logicalSize, uiProfile.textScale());
+    }
+
+    private static BitmapFont generateOversampled(FreeTypeFontGenerator gen,
+                                                  FreeTypeFontParameter p,
+                                                  int logicalSize,
+                                                  float textScale) {
         final float OVERSAMPLE = FONT_OVERSAMPLE;
-        p.size = rasterSize(logicalSize, uiProfile);
+        p.size = Math.round(logicalSize * textScale * OVERSAMPLE);
         p.genMipMaps = true;
         p.minFilter = Texture.TextureFilter.MipMapLinearNearest;
         p.magFilter = Texture.TextureFilter.Linear;
@@ -165,6 +180,12 @@ public class AssetLoader {
         fontLarge  = generateOversampled(fontGenerator, p, 35, uiProfile);
         fontXLarge = generateOversampled(fontGenerator, p, 50, uiProfile);
         fontLog    = generateOversampled(fontGenerator, p, 31, uiProfile);
+
+        gameplayFontSmall = generateOversampled(fontGenerator, p, 15, UiScaleSystem.GAMEPLAY_TEXT_SCALE);
+        gameplayFontMedium = generateOversampled(fontGenerator, p, 23, UiScaleSystem.GAMEPLAY_TEXT_SCALE);
+        gameplayFontLarge = generateOversampled(fontGenerator, p, 35, UiScaleSystem.GAMEPLAY_TEXT_SCALE);
+        gameplayFontXLarge = generateOversampled(fontGenerator, p, 50, UiScaleSystem.GAMEPLAY_TEXT_SCALE);
+        gameplayFontLog = generateOversampled(fontGenerator, p, 31, UiScaleSystem.GAMEPLAY_TEXT_SCALE);
 
         // TTF no longer needed after bitmap generation
         fontGenerator.dispose();
@@ -282,6 +303,11 @@ public class AssetLoader {
         if (fontLarge  != null) fontLarge.dispose();
         if (fontXLarge != null) fontXLarge.dispose();
         if (fontLog    != null) fontLog.dispose();
+        if (gameplayFontSmall != null) gameplayFontSmall.dispose();
+        if (gameplayFontMedium != null) gameplayFontMedium.dispose();
+        if (gameplayFontLarge != null) gameplayFontLarge.dispose();
+        if (gameplayFontXLarge != null) gameplayFontXLarge.dispose();
+        if (gameplayFontLog != null) gameplayFontLog.dispose();
 
         if (playerSprite != null) playerSprite.dispose();
         if (enemySprite  != null) enemySprite.dispose();

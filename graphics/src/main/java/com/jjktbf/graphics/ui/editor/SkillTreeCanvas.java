@@ -754,6 +754,10 @@ public class SkillTreeCanvas extends WidgetGroup {
                 MoveData move = movesById.get(id);
                 return move == null ? null : move.name;
             }
+            if (ContentNameTokens.DOMAIN_PREFIX.equalsIgnoreCase(type)) {
+                DomainData domain = domainsById.get(id);
+                return domain == null ? null : domain.name;
+            }
             AbilityData ability = abilitiesById.get(id);
             return ability == null ? null : ability.name;
         });

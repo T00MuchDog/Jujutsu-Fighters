@@ -15,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /** Authoritative battle-wide owner of active Domains, counters, and clashes. */
 public final class DomainBattlefield {
@@ -44,9 +45,14 @@ public final class DomainBattlefield {
         }
     }
 
+    private record CounterNegationKey(String sureHitInstanceId, String counterInstanceId) { }
+
     private final List<DomainInstance> active = new ArrayList<>();
     private final List<PendingDeclaration> pending = new ArrayList<>();
     private final LinkedHashSet<ClashKey> activeClashes = new LinkedHashSet<>();
+
+    /** Sure-hit Domain/counter pairs whose first negation has already been announced. */
+    private final Set<CounterNegationKey> announcedSureHitNegations = new LinkedHashSet<>();
 
     /** Signed fraction of integrity lost by the currently weaker Domain. */
     private final java.util.Map<ClashKey, Double> clashProgress = new java.util.LinkedHashMap<>();
@@ -357,16 +363,30 @@ public final class DomainBattlefield {
         return collapseOwnedDomains(state, owner, reason, executor, tick);
     }
 
-    private List<CombatEvent> collapseOwnedDomains(
+    /** Collapse every field maintained by {@code owner}, e.g. a broken binding vow. */
+    public List<CombatEvent> collapseOwnedDomains(
         BattleState state,
         BattleCombatant owner,
         DomainCollapseReason reason,
         DomainEffectExecutor executor,
         int tick
     ) {
+        return collapseOwnedDomains(
+            state, owner, reason, executor, tick, instance -> true);
+    }
+
+    /** Collapse the owner's fields accepted by {@code filter}. */
+    public List<CombatEvent> collapseOwnedDomains(
+        BattleState state,
+        BattleCombatant owner,
+        DomainCollapseReason reason,
+        DomainEffectExecutor executor,
+        int tick,
+        Predicate<DomainInstance> filter
+    ) {
         List<CombatEvent> events = new ArrayList<>();
         for (DomainInstance instance : List.copyOf(active)) {
-            if (instance.ownerId().equals(owner.getInstanceId())) {
+            if (instance.ownerId().equals(owner.getInstanceId()) && filter.test(instance)) {
                 collapse(instance, reason, state, executor, tick, events);
             }
         }
@@ -562,8 +582,11 @@ public final class DomainBattlefield {
                 case TECHNIQUE_CONTACT_NULLIFICATION -> delivery != DomainDeliveryClass.RULE;
             };
             if (!blocks) continue;
-            events.add(negatedEvent(source, target, tick,
-                counter.definition().name() + " negates the sure-hit."));
+            if (announcedSureHitNegations.add(
+                new CounterNegationKey(source.instanceId(), counter.instanceId()))) {
+                events.add(negatedEvent(source, target, tick,
+                    counter.definition().name() + " negates the sure-hit."));
+            }
             if (counter.consumeCounterUse()) {
                 collapse(counter, DomainCollapseReason.COUNTER_EXHAUSTED,
                     state, executor, tick, events);
@@ -620,6 +643,7 @@ public final class DomainBattlefield {
             int amount = effectAmount(row, source.maximumInternalBarrierIntegrity());
             int healed = source.healInternalBarrier(amount);
             if (healed > 0) {
+                source.setAnnouncedBarrierStep(source.barrierStep());
                 events.add(domainEvent(CombatEvent.Type.DOMAIN_BARRIER_DAMAGED,
                     source, state.combatant(source.ownerId()), tick,
                     source.definition().name() + " repairs its barrier.").build());
@@ -634,8 +658,7 @@ public final class DomainBattlefield {
             int maximum = target.maximumInternalBarrierIntegrity();
             int amount = type == AbilityEffectType.INSTANT_KILL
                 ? maximum : effectAmount(row, maximum);
-            int damage = target.damageInternalBarrier(amount);
-            if (damage > 0) events.add(barrierEvent(source, target, damage, tick));
+            damageBarrier(source, target, amount, tick, events);
         }
     }
 
@@ -671,10 +694,8 @@ public final class DomainBattlefield {
 
             DomainInstance winner = firstScore >= secondScore ? first : second;
             DomainInstance loser = winner == first ? second : first;
-            int damage = loser.damageInternalBarrier(scoreDamage(
-                Math.abs(firstScore - secondScore)));
-            if (damage <= 0) continue;
-            events.add(barrierEvent(winner, loser, damage, tick));
+            damageBarrier(winner, loser, scoreDamage(
+                Math.abs(firstScore - secondScore)), tick, events);
             if (loser.internalBarrierIntegrity() == 0) {
                 collapse(loser, DomainCollapseReason.INTERNAL_BARRIER_BROKEN,
                     state, executor, tick, events);
@@ -698,9 +719,7 @@ public final class DomainBattlefield {
             for (DomainInstance target : List.copyOf(active)) {
                 if (!target.definition().antiDomain() || !hostile(source, target, state)
                     || !overlaps(source, target)) continue;
-                int damage = target.damageInternalBarrier(pressure);
-                if (damage <= 0) continue;
-                events.add(barrierEvent(source, target, damage, tick));
+                damageBarrier(source, target, pressure, tick, events);
                 if (target.internalBarrierIntegrity() == 0) {
                     collapse(target, DomainCollapseReason.INTERNAL_BARRIER_BROKEN,
                         state, executor, tick, events);
@@ -874,6 +893,34 @@ public final class DomainBattlefield {
                 }
             }
         }
+    }
+
+    /** Apply barrier damage and announce each newly crossed ten-percent step. */
+    private static void damageBarrier(
+        DomainInstance source,
+        DomainInstance target,
+        int amount,
+        int tick,
+        List<CombatEvent> events
+    ) {
+        int damage = target.damageInternalBarrier(amount);
+        if (damage <= 0) return;
+        events.add(barrierEvent(source, target, damage, tick));
+        int step = target.barrierStep();
+        if (step < target.announcedBarrierStep()) {
+            target.setAnnouncedBarrierStep(step);
+            events.add(milestoneEvent(target, step, tick));
+        }
+    }
+
+    private static CombatEvent milestoneEvent(DomainInstance target, int step, int tick) {
+        return CombatEvent.of(CombatEvent.Type.DOMAIN_BARRIER_MILESTONE)
+            .intValue(step * 10).tick(tick)
+            .domainInstanceId(target.instanceId())
+            .domainId(target.definition().id())
+            .domainName(target.definition().name())
+            .message(target.definition().name() + "'s barrier integrity falls to "
+                + step * 10 + "%.").build();
     }
 
     private static CombatEvent barrierEvent(

@@ -4,6 +4,7 @@ import com.badlogic.gdx.backends.lwjgl3.audio.Wav;
 import com.badlogic.gdx.files.FileHandle;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.EnumSet;
@@ -23,11 +24,13 @@ class AudioCatalogTest {
         for (MusicTrack track : MusicTrack.values()) {
             assertTrue(paths.add(track.assetPath()), track.assetPath());
             assertTrue(track.assetPath().startsWith("assets/audio/music/"));
+            assertTrue(hasSupportedExtension(track.assetPath()), track.assetPath());
             assertTrue(track.gain() >= 0f && track.gain() <= 1f);
         }
         for (SoundCue cue : SoundCue.values()) {
             assertTrue(paths.add(cue.assetPath()), cue.assetPath());
             assertTrue(cue.assetPath().startsWith("assets/audio/sfx/"));
+            assertTrue(hasSupportedExtension(cue.assetPath()), cue.assetPath());
             assertNotEquals(AudioChannel.MUSIC, cue.channel());
             assertTrue(cue.gain() >= 0f && cue.gain() <= 1f);
         }
@@ -86,6 +89,16 @@ class AudioCatalogTest {
     }
 
     @Test
+    void selfEmbodimentMusicIsPackagedAsOggVorbis() throws Exception {
+        String path = MusicTrack.SELF_EMBODIMENT_OF_PERFECTION.assetPath();
+        URL resource = AudioCatalogTest.class.getClassLoader().getResource(path);
+        assertNotNull(resource, path);
+        try (InputStream input = resource.openStream()) {
+            assertTrue(GameAudio.isOggVorbisHeader(input.readNBytes(96)), path);
+        }
+    }
+
+    @Test
     void oggValidationRejectsRenamedWebmAndAcceptsVorbis() {
         byte[] webm = {
             0x1a, 0x45, (byte) 0xdf, (byte) 0xa3, 'A', '_', 'O', 'P', 'U', 'S'
@@ -104,5 +117,11 @@ class AudioCatalogTest {
 
         assertFalse(GameAudio.isOggVorbisHeader(webm));
         assertTrue(GameAudio.isOggVorbisHeader(vorbis));
+    }
+
+    private static boolean hasSupportedExtension(String path) {
+        String normalized = path.toLowerCase();
+        return normalized.endsWith(".mp3") || normalized.endsWith(".ogg")
+            || normalized.endsWith(".wav");
     }
 }

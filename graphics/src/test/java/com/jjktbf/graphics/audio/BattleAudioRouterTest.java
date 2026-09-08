@@ -94,6 +94,40 @@ class BattleAudioRouterTest {
     }
 
     @Test
+    void selfEmbodimentStartsAndStopsDomainOwnedMusicForLocalAndOnlinePlayback() {
+        CombatEvent localOpen = CombatEvent.of(CombatEvent.Type.DOMAIN_ESTABLISHED)
+            .domainId("000001").domainInstanceId("domain-1").build();
+        CombatEvent localClose = CombatEvent.of(CombatEvent.Type.DOMAIN_COLLAPSED)
+            .domainId("000001").domainInstanceId("domain-1").build();
+        BattleEventState onlineOpen = domainEvent(
+            BattleEventType.DOMAIN_ESTABLISHED, "000001", "domain-2");
+        BattleEventState onlineClose = domainEvent(
+            BattleEventType.DOMAIN_COLLAPSED, "000001", "domain-2");
+
+        assertEquals(new BattleAudioRouter.EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, "domain-1"),
+            BattleAudioRouter.musicFor(localOpen).orElseThrow());
+        assertEquals(new BattleAudioRouter.EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, "domain-1"),
+            BattleAudioRouter.musicToStopFor(localClose).orElseThrow());
+        assertEquals(new BattleAudioRouter.EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, "domain-2"),
+            BattleAudioRouter.musicFor(onlineOpen).orElseThrow());
+        assertEquals(new BattleAudioRouter.EventMusicCue(
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, "domain-2"),
+            BattleAudioRouter.musicToStopFor(onlineClose).orElseThrow());
+
+        assertTrue(BattleAudioRouter.musicFor(CombatEvent.of(
+            CombatEvent.Type.DOMAIN_ESTABLISHED).domainId("OTHER").build()).isEmpty());
+        assertTrue(BattleAudioRouter.musicFor(CombatEvent.of(
+            CombatEvent.Type.DOMAIN_COUNTER_ESTABLISHED).domainId("000001").build()).isEmpty());
+        assertTrue(BattleAudioRouter.musicToStopFor(domainEvent(
+            BattleEventType.DOMAIN_COLLAPSED, "OTHER", "domain-2")).isEmpty());
+        assertTrue(BattleAudioRouter.musicFor(domainEvent(
+            BattleEventType.DOMAIN_DECLARED, "000001", "domain-2")).isEmpty());
+    }
+
+    @Test
     void resourceCuesIgnoreMoveCostsAndPerTickBookkeepingEvents() {
         Move paidMove = move("PAID", "ATTACK");
         assertTrue(BattleAudioRouter.cueFor(CombatEvent.of(CombatEvent.Type.CE_DRAINED)
@@ -172,6 +206,22 @@ class BattleAudioRouterTest {
             null, null, null,
             null, null, null,
             moveId, null, componentIndex, value, null, ""
+        );
+    }
+
+    private static BattleEventState domainEvent(
+        BattleEventType type,
+        String domainId,
+        String domainInstanceId
+    ) {
+        return new BattleEventState(
+            "EVENT", type, 1, 1,
+            null, null, null,
+            null, null, null,
+            null, null, null, null, null, "",
+            null, null, null, null, null, null,
+            domainInstanceId, null, domainId, "Domain", null,
+            null, null, null
         );
     }
 }

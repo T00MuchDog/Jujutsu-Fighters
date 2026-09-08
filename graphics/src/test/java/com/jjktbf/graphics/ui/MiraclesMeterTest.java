@@ -21,19 +21,19 @@ class MiraclesMeterTest {
     void onlyMiraclesStateSelectsAClampedCounterGraphic() {
         MiraclesMeter meter = new MiraclesMeter();
 
-        meter.setState(new CodedAbilityState("OTHER", "Other", 6, 6));
+        meter.setState(new CodedAbilityState("OTHER", "Other", 6, 6, false));
         assertFalse(meter.isVisible());
 
-        meter.setState(new CodedAbilityState(MiraclesAbility.KEY, "Miracles", 4, 6));
+        meter.setState(new CodedAbilityState(MiraclesAbility.KEY, "Miracles", 4, 6, false));
         assertTrue(meter.isVisible());
         assertEquals(4, meter.imageIndex());
 
-        meter.setState(new CodedAbilityState(MiraclesAbility.KEY, "Miracles", 8, 8));
+        meter.setState(new CodedAbilityState(MiraclesAbility.KEY, "Miracles", 8, 8, false));
         assertEquals(MiraclesAbility.MAX_MIRACLES, meter.imageIndex());
         assertEquals(8, meter.currentValue());
         assertEquals(8, meter.maximumValue());
 
-        meter.setState(new CodedAbilityState(MiraclesAbility.KEY, "Miracles", -1, 6));
+        meter.setState(new CodedAbilityState(MiraclesAbility.KEY, "Miracles", -1, 6, false));
         assertEquals(0, meter.imageIndex());
     }
 }

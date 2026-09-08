@@ -24,7 +24,7 @@ public final class DomainClashCalculator {
     private static final double STAT_SCALE = 100.0;
 
     /** Keep clash pressure proportional to combat stats without erasing barriers in a few ticks. */
-    private static final double CLASH_SCORE_DIVISOR = 20.0;
+    private static final double CLASH_SCORE_DIVISOR = 4.0;
 
     private DomainClashCalculator() { }
 
@@ -51,7 +51,7 @@ public final class DomainClashCalculator {
     /**
      * Effective clash score of one established Domain. The base value is
      * scaled by refinement at three times the weight of CE pressure, then
-     * divided by twenty to keep per-tick barrier pressure gradual.
+     * divided by four to keep per-tick barrier pressure gradual.
      */
     public static double clashScore(DomainDefinition definition, BattleCombatant owner) {
         double base = Math.max(1.0, definition.clashValue());

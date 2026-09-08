@@ -8,7 +8,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Loads a selected layout from source authoring files or bundled resources. */
+/** Loads the single shared battle layout from source authoring files or bundled resources. */
 public final class BattleUiLayoutStore {
 
     private static final String RESOURCE_DIRECTORY = "assets/ui/battle-layouts";
@@ -28,13 +28,14 @@ public final class BattleUiLayoutStore {
         this.classLoader = classLoader;
     }
 
-    public BattleUiLayout load(UiProfile profile) throws IOException {
-        Path source = sourcePath(profile);
+    public BattleUiLayout load() throws IOException {
+        Path source = sourceRoot == null ? null
+            : sourceRoot.resolve(SOURCE_DIRECTORY).resolve("shared.json");
         BattleUiLayout layout;
         if (source != null && Files.isRegularFile(source)) {
             layout = mapper.readValue(source.toFile(), BattleUiLayout.class);
         } else {
-            String resource = resourcePath(profile);
+            String resource = RESOURCE_DIRECTORY + "/shared.json";
             try (InputStream input = classLoader.getResourceAsStream(resource)) {
                 if (input == null) {
                     throw new IOException("Missing bundled battle UI layout " + resource);
@@ -42,18 +43,8 @@ public final class BattleUiLayoutStore {
                 layout = mapper.readValue(input, BattleUiLayout.class);
             }
         }
-        layout.validate(profile);
+        layout.validate();
         return layout;
-    }
-
-    private Path sourcePath(UiProfile profile) {
-        return sourceRoot == null
-            ? null
-            : sourceRoot.resolve(SOURCE_DIRECTORY).resolve(profile.fileStem() + ".json");
-    }
-
-    private static String resourcePath(UiProfile profile) {
-        return RESOURCE_DIRECTORY + "/" + profile.fileStem() + ".json";
     }
 
     private static Path resolveAuthoringSourceRoot() {

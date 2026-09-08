@@ -4,7 +4,6 @@ import com.badlogic.gdx.Input.Buttons;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
-import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.coded.CursedSpeechAbility;
 import com.jjktbf.model.character.coded.CodedAbilityState;
@@ -20,6 +19,8 @@ import com.jjktbf.model.move.MoveEffectTrigger;
 import com.jjktbf.model.move.MoveTag;
 import com.jjktbf.model.move.StatusEffect;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlanningPanelInputTest {
-    private static final int WIDTH = 1000;
-    private static final int HEIGHT = 900;
+    private static final int WIDTH = 2560;
+    private static final int HEIGHT = 1440;
 
     @Test
     void clickingCardPlacesMoveAtFirstFreeTickOnItsAssignedTimeline() {
@@ -62,7 +63,7 @@ class PlanningPanelInputTest {
 
         ActionSegment placed = panel.getPlan().offensiveTimeline().getSegments().get(0);
         assertEquals(new CombatantId("target-1"), placed.getTarget());
-        input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        input.touchDown(160, HEIGHT - 410, 0, Buttons.LEFT);
         assertTrue(panel.isConfirmed());
     }
 
@@ -76,8 +77,8 @@ class PlanningPanelInputTest {
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
 
         input.touchDown(50, HEIGHT - 50, 0, Buttons.LEFT);
-        input.touchDragged(300, HEIGHT - 580, 0);
-        input.touchUp(300, HEIGHT - 580, 0, Buttons.LEFT);
+        input.touchDragged(800, HEIGHT - 450, 0);
+        input.touchUp(800, HEIGHT - 450, 0, Buttons.LEFT);
 
         ActionSegment placed = panel.getPlan().offensiveTimeline().getSegments().get(0);
         assertEquals(new CombatantId("target-1"), placed.getTarget());
@@ -109,7 +110,7 @@ class PlanningPanelInputTest {
         panel.setSoundPlayer(cues::add);
 
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
-        assertTrue(input.touchDown(160, HEIGHT - 580, 0, Buttons.RIGHT));
+        assertTrue(input.touchDown(480, HEIGHT - 450, 0, Buttons.RIGHT));
 
         assertEquals(0, panel.getPlan().offensiveTimeline().getSegments().size());
         assertEquals(0, panel.getPlan().totalApUsed());
@@ -145,8 +146,8 @@ class PlanningPanelInputTest {
 
         cues.clear();
         input.touchDown(50, HEIGHT - 50, 0, Buttons.LEFT);
-        input.touchDragged(300, HEIGHT - 580, 0);
-        input.touchUp(300, HEIGHT - 580, 0, Buttons.LEFT);
+        input.touchDragged(800, HEIGHT - 450, 0);
+        input.touchUp(800, HEIGHT - 450, 0, Buttons.LEFT);
         assertEquals(List.of(SoundCue.UI_PICKUP, SoundCue.UI_PLAN_PLACE), cues);
     }
 
@@ -160,8 +161,8 @@ class PlanningPanelInputTest {
         panel.setSoundPlayer(cues::add);
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
 
-        input.touchDown(160, HEIGHT - 580, 0, Buttons.LEFT);
-        input.touchUp(160, HEIGHT - 580, 0, Buttons.LEFT);
+        input.touchDown(480, HEIGHT - 450, 0, Buttons.LEFT);
+        input.touchUp(480, HEIGHT - 450, 0, Buttons.LEFT);
 
         assertEquals(List.of(original), panel.getPlan().offensiveTimeline().getSegments());
         assertTrue(cues.isEmpty());
@@ -278,7 +279,7 @@ class PlanningPanelInputTest {
         assertNotNull(panel.restorePlacement(move, 1, 0, "target-1"));
         panel.setReadOnly(true);
 
-        assertTrue(panel.inputProcessor().mouseMoved(160, HEIGHT - 580));
+        assertTrue(panel.inputProcessor().mouseMoved(480, HEIGHT - 450));
     }
 
     @Test
@@ -288,9 +289,9 @@ class PlanningPanelInputTest {
         assertNotNull(panel.restorePlacement(move, 1, 0, "target-1"));
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
 
-        input.touchDown(160, HEIGHT - 580, 0, Buttons.LEFT);
-        input.touchDragged(300, HEIGHT - 580, 0);
-        input.touchUp(300, HEIGHT - 580, 0, Buttons.LEFT);
+        input.touchDown(480, HEIGHT - 450, 0, Buttons.LEFT);
+        input.touchDragged(800, HEIGHT - 450, 0);
+        input.touchUp(800, HEIGHT - 450, 0, Buttons.LEFT);
 
         ActionSegment relocated = panel.getPlan().offensiveTimeline().getSegments().get(0);
         assertEquals(new CombatantId("target-1"), relocated.getTarget());
@@ -329,7 +330,7 @@ class PlanningPanelInputTest {
             assertEquals(List.of("target-1"), wireTargets);
         }
 
-        input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        input.touchDown(160, HEIGHT - 410, 0, Buttons.LEFT);
         assertTrue(panel.isConfirmed(), "clicking off the target menu locks in the selected targets");
     }
 
@@ -345,12 +346,12 @@ class PlanningPanelInputTest {
         clickCard(input);
         ActionSegment segment = panel.getPlan().offensiveTimeline().getSegments().get(0);
 
-        input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        input.touchDown(160, HEIGHT - 410, 0, Buttons.LEFT);
         assertFalse(panel.isConfirmed(), "an incomplete target selection must not lock");
 
         assertTrue(panel.chooseTarget(segment, "target-1"));
         assertTrue(panel.confirmTargetSelection(segment));
-        input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        input.touchDown(160, HEIGHT - 410, 0, Buttons.LEFT);
         assertTrue(panel.isConfirmed());
     }
 
@@ -364,7 +365,7 @@ class PlanningPanelInputTest {
 
         ActionSegment placed = panel.getPlan().offensiveTimeline().getSegments().get(0);
         assertEquals(List.of("target-1"), panel.getSelectedTargetIds(placed));
-        input.touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        input.touchDown(160, HEIGHT - 410, 0, Buttons.LEFT);
         assertTrue(panel.isConfirmed());
     }
 
@@ -419,9 +420,9 @@ class PlanningPanelInputTest {
             move, 1, 0, List.of("target-2", "target-1"));
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
 
-        input.touchDown(160, HEIGHT - 580, 0, Buttons.LEFT);
-        input.touchDragged(300, HEIGHT - 580, 0);
-        input.touchUp(300, HEIGHT - 580, 0, Buttons.LEFT);
+        input.touchDown(480, HEIGHT - 450, 0, Buttons.LEFT);
+        input.touchDragged(800, HEIGHT - 450, 0);
+        input.touchUp(800, HEIGHT - 450, 0, Buttons.LEFT);
 
         ActionSegment relocated = panel.getPlan().offensiveTimeline().getSegments().get(0);
         assertEquals(List.of("target-2", "target-1"), panel.getSelectedTargetIds(relocated));
@@ -439,39 +440,63 @@ class PlanningPanelInputTest {
             move, 1, 0, List.of("target-1"));
 
         assertTrue(panel.chooseTarget(segment, "target-2"));
-        panel.inputProcessor().touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        panel.inputProcessor().touchDown(160, HEIGHT - 410, 0, Buttons.LEFT);
         assertFalse(panel.isConfirmed());
         assertTrue(panel.getLockError().contains("Finish selecting targets"));
 
         assertTrue(panel.confirmTargetSelection(segment));
-        panel.inputProcessor().touchDown(820, HEIGHT - 830, 0, Buttons.LEFT);
+        panel.inputProcessor().touchDown(160, HEIGHT - 410, 0, Buttons.LEFT);
         assertTrue(panel.isConfirmed());
     }
 
     @Test
-    void movePaletteFillsTenCardsAcrossTwoRowsBeforeExtendingRight() {
-        assertEquals(1, PlanningPanel.paletteRowCount(5));
-        assertEquals(2, PlanningPanel.paletteRowCount(6));
-        assertEquals(2, PlanningPanel.paletteRowCount(30));
+    void movePaletteExtendsRightInOneScrollableRow() {
+        List<Move> moves = java.util.stream.IntStream.range(0, 12)
+            .mapToObj(index -> move("PALETTE_" + index, 10)).toList();
+        PlanningPanel panel = new PlanningPanel(
+            300, moves, Map.of(), 150, 0, 0, null, null, WIDTH, HEIGHT);
+        PlanningPanel.LayoutSnapshot snapshot = panel.layoutSnapshot();
+        assertEquals(12, snapshot.cards().size());
+        for (int i = 1; i < snapshot.cards().size(); i++) {
+            var previous = snapshot.cards().get(i - 1);
+            var current = snapshot.cards().get(i);
+            assertEquals(previous.y, current.y, 0.001f);
+            assertTrue(current.x > previous.x + previous.width);
+        }
+        assertTrue(snapshot.paletteScrollMaximum() > 0f);
+    }
 
-        assertEquals(0, PlanningPanel.paletteRow(0));
-        assertEquals(4, PlanningPanel.paletteColumn(4));
-        assertEquals(1, PlanningPanel.paletteRow(5));
-        assertEquals(0, PlanningPanel.paletteColumn(5));
-        assertEquals(1, PlanningPanel.paletteRow(9));
-        assertEquals(4, PlanningPanel.paletteColumn(9));
-
-        assertEquals(0, PlanningPanel.paletteRow(10));
-        assertEquals(5, PlanningPanel.paletteColumn(10));
-        assertEquals(1, PlanningPanel.paletteRow(11));
-        assertEquals(5, PlanningPanel.paletteColumn(11));
-        assertEquals(6, PlanningPanel.paletteColumnCount(12));
+    @ParameterizedTest
+    @CsvSource({"2560,1440", "1920,1080", "1366,768", "1512,982", "2560,1600", "3440,1440"})
+    void cardDragAndLockUseTheSameTransformAfterResize(int width, int height) {
+        Move move = move("RESPONSIVE_INPUT", 10);
+        PlanningPanel panel = targetedPanel(move);
+        panel.resize(width, height);
+        panel.setLayout(BattleUiLayout.defaults());
+        panel.setStatusEffects(List.of());
+        BattleCanvas canvas = BattleCanvas.fit(width, height);
+        var snapshot = panel.layoutSnapshot();
+        var card = canvas.physicalBounds(snapshot.cards().get(0), BattleCanvas.Anchor.BOTTOM);
+        var bar = canvas.physicalBounds(snapshot.offensiveTimeline(), BattleCanvas.Anchor.BOTTOM);
+        var lock = canvas.physicalBounds(snapshot.lock(), BattleCanvas.Anchor.BOTTOM);
+        var input = panel.inputProcessor();
+        int cardX = Math.round(card.x + card.width / 2f);
+        int cardY = Math.round(height - card.y - card.height / 2f);
+        int barX = Math.round(bar.x + bar.width / 3f);
+        int barY = Math.round(height - bar.y - bar.height / 2f);
+        assertTrue(input.touchDown(cardX, cardY, 0, Buttons.LEFT));
+        assertTrue(input.touchDragged(barX, barY, 0));
+        assertTrue(input.touchUp(barX, barY, 0, Buttons.LEFT));
+        assertEquals(1, panel.getPlan().allSegments().size());
+        assertTrue(input.touchDown(Math.round(lock.x + lock.width / 2f),
+            Math.round(height - lock.y - lock.height / 2f), 0, Buttons.LEFT));
+        assertTrue(panel.isConfirmed(), panel.getLockError());
     }
 
     @Test
-    void windowsLockInputMapsFromTheScaledBottomCanvas() {
-        PlanningPanel panel = panel(move("WINDOWS_LOCK", 10), 150);
-        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+    void sharedLockInputMapsFromTheScaledBottomCanvas() {
+        PlanningPanel panel = panel(move("SHARED_LOCK", 10), 150);
+        panel.setLayout(BattleUiLayout.defaults());
         panel.setViewportTransform(0.5f, 30f, 0f, 720f);
 
         assertTrue(panel.inputProcessor().touchDown(113, 514, 0, Buttons.LEFT));
@@ -479,9 +504,9 @@ class PlanningPanelInputTest {
     }
 
     @Test
-    void readOnlyWindowsPlannerRejectsCardAndActionClicks() {
-        PlanningPanel panel = panel(move("WINDOWS_READ_ONLY", 10), 150);
-        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+    void readOnlySharedPlannerRejectsCardAndActionClicks() {
+        PlanningPanel panel = panel(move("SHARED_READ_ONLY", 10), 150);
+        panel.setLayout(BattleUiLayout.defaults());
         panel.setViewportTransform(0.5f, 30f, 0f, 720f);
         panel.setReadOnly(true);
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
@@ -497,7 +522,7 @@ class PlanningPanelInputTest {
     void authoritativeRestoreBypassesPostResolutionResourceValidation() {
         Move move = resourceSpendingMove();
         PlanningPanel panel = panel(move, 150);
-        panel.setAbilityStates(List.of(new CodedAbilityState("SUPPLY", "Supply", 0, 3)));
+        panel.setAbilityStates(List.of(new CodedAbilityState("SUPPLY", "Supply", 0, 3, true)));
 
         assertNotNull(panel.restorePlacement(move, 1, 0, List.of()));
     }
@@ -507,7 +532,7 @@ class PlanningPanelInputTest {
     }
 
     /**
-     * Builds a panel with an explicit battle grid length. Windows grids share
+     * Builds a panel with an explicit battle grid length. Shared grids share
      * one full-width track; the grid length controls spacing and tick mapping.
      */
     private static PlanningPanel panel(Move move, int apBudget, int gridLength) {

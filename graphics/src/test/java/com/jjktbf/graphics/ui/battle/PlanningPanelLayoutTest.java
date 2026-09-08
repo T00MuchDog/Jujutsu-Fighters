@@ -2,12 +2,13 @@ package com.jjktbf.graphics.ui.battle;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
-import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.character.coded.MiraclesAbility;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 import java.util.Map;
@@ -15,20 +16,18 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlanningPanelLayoutTest {
 
     @Test
-    void windowsUsesTheUnifiedBottomPlanningSection() {
-        PlanningPanel.LayoutSnapshot snapshot = windowsPanel(2560f, 1440f).layoutSnapshot();
+    void sharedUsesTheUnifiedBottomPlanningSection() {
+        PlanningPanel.LayoutSnapshot snapshot = sharedPanel(2560f, 1440f).layoutSnapshot();
         Rectangle palette = snapshot.palette();
         Rectangle defense = snapshot.defensiveTimeline();
         Rectangle offense = snapshot.offensiveTimeline();
 
-        assertTrue(snapshot.unifiedWindows());
-        assertEquals(new Rectangle(0f, 0f, 2560f, 537.96f), snapshot.section());
+        assertBounds(new Rectangle(0f, 0f, 2560f, 537.96f), snapshot.section());
         assertEquals(new Rectangle(18f, 18f, 2524f, 296.96f), palette);
         assertEquals(12f, defense.y - palette.y - palette.height, 0.0001f);
         assertEquals(78f, defense.height, 0.0001f);
@@ -57,20 +56,18 @@ class PlanningPanelLayoutTest {
     }
 
     @Test
-    void windowsCompactViewportKeepsTheSameLogicalComposition() {
-        PlanningPanel.LayoutSnapshot snapshot = windowsPanel(1280f, 720f).layoutSnapshot();
+    void sharedCompactViewportKeepsTheSameLogicalComposition() {
+        PlanningPanel.LayoutSnapshot snapshot = sharedPanel(1280f, 720f).layoutSnapshot();
 
-        assertTrue(snapshot.unifiedWindows());
-        assertFalse(snapshot.shortViewport());
-        assertEquals(new Rectangle(0f, 0f, 2560f, 537.96f), snapshot.section());
+        assertBounds(new Rectangle(0f, 0f, 2560f, 537.96f), snapshot.section());
         assertEquals(new Rectangle(72f, 326.96f, 186f, 172f), snapshot.lock());
         assertEquals(285.6f, snapshot.cards().get(0).width, 0.0001f);
     }
 
     @Test
-    void everyWindowsTimelineFillsTheTrackAndLowerTiersSpaceDotsFurtherApart() {
-        PlanningPanel.LayoutSnapshot full = windowsPanel(300, 2560f, 1440f).layoutSnapshot();
-        PlanningPanel.LayoutSnapshot shortGrid = windowsPanel(70, 2560f, 1440f).layoutSnapshot();
+    void everyTimelineFillsTheTrackAndLowerTiersSpaceDotsFurtherApart() {
+        PlanningPanel.LayoutSnapshot full = sharedPanel(300, 2560f, 1440f).layoutSnapshot();
+        PlanningPanel.LayoutSnapshot shortGrid = sharedPanel(70, 2560f, 1440f).layoutSnapshot();
         Rectangle fullBar = full.offensiveTimeline();
         Rectangle shortBar = shortGrid.offensiveTimeline();
 
@@ -83,38 +80,48 @@ class PlanningPanelLayoutTest {
             0.0001f);
     }
 
-    @Test
-    void macRetainsTheDedicatedFullScreenPlanner() {
-        List<Move> moves = moves();
-        Map<String, Integer> costs = costs(moves);
-        PlanningPanel panel = new PlanningPanel(
-            300, moves, costs, 150, 0, 100, null, null, 1512f, 982f);
-        panel.setActorName("Mac Layout Fighter");
-        panel.setLayout(BattleUiLayout.defaults(UiProfile.MAC));
-
+    @ParameterizedTest
+    @CsvSource({"2560,1440", "1920,1080", "1366,768", "1512,982", "2560,1600", "3440,1440"})
+    void allViewportsKeepSafeControlsAndExtendOnlyPlannerChrome(float width, float height) {
+        PlanningPanel.LayoutSnapshot reference = sharedPanel(2560f, 1440f).layoutSnapshot();
+        PlanningPanel panel = sharedPanel(width, height);
+        panel.setStatusEffects(List.of());
         PlanningPanel.LayoutSnapshot snapshot = panel.layoutSnapshot();
-        assertFalse(snapshot.unifiedWindows());
-        assertTrue(snapshot.palette().y + snapshot.palette().height
-            <= snapshot.defensiveTimeline().y);
-        assertTrue(snapshot.defensiveTimeline().y + snapshot.defensiveTimeline().height
-            <= snapshot.offensiveTimeline().y);
-        assertTrue(snapshot.offensiveTimeline().y + snapshot.offensiveTimeline().height
-            <= snapshot.header().y);
+        BattleCanvas canvas = BattleCanvas.fit(width, height);
+        assertBounds(canvas.planningSurface(), snapshot.section());
+        assertEquals(reference.palette(), snapshot.palette());
+        assertEquals(reference.cards(), snapshot.cards());
+        assertEquals(reference.offensiveTimeline(), snapshot.offensiveTimeline());
+        assertEquals(reference.defensiveTimeline(), snapshot.defensiveTimeline());
+        assertEquals(reference.lock(), snapshot.lock());
+        assertEquals(reference.apStat(), snapshot.apStat());
+        assertEquals(reference.ceStat(), snapshot.ceStat());
+
+        panel.resize(2560f, 1440f);
+        panel.resize(width, height);
+        assertEquals(snapshot, panel.layoutSnapshot());
     }
 
-    private static PlanningPanel windowsPanel(float width, float height) {
-        return windowsPanel(300, width, height);
+    private static PlanningPanel sharedPanel(float width, float height) {
+        return sharedPanel(300, width, height);
     }
 
-    private static PlanningPanel windowsPanel(int gridLength, float width, float height) {
+    private static void assertBounds(Rectangle expected, Rectangle actual) {
+        assertEquals(expected.x, actual.x, 0.001f);
+        assertEquals(expected.y, actual.y, 0.001f);
+        assertEquals(expected.width, actual.width, 0.001f);
+        assertEquals(expected.height, actual.height, 0.001f);
+    }
+
+    private static PlanningPanel sharedPanel(int gridLength, float width, float height) {
         List<Move> moves = moves();
         Map<String, Integer> costs = costs(moves);
         CodedAbilityState miracles = new CodedAbilityState(
-            MiraclesAbility.KEY, "Miracles", 6, 6);
+            MiraclesAbility.KEY, "Miracles", 6, 6, false);
         PlanningPanel panel = new PlanningPanel(
             gridLength, moves, costs, 150, 0, 100, miracles, null, width, height);
-        panel.setActorName("Windows Layout Fighter");
-        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setActorName("Shared Layout Fighter");
+        panel.setLayout(BattleUiLayout.defaults());
         return panel;
     }
 

@@ -1,0 +1,19 @@
+{
+  "schemaVersion" : 1,
+  "referenceWidth" : 2560,
+  "referenceHeight" : 1440,
+  "execution" : {
+    "textGeometryScale" : 1.5,
+    "outerMarginFraction" : 0.035,
+    "outerMarginMin" : 16.0,
+    "outerMarginMax" : 32.0,
+    "logLineSpacing" : 1.7,
+    "hudScale" : 1.25,
+    "meterHudGap" : 14.0,
+    "miraclesWidthFraction" : 0.11,
+    "ratioWidthFraction" : 0.12
+  },
+  "planner" : {
+    "textGeometryScale" : 1.5
+  }
+}

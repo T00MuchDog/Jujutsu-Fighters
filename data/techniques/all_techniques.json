@@ -1389,24 +1389,9 @@
     "y" : 218.00003,
     "prerequisites" : [ ]
   }, {
-    "id" : "node-000001",
-    "contentType" : "ABILITY",
-    "contentId" : "000061",
-    "x" : 362.00012,
-    "y" : 149.99995,
-    "prerequisites" : [ {
-      "type" : "NODE",
-      "nodeId" : "node-000016",
-      "attached" : true
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000000",
-      "attached" : true
-    } ]
-  }, {
     "id" : "node-000002",
     "contentType" : "ABILITY",
-    "contentId" : "000062",
+    "contentId" : "000061",
     "x" : 19.0,
     "y" : 630.0,
     "prerequisites" : [ ]
@@ -1427,15 +1412,11 @@
       "type" : "STAT",
       "stat" : "jujutsuSkill",
       "minimum" : 65
-    }, {
-      "type" : "NODE",
-      "nodeId" : "node-000001",
-      "attached" : true
     } ]
   }, {
     "id" : "node-000004",
     "contentType" : "ABILITY",
-    "contentId" : "000063",
+    "contentId" : "000062",
     "x" : 353.99994,
     "y" : 373.00003,
     "prerequisites" : [ {

@@ -20,6 +20,8 @@ package com.jjktbf.model.character;
 public enum AbilityEffectTarget {
     SELF,
     ENEMY,
+    /** Only the current event's enemy counterpart, not the whole opposing team. */
+    CURRENT_ENEMY,
     ALLY,
     BOTH,
     SELF_AND_ALLY,

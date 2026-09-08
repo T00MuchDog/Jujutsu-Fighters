@@ -24,11 +24,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 
@@ -403,6 +406,149 @@ class BattleAnimationPlayerTest {
     }
 
     @Test
+    void bundledSimpleDomainSharesOneActivationBindingWithoutLegacyIdsOrDuplicates() {
+        System.clearProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY);
+        player = new BattleAnimationPlayer();
+        player.reload();
+        JsonValue catalog = new JsonReader().parse(Gdx.files.classpath("assets/animations/catalog.json"));
+        Set<String> boundMoves = new HashSet<>();
+        Set<String> domainMoves = new HashSet<>();
+        Set<String> oldIds = Set.of("simple-domain", "new-shadow-style-simple-domain");
+
+        for (JsonValue entry : catalog.require("packs")) {
+            JsonValue manifest = new JsonReader().parse(Gdx.files.classpath(
+                "assets/animations/" + entry.asString() + "/manifest.json"));
+            for (JsonValue effect : manifest.require("effects")) {
+                assertFalse(oldIds.contains(effect.getString("id")), effect.getString("id"));
+                JsonValue moves = effect.get("moveIds");
+                if (moves == null) continue;
+                for (JsonValue move : moves) {
+                    String moveId = move.asString();
+                    if (!moveId.equals("000138") && !moveId.equals("000026")) continue;
+                    assertTrue(boundMoves.add(moveId), "duplicate move binding: " + moveId);
+                    domainMoves.add(moveId);
+                    assertEquals("simple-domain-establish", effect.getString("id"));
+                }
+            }
+        }
+
+        JsonValue choreography = new JsonReader().parse(
+            Gdx.files.classpath("assets/animations/choreography.json"));
+        for (String oldId : oldIds) {
+            assertFalse(choreography.require("effects").has(oldId), oldId);
+        }
+        assertEquals(Set.of("000138", "000026"), domainMoves);
+    }
+
+    @Test
+    void bundledDomainActivationUsesTheEstablishedFlagAndSharesSheetTimingForBothMoves() {
+        System.clearProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY);
+        player = new BattleAnimationPlayer();
+        player.reload();
+        CombatantPanel source = panel(20, 30, 45, 100);
+        CombatantPanel target = panel(260, 80, 40, 80);
+        Rectangle viewport = new Rectangle(0, 0, 640, 360);
+        DrawCall expectedFront = null;
+        DrawCall expectedBehind = null;
+
+        for (String moveId : List.of("000138", "000026")) {
+            assertFalse(player.play("MOVE_FIRED", moveId, null, () -> source, () -> target,
+                false, false, null, false, false), moveId + " needs lifecycle confirmation");
+            assertFalse(player.play("DAMAGE_DEALT", moveId, null, () -> source, () -> target,
+                false, false, null, false, true), moveId + " only establishes on fire");
+            assertTrue(player.play("MOVE_FIRED", moveId, null, () -> source, () -> target,
+                moveId.equals("000026"), false, null, false, true), moveId);
+
+            BatchRecorder global = new BatchRecorder();
+            player.draw(global.proxy, viewport, "behind");
+            player.draw(global.proxy, viewport, "front");
+            assertTrue(global.calls.isEmpty(), "global drawing must omit foot layers");
+
+            player.update(0.4f);
+            BatchRecorder behind = new BatchRecorder();
+            BatchRecorder front = new BatchRecorder();
+            player.drawOwner(behind.proxy, source, "behind");
+            player.drawOwner(front.proxy, source, "front");
+            assertEquals(1, behind.calls.size(), moveId + " behind layer");
+            assertEquals(1, front.calls.size(), moveId + " front layer");
+            assertFalse(behind.calls.get(0).flipX, "ground wave orientation must match persistence on either side");
+            assertFalse(front.calls.get(0).flipX, "rotating waves must not reverse at the handoff");
+            if (expectedBehind == null) {
+                expectedBehind = behind.calls.get(0);
+                expectedFront = front.calls.get(0);
+            } else {
+                assertSame(expectedBehind.texture, behind.calls.get(0).texture);
+                assertEquals(expectedBehind.srcX, behind.calls.get(0).srcX);
+                assertEquals(expectedBehind.srcY, behind.calls.get(0).srcY);
+                assertSame(expectedFront.texture, front.calls.get(0).texture);
+                assertEquals(expectedFront.srcX, front.calls.get(0).srcX);
+                assertEquals(expectedFront.srcY, front.calls.get(0).srcY);
+            }
+            assertTrue(player.isPlaying(), moveId + " has the shared activation lifetime");
+            player.update(0.81f);
+            assertFalse(player.isPlaying(), moveId + " completes at the shared timing");
+        }
+    }
+
+    @Test
+    void parriedIncomingMultiWithDomainDefenseDoesNotReplayEstablishment() throws IOException {
+        writeDomainFixture(root);
+        player = loadedDomainPlayer(root);
+        CombatantPanel attacker = panel(10, 20, 40, 80);
+        CombatantPanel defender = panel(100, 20, 40, 80);
+
+        assertTrue(player.play("MOVE_FIRED", "000138", null, () -> defender, () -> null,
+            false, false, null, false, true));
+        BatchRecorder establishment = new BatchRecorder();
+        player.drawOwner(establishment.proxy, defender, "front");
+        assertEquals(1, establishment.calls.size());
+        Texture establishmentTexture = establishment.calls.get(0).texture;
+        player.clear();
+
+        assertTrue(player.play("MOVE_PARRIED", "multi", 1, () -> attacker, () -> defender,
+            false, false, "000138", false));
+        BatchRecorder parried = new BatchRecorder();
+        player.draw(parried.proxy, new Rectangle(0, 0, 320, 200), "front");
+        assertEquals(1, parried.calls.size(), "the incoming contact plays without re-establishing the domain");
+        assertNotEquals(establishmentTexture, parried.calls.get(0).texture);
+    }
+
+    @Test
+    void footLayersUseTranslatedPoseAndCurrentPanelWhileGlobalDrawOmitsThem() throws IOException {
+        writeDomainFixture(root);
+        player = loadedDomainPlayer(root);
+        var current = new java.util.concurrent.atomic.AtomicReference<>(panel(10, 20, 40, 80));
+        CombatantPanel old = current.get();
+        assertTrue(player.play("MOVE_FIRED", "000138", null, current::get, () -> null,
+            false, false, null, false, true));
+        player.update(0.1f);
+
+        BatchRecorder global = new BatchRecorder();
+        player.draw(global.proxy, new Rectangle(0, 0, 320, 200), "behind");
+        player.draw(global.proxy, new Rectangle(0, 0, 320, 200), "front");
+        assertTrue(global.calls.isEmpty());
+
+        BatchRecorder initialBehind = new BatchRecorder();
+        BatchRecorder initialFront = new BatchRecorder();
+        player.drawOwner(initialBehind.proxy, old, "behind");
+        player.drawOwner(initialFront.proxy, old, "front");
+        assertEquals(1, initialBehind.calls.size());
+        assertEquals(1, initialFront.calls.size());
+        assertEquals(70f, initialFront.calls.get(0).centerX(), 0.0001f,
+            "the source translation is applied at the foot pivot");
+
+        current.set(panel(20, 30, 80, 160));
+        assertEquals(BattleChoreography.Pose.IDENTITY, player.poseFor(old));
+        BatchRecorder relaidOut = new BatchRecorder();
+        player.drawOwner(relaidOut.proxy, old, "front");
+        assertTrue(relaidOut.calls.isEmpty(), "the old panel is no longer the active owner");
+        player.drawOwner(relaidOut.proxy, current.get(), "front");
+        assertEquals(1, relaidOut.calls.size());
+        assertEquals(140f, relaidOut.calls.get(0).centerX(), 0.0001f);
+        assertEquals(30f, relaidOut.calls.get(0).centerY(), 0.0001f);
+    }
+
+    @Test
     void bundledBindingsPlayWithTheirProfilesAndRestoreTheScene() {
         System.clearProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY);
         player = new BattleAnimationPlayer();
@@ -441,12 +587,14 @@ class BattleAnimationPlayerTest {
                         }
                         assertTrue(player.play(event, role.equals("guard") ? null : id, 0,
                             () -> source, () -> target, mirrored, false,
-                            role.equals("guard") ? id : null, false), id);
+                            role.equals("guard") ? id : null, false, role.equals("domain")), id);
                         int draws = 0;
                         for (int step = 0; step < 1200 && player.isPlaying(); step++) {
                             BatchRecorder batch = new BatchRecorder();
                             for (String plane : List.of("background", "behind", "front")) {
                                 player.draw(batch.proxy, viewport, plane);
+                                player.drawOwner(batch.proxy, source, plane);
+                                player.drawOwner(batch.proxy, target, plane);
                             }
                             for (DrawCall call : batch.calls) {
                                 assertTrue(Float.isFinite(call.centerX()) && Float.isFinite(call.centerY())
@@ -464,6 +612,29 @@ class BattleAnimationPlayerTest {
                 }
             }
         }
+    }
+
+    @Test
+    void paddedSpritesAnchorAtVisibleSolesAndSizeFieldsFromVisibleHeight() throws IOException {
+        BufferedImage image = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 1; y <= 4; y++) for (int x = 2; x <= 5; x++) image.setRGB(x, y, 0xffffffff);
+        Path file = root.resolve("padded-fighter.png");
+        ImageIO.write(image, "png", file.toFile());
+        Texture texture = new Texture(Gdx.files.absolute(file.toString()));
+        try {
+            CombatantPanel panel = new CombatantPanel(texture, null, null, new Rectangle(),
+                new Rectangle(10, 20, 80, 80), new Rectangle(0, 0, 100, 100), 1, false);
+            assertEquals(40, panel.spriteContentHeight());
+            float[] soles = panel.spriteGroundAnchor(BattleChoreography.Pose.IDENTITY);
+            assertEquals(50, soles[0]);
+            assertEquals(50, soles[1]);
+            panel.setSizeMultiplier(2);
+            panel.snapAnimations();
+            assertEquals(80, panel.spriteContentHeight());
+            soles = panel.spriteGroundAnchor(new BattleChoreography.Pose(.25f, .5f, 1, 1, 90, 1, 1, 1, 1));
+            assertEquals(10, soles[0], .0001f, "visible soles rotate around the translated canvas pivot");
+            assertEquals(60, soles[1], .0001f);
+        } finally { texture.dispose(); }
     }
 
     @Test
@@ -604,6 +775,15 @@ class BattleAnimationPlayerTest {
         return player;
     }
 
+    private BattleAnimationPlayer loadedDomainPlayer(Path directory) {
+        System.setProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY, directory.toString());
+        player = new BattleAnimationPlayer();
+        player.reload();
+        assertTrue(player.hasMove("000138"));
+        assertTrue(player.hasMove("000026"));
+        return player;
+    }
+
     private BattleAnimationPlayer loadedCastPlayer(Path directory) {
         System.setProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY, directory.toString());
         player = new BattleAnimationPlayer();
@@ -630,6 +810,31 @@ class BattleAnimationPlayerTest {
             """);
         Files.writeString(pack.resolve("manifest.json"), manifest("sheet.png", true));
         Files.writeString(root.resolve("choreography.json"), choreography());
+    }
+
+    private static void writeDomainFixture(Path root) throws IOException {
+        writeFixture(root);
+        Path pack = root.resolve("pack");
+        writePng(pack.resolve("domain-front.png"), 12, 8);
+        writePng(pack.resolve("domain-back.png"), 12, 8);
+        String manifest = manifest("sheet.png", true);
+        String domainEffects = """
+                  ,{"id":"domain","sheet":"domain-front.png","frameCount":2,"frameDurationMs":100,"loop":false,
+                    "anchor":[0.5,0.5],"placement":"source-feet","role":"domain","moveIds":["000138","000026"]}
+                  ,{"id":"domain-back","sheet":"domain-back.png","frameCount":2,"frameDurationMs":100,"loop":false,
+                    "anchor":[0.5,0.5],"placement":"source-feet","role":"layer"}
+""";
+        int effectsEnd = manifest.lastIndexOf(']');
+        Files.writeString(pack.resolve("manifest.json"), manifest.substring(0, effectsEnd)
+            + domainEffects + manifest.substring(effectsEnd));
+        String choreography = choreography()
+            .replace("\"profiles\":{", "\"profiles\":{\n"
+                + "                \"domain\":{\"durationSeconds\":0.2,\"impactSeconds\":0.1,\"size\":1,"
+                + "\"source\":[{\"at\":0,\"x\":0.5}],\"layers\":[{\"effect\":\"domain-back\","
+                + "\"placement\":\"source-feet\",\"plane\":\"behind\",\"durationSeconds\":0.2,\"size\":1}]},")
+            .replace("\"effects\":{\"source-guard\"", "\"effects\":{\"domain\":\"domain\",\"domain-back\":\"domain\",\"source-guard\"")
+            .replace("\"roles\":{\"attack\"", "\"roles\":{\"domain\":\"domain\",\"attack\"");
+        Files.writeString(root.resolve("choreography.json"), choreography);
     }
 
     private static void writeCastFixture(Path root, String castEffect) throws IOException {

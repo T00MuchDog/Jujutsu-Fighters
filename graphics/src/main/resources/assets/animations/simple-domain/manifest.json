@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sheetOrder": "row-major-top-left",
+  "frameWidth": 192,
+  "frameHeight": 192,
+  "columns": 8,
+  "effects": [
+    {
+      "id": "simple-domain-establish",
+      "sheet": "sprites/activation-front.png",
+      "frameCount": 24,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [0.5, 0.5],
+      "placement": "source-feet",
+      "role": "domain",
+      "impactFrames": [10],
+      "moveIds": ["000138", "000026"]
+    },
+    {
+      "id": "simple-domain-establish-back",
+      "sheet": "sprites/activation-back.png",
+      "frameCount": 24,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [0.5, 0.5],
+      "placement": "source-feet",
+      "role": "layer"
+    },
+    {
+      "id": "simple-domain-field-back",
+      "sheet": "sprites/field-back.png",
+      "frameCount": 48,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [0.5, 0.5],
+      "placement": "source-feet",
+      "role": "persistent"
+    },
+    {
+      "id": "simple-domain-field-front",
+      "sheet": "sprites/field-front.png",
+      "frameCount": 48,
+      "frameDurationMs": 80,
+      "loop": true,
+      "anchor": [0.5, 0.5],
+      "placement": "source-feet",
+      "role": "persistent"
+    }
+  ]
+}

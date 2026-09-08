@@ -328,8 +328,7 @@ class SelfEmbodimentOfPerfectionTest {
         return events.stream()
             .filter(event -> event.getType() == CombatEvent.Type.ABILITY_ACTIVATED)
             .filter(event -> event.getMessage() != null
-                && (event.getMessage().contains("transfigures")
-                    || event.getMessage().contains("resists transfiguration")))
+                && event.getMessage().contains("Soul Manipulation activates"))
             .toList();
     }
 

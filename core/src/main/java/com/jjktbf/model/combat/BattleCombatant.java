@@ -174,7 +174,7 @@ public class BattleCombatant {
         }
 
         private CodedAbilityState state() {
-            return new CodedAbilityState(key, label, current, maximum);
+            return new CodedAbilityState(key, label, current, maximum, true);
         }
     }
 

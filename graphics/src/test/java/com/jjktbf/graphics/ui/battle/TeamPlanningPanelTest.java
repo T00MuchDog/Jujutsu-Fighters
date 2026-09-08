@@ -3,7 +3,6 @@ package com.jjktbf.graphics.ui.battle;
 import com.badlogic.gdx.Input;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
-import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.combat.ActionSegment;
 import com.jjktbf.model.combat.BattleTeamId;
 import com.jjktbf.model.combat.CombatantId;
@@ -17,6 +16,8 @@ import com.jjktbf.multiplayer.protocol.PlanPlacement;
 import com.jjktbf.multiplayer.protocol.PlanState;
 import com.jjktbf.multiplayer.protocol.SwitchSelection;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 import java.util.Map;
@@ -27,8 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TeamPlanningPanelTest {
-    private static final int WIDTH = 1000;
-    private static final int HEIGHT = 900;
+    private static final int WIDTH = 2560;
+    private static final int HEIGHT = 1440;
 
     @Test
     void navigationPreservesEachPageDraftAndProducesOneAtomicPlacementList() {
@@ -92,7 +93,7 @@ class TeamPlanningPanelTest {
         panel.activePlanningPanel().restorePlacement(move, 1, 0, "enemy-1");
         panel.setReadOnly(true);
 
-        assertTrue(panel.inputProcessor().mouseMoved(160, HEIGHT - 580));
+        assertTrue(panel.inputProcessor().mouseMoved(480, HEIGHT - 450));
     }
 
     @Test
@@ -163,13 +164,12 @@ class TeamPlanningPanelTest {
     }
 
     @Test
-    void windowsTeamNavigationOwnsASeparateHeaderRegion() {
+    void sharedTeamNavigationOwnsASeparateHeaderRegion() {
         TeamPlanningPanel panel = panel(move("FIRST"), move("SECOND"));
 
-        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setLayout(BattleUiLayout.defaults());
         TeamPlanningPanel.HeaderRegions regions = panel.headerRegions();
 
-        assertFalse(regions.genericTitleVisible());
         assertFalse(regions.previous().overlaps(regions.next()));
         assertFalse(regions.previous().overlaps(regions.pageLabel()));
         assertFalse(regions.next().overlaps(regions.pageLabel()));
@@ -186,13 +186,13 @@ class TeamPlanningPanelTest {
         assertEquals(32f, regions.next().height, 0.0001f);
         assertEquals(32f, regions.pageLabel().height, 0.0001f);
         assertTrue(regions.previous().y
-            > WindowsBattleCanvas.ACTION_Y + WindowsBattleCanvas.ACTION_HEIGHT);
+            > BattleCanvas.ACTION_Y + BattleCanvas.ACTION_HEIGHT);
     }
 
     @Test
-    void windowsArrowInputMapsFromTheScaledBottomCanvas() {
+    void sharedArrowInputMapsFromTheScaledBottomCanvas() {
         TeamPlanningPanel panel = panel(move("FIRST"), move("SECOND"));
-        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setLayout(BattleUiLayout.defaults());
         panel.setViewportTransform(0.5f, 40f, 0f, 720f);
 
         assertTrue(panel.inputProcessor().touchDown(
@@ -201,10 +201,28 @@ class TeamPlanningPanelTest {
         assertEquals("actor-2", panel.activeActorId());
     }
 
+    @ParameterizedTest
+    @CsvSource({"2560,1440", "1920,1080", "1366,768", "1512,982", "2560,1600", "3440,1440"})
+    void navigationAndPageInputShareTheLiveCanvas(int width, int height) {
+        TeamPlanningPanel panel = panel(move("FIRST"), move("SECOND"));
+        panel.resize(width, height);
+        panel.setLayout(BattleUiLayout.defaults());
+        BattleCanvas canvas = BattleCanvas.fit(width, height);
+        var next = canvas.physicalBounds(panel.headerRegions().next(), BattleCanvas.Anchor.BOTTOM);
+        assertTrue(panel.inputProcessor().touchDown(Math.round(next.x + next.width / 2f),
+            Math.round(height - next.y - next.height / 2f), 0, Input.Buttons.LEFT));
+        assertEquals(1, panel.activePageIndex());
+        var lock = canvas.physicalBounds(
+            panel.activePlanningPanel().layoutSnapshot().lock(), BattleCanvas.Anchor.BOTTOM);
+        assertTrue(panel.inputProcessor().touchDown(Math.round(lock.x + lock.width / 2f),
+            Math.round(height - lock.y - lock.height / 2f), 0, Input.Buttons.LEFT));
+        assertTrue(panel.activePlanningPanel().isConfirmed());
+    }
+
     @Test
     void readOnlyTeamPlannerDisablesPagesAndAllNavigationInput() {
         TeamPlanningPanel panel = panel(move("FIRST"), move("SECOND"));
-        panel.setLayout(BattleUiLayout.defaults(UiProfile.WINDOWS));
+        panel.setLayout(BattleUiLayout.defaults());
         panel.setReadOnly(true);
 
         assertFalse(panel.inputProcessor().keyDown(Input.Keys.RIGHT));
@@ -314,7 +332,7 @@ class TeamPlanningPanelTest {
 
     private static void clickLock(TeamPlanningPanel panel) {
         panel.activePlanningPanel().inputProcessor()
-            .touchDown(820, HEIGHT - 830, 0, Input.Buttons.LEFT);
+            .touchDown(160, HEIGHT - 410, 0, Input.Buttons.LEFT);
     }
 
     private static Move move(String id) {

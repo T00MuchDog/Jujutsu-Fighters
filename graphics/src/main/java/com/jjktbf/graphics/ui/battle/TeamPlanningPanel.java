@@ -10,7 +10,6 @@ import com.badlogic.gdx.math.Rectangle;
 import com.jjktbf.graphics.audio.SoundCue;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
-import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.coded.CodedAbilityState;
 import com.jjktbf.model.combat.BattleCombatant;
 import com.jjktbf.model.combat.BattleState;
@@ -106,13 +105,10 @@ public final class TeamPlanningPanel {
     private final Rectangle partyPanelBounds = new Rectangle();
     private final Rectangle cancelSwitchBounds = new Rectangle();
     private final List<Rectangle> partyCardBounds = new ArrayList<>();
-    private BattleUiLayout.Planner layout = new BattleUiLayout.Planner();
     private int activePage;
     private float screenWidth;
     private float screenHeight;
-    private float textGeometryScale = 1f;
-    private boolean windowsTextGeometry;
-    private boolean unifiedWindowsLayout;
+    private float textGeometryScale = BattleUiLayout.defaults().planner.textGeometryScale;
     private boolean submitted;
     private boolean readOnly;
     private boolean switchPanelOpen;
@@ -329,21 +325,20 @@ public final class TeamPlanningPanel {
         screenWidth = width;
         screenHeight = height;
         for (Page page : pages) page.panel().resize(width, height);
-        layoutNavigation(width, height);
+        BattleCanvas canvas = BattleCanvas.fit(width, height);
+        setViewportTransform(canvas.scale(), canvas.offsetX(),
+            canvas.offsetY(BattleCanvas.Anchor.BOTTOM), canvas.viewportHeight());
+        layoutNavigation();
         layoutSwitchControls();
     }
 
     public void setLayout(BattleUiLayout battleLayout) {
         if (battleLayout == null) return;
-        layout = battleLayout.copy().planner;
-        windowsTextGeometry = battleLayout.storedProfile() == UiProfile.WINDOWS;
-        unifiedWindowsLayout = windowsTextGeometry;
-        textGeometryScale = windowsTextGeometry ? layout.textGeometryScale : 1f;
+        textGeometryScale = battleLayout.planner.textGeometryScale;
         for (Page page : pages) {
             page.panel().setLayout(battleLayout);
-            page.panel().setTeamNavigationHeader(windowsTextGeometry && pages.size() > 1);
         }
-        layoutNavigation(screenWidth, screenHeight);
+        layoutNavigation();
         layoutSwitchControls();
     }
 
@@ -364,16 +359,8 @@ public final class TeamPlanningPanel {
         }
     }
 
-    private void layoutNavigation(float width, float height) {
-        if (!windowsTextGeometry) {
-            previousBounds.set(14f, height - 52f, 30f, 30f);
-            nextBounds.set(50f, height - 52f, 30f, 30f);
-            pageLabelBounds.set(nextBounds.x + nextBounds.width + 10f,
-                nextBounds.y, Float.MAX_VALUE, nextBounds.height);
-            return;
-        }
-
-        float headerY = WindowsBattleCanvas.BOTTOM_SECTION_HEIGHT - 32f;
+    private void layoutNavigation() {
+        float headerY = BattleCanvas.BOTTOM_SECTION_HEIGHT - 32f;
         previousBounds.set(72f, headerY, 72f, 32f);
         nextBounds.set(162f, headerY, 72f, 32f);
         pageLabelBounds.set(252f, headerY, 126f, 32f);
@@ -381,13 +368,12 @@ public final class TeamPlanningPanel {
 
     private void layoutSwitchControls() {
         Rectangle lock = active().layoutSnapshot().lock();
-        float gap = windowsTextGeometry ? 18f : 10f;
-        float width = Math.max(windowsTextGeometry ? 180f : 112f,
-            Math.min(lock.width, windowsTextGeometry ? 260f : 150f));
+        float gap = 18f;
+        float width = Math.max(180f, Math.min(lock.width, 260f));
         switchBounds.set(lock.x - width - gap, lock.y, width, lock.height);
 
-        float logicalWidth = unifiedWindowsLayout ? WindowsBattleCanvas.WIDTH : screenWidth;
-        float logicalHeight = unifiedWindowsLayout ? WindowsBattleCanvas.HEIGHT : screenHeight;
+        float logicalWidth = BattleCanvas.WIDTH;
+        float logicalHeight = BattleCanvas.HEIGHT;
         float panelWidth = Math.min(900f, Math.max(420f, logicalWidth - 48f));
         float panelHeight = Math.min(520f, Math.max(300f, logicalHeight * 0.58f));
         partyPanelBounds.set(
@@ -433,25 +419,17 @@ public final class TeamPlanningPanel {
             batch.draw(ui.pixel, nextBounds.x, nextBounds.y, nextBounds.width, nextBounds.height);
             batch.setColor(Color.WHITE);
             font.setColor(Color.WHITE);
-            if (!windowsTextGeometry) {
-                font.draw(batch, "<", previousBounds.x + 10f, previousBounds.y + 21f);
-                font.draw(batch, ">", nextBounds.x + 10f, nextBounds.y + 21f);
-                font.draw(batch, pages.get(activePage).name() + "  " + (activePage + 1)
-                    + "/" + pages.size(), nextBounds.x + nextBounds.width + 10f,
-                    nextBounds.y + 21f);
-            } else {
-                drawCentered(batch, font, "<", previousBounds);
-                drawCentered(batch, font, ">", nextBounds);
-                drawCentered(batch, font, (activePage + 1) + "/" + pages.size(), pageLabelBounds);
-                if (readOnly) {
-                    batch.setColor(0.32f, 0.32f, 0.34f, 0.62f);
-                    batch.draw(ui.pixel,
-                        previousBounds.x,
-                        previousBounds.y,
-                        pageLabelBounds.x + pageLabelBounds.width - previousBounds.x,
-                        previousBounds.height);
-                    batch.setColor(Color.WHITE);
-                }
+            drawCentered(batch, font, "<", previousBounds);
+            drawCentered(batch, font, ">", nextBounds);
+            drawCentered(batch, font, (activePage + 1) + "/" + pages.size(), pageLabelBounds);
+            if (readOnly) {
+                batch.setColor(0.32f, 0.32f, 0.34f, 0.62f);
+                batch.draw(ui.pixel,
+                    previousBounds.x,
+                    previousBounds.y,
+                    pageLabelBounds.x + pageLabelBounds.width - previousBounds.x,
+                    previousBounds.height);
+                batch.setColor(Color.WHITE);
             }
         }
         drawSwitchButton(batch, font);
@@ -475,10 +453,10 @@ public final class TeamPlanningPanel {
     }
 
     private void drawPartyPanel(Batch batch, BitmapFont font, BitmapFont titleFont) {
-        float logicalWidth = unifiedWindowsLayout ? WindowsBattleCanvas.WIDTH : screenWidth;
-        float logicalHeight = unifiedWindowsLayout ? WindowsBattleCanvas.HEIGHT : screenHeight;
+        float logicalWidth = BattleCanvas.WIDTH + 2f * viewportOffsetX / viewportScale;
+        float logicalHeight = physicalViewportHeight / viewportScale;
         batch.setColor(0.02f, 0.03f, 0.06f, 0.78f);
-        batch.draw(ui.pixel, 0f, 0f, logicalWidth, logicalHeight);
+        batch.draw(ui.pixel, -viewportOffsetX / viewportScale, 0f, logicalWidth, logicalHeight);
         batch.setColor(Color.WHITE);
         ui.palette.draw(batch, partyPanelBounds.x, partyPanelBounds.y,
             partyPanelBounds.width, partyPanelBounds.height);
@@ -560,8 +538,7 @@ public final class TeamPlanningPanel {
     record HeaderRegions(
         Rectangle previous,
         Rectangle next,
-        Rectangle pageLabel,
-        boolean genericTitleVisible
+        Rectangle pageLabel
     ) { }
 
     record SwitchRegions(
@@ -575,8 +552,7 @@ public final class TeamPlanningPanel {
         return new HeaderRegions(
             new Rectangle(previousBounds),
             new Rectangle(nextBounds),
-            new Rectangle(pageLabelBounds),
-            active().isHeaderTitleVisible());
+            new Rectangle(pageLabelBounds));
     }
 
     SwitchRegions switchRegions() {
@@ -677,12 +653,8 @@ public final class TeamPlanningPanel {
 
         @Override public boolean touchDown(int x, int y, int pointer, int button) {
             if (readOnly) return false;
-            float plannerX = x;
-            float plannerY = screenHeight - y;
-            if (unifiedWindowsLayout) {
-                plannerX = (x - viewportOffsetX) / viewportScale;
-                plannerY = (physicalViewportHeight - y - viewportOffsetY) / viewportScale;
-            }
+            float plannerX = (x - viewportOffsetX) / viewportScale;
+            float plannerY = (physicalViewportHeight - y - viewportOffsetY) / viewportScale;
             if (button == Input.Buttons.LEFT && switchPanelOpen) {
                 if (cancelSwitchBounds.contains(plannerX, plannerY)) {
                     if (pages.get(activePage).switchTargetId == null) {

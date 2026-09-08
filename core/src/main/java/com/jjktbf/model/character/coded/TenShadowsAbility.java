@@ -69,6 +69,6 @@ public final class TenShadowsAbility implements CodedAbilityRuntime {
 
     @Override
     public CodedAbilityState state() {
-        return new CodedAbilityState(KEY, "Ten Shadows", 0, 0);
+        return new CodedAbilityState(KEY, "Ten Shadows", 0, 0, false);
     }
 }

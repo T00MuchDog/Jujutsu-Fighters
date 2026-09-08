@@ -479,7 +479,7 @@ class ProtocolJsonTest {
             4,
             List.of(new StatusEffectState(
                 "ACCURACY_INCREASE", "Increase Accuracy", 1, 5, 10.0)),
-            List.of(new CodedAbilityState("MIRACLES", "Miracles", 4, 6)),
+            List.of(new CodedAbilityState("MIRACLES", "Miracles", 4, 6, false)),
             List.of(divergentFist, basicBlock),
             playerOnePlan
         );
@@ -523,7 +523,7 @@ class ProtocolJsonTest {
             divergentFist.name(),
             1,
             39,
-            new CodedAbilityState("MIRACLES", "Miracles", 4, 6),
+            new CodedAbilityState("MIRACLES", "Miracles", 4, 6, false),
             "Yuji Itadori dealt 39 damage."
         );
 
@@ -539,7 +539,7 @@ class ProtocolJsonTest {
             List.of(playerOne, playerTwo),
             List.of(
                 new RoundStartCharacterState(PlayerSide.PLAYER_ONE, 205, 214, 320, 400,
-                    List.of(new CodedAbilityState("MIRACLES", "Miracles", 4, 6))),
+                    List.of(new CodedAbilityState("MIRACLES", "Miracles", 4, 6, false))),
                 new RoundStartCharacterState(PlayerSide.PLAYER_TWO, 171, 214, 350, 400, List.of())
             ),
             null,

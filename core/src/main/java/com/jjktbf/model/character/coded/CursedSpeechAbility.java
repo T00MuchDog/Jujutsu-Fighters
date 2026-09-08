@@ -144,7 +144,7 @@ public final class CursedSpeechAbility implements CodedAbilityRuntime {
 
     @Override
     public CodedAbilityState state() {
-        return new CodedAbilityState(KEY, "Cursed Speech", 0, 0);
+        return new CodedAbilityState(KEY, "Cursed Speech", 0, 0, false);
     }
 
     public static boolean supportsFeature(String feature) {

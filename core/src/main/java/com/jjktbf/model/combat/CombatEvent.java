@@ -54,6 +54,7 @@ public class CombatEvent {
         DOMAIN_CLASH_STARTED,
         DOMAIN_CLASH_ENDED,
         DOMAIN_BARRIER_DAMAGED,
+        DOMAIN_BARRIER_MILESTONE,
         DOMAIN_SURE_HIT_APPLIED,
         DOMAIN_SURE_HIT_NEGATED,
         DOMAIN_COLLAPSED,
@@ -88,6 +89,7 @@ public class CombatEvent {
 
         // Abilities
         ABILITY_ACTIVATED,
+        SOUL_MANIPULATION_NEGATED,
         RATIO_TRIGGERED,
 
         // Round / battle

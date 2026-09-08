@@ -573,10 +573,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             .orElse(requestedName);
     }
 
-    /** Flags *move:id* / *ability:id* description references that match no content. */
+    /** Flags *move:id* / *ability:id* / *domain:id* description references that match no content. */
     private String descriptionNameTokenError(String description) {
         return ContentNameTokens.validationError(description,
-            CharacterData.descriptionNameLookup(repo, abilityRepo));
+            CharacterData.descriptionNameLookup(repo, abilityRepo, domainRepo));
     }
 
     @Override protected boolean isNewDraft(MoveData draft) {

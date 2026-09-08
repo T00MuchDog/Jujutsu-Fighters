@@ -252,6 +252,9 @@ public enum AbilityEffectType {
         "Instant kill",
         "Immediately reduces the target to 0 HP unless fatal-hit protection is active.",
         TARGET),
+    NEGATE_SOUL_MANIPULATION(
+        "Negate soul manipulation",
+        "Stops the current Soul Manipulation attempt before its success roll."),
 
     APPLY_STATUS(
         "Apply status",
@@ -386,7 +389,7 @@ public enum AbilityEffectType {
     private static final java.util.Set<AbilityEffectType> ACTIVATION_REQUIRED =
         java.util.EnumSet.of(
             HEAL_HP, RESTORE_CE, DRAIN_CE, DEAL_DIRECT_DAMAGE,
-            INSTANT_KILL, APPLY_STATUS, MAINTAIN_STATUS_WITH_CE,
+            INSTANT_KILL, NEGATE_SOUL_MANIPULATION, APPLY_STATUS, MAINTAIN_STATUS_WITH_CE,
             REMOVE_STATUS, CLEAR_STATUSES,
             TIMED_STAT_MODIFIER, TIMED_SIZE_MULTIPLIER, TEMP_STAT_SET_VALUE,
             IGNORE_DAMAGE, DAMAGE_SHIELD, SURVIVE_FATAL_DAMAGE,

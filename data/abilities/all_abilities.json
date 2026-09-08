@@ -244,7 +244,7 @@
   "id" : "000008",
   "name" : "Vessel of Sukuna",
   "flavourText" : "A body capable of containing the King of Curses bears qualities beyond those of an ordinary vessel.",
-  "mechanicText" : "Grant access to *ability:000009*, *ability:000010*, and *ability:000011*.",
+  "mechanicText" : "Grant access to *ability:000009*, *ability:000010*, *ability:000011*, and *ability:000064*.",
   "category" : "PASSIVE",
   "sourceType" : "CHARACTER",
   "effects" : [ {
@@ -259,6 +259,10 @@
     "effectId" : "effect-000002",
     "type" : "GRANT_ABILITY",
     "abilityId" : "000011"
+  }, {
+    "effectId" : "effect-000003",
+    "type" : "GRANT_ABILITY",
+    "abilityId" : "000063"
   } ],
   "masteryThreshold" : 0
 }, {
@@ -321,7 +325,7 @@
   "id" : "000012",
   "name" : "Visualise the Soul",
   "flavourText" : "Awareness of the soul's shape allows a blow or healing energy to reach it directly.",
-  "mechanicText" : "PHYSICAL MELEE attacks can strike the SOUL. RCT can heal the user's SOUL.",
+  "mechanicText" : "Attacks can strike the SOUL. RCT can heal the user's SOUL.",
   "category" : "PASSIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Idle Transfiguration",
@@ -1448,30 +1452,6 @@
   "masteryThreshold" : 0
 }, {
   "id" : "000061",
-  "name" : "Soul Manipulation",
-  "flavourText" : "To touch a soul is to hold it - and a touch is all Idle Transfiguration needs.",
-  "mechanicText" : "Successful MELEE attacks have a 5% chance to attempt SOUL MANIPULATION. Success transfigures the target instantly. Failure teaches the target's shape: each failed attempt adds a permanent stack, and every later attempt is harder to resist.",
-  "category" : "PASSIVE",
-  "sourceType" : "TECHNIQUE",
-  "sourceValue" : "Idle Transfiguration",
-  "effects" : [ {
-    "effectId" : "effect-000000",
-    "type" : "CODED",
-    "codedAbilityKey" : "IDLE_TRANSFIGURATION",
-    "codedFeature" : "SOUL_MANIPULATION",
-    "codedParameters" : {
-      "procChancePercent" : 5,
-      "baseSuccessPercent" : 5,
-      "ctmSuccessPerTenPoints" : 1,
-      "successPerStackPercent" : 12,
-      "resistPerTenCe" : 1,
-      "minSuccessPercent" : 1,
-      "maxSuccessPercent" : 95
-    }
-  } ],
-  "masteryThreshold" : 0
-}, {
-  "id" : "000062",
   "name" : "Malleable Body",
   "flavourText" : "A body with no fixed shape keeps no wound it does not want to keep.",
   "mechanicText" : "Bodily injury statuses are shed whenever *ability:000060* restores the associated damage.",
@@ -1486,7 +1466,7 @@
   } ],
   "masteryThreshold" : 0
 }, {
-  "id" : "000063",
+  "id" : "000062",
   "name" : "Transfigured Human Stockpile",
   "flavourText" : "Idle Transfiguration leaves broken people behind, and broken people are material.",
   "mechanicText" : "Begin battle with 8 TRANSFIGURED HUMANS. Certain moves consume them.",
@@ -1502,4 +1482,32 @@
     "resourceStartValue" : 8
   } ],
   "masteryThreshold" : 0
+}, {
+  "id" : "000063",
+  "name" : "Sukuna's Retribution",
+  "flavourText" : "Touching the vessel's soul trespasses on the King of Curses' domain.",
+  "mechanicText" : "Whenever an enemy attempts SOUL MANIPULATION on the user, retaliate for 75% of that enemy's maximum HP as direct SOUL damage and negate the attempt before its success roll. Only the manipulator is struck.",
+  "category" : "ACTIVE",
+  "sourceType" : "ABILITY",
+  "sourceValue" : "000008",
+  "activationConditions" : [ {
+    "condition" : {
+      "type" : "SOUL_MANIPULATION_TARGETED",
+      "actor" : "SELF"
+    },
+    "targetEffectIds" : [ "effect-000000", "effect-000001" ]
+  } ],
+  "effects" : [ {
+    "effectId" : "effect-000000",
+    "type" : "DEAL_DIRECT_DAMAGE",
+    "doubleValue" : 0.75,
+    "valueMode" : "PERCENT",
+    "target" : "CURRENT_ENEMY",
+    "soulDamage" : true
+  }, {
+    "effectId" : "effect-000001",
+    "type" : "NEGATE_SOUL_MANIPULATION"
+  } ],
+  "masteryThreshold" : 0,
+  "automaticallyAssigned" : true
 } ]

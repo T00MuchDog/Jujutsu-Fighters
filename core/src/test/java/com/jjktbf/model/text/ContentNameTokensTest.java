@@ -16,7 +16,8 @@ class ContentNameTokensTest {
 
     private final ContentNameTokens.NameLookup lookup = ContentNameTokens.of(
         Map.of("000004", "Body Blow", "000108", "Convergence"),
-        Map.of("000001", "Miracle Reservoir", "000032", "Well's Unknown Abyss"));
+        Map.of("000001", "Miracle Reservoir", "000032", "Well's Unknown Abyss"),
+        Map.of("000001", "Self-Embodiment of Perfection"));
 
     @Test
     void resolvesMoveAndAbilityReferencesToCurrentNames() {
@@ -24,6 +25,14 @@ class ContentNameTokensTest {
             "With Miracle Reservoir active, answer with Body Blow.",
             ContentNameTokens.resolve(
                 "With *ability:000001* active, answer with *move:000004*.", lookup));
+    }
+
+    @Test
+    void resolvesDomainReferencesToCurrentNames() {
+        assertEquals(
+            "Close the barrier: establish Self-Embodiment of Perfection.",
+            ContentNameTokens.resolve(
+                "Close the barrier: establish *domain:000001*.", lookup));
     }
 
     @Test
@@ -40,6 +49,23 @@ class ContentNameTokensTest {
             "Uses *move:999999* and *ability:999999* verbatim.",
             ContentNameTokens.resolve(
                 "Uses *move:999999* and *ability:999999* verbatim.", lookup));
+    }
+
+    @Test
+    void domainReferencesStayVerbatimWhenNoDomainNamesAreSupplied() {
+        ContentNameTokens.NameLookup withoutDomains = ContentNameTokens.of(
+            Map.of("000004", "Body Blow"), null);
+        assertEquals(
+            "Establish *domain:000001* verbatim.",
+            ContentNameTokens.resolve("Establish *domain:000001* verbatim.", withoutDomains));
+    }
+
+    @Test
+    void domainNamespaceIsIndependentOfMovesAndAbilities() {
+        assertEquals(
+            "Self-Embodiment of Perfection is neither Body Blow nor Miracle Reservoir.",
+            ContentNameTokens.resolve(
+                "*domain:000001* is neither *move:000004* nor *ability:000001*.", lookup));
     }
 
     @Test
@@ -65,9 +91,14 @@ class ContentNameTokensTest {
     void validationReportsUnknownAndMalformedReferences() {
         assertNull(ContentNameTokens.validationError(
             "With *ability:000001* active.", lookup));
+        assertNull(ContentNameTokens.validationError(
+            "Establish *domain:000001*.", lookup));
         assertEquals(
             "Unknown move reference *move:999999*.",
             ContentNameTokens.validationError("Uses *move:999999* here.", lookup));
+        assertEquals(
+            "Unknown domain reference *domain:999999*.",
+            ContentNameTokens.validationError("Uses *domain:999999* here.", lookup));
         assertEquals(
             "Malformed content reference *move:000004*x*.",
             ContentNameTokens.validationError("Bad *move:000004*x* ref.", lookup));

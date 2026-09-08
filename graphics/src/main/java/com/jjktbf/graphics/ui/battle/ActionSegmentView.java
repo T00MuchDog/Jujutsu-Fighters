@@ -114,10 +114,13 @@ public class ActionSegmentView {
         float originalScaleX = font.getData().scaleX;
         float originalScaleY = font.getData().scaleY;
         List<String> lines = List.of(name);
-        for (float scale = 1f; scale >= 0.30f; scale -= 0.10f) {
+        for (int step = 10; step >= 3; step--) {
+            float scale = step / 10f;
             font.getData().setScale(originalScaleX * scale, originalScaleY * scale);
             lines = wrap(font, name, width);
-            if (lines.size() <= 2) break;
+            if (lines.size() <= 2
+                && font.getCapHeight() + (lines.size() - 1) * font.getLineHeight() <= height - 8f
+                && lines.stream().allMatch(line -> textWidth(font, line) <= width)) break;
         }
 
         if (lines.size() > 2) {
@@ -126,9 +129,19 @@ public class ActionSegmentView {
         }
 
         float lineHeight = font.getLineHeight();
-        float firstY = y + height / 2f + (lines.size() - 1) * lineHeight / 2f;
+        float firstY = y + height / 2f
+            + (font.getCapHeight() + (lines.size() - 1) * lineHeight) / 2f;
         for (int i = 0; i < lines.size(); i++) {
-            font.draw(batch, lines.get(i), x, firstY - i * lineHeight);
+            String line = lines.get(i);
+            if (textWidth(font, line) > width) {
+                while (!line.isEmpty() && textWidth(font, line + "...") > width) {
+                    line = line.substring(0, line.length() - 1);
+                }
+                line = textWidth(font, line + "...") <= width ? line + "..." : "";
+            }
+            if (firstY - i * lineHeight - font.getCapHeight() >= y + 4f) {
+                font.draw(batch, line, x, firstY - i * lineHeight);
+            }
         }
         font.getData().setScale(originalScaleX, originalScaleY);
     }

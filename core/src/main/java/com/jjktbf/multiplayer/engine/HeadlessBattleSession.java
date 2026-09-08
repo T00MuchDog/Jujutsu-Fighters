@@ -1667,7 +1667,7 @@ public final class HeadlessBattleSession {
                  CE_DRAINED, CE_RESTORED,
                  SIZE_MULTIPLIER_CHANGED,
                  CHARACTER_TRANSFORMED, CHARACTER_REVERTED,
-                 DOMAIN_BARRIER_DAMAGED -> event.getIntValue();
+                 DOMAIN_BARRIER_DAMAGED, DOMAIN_BARRIER_MILESTONE -> event.getIntValue();
             default -> null;
         };
     }

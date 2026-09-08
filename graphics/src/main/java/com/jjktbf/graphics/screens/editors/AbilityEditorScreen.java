@@ -27,6 +27,7 @@ import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.AbilityResolver;
 import com.jjktbf.model.character.CharacterData;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.character.ReinforcementAbility;
 import com.jjktbf.model.text.ContentNameTokens;
 import com.jjktbf.model.character.CharacterRepository;
@@ -64,6 +65,7 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
     private final TechniqueRepository techniqueRepo;
     private final CharacterRepository charRepo;
     private final CursedToolRepository cursedToolRepo;
+    private final DomainRepository domainRepo;
 
     private Container<Actor> sourceValueContainer;
     private Container<Actor> effectsContainer;
@@ -76,6 +78,7 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
         techniqueRepo = new TechniqueRepository("data/techniques");
         charRepo = new CharacterRepository("data/characters");
         cursedToolRepo = new CursedToolRepository("data/tools");
+        domainRepo = new DomainRepository("data/domains");
     }
 
     @Override protected String title() { return "ABILITY EDITOR"; }
@@ -166,6 +169,7 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
         techniqueRepo.load();
         charRepo.load();
         cursedToolRepo.load();
+        domainRepo.load();
         records.clear();
         records.addAll(repo.getAll());
     }
@@ -243,10 +247,10 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
     private String validationError(AbilityData ability) {
         if (ability.name == null || ability.name.trim().isEmpty()) return "Name is required.";
         String nameTokenError = ContentNameTokens.validationError(ability.mechanicText,
-            CharacterData.descriptionNameLookup(moveRepo, repo));
+            CharacterData.descriptionNameLookup(moveRepo, repo, domainRepo));
         if (nameTokenError == null) {
             nameTokenError = ContentNameTokens.validationError(ability.flavourText,
-                CharacterData.descriptionNameLookup(moveRepo, repo));
+                CharacterData.descriptionNameLookup(moveRepo, repo, domainRepo));
         }
         if (nameTokenError != null) {
             return "Mechanic/Flavour text: " + nameTokenError;

@@ -82,7 +82,7 @@ public final class BattleChoreography {
             if (layerArray != null) {
                 if (!layerArray.isArray()) throw invalid("layers must be an array");
                 for (JsonValue layer : layerArray) {
-                    String placement = choice(layer, "placement", "target", "source", "target", "screen", "beam", "projectile");
+                    String placement = choice(layer, "placement", "target", "source", "target", "source-feet", "target-feet", "screen", "beam", "projectile");
                     String plane = choice(layer, "plane", "front", "background", "behind", "front");
                     layers.add(new Layer(layer.getString("effect"), placement, plane,
                         number(layer, "startSeconds", 0, 0, 60),

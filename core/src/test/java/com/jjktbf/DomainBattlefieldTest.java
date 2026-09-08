@@ -257,10 +257,10 @@ class DomainBattlefieldTest {
         state.domainBattlefield().processTick(state, effects::executeDomainEffect, 2);
 
         assertEquals(350, leaderDomain.internalBarrierIntegrity());
-        assertEquals(318, trailerDomain.internalBarrierIntegrity());
+        assertEquals(312, trailerDomain.internalBarrierIntegrity());
         assertEquals(leaderDomain.instanceId(),
             state.domainBattlefield().clashes().get(0).leaderInstanceId());
-        assertEquals(2.0 / 320.0,
+        assertEquals(8.0 / 320.0,
             state.domainBattlefield().clashes().get(0).takeoverProgress(), 1.0e-12);
     }
 
@@ -300,8 +300,8 @@ class DomainBattlefieldTest {
         DomainInstance secondDomain = state.domainBattlefield().activeDomains().stream()
             .filter(instance -> instance.ownerId().equals(second.getInstanceId()))
             .findFirst().orElseThrow();
-        assertEquals(345, secondDomain.internalBarrierIntegrity());
-        assertEquals(5.0 / 350.0, clash.takeoverProgress(), 1.0e-12);
+        assertEquals(325, secondDomain.internalBarrierIntegrity());
+        assertEquals(25.0 / 350.0, clash.takeoverProgress(), 1.0e-12);
 
         second.restoreCe(second.getMaxCursedEnergy());
         state.domainBattlefield().processTick(state, effects::executeDomainEffect, 4);
@@ -361,11 +361,20 @@ class DomainBattlefieldTest {
         List<CombatEvent> events = state.domainBattlefield().processTick(
             state, effects::executeDomainEffect, 2);
 
-        assertEquals(4982, antiDomain.internalBarrierIntegrity());
+        assertEquals(4912, antiDomain.internalBarrierIntegrity());
         assertTrue(events.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.DOMAIN_BARRIER_DAMAGED
                 && antiDomain.instanceId().equals(event.getDomainInstanceId())
-                && event.getIntValue() == 18));
+                && event.getIntValue() == 88));
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.DOMAIN_BARRIER_MILESTONE
+                && antiDomain.instanceId().equals(event.getDomainInstanceId())
+                && event.getIntValue() == 90),
+            "crossing the first ten-percent step announces a milestone");
+        assertEquals(1, events.stream()
+            .filter(event -> event.getType() == CombatEvent.Type.DOMAIN_BARRIER_MILESTONE)
+            .count(),
+            "one milestone per ten-percent step");
         assertTrue(state.domainBattlefield().clashes().isEmpty());
     }
 
@@ -398,9 +407,10 @@ class DomainBattlefieldTest {
 
         assertEquals(hpBefore, defender.getCurrentHp());
         assertEquals(2, state.domainBattlefield().activeDomains().size());
-        assertEquals(2, events.stream()
+        assertEquals(1, events.stream()
             .filter(event -> event.getType() == CombatEvent.Type.DOMAIN_SURE_HIT_NEGATED)
-            .count());
+            .count(),
+            "repeated negations by the same counter are announced only once");
         assertFalse(events.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.DOMAIN_COLLAPSED
                 && simpleDomain.id().equals(event.getDomainId())));

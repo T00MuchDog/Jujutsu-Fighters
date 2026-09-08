@@ -144,6 +144,12 @@ Example standalone configuration:
   and extra layers; extra layers also support `screen`. Screen layers cover the
   viewport at size 1.
 
+`source-feet` and `target-feet` are also available for primary effects and layers.
+They anchor to visible sprite soles (excluding transparent texture padding),
+follow the current fighter pose, and size the tile in visible fighter heights.
+These ground layers draw immediately around their owner after its plate, using
+the chosen `behind`/`front` plane. Offsets remain in base sprite-height units.
+
 Beam cels face right and fill the horizontal tile edge to edge. They are stretched
 between the current transformed fighter centers, with independent thickness and
 rotation toward the actual target. Projectile cels also face right; their center
@@ -178,6 +184,9 @@ next event. Combat itself is still calculated exclusively by core/the server.
 - `role: "guard"`: collision on the incoming block/parry event, using its defensive
   move ID. The guard and incoming attack reach their impact markers together.
 - Other roles at `placement: "source"`: activation on `MOVE_FIRED`.
+- `role: "domain"`: source/foot activation on `MOVE_FIRED` only with successful
+  same-owner domain-establishment confirmation from the resolved event batch.
+  A defensive collision does not replay this establishment clip.
 - Other roles at `placement: "target"`: ally-defense activation on `DEFENSE_GRANTED`, when the actual ally is known.
 - `eventTypes` in a pack: explicit event-bound effects such as `BLACK_FLASH`.
 - `events` in choreography: reusable successful dodge, miss, block, and parry movement.
@@ -233,11 +242,16 @@ root trips. Flower Field adds transient battlefield layers; beams and projectile
 span actual fighter positions. Self-Embodiment's opening hands and halo play over
 persistent domain scenery (below). Existing form/domain systems still own gameplay.
 
-### Persistent Domain Scenery
+### Persistent Domain Visuals
 
-`domain-backdrops.json` binds domain definition IDs to full-scene images and a
-`fadeSeconds` entry duration. Paths use the same override lookup as animation
-packs. Add another domain here without adding move- or character-specific Java.
+`domain-backdrops.json` binds domain definition IDs to persistent visuals. The
+default `placement: "backdrop"` uses a full-scene `sheet` and `fadeSeconds`, keeping
+existing shipped scenery/overrides valid. Paths use the animation override lookup.
+`placement: "owner-local"` instead uses catalog `layers` with `effect` and `plane`
+(`behind`/`front`), `size` in visible fighter heights, optional `offsetX`/`offsetY`,
+`openingDelaySeconds`, and `fadeSeconds`. Loop/frame timing comes from the catalog
+effect. Non-looping persistent sheets hold their final cel. Owner-local layers
+are independently composable and do not compete with full-scene backdrops.
 
 `DomainBackdropPlayer` begins the fade during `MOVE_FIRED` only when the resolved
 events confirm a same-owner, same-tick domain establishment. It keeps that scene
@@ -252,6 +266,22 @@ stitched, gripping arms. The background is aspect-covered behind fighters and HU
 in both desktop layouts. Regenerate it with
 `python3 scripts/build_domain_backdrop.py`; provenance is in
 `animations/domain-backdrops/CREDITS.md`.
+
+Simple Domain `000000` uses an owner-local blue filled floor with cyan-white,
+pointed wavelets circulating around its rim, not full-screen scenery.
+Moves `000138` and `000026` share `simple-domain-establish`: 24 x 50ms (1.2s).
+The maintained field is 48 x 80ms (3.84s). It fades in over the final 0.08s of the
+1.2s activation, with matching wave positions, and remains until that exact domain
+instance collapses. The blue floor always draws behind the fighter; only the
+foreground rim and its wave crests draw in front. Ground layers keep the same
+world orientation on either side so rotation does not reverse at the handoff.
+State reconciliation retains combatant-instance owners and loop phase; it restores
+already-active fields without replaying activation. Skipping finite playback does
+not remove the field. Both halves draw around the actual owner's sprite below HUD.
+
+Generate with `python3 scripts/build_simple_domain_animations.py --export`, audit
+with `--check`. Research, three paired candidates, review results and opt-in real-GL
+battle validation are in `docs/animations/simple-domain/README.md`.
 
 ### Cursed Spirit Export
 

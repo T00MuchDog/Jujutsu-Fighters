@@ -21,6 +21,8 @@ public final class DomainInstance {
     private int remainingTicks;
     private final int maximumInternalBarrierIntegrity;
     private int internalBarrierIntegrity;
+    /** Last announced ten-percent step of {@link #internalBarrierIntegrity}. */
+    private int announcedBarrierStep = 10;
     private int remainingCounterUses;
     private int elapsedTicks;
     private double upkeepDebt;
@@ -92,6 +94,16 @@ public final class DomainInstance {
         internalBarrierIntegrity = Math.max(0, internalBarrierIntegrity - Math.max(0, amount));
         return previous - internalBarrierIntegrity;
     }
+
+    /** Current integrity as a floored ten-percent step (0–10); 10 when unbreakable. */
+    int barrierStep() {
+        return maximumInternalBarrierIntegrity <= 0
+            ? 10 : Math.min(10, internalBarrierIntegrity * 10 / maximumInternalBarrierIntegrity);
+    }
+
+    int announcedBarrierStep() { return announcedBarrierStep; }
+
+    void setAnnouncedBarrierStep(int step) { announcedBarrierStep = step; }
 
     int healInternalBarrier(int amount) {
         int previous = internalBarrierIntegrity;

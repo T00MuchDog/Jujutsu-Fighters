@@ -145,7 +145,7 @@ public final class MiraclesAbility implements CodedAbilityRuntime {
     }
 
     private CodedAbilityState miracleState(int value) {
-        return new CodedAbilityState(KEY, "Miracles", value, capacity);
+        return new CodedAbilityState(KEY, "Miracles", value, capacity, false);
     }
 
     private CombatEvent event(int tick, String message) {

@@ -225,8 +225,8 @@ class MultiCombatantResolverTest {
     @Test
     void aoeIncomingMoveHooksAreEvaluatedIndependentlyForEveryTarget() {
         BattleCombatant attacker = fighter("Attacker");
-        BattleCombatant first = simpleDomainFighter("First");
-        BattleCombatant second = simpleDomainFighter("Second");
+        BattleCombatant first = simpleDomainFighter("First", true);
+        BattleCombatant second = simpleDomainFighter("Second", true);
         BattleState state = new BattleState(
             BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
             BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(first, second)));
@@ -245,18 +245,145 @@ class MultiCombatantResolverTest {
         int firstHp = first.getCurrentHp();
         int secondHp = second.getCurrentHp();
 
-        List<CombatEvent> events = resolveRoundEvents(state);
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
 
         assertEquals(firstHp, first.getCurrentHp());
         assertEquals(secondHp, second.getCurrentHp());
-        assertEquals(0, first.getCodedAbilities().state(NewShadowStyleAbility.KEY)
+        assertEquals(1, first.getCodedAbilities().state(NewShadowStyleAbility.KEY)
             .orElseThrow().currentValue());
-        assertEquals(0, second.getCodedAbilities().state(NewShadowStyleAbility.KEY)
+        assertEquals(1, second.getCodedAbilities().state(NewShadowStyleAbility.KEY)
             .orElseThrow().currentValue());
         assertTrue(events.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.MOVE_PARRIED && event.getTarget() == first));
         assertTrue(events.stream().anyMatch(event ->
             event.getType() == CombatEvent.Type.MOVE_PARRIED && event.getTarget() == second));
+        assertTrue(events.stream().noneMatch(event ->
+            event.getType() == CombatEvent.Type.DOMAIN_COLLAPSED));
+    }
+
+    @Test
+    void simpleDomainParryIsSingleUsePerDomain() {
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant defender = simpleDomainFighter("Defender", false);
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(defender)));
+        armSimpleDomain(defender);
+        Move rangedAoe = new Move.Builder("RANGED_AOE")
+            .name("Ranged AOE").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.AOE, MoveTag.RANGED))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(new HitComponent(
+                20, Set.of(MoveTag.PHYSICAL), 0, false, true)))
+            .build();
+        BattlePlan plan = planFor(attacker);
+        plan.place(rangedAoe, 5, 0);
+        plan.place(rangedAoe, 9, 0);
+        attacker.setTimeline(plan.toLegacyTimeline());
+        int defenderHp = defender.getCurrentHp();
+
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
+
+        assertEquals(1, events.stream()
+            .filter(event -> event.getType() == CombatEvent.Type.MOVE_PARRIED)
+            .count());
+        assertTrue(defender.getCurrentHp() < defenderHp,
+            "the second attack lands once the one-use parry is spent");
+    }
+
+    @Test
+    void simpleDomainParryCountersMeleeAttackers() {
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant defender = simpleDomainFighter("Defender", false);
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(defender)));
+        armSimpleDomain(defender);
+        Move melee = new Move.Builder("MELEE_IN")
+            .name("Melee In").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.MELEE))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(new HitComponent(
+                20, Set.of(MoveTag.PHYSICAL, MoveTag.MELEE), 0, false, true)))
+            .build();
+        BattlePlan plan = planFor(attacker);
+        plan.place(melee, 5, 0, defender.getInstanceId());
+        attacker.setTimeline(plan.toLegacyTimeline());
+        int attackerHp = attacker.getCurrentHp();
+        int defenderHp = defender.getCurrentHp();
+
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
+
+        assertEquals(defenderHp, defender.getCurrentHp(), "the parry blocks the melee move");
+        assertTrue(attacker.getCurrentHp() < attackerHp,
+            "the stance counters a MELEE attacker");
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_PARRIED && event.getTarget() == defender));
+    }
+
+    @Test
+    void bindingVowDismissesDomainAndParryWhenTheOwnerAttacks() {
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant defender = simpleDomainFighter("Defender", true);
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(defender)));
+        armSimpleDomain(defender);
+        Move ownAttack = new Move.Builder("OWN_ATTACK")
+            .name("Own Attack").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(new HitComponent(
+                20, Set.of(MoveTag.PHYSICAL), 0, false, true)))
+            .build();
+        BattlePlan plan = planFor(defender);
+        Move stance = defender.getCharacter().getKnownMoves().stream()
+            .filter(move -> move.getId().equals("000028"))
+            .findFirst().orElseThrow();
+        plan.place(stance, 1, 0);
+        plan.place(ownAttack, 5, 0, attacker.getInstanceId());
+        defender.setTimeline(plan.toLegacyTimeline());
+
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
+
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.DOMAIN_COLLAPSED
+                && "OWNER_ACTED".equals(event.getDomainCollapseReason())
+                && defender.getInstanceId().equals(event.getSource().getInstanceId())),
+            "using an attacking move must collapse the vowed Simple Domain");
+        assertEquals(0, defender.getCodedAbilities().state(NewShadowStyleAbility.KEY)
+            .orElseThrow().currentValue());
+    }
+
+    @Test
+    void withoutTheVowAttackingDoesNotDismissTheSimpleDomain() {
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant defender = simpleDomainFighter("Defender", false);
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(defender)));
+        Move ownAttack = new Move.Builder("OWN_ATTACK")
+            .name("Own Attack").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(new HitComponent(
+                20, Set.of(MoveTag.PHYSICAL), 0, false, true)))
+            .build();
+        BattlePlan plan = planFor(defender);
+        Move stance = defender.getCharacter().getKnownMoves().stream()
+            .filter(move -> move.getId().equals("000028"))
+            .findFirst().orElseThrow();
+        plan.place(stance, 1, 0);
+        plan.place(ownAttack, 5, 0, attacker.getInstanceId());
+        defender.setTimeline(plan.toLegacyTimeline());
+
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
+
+        assertTrue(events.stream().noneMatch(event ->
+            event.getType() == CombatEvent.Type.DOMAIN_COLLAPSED),
+            "without the binding vow, attacking must not dismiss the Domain");
+        assertEquals(2, defender.getCodedAbilities().state(NewShadowStyleAbility.KEY)
+            .orElseThrow().currentValue());
     }
 
     @Test
@@ -437,7 +564,95 @@ class MultiCombatantResolverTest {
             null, List.of(), List.of(), Equipment.NONE);
     }
 
-    private static BattleCombatant simpleDomainFighter(String name) {
+    @Test
+    void plainSimpleDomainWithoutTheStanceGrantsNoParry() {
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant defender = plainDomainFighter("Defender", false);
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(defender)));
+        Move ranged = new Move.Builder("RANGED_IN")
+            .name("Ranged In").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.RANGED))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(new HitComponent(
+                20, Set.of(MoveTag.PHYSICAL, MoveTag.RANGED), 0, false, true)))
+            .build();
+        BattlePlan plan = planFor(defender);
+        Move plain = defender.getCharacter().getKnownMoves().stream()
+            .filter(move -> move.getId().equals("000029"))
+            .findFirst().orElseThrow();
+        plan.place(plain, 1, 0);
+        defender.setTimeline(plan.toLegacyTimeline());
+        BattlePlan attackPlan = planFor(attacker);
+        attackPlan.place(ranged, 5, 0, defender.getInstanceId());
+        attacker.setTimeline(attackPlan.toLegacyTimeline());
+        int defenderHp = defender.getCurrentHp();
+
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
+
+        assertTrue(defender.getCurrentHp() < defenderHp,
+            "a plain Simple Domain carries no New Shadow Style parry");
+        assertTrue(events.stream().noneMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_PARRIED));
+        assertTrue(state.domainBattlefield().activeDomains().stream()
+            .anyMatch(instance -> instance.ownerId().equals(defender.getInstanceId())),
+            "without the vow the Domain persists through the incoming attack");
+    }
+
+    @Test
+    void bindingVowDismissesPlainSimpleDomainOnAttack() {
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant defender = plainDomainFighter("Defender", true);
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(defender)));
+        Move ownAttack = new Move.Builder("OWN_ATTACK")
+            .name("Own Attack").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(new HitComponent(
+                20, Set.of(MoveTag.PHYSICAL), 0, false, true)))
+            .build();
+        BattlePlan plan = planFor(defender);
+        Move plain = defender.getCharacter().getKnownMoves().stream()
+            .filter(move -> move.getId().equals("000029"))
+            .findFirst().orElseThrow();
+        plan.place(plain, 1, 0);
+        plan.place(ownAttack, 5, 0, attacker.getInstanceId());
+        defender.setTimeline(plan.toLegacyTimeline());
+
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
+
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.DOMAIN_COLLAPSED
+                && "OWNER_ACTED".equals(event.getDomainCollapseReason())
+                && defender.getInstanceId().equals(event.getSource().getInstanceId())),
+            "the vow dismisses even a plain Simple Domain on an attacking move");
+    }
+
+    private static BattleCombatant plainDomainFighter(String name, boolean bindingVow) {
+        MoveEffectData establishment =
+            AbilityEffectType.ESTABLISH_DOMAIN.createDefaultMoveEffect();
+        establishment.domainId = "000000";
+        establishment.target = AbilityEffectTarget.SELF.name();
+        establishment.trigger = MoveEffectTrigger.ON_FIRE.name();
+        Move plain = new Move.Builder("000029")
+            .name(name + " Simple Domain").category(MoveCategory.UTILITY)
+            .tags(Set.of(MoveTag.CURSED_ENERGY, MoveTag.UTILITY))
+            .apCost(2).unleashPoint(1)
+            .effects(List.of(establishment))
+            .build();
+        CharacterStats stats = new CharacterStats.Builder().vitality(300).speed(100).build();
+        List<com.jjktbf.model.character.Ability> abilities = bindingVow
+            ? List.of(simpleDomainBindingVow()) : List.of();
+        SorcererCharacter character = new SorcererCharacter(
+            name.toLowerCase(), name, stats, null,
+            List.of(plain), List.of(), Equipment.NONE);
+        return new BattleCombatant(character, abilities);
+    }
+
+    private static BattleCombatant simpleDomainFighter(String name, boolean bindingVow) {
         String reactionId = "000027";
         Move reaction = new Move.Builder(reactionId)
             .name(name + " Reaction")
@@ -449,30 +664,84 @@ class MultiCombatantResolverTest {
             .hitComponents(List.of(new HitComponent(10,
                 Set.of(MoveTag.PHYSICAL, MoveTag.CURSED_ENERGY), 0, false, true)))
             .build();
-        AbilityConditionData meleeIncoming = AbilityConditionType.MOVE_TAG_USED.createDefault();
-        meleeIncoming.actor = AbilityConditionActor.ENEMY.name();
-        meleeIncoming.moveTag = MoveTag.MELEE.name();
-        MoveEffectData activation = AbilityEffectType.CODED_MOVE_ACTION.createDefaultMoveEffect();
-        activation.codedAbilityKey = NewShadowStyleAbility.KEY;
-        activation.codedAction = NewShadowStyleAbility.ACTIVATE_SIMPLE_DOMAIN;
-        activation.codedParameters = null;
-        activation.target = AbilityEffectTarget.SELF.name();
-        activation.trigger = MoveEffectTrigger.ON_FIRE.name();
+        MoveEffectData establishment =
+            AbilityEffectType.ESTABLISH_DOMAIN.createDefaultMoveEffect();
+        establishment.domainId = "000000";
+        establishment.target = AbilityEffectTarget.SELF.name();
+        establishment.trigger = MoveEffectTrigger.ON_FIRE.name();
         Move domain = new Move.Builder("000028")
             .name(name + " Domain").category(MoveCategory.DEFENSIVE)
             .tags(Set.of(MoveTag.DEFENSIVE, MoveTag.ATTACK, MoveTag.UTILITY))
             .apCost(2).unleashPoint(1).potency(1)
-            .defenseType(DefenseType.PARRY).blockDuration(1)
-            .defenseTiming(DefenseTiming.REACTION).defenseUses(1)
             .attackLaunchMode(AttackLaunchMode.ON_DEFENCE)
-            .attackLaunchCondition(meleeIncoming)
             .attackLaunchMoveId(reactionId).attackLaunchMove(reaction)
-            .effects(List.of(activation))
+            .effects(List.of(establishment))
             .build();
         CharacterStats stats = new CharacterStats.Builder().vitality(300).speed(100).build();
+        List<com.jjktbf.model.character.Ability> abilities = bindingVow
+            ? List.of(simpleDomainBindingVow()) : List.of();
         SorcererCharacter character = new SorcererCharacter(
-            name.toLowerCase(), name, stats, null, List.of(reaction, domain), List.of(), Equipment.base(WeaponType.KATANA));
-        return new BattleCombatant(character, List.of());
+            name.toLowerCase(), name, stats, null,
+            List.of(reaction, domain), List.of(), Equipment.base(WeaponType.KATANA));
+        return new BattleCombatant(character, abilities);
+    }
+
+    private static com.jjktbf.model.character.Ability simpleDomainBindingVow() {
+        com.jjktbf.model.character.AbilityData ability =
+            new com.jjktbf.model.character.AbilityData();
+        ability.id = "VOW";
+        ability.name = "Simple Domain Binding Vow";
+        ability.category = "PASSIVE";
+        ability.sourceType = "CHARACTER";
+        com.jjktbf.model.character.AbilityEffectData effect =
+            AbilityEffectType.CODED.createDefault();
+        effect.effectId = "effect-000000";
+        effect.codedAbilityKey = NewShadowStyleAbility.KEY;
+        effect.codedFeature = NewShadowStyleAbility.SIMPLE_DOMAIN_BINDING_VOW;
+        effect.codedParameters = null;
+        ability.effects = List.of(effect);
+        return new com.jjktbf.model.character.Ability(ability);
+    }
+
+    /** Resolves rounds with a lookup that serves the code-authored Simple Domain. */
+    private static List<CombatEvent> resolveRoundEventsWithDomains(BattleState state) {
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+        CombatResolver resolver = new CombatResolver(
+            new SeededRandomSource(1L), new SimpleDomainLookup());
+        return resolver.resolveRound(state);
+    }
+
+    private static final class SimpleDomainLookup
+        implements com.jjktbf.model.combat.BattleCharacterLookup,
+                   com.jjktbf.model.combat.DomainDefinitionLookup {
+        @Override
+        public java.util.Optional<com.jjktbf.model.character.Character> findCharacter(
+            String characterId) {
+            return java.util.Optional.empty();
+        }
+
+        @Override
+        public java.util.Optional<com.jjktbf.model.domain.DomainDefinition> findDomain(
+            String domainId) {
+            if (!"000000".equals(domainId)) return java.util.Optional.empty();
+            com.jjktbf.model.domain.DomainData data =
+                new com.jjktbf.model.domain.DomainData();
+            data.id = "000000";
+            data.name = "Simple Domain";
+            data.antiDomain = true;
+            data.topology = "INCOMPLETE";
+            data.capturePolicy = "SELECTED_TARGETS";
+            data.entrantPolicy = "SNAPSHOT";
+            data.protectionPolicy = "OWNER";
+            data.durationRounds = -1;
+            data.burnoutRounds = 0;
+            data.ceUpkeepPerTick = 0.0;
+            data.internalBarrierIntegrity = 2500;
+            data.counterType = "TECHNIQUE_CONTACT_NULLIFICATION";
+            data.counterPotency = 100;
+            data.counterUses = -1;
+            return java.util.Optional.of(data.toDomain());
+        }
     }
 
     private static MoveEffectData stunEffect() {

@@ -24,6 +24,7 @@ import com.jjktbf.multiplayer.protocol.DomainState;
 import com.jjktbf.multiplayer.protocol.MatchState;
 import com.jjktbf.multiplayer.protocol.MatchStatus;
 import com.jjktbf.multiplayer.protocol.PlayerSide;
+import com.jjktbf.graphics.ui.CombatantPanel;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +42,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DomainBackdropPlayerTest {
@@ -54,6 +57,7 @@ class DomainBackdropPlayerTest {
 
     private String oldAnimationsDirectory;
     private DomainBackdropPlayer player;
+    private BattleAnimationPlayer animations;
     private TextureLifecycle textures;
     private com.badlogic.gdx.Files previousFiles;
     private Graphics previousGraphics;
@@ -110,6 +114,7 @@ class DomainBackdropPlayerTest {
     @AfterEach
     void restoreGlobalState() {
         if (player != null) player.dispose();
+        if (animations != null) animations.dispose();
         Gdx.files = previousFiles;
         Gdx.graphics = previousGraphics;
         Gdx.gl = previousGl;
@@ -126,9 +131,9 @@ class DomainBackdropPlayerTest {
         loadFixture();
         BattleCombatant owner = fighter();
         CombatEvent firing = local(CombatEvent.Type.MOVE_FIRED, owner, 7, null, null);
-        player.beginOpening(List.of(firing,
+        assertTrue(player.beginOpening(List.of(firing,
             local(CombatEvent.Type.DOMAIN_DECLARED, owner, 7, null, DOMAIN_A),
-            local(CombatEvent.Type.DOMAIN_ESTABLISHED, owner, 7, "local-instance", DOMAIN_A)), firing);
+            local(CombatEvent.Type.DOMAIN_ESTABLISHED, owner, 7, "local-instance", DOMAIN_A)), firing));
         BatchRecorder batch = new BatchRecorder();
         player.draw(batch.proxy, new Rectangle(0, 0, 100, 100));
         assertTrue(batch.calls.isEmpty(), "opening begins at zero opacity");
@@ -144,8 +149,9 @@ class DomainBackdropPlayerTest {
         BattleEventState firing = online(BattleEventType.MOVE_FIRED, 3, 7, "owner-1", null, null);
         BattleEventState established = online(BattleEventType.DOMAIN_ESTABLISHED, 3, 7, "owner-1",
             "online-instance", DOMAIN_A);
-        player.beginOpening(List.of(firing,
-            online(BattleEventType.DOMAIN_DECLARED, 3, 7, "owner-1", null, DOMAIN_A), established), firing);
+        assertTrue(player.beginOpening(List.of(firing,
+            online(BattleEventType.DOMAIN_DECLARED, 3, 7, "owner-1", null, DOMAIN_A), established), firing));
+
         player.update(.5f);
         BatchRecorder batch = new BatchRecorder();
         player.draw(batch.proxy, new Rectangle(0, 0, 100, 100));
@@ -282,7 +288,7 @@ class DomainBackdropPlayerTest {
     void syncRestoresAndClearsSnapshotDomains() throws IOException {
         loadFixture();
         BatchRecorder batch = new BatchRecorder();
-        player.sync(Map.of("snapshot-instance", DOMAIN_B));
+        player.sync(Map.of("snapshot-instance", new DomainBackdropPlayer.DomainVisualState(DOMAIN_B, null)));
         player.draw(batch.proxy, new Rectangle(0, 0, 100, 100));
         assertEquals(1, batch.calls.size());
         player.sync(Map.of());
@@ -336,7 +342,7 @@ class DomainBackdropPlayerTest {
     @Test
     void usesAspectCoverAndRestoresPackedBatchColor() throws IOException {
         loadFixture();
-        player.sync(Map.of("instance", DOMAIN_A));
+        player.sync(Map.of("instance", new DomainBackdropPlayer.DomainVisualState(DOMAIN_A, null)));
         BatchRecorder batch = new BatchRecorder();
 
         player.draw(batch.proxy, new Rectangle(0, 0, 400, 100));
@@ -360,7 +366,7 @@ class DomainBackdropPlayerTest {
     @Test
     void clearKeepsReusableTextureButDisposeReleasesIt() throws IOException {
         loadFixture();
-        player.sync(Map.of("instance", DOMAIN_A));
+        player.sync(Map.of("instance", new DomainBackdropPlayer.DomainVisualState(DOMAIN_A, null)));
         player.draw(new BatchRecorder().proxy, new Rectangle(0, 0, 100, 100));
         assertEquals(1, textures.generated.size());
         player.clear();
@@ -377,6 +383,7 @@ class DomainBackdropPlayerTest {
         JsonValue domains = new JsonReader().parse(Gdx.files.classpath("assets/animations/domain-backdrops.json"))
             .require("domains");
         for (JsonValue domain : domains) {
+            if (domain.getString("placement", "backdrop").equals("owner-local")) continue;
             try (var input = Gdx.files.classpath("assets/animations/" + domain.getString("sheet")).read()) {
                 BufferedImage image = ImageIO.read(input);
                 assertNotNull(image, domain.name);
@@ -390,8 +397,155 @@ class DomainBackdropPlayerTest {
         }
     }
 
+    @Test
+    void ownerLocalFieldsDrawForBothOwnersAlongsideBackdropAndCollapseExactInstance() throws IOException {
+        loadOwnerLocalFixture();
+        player.apply(online(BattleEventType.DOMAIN_ESTABLISHED, 1, 1, null, "background", DOMAIN_A));
+        player.apply(online(BattleEventType.DOMAIN_ESTABLISHED, 1, 1, "owner-a", "local-a", LOCAL_DOMAIN));
+        player.apply(online(BattleEventType.DOMAIN_ESTABLISHED, 1, 1, "owner-b", "local-b", LOCAL_DOMAIN));
+        player.update(1);
+
+        BatchRecorder background = new BatchRecorder();
+        player.draw(background.proxy, new Rectangle(0, 0, 320, 180));
+        assertEquals(1, background.calls.size(), "owner-local domains must not replace the global backdrop");
+
+        CombatantPanel ownerA = panel(10, 20, 40, 80);
+        CombatantPanel ownerB = panel(100, 20, 40, 80);
+        BatchRecorder fields = new BatchRecorder();
+        player.drawOwner(fields.proxy, "owner-a", ownerA, animations, "behind");
+        player.drawOwner(fields.proxy, "owner-a", ownerA, animations, "front");
+        player.drawOwner(fields.proxy, "owner-b", ownerB, animations, "front");
+        assertEquals(3, fields.calls.size(), "both owners expose behind/front field layers");
+
+        fields.clear();
+        player.apply(online(BattleEventType.DOMAIN_COLLAPSED, 1, 2, "owner-a", "local-a", LOCAL_DOMAIN));
+        player.drawOwner(fields.proxy, "owner-a", ownerA, animations, "front");
+        assertTrue(fields.calls.isEmpty(), "collapse removes only the exact domain instance");
+        player.drawOwner(fields.proxy, "owner-b", ownerB, animations, "front");
+        assertEquals(1, fields.calls.size(), "the other owner-local instance remains active");
+        background.clear();
+        player.draw(background.proxy, new Rectangle(0, 0, 320, 180));
+        assertEquals(1, background.calls.size(), "collapsing a field leaves the backdrop active");
+    }
+
+    @Test
+    void reconnectAndRewindRestoresOwnerLocalFieldWithCorrectOwnerIdentity() throws IOException {
+        loadOwnerLocalFixture();
+        BattleEventState establish = online(BattleEventType.DOMAIN_ESTABLISHED, 2, 4,
+            "owner-a", "local-a", LOCAL_DOMAIN);
+        BattleEventState collapse = online(BattleEventType.DOMAIN_COLLAPSED, 2, 5,
+            "owner-a", "local-a", LOCAL_DOMAIN);
+        CombatantPanel ownerA = panel(10, 20, 40, 80);
+        CombatantPanel ownerB = panel(100, 20, 40, 80);
+        BatchRecorder fields = new BatchRecorder();
+
+        player.sync(state(List.of(domain("local-a", LOCAL_DOMAIN, "owner-a")), List.of()), List.of());
+        player.drawOwner(fields.proxy, "owner-a", ownerA, animations, "front");
+        assertEquals(1, fields.calls.size(), "snapshot restores the field for its owner");
+        fields.clear();
+        player.drawOwner(fields.proxy, "owner-b", ownerB, animations, "front");
+        assertTrue(fields.calls.isEmpty(), "snapshot owner identity is not global");
+
+        player.sync(state(List.of(), List.of(collapse)), List.of(collapse));
+        fields.clear();
+        player.drawOwner(fields.proxy, "owner-a", ownerA, animations, "front");
+        assertEquals(1, fields.calls.size(), "rewinding collapse restores the field");
+        fields.clear();
+        player.sync(state(List.of(), List.of(establish)), List.of(establish));
+        player.drawOwner(fields.proxy, "owner-a", ownerA, animations, "front");
+        assertTrue(fields.calls.isEmpty(), "rewinding establishment removes the field");
+    }
+
+    @Test
+    void animationPlayerClearDoesNotRemoveFieldAndDisposeReleasesItsTextures() throws IOException {
+        loadOwnerLocalFixture();
+        player.apply(online(BattleEventType.DOMAIN_ESTABLISHED, 1, 1, "owner-a", "local-a", LOCAL_DOMAIN));
+        player.update(1);
+        CombatantPanel owner = panel(10, 20, 40, 80);
+        BatchRecorder fields = new BatchRecorder();
+        player.drawOwner(fields.proxy, "owner-a", owner, animations, "front");
+        assertEquals(1, fields.calls.size());
+        assertEquals(1, textures.generated.size(), "the persistent field lazily loads one sheet");
+
+        animations.clear();
+        fields.clear();
+        player.drawOwner(fields.proxy, "owner-a", owner, animations, "front");
+        assertEquals(1, fields.calls.size(), "clearing finite animation playback does not clear domain state");
+        assertTrue(textures.deleted.isEmpty(), "clear retains reusable loaded textures");
+
+        animations.dispose();
+        assertEquals(textures.generated, textures.deleted, "disposing the animation player releases field textures");
+        animations = null;
+    }
+
     private static final String DOMAIN_A = "fixture-domain-a";
+
+    @Test
+    void counterOpeningHasNoMaintainedFieldUntilConfirmedBoundaryTime() throws IOException {
+        loadOwnerLocalFixture();
+        BattleCombatant owner = fighter();
+        new com.jjktbf.model.combat.BattleState(owner, fighter());
+        String ownerId = owner.getInstanceId().value();
+        CombatantPanel panel = panel(10, 20, 40, 80);
+        CombatEvent firing = local(CombatEvent.Type.MOVE_FIRED, owner, 1, null, null);
+        CombatEvent declaration = local(CombatEvent.Type.DOMAIN_DECLARED, owner, 1, null, LOCAL_DOMAIN);
+        CombatEvent established = local(CombatEvent.Type.DOMAIN_COUNTER_ESTABLISHED, owner, 1, "i", LOCAL_DOMAIN);
+        BatchRecorder batch = new BatchRecorder();
+        assertFalse(player.beginOpening(List.of(firing, declaration), firing));
+        player.update(20);
+        player.drawOwner(batch.proxy, ownerId, panel, animations, "front");
+        assertTrue(batch.calls.isEmpty(), "a declaration alone never leaves a field");
+        assertTrue(player.beginOpening(List.of(firing, declaration, established), firing));
+        player.update(.1f);
+        player.drawOwner(batch.proxy, ownerId, panel, animations, "front");
+        assertTrue(batch.calls.isEmpty(), "activation has not yet expanded to the maintained boundary");
+        player.update(.3f);
+        player.drawOwner(batch.proxy, ownerId, panel, animations, "front");
+        assertEquals(1, batch.calls.size());
+        assertTrue(batch.calls.get(0).alpha > 0 && batch.calls.get(0).alpha < 1);
+        float opacity = batch.calls.get(0).alpha;
+        player.apply(established);
+        batch.clear();
+        player.drawOwner(batch.proxy, ownerId, panel, animations, "front");
+        assertEquals(opacity, batch.calls.get(0).alpha, .0001f, "later event does not restart the opening");
+
+        player.clear();
+        batch.clear();
+        BattleEventState onlineFire = online(BattleEventType.MOVE_FIRED, 1, 1, ownerId, null, null);
+        assertTrue(player.beginOpening(List.of(onlineFire,
+            online(BattleEventType.DOMAIN_DECLARED, 1, 1, ownerId, null, LOCAL_DOMAIN),
+            online(BattleEventType.DOMAIN_COUNTER_ESTABLISHED, 1, 1, ownerId, "online", LOCAL_DOMAIN)), onlineFire));
+        player.update(1);
+        player.drawOwner(batch.proxy, "not-the-owner", panel, animations, "front");
+        assertTrue(batch.calls.isEmpty());
+        player.drawOwner(batch.proxy, ownerId, panel, animations, "front");
+        assertEquals(1, batch.calls.size());
+    }
+
+    @Test
+    void laterEventsAndAuthoritativeSyncPreserveLoopPhaseButAbsentInstanceClearsIt() throws IOException {
+        loadOwnerLocalFixture();
+        CombatantPanel owner = panel(10, 20, 40, 80);
+        player.apply(online(BattleEventType.DOMAIN_COUNTER_ESTABLISHED, 1, 1, "owner", "i", LOCAL_DOMAIN));
+        player.update(20.93f);
+        BatchRecorder batch = new BatchRecorder();
+        player.drawOwner(batch.proxy, "owner", owner, animations, "front");
+        int frameX = batch.calls.get(0).srcX;
+        assertTrue(frameX > 0);
+        player.apply(online(BattleEventType.MOVE_FIRED, 4, 1, "other", null, null));
+        player.sync(Map.of("i", new DomainBackdropPlayer.DomainVisualState(LOCAL_DOMAIN, "owner")));
+        batch.clear();
+        player.drawOwner(batch.proxy, "owner", null, animations, "front");
+        assertTrue(batch.calls.isEmpty(), "an absent render panel is safe");
+        player.drawOwner(batch.proxy, "owner", owner, animations, "front");
+        assertEquals(frameX, batch.calls.get(0).srcX, "round sync does not restart the maintained loop");
+        player.sync(Map.of());
+        batch.clear();
+        player.drawOwner(batch.proxy, "owner", owner, animations, "front");
+        assertTrue(batch.calls.isEmpty());
+    }
     private static final String DOMAIN_B = "fixture-domain-b";
+    private static final String LOCAL_DOMAIN = "fixture-owner-local";
 
     private void loadFixture() throws IOException {
         writePng(root.resolve("domain-sheet.png"), 16, 8);
@@ -399,12 +553,25 @@ class DomainBackdropPlayerTest {
         Files.writeString(root.resolve("domain-backdrops.json"), """
             {"schemaVersion":1,"domains":{
               "fixture-domain-a":{"sheet":"domain-sheet.png","fadeSeconds":1},
-              "fixture-domain-b":{"sheet":"other-sheet.png","fadeSeconds":1}
+              "fixture-domain-b":{"sheet":"other-sheet.png","fadeSeconds":1},
+              "fixture-owner-local":{"placement":"owner-local","fadeSeconds":0.5,
+                "openingDelaySeconds":0.2,"size":2.4,"offsetX":0.1,"offsetY":-0.2,
+                "layers":[{"effect":"simple-domain-field-back","plane":"behind"},
+                          {"effect":"simple-domain-field-front","plane":"front"}]}
             }}
             """);
         System.setProperty(BattleAnimationPlayer.DIRECTORY_PROPERTY, root.toString());
         player = new DomainBackdropPlayer();
         player.reload();
+    }
+
+    private void loadOwnerLocalFixture() throws IOException {
+        loadFixture();
+        writeAnimationFixture(root);
+        animations = new BattleAnimationPlayer();
+        animations.reload();
+        assertTrue(animations.hasMove("000138"));
+        assertTrue(animations.hasMove("000026"));
     }
 
     private static BattleCombatant fighter() {
@@ -443,8 +610,55 @@ class DomainBackdropPlayerTest {
     }
 
     private static DomainState domain(String instanceId, String domainId) {
-        return new DomainState(instanceId, domainId, "fixture", "owner-1", false,
+        return domain(instanceId, domainId, "owner-1");
+    }
+
+    private static DomainState domain(String instanceId, String domainId, String ownerId) {
+        return new DomainState(instanceId, domainId, "fixture", ownerId, false,
             "CLOSED", "NONE", List.of(), List.of(), List.of(), 1, 1, 1, 1, 1);
+    }
+
+    private static CombatantPanel panel(float x, float y, float width, float height) {
+        return new CombatantPanel(null, null, null, new Rectangle(),
+            new Rectangle(x, y, width, height), new Rectangle(0, 0, 100, 100), 1f, false);
+    }
+
+    private static void writeAnimationFixture(Path root) throws IOException {
+        Path pack = root.resolve("simple-domain");
+        Files.createDirectories(pack);
+        for (String sheet : List.of("establish-front.png", "establish-back.png",
+            "field-front.png", "field-back.png")) {
+            writePng(pack.resolve(sheet), 96, 4);
+        }
+        Files.writeString(root.resolve("catalog.json"), """
+            {"schemaVersion":1,"packs":["simple-domain"]}
+            """);
+        Files.writeString(pack.resolve("manifest.json"), """
+            {"schemaVersion":1,"frameWidth":4,"frameHeight":4,"columns":24,
+             "sheetOrder":"row-major-top-left","effects":[
+              {"id":"simple-domain-establish-front","sheet":"establish-front.png",
+               "frameCount":24,"frameDurationMs":50,"loop":false,"anchor":[0.5,1],
+               "placement":"source-feet","role":"domain","moveIds":["000138","000026"]},
+              {"id":"simple-domain-establish-back","sheet":"establish-back.png",
+               "frameCount":24,"frameDurationMs":50,"loop":false,"anchor":[0.5,1],
+               "placement":"source-feet","role":"domain"},
+              {"id":"simple-domain-field-front","sheet":"field-front.png",
+               "frameCount":12,"frameDurationMs":150,"loop":true,"anchor":[0.5,1],
+               "placement":"source-feet","role":"utility"},
+              {"id":"simple-domain-field-back","sheet":"field-back.png",
+               "frameCount":12,"frameDurationMs":150,"loop":true,"anchor":[0.5,1],
+               "placement":"source-feet","role":"utility"}
+             ]}
+            """);
+        Files.writeString(root.resolve("choreography.json"), """
+            {"schemaVersion":1,"profiles":{
+              "domain":{"durationSeconds":0,"impactSeconds":-1,
+                "source":[{"at":0,"x":0.5,"y":0.25}]}
+             },"effects":{"simple-domain-establish-front":"domain",
+               "simple-domain-establish-back":"domain",
+               "simple-domain-field-front":"domain","simple-domain-field-back":"domain"},
+             "roles":{"domain":"domain"}}
+            """);
     }
 
     private static void writePng(Path file, int width, int height) throws IOException {
@@ -455,7 +669,7 @@ class DomainBackdropPlayerTest {
         ImageIO.write(image, "png", file.toFile());
     }
 
-    private record DrawCall(Texture texture, float x, float y, float width, float height, float alpha) { }
+    private record DrawCall(Texture texture, float x, float y, float width, float height, float alpha, int srcX) { }
 
     private static final class BatchRecorder {
         private final List<DrawCall> calls = new ArrayList<>();
@@ -473,7 +687,10 @@ class DomainBackdropPlayerTest {
                 }
                 if (method.getName().equals("draw") && args != null && args.length == 5) {
                     calls.add(new DrawCall((Texture) args[0], (Float) args[1], (Float) args[2],
-                        (Float) args[3], (Float) args[4], alpha));
+                        (Float) args[3], (Float) args[4], alpha, 0));
+                } else if (method.getName().equals("draw") && args != null && args.length == 16) {
+                    calls.add(new DrawCall((Texture) args[0], (Float) args[1], (Float) args[2],
+                        (Float) args[5], (Float) args[6], alpha, (Integer) args[10]));
                 }
                 return defaultValue(method.getReturnType());
             });

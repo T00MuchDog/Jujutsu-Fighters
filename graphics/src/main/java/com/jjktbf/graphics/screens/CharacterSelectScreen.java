@@ -24,7 +24,6 @@ import com.jjktbf.graphics.ui.battle.BattleUiAssets;
 import com.jjktbf.graphics.ui.editor.ScrollAxes;
 import com.jjktbf.graphics.ui.battle.ActionSegmentView;
 import com.jjktbf.graphics.ui.battle.MoveCardView;
-import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.model.character.Ability;
 import com.jjktbf.model.character.AbilityRepository;
 import com.jjktbf.model.character.CharacterData;
@@ -63,61 +62,33 @@ public class CharacterSelectScreen implements Screen {
     private static final String MOVE_DATA_DIR = "data/moves";
     private static final String ABILITY_DATA_DIR = "data/abilities";
     private static final String TECHNIQUE_DATA_DIR = "data/techniques";
-    private static final float ROW_HEIGHT = 44f;
-    private static final float WINDOWS_ROW_HEIGHT = 66f;
-    private static final float MOVE_PANEL_GAP = 12f;
-    private static final float WINDOWS_MOVE_PANEL_GAP = 18f;
-    private static final float MOVE_PANEL_PADDING = 10f;
-    private static final float WINDOWS_MOVE_PANEL_PADDING = 15f;
-    private static final float MOVE_PANEL_HEADER_HEIGHT = 24f;
-    private static final float WINDOWS_MOVE_PANEL_HEADER_HEIGHT = 36f;
-    private static final float MIN_CHARACTER_INFO_HEIGHT = 205f;
-    private static final float WINDOWS_MIN_CHARACTER_INFO_HEIGHT = 307.5f;
-    private static final float MAC_TECHNIQUE_SECTION_TARGET_HEIGHT = 190f;
-    private static final float MAC_TECHNIQUE_SECTION_MIN_HEIGHT = 100f;
-    private static final float MAC_PROFILE_SUMMARY_MIN_HEIGHT = 260f;
-    private static final float DESCRIPTION_TARGET_HEIGHT = 45f;
-    private static final float WINDOWS_DESCRIPTION_TARGET_HEIGHT = 67.5f;
-    private static final float HEADER_HEIGHT = 58f;
-    private static final float WINDOWS_HEADER_HEIGHT = 87f;
-    /** Windows roster panel occupies one fifth of the screen width. */
-    private static final float WINDOWS_ROSTER_WIDTH_RATIO = 0.20f;
-    private static final float WINDOWS_PROFILE_PADDING = 24f;
-    private static final float WINDOWS_PROFILE_TITLE_GAP = 60f;
-    private static final float WINDOWS_PROFILE_SUMMARY_HEIGHT = 580f;
-    private static final float WINDOWS_COMPACT_PROFILE_SUMMARY_HEIGHT = 155f;
-    private static final float WINDOWS_PROFILE_SECTION_GAP = 16f;
-    private static final float WINDOWS_COMPACT_PROFILE_SECTION_GAP = 10f;
-    private static final float WINDOWS_PROFILE_SPRITE_SIZE = 444f;
-    private static final float WINDOWS_COMPACT_PROFILE_SPRITE_SIZE = 100f;
-    private static final float WINDOWS_PROFILE_BAR_HEIGHT = 34f;
-    private static final float WINDOWS_COMPACT_PROFILE_BAR_HEIGHT = 20f;
-    private static final float WINDOWS_FULL_MOVE_CARD_WIDTH = 324f;
-    private static final float WINDOWS_FULL_MOVE_CARD_HEIGHT = 302f;
-    private static final float WINDOWS_FULL_MOVE_CARD_SCALE = 1.35f;
-    private static final float MOVE_SET_SEGMENT_WIDTH = 150f;
-    private static final float WINDOWS_MOVE_SET_SEGMENT_WIDTH = 225f;
-    private static final float MOVE_SET_SEGMENT_HEIGHT = 54f;
-    private static final float WINDOWS_MOVE_SET_SEGMENT_HEIGHT = 81f;
-    private static final float MOVE_SET_SEGMENT_GAP = 8f;
-    private static final float WINDOWS_MOVE_SET_SEGMENT_GAP = 12f;
-    private static final float MOVE_SET_ACTION_HEIGHT = 26f;
-    private static final float WINDOWS_MOVE_SET_ACTION_HEIGHT = 39f;
-    private static final float MOVE_SET_ACTION_GAP = 8f;
-    private static final float WINDOWS_MOVE_SET_ACTION_GAP = 12f;
-    private static final float LEARNED_DRAWER_PADDING = 12f;
-    private static final float WINDOWS_LEARNED_DRAWER_PADDING = 18f;
-    private static final float LEARNED_DRAWER_HEADER_HEIGHT = 34f;
-    private static final float WINDOWS_LEARNED_DRAWER_HEADER_HEIGHT = 51f;
-    private static final float LEARNED_DRAWER_SCROLLBAR_WIDTH = 8f;
-    private static final float WINDOWS_LEARNED_DRAWER_SCROLLBAR_WIDTH = 12f;
-    private static final float LEARNED_DRAWER_CARD_GAP = 10f;
-    private static final float WINDOWS_LEARNED_DRAWER_CARD_GAP = 15f;
+    private static final float ROW_HEIGHT = 66f;
+    private static final float MOVE_PANEL_PADDING = 15f;
+    private static final float MOVE_PANEL_HEADER_HEIGHT = 36f;
+    private static final float HEADER_HEIGHT = 87f;
+    /** The roster panel occupies one fifth of the logical screen width. */
+    private static final float ROSTER_WIDTH_RATIO = 0.20f;
+    private static final float PROFILE_PADDING = 24f;
+    private static final float PROFILE_TITLE_GAP = 60f;
+    private static final float PROFILE_SUMMARY_HEIGHT = 580f;
+    private static final float PROFILE_SECTION_GAP = 16f;
+    private static final float PROFILE_SPRITE_SIZE = 444f;
+    private static final float PROFILE_BAR_HEIGHT = 34f;
+    private static final float FULL_MOVE_CARD_WIDTH = 324f;
+    private static final float FULL_MOVE_CARD_HEIGHT = 302f;
+    private static final float FULL_MOVE_CARD_SCALE = 1.35f;
+    private static final float MOVE_SET_SEGMENT_WIDTH = 225f;
+    private static final float MOVE_SET_SEGMENT_HEIGHT = 81f;
+    private static final float MOVE_SET_SEGMENT_GAP = 12f;
+    private static final float MOVE_SET_ACTION_HEIGHT = 39f;
+    private static final float MOVE_SET_ACTION_GAP = 12f;
+    private static final float LEARNED_DRAWER_PADDING = 18f;
+    private static final float LEARNED_DRAWER_HEADER_HEIGHT = 51f;
+    private static final float LEARNED_DRAWER_SCROLLBAR_WIDTH = 12f;
+    private static final float LEARNED_DRAWER_CARD_GAP = 15f;
     private static final float MOVE_DRAG_THRESHOLD = 8f;
-    /** fontSmall is logical size 15, matching Windows editor ID text. */
-    private static final float WINDOWS_MIN_SMALL_FONT_SCALE = 1f;
-    private static final float WINDOWS_STATS_FONT_SCALE = 1.20f;
-    private static final float WINDOWS_BST_FONT_SCALE = 1.60f;
+    private static final float STATS_FONT_SCALE = 1.20f;
+    private static final float BST_FONT_SCALE = 1.60f;
     private static final Color STAT_MIN_COLOR = new Color(0.920f, 0.220f, 0.180f, 1f);
     private static final Color STAT_MID_COLOR = new Color(1f, 1f, 0f, 1f);
     private static final Color STAT_MAX_COLOR = new Color(0.260f, 0.820f, 0.360f, 1f);
@@ -147,7 +118,6 @@ public class CharacterSelectScreen implements Screen {
 
     private final JJKGame game;
     private final AssetLoader assets;
-    private final boolean windowsLayout;
     private final SpriteBatch batch;
     private final Viewport viewport;
     private final Vector2 pointerCoordinates = new Vector2();
@@ -164,6 +134,8 @@ public class CharacterSelectScreen implements Screen {
     private final Rectangle listBounds = new Rectangle();
     private final Rectangle rosterViewportBounds = new Rectangle();
     private final Rectangle detailBounds = new Rectangle();
+    private final Rectangle summaryBounds = new Rectangle();
+    private final Rectangle techniqueBounds = new Rectangle();
     private final Rectangle moveSetPanelBounds = new Rectangle();
     private final Rectangle moveSetViewportBounds = new Rectangle();
     private final Rectangle learnedDrawerBounds = new Rectangle();
@@ -267,9 +239,8 @@ public class CharacterSelectScreen implements Screen {
         this.game = game;
         this.assets = assets;
         onSelectionExit = game::showMainMenu;
-        windowsLayout = game.activeUiProfile() == UiProfile.WINDOWS;
         batch = new SpriteBatch();
-        viewport = UiScaleSystem.newViewport(game.activeUiProfile());
+        viewport = UiScaleSystem.newGameplayViewport();
         charRepo = new CharacterRepository(CHAR_DATA_DIR);
         moveRepo = new MoveRepository(MOVE_DATA_DIR);
         abilityRepo = new AbilityRepository(ABILITY_DATA_DIR);
@@ -402,7 +373,17 @@ public class CharacterSelectScreen implements Screen {
         clearScreen();
         layout(viewport.getWorldWidth(), viewport.getWorldHeight());
         handleInput();
-        draw();
+        BitmapFont font = assets.gameplayFontSmall;
+        float scaleX = font.getData().scaleX;
+        float scaleY = font.getData().scaleY;
+        float textScale = UiScaleSystem.bodyTextScale(
+            viewport.getScreenWidth() / viewport.getWorldWidth(), font.getCapHeight());
+        font.getData().setScale(scaleX * textScale, scaleY * textScale);
+        try {
+            draw();
+        } finally {
+            font.getData().setScale(scaleX, scaleY);
+        }
     }
 
     @Override public void resize(int width, int height) {
@@ -479,11 +460,14 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private int rosterRowAt(float x, float y) {
-        if (!(windowsLayout ? rosterViewportBounds : listBounds).contains(x, y)) return -1;
-        float firstRowTop = listBounds.y + listBounds.height
-            - (windowsLayout ? 69f : 46f);
-        int index = (int) ((firstRowTop + rosterScrollOffset - y) / rowHeight());
-        return index >= 0 && index < rosterRowCount() ? index : -1;
+        return rosterRowAt(rosterViewportBounds, rosterScrollOffset, rosterRowCount(), x, y);
+    }
+
+    static int rosterRowAt(Rectangle rosterViewport, float scrollOffset, int rowCount, float x, float y) {
+        if (!rosterViewport.contains(x, y)) return -1;
+        float firstRowTop = rosterViewport.y + rosterViewport.height;
+        int index = (int) ((firstRowTop + scrollOffset - y) / ROW_HEIGHT);
+        return index >= 0 && index < rowCount ? index : -1;
     }
 
     /** Roster rows shown in the list: the pinned Random row plus every fighter. */
@@ -710,34 +694,45 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private void layout(float width, float height) {
-        float margin = Math.min(36f, Math.max(20f, width * 0.035f));
-        float headerHeight = windowsLayout ? WINDOWS_HEADER_HEIGHT : HEADER_HEIGHT;
-        headerBounds.set(margin, height - margin - headerHeight, width - margin * 2f, headerHeight);
-        float contentTop = headerBounds.y - 14f;
-        float listWidth = windowsLayout
-            ? windowsRosterWidth(width)
-            : Math.max(230f, width * 0.29f);
-        listBounds.set(margin, margin, listWidth, contentTop - margin);
-        if (windowsLayout) {
-            rosterViewportBounds.set(
-                listBounds.x + 8f,
-                listBounds.y + 8f,
-                Math.max(0f, listBounds.width - 16f),
-                Math.max(0f, listBounds.height - 77f));
-            rosterScrollMax = Math.max(0f,
-                rosterRowCount() * WINDOWS_ROW_HEIGHT - rosterViewportBounds.height);
-            rosterScrollOffset = clamp(rosterScrollOffset, 0f, rosterScrollMax);
-            revealRosterCursor();
-        }
-        if (windowsLayout) {
-            float detailX = margin + windowsRosterWidth(width) + 14f;
-            detailBounds.set(
-                detailX, margin, width - detailX - margin, contentTop - margin);
-        } else {
-            detailBounds.set(listBounds.x + listBounds.width + 14f, margin,
-                width - (listBounds.x + listBounds.width + 14f) - margin, contentTop - margin);
-        }
+        layoutPanelBounds(width, height, headerBounds, listBounds, rosterViewportBounds, detailBounds);
+        rosterScrollMax = Math.max(0f,
+            rosterRowCount() * ROW_HEIGHT - rosterViewportBounds.height);
+        rosterScrollOffset = clamp(rosterScrollOffset, 0f, rosterScrollMax);
+        revealRosterCursor();
+        layoutProfileBounds(detailBounds, summaryBounds, techniqueBounds, moveSetPanelBounds);
         layoutLearnedDrawer(width, height);
+    }
+
+    static void layoutPanelBounds(
+        float width, float height, Rectangle header, Rectangle roster,
+        Rectangle rosterViewport, Rectangle detail
+    ) {
+        float margin = Math.min(36f, Math.max(20f, width * 0.035f));
+        header.set(margin, height - margin - HEADER_HEIGHT, width - margin * 2f, HEADER_HEIGHT);
+        float contentTop = header.y - 14f;
+        roster.set(margin, margin, rosterWidth(width), contentTop - margin);
+        rosterViewport.set(roster.x + 8f, roster.y + 8f,
+            Math.max(0f, roster.width - 16f), Math.max(0f, roster.height - 77f));
+        float detailX = roster.x + roster.width + 14f;
+        detail.set(detailX, margin, width - detailX - margin, contentTop - margin);
+    }
+
+    static void layoutProfileBounds(
+        Rectangle detail, Rectangle summary, Rectangle technique, Rectangle moves
+    ) {
+        // The gameplay viewport keeps the full reference layout usable; extra
+        // logical height goes to technique details, not an enlarged portrait.
+        float x = detail.x + PROFILE_PADDING;
+        float width = Math.max(0f, detail.width - PROFILE_PADDING * 2f);
+        float top = detail.y + detail.height - PROFILE_PADDING - PROFILE_TITLE_GAP;
+        float bottom = detail.y + PROFILE_PADDING;
+        float movesHeight = Math.min(moveSetPanelHeight(), Math.max(0f, top - bottom));
+        moves.set(x, bottom, width, movesHeight);
+        float infoBottom = bottom + movesHeight + PROFILE_SECTION_GAP;
+        float summaryHeight = Math.min(PROFILE_SUMMARY_HEIGHT, Math.max(0f, top - infoBottom));
+        summary.set(x, top - summaryHeight, width, summaryHeight);
+        technique.set(x, infoBottom, width,
+            Math.max(0f, summary.y - PROFILE_SECTION_GAP - infoBottom));
     }
 
     private void draw() {
@@ -767,23 +762,23 @@ public class CharacterSelectScreen implements Screen {
         assets.battleUi.card.draw(batch, detailBounds.x, detailBounds.y,
             detailBounds.width, detailBounds.height);
         String mark = "?";
-        assets.fontXLarge.setColor(BattleUiAssets.TEXT);
-        assets.fontXLarge.draw(batch, mark,
-            detailBounds.x + (detailBounds.width - textWidth(assets.fontXLarge, mark)) / 2f,
+        assets.gameplayFontXLarge.setColor(BattleUiAssets.TEXT);
+        assets.gameplayFontXLarge.draw(batch, mark,
+            detailBounds.x + (detailBounds.width - textWidth(assets.gameplayFontXLarge, mark)) / 2f,
             detailBounds.y + detailBounds.height * 0.60f);
         String caption = "RANDOM FIGHTER";
-        assets.fontMedium.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
-        assets.fontMedium.draw(batch, caption,
-            detailBounds.x + (detailBounds.width - textWidth(assets.fontMedium, caption)) / 2f,
-            detailBounds.y + detailBounds.height * 0.60f - (windowsLayout ? 60f : 40f));
+        assets.gameplayFontMedium.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.gameplayFontMedium.draw(batch, caption,
+            detailBounds.x + (detailBounds.width - textWidth(assets.gameplayFontMedium, caption)) / 2f,
+            detailBounds.y + detailBounds.height * 0.60f - 60f);
     }
 
     private void drawError() {
         assets.battleUi.header.draw(batch, headerBounds.x, headerBounds.y,
             headerBounds.width, headerBounds.height);
-        assets.fontSmall.setColor(Color.RED);
-        assets.fontSmall.draw(batch, loadError, headerBounds.x + 18f,
-            headerBounds.y + (windowsLayout ? 51f : 34f));
+        assets.gameplayFontSmall.setColor(Color.RED);
+        assets.gameplayFontSmall.draw(batch, loadError, headerBounds.x + 18f,
+            headerBounds.y + 51f);
     }
 
     private void drawHeader() {
@@ -798,10 +793,10 @@ public class CharacterSelectScreen implements Screen {
                           : "SELECT PLAYER FIGHTER " + slot + "/" + slots)
             : (slots == 1 ? "SELECT " + opposingSide + " CHARACTER"
                          : "SELECT " + opposingSide + " FIGHTER " + slot + "/" + slots);
-        assets.fontMedium.setColor(BattleUiAssets.YELLOW);
-        assets.fontMedium.draw(batch, title, headerBounds.x + 18f,
-            headerBounds.y + (windowsLayout ? 58.5f : 39f));
-        assets.fontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.gameplayFontMedium.setColor(BattleUiAssets.YELLOW);
+        assets.gameplayFontMedium.draw(batch, title, headerBounds.x + 18f,
+            headerBounds.y + 58.5f);
+        assets.gameplayFontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
         String state = !multiplayerSelection && phase == Phase.CPU && !playerPicks.isEmpty()
             ? picksSummary("PLAYER", playerPicks) + "  |  " + statMode + "  |  ENTER: START"
             : "UP/DOWN: SELECT  |  ENTER: CONFIRM  |  LEARNED MOVES: CUSTOMIZE  |  "
@@ -809,17 +804,21 @@ public class CharacterSelectScreen implements Screen {
         if (format.hasReserves()) {
             state = "ROSTER ORDER: FIRST 3 ACTIVE / LAST 3 RESERVE  |  " + statMode;
         }
-        assets.fontSmall.draw(batch, state, headerBounds.x + 20f,
-            headerBounds.y + (windowsLayout ? 25.5f : 17f));
+        float stateRight = format.hasReserves()
+            ? headerBounds.x + headerBounds.width * 0.47f - 12f : learnedDrawerToggleBounds.x - 12f;
+        assets.gameplayFontSmall.draw(batch,
+            fitOrEllipsize(assets.gameplayFontSmall, state, stateRight - headerBounds.x - 20f), headerBounds.x + 20f,
+            headerBounds.y + 25.5f);
         if (format.hasReserves()) drawTeamCompositionPanel();
     }
 
     /** Compact six-slot party tray: field fighters above, reserves below. */
     private void drawTeamCompositionPanel() {
         List<CharacterData> picks = currentPicks();
-        float panelX = headerBounds.x + headerBounds.width * 0.47f;
-        float panelWidth = headerBounds.x + headerBounds.width - 12f - panelX;
-        float gap = windowsLayout ? 7f : 5f;
+        Rectangle tray = teamTrayBounds(headerBounds, learnedDrawerToggleBounds);
+        float panelX = tray.x;
+        float panelWidth = tray.width;
+        float gap = 7f;
         float slotWidth = (panelWidth - gap * 2f) / 3f;
         float slotHeight = (headerBounds.height - gap * 3f) / 2f;
         for (int slot = 0; slot < format.fightersPerSide(); slot++) {
@@ -837,12 +836,18 @@ public class CharacterSelectScreen implements Screen {
             String position = (activeSlot ? "A" : "R")
                 + (activeSlot ? slot + 1 : slot - format.activeFightersPerSide() + 1);
             String name = slot < picks.size() ? picks.get(slot).name : "EMPTY";
-            BitmapFont font = windowsLayout ? assets.fontSmall : assets.fontSmall;
+            BitmapFont font = assets.gameplayFontSmall;
             font.setColor(activeSlot ? new Color(0.12f, 0.30f, 0.55f, 1f)
                 : new Color(0.48f, 0.27f, 0.04f, 1f));
-            String label = position + "  " + fitOrEllipsize(font, name, slotWidth - 12f);
+            String label = fitOrEllipsize(font, position + "  " + name, slotWidth - 12f);
             font.draw(batch, label, x + 6f, y + slotHeight * 0.64f);
         }
+    }
+
+    static Rectangle teamTrayBounds(Rectangle header, Rectangle drawerToggle) {
+        float x = header.x + header.width * 0.47f;
+        float right = Math.min(header.x + header.width - 12f, drawerToggle.x - 12f);
+        return new Rectangle(x, header.y, Math.max(0f, right - x), header.height);
     }
 
     private static String picksSummary(String label, java.util.List<CharacterData> picks) {
@@ -856,51 +861,49 @@ public class CharacterSelectScreen implements Screen {
 
     private void drawRoster() {
         assets.battleUi.palette.draw(batch, listBounds.x, listBounds.y, listBounds.width, listBounds.height);
-        assets.fontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
-        assets.fontSmall.draw(batch, "AVAILABLE CHARACTERS", listBounds.x + 14f,
-            listBounds.y + listBounds.height - (windowsLayout ? 22.5f : 15f));
+        assets.gameplayFontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.gameplayFontSmall.draw(batch, "AVAILABLE CHARACTERS", listBounds.x + 14f,
+            listBounds.y + listBounds.height - 22.5f);
 
         float rowHeight = rowHeight();
-        float rowTop = listBounds.y + listBounds.height - (windowsLayout ? 69f : 46f);
+        float rowTop = listBounds.y + listBounds.height - 69f;
         java.util.List<CharacterData> sidePicks = currentPicks();
-        if (windowsLayout) beginClip(rosterViewportBounds);
+        beginClip(rosterViewportBounds);
         for (int row = 0; row < rosterRowCount(); row++) {
             float rowY = rowTop - (row + 1) * rowHeight + rosterScrollOffset;
             if (row == cursorIndex) {
                 assets.battleUi.cardOver.draw(batch, listBounds.x + 8f, rowY,
-                    listBounds.width - 16f, rowHeight - (windowsLayout ? 6f : 4f));
+                    listBounds.width - 16f, rowHeight - 6f);
             }
             if (row == 0) {
                 // Pinned Random row; confirming it picks a random fighter.
-                assets.fontMedium.setColor(row == cursorIndex
+                assets.gameplayFontMedium.setColor(row == cursorIndex
                     ? BattleUiAssets.TEXT
                     : BattleUiAssets.YELLOW);
-                String label = windowsLayout
-                    ? fitOrEllipsize(assets.fontMedium, RANDOM_ROW_LABEL, listBounds.width - 36f)
-                    : RANDOM_ROW_LABEL;
-                assets.fontMedium.draw(batch, label, listBounds.x + 18f,
-                    rowY + (windowsLayout ? 40.5f : 27f));
+                String label = fitOrEllipsize(
+                    assets.gameplayFontMedium, RANDOM_ROW_LABEL, listBounds.width - 36f);
+                assets.gameplayFontMedium.draw(batch, label, listBounds.x + 18f,
+                    rowY + 40.5f);
                 continue;
             }
             CharacterData character = characters.get(row - 1);
             // Dim a character already picked on the side currently being filled.
             boolean alreadyPicked = sidePicks.stream().anyMatch(c -> c.id.equals(character.id));
-            BitmapFont rosterFont = assets.fontMedium;
+            BitmapFont rosterFont = assets.gameplayFontMedium;
             rosterFont.setColor(row == cursorIndex
                 ? BattleUiAssets.TEXT
                 : (alreadyPicked ? new Color(0.55f, 0.55f, 0.55f, 1f) : Color.WHITE));
-            String rosterName = windowsLayout
-                ? fitOrEllipsize(assets.fontMedium, character.name, listBounds.width - 36f)
-                : character.name;
+            String rosterName = fitOrEllipsize(
+                assets.gameplayFontMedium, character.name, listBounds.width - 36f);
             rosterFont.draw(batch, rosterName, listBounds.x + 18f,
-                rowY + (windowsLayout ? 40.5f : 27f));
+                rowY + 40.5f);
         }
         // Pick badges (P1/P2 on player side, C1/C2 on cpu side) next to names.
         drawPickBadges(rowTop, "P", playerPicks);
         drawPickBadges(rowTop,
             controlMode == BattleController.ControlMode.HUMAN_CONTROLS_BOTH_TEAMS ? "E" : "C",
             cpuPicks);
-        if (windowsLayout) endClip();
+        endClip();
     }
 
     /** Draw a side's slot badges (P1/P2 or C1/C2) next to picked roster rows. */
@@ -913,304 +916,48 @@ public class CharacterSelectScreen implements Screen {
             if (row < 0) continue;
             // Character rows sit one row below the pinned Random row.
             float rowY = rowTop - (row + 2) * rowHeight + rosterScrollOffset;
-            assets.fontSmall.setColor(BattleUiAssets.YELLOW);
-            assets.fontSmall.draw(batch, prefix + (slot + 1), listBounds.x + 14f,
-                rowY + (windowsLayout ? 21f : 14f));
+            assets.gameplayFontSmall.setColor(BattleUiAssets.YELLOW);
+            assets.gameplayFontSmall.draw(batch, prefix + (slot + 1), listBounds.x + 14f,
+                rowY + 21f);
         }
     }
 
     private void drawCharacterPage(CharacterData character) {
-        if (windowsLayout) {
-            drawWindowsCharacterPage(character);
-            return;
-        }
-
         assets.battleUi.card.draw(batch, detailBounds.x, detailBounds.y,
             detailBounds.width, detailBounds.height);
 
-        float pad = windowsLayout ? 30f : 20f;
-        float innerLeft = detailBounds.x + pad;
-        float innerRight = detailBounds.x + detailBounds.width - pad;
-        float innerTop = detailBounds.y + detailBounds.height - pad;
-        float innerWidth = innerRight - innerLeft;
-
-        // Name — top-left corner, prominent.
-        assets.fontXLarge.setColor(BattleUiAssets.TEXT);
-        drawBold(assets.fontXLarge, character.name, innerLeft, innerTop);
-        String baseStatTotalText = "Base Stat Total: " + baseStatTotal(character);
-        assets.fontMedium.setColor(BattleUiAssets.TEXT);
-        drawBold(assets.fontMedium, baseStatTotalText,
-            innerRight - textWidth(assets.fontMedium, baseStatTotalText), innerTop);
-
-        // Content region sits below the name.
-        float contentTop = innerTop - (windowsLayout ? 72f : 48f);
-        float contentBottom = detailBounds.y + pad;
-        float contentHeight = contentTop - contentBottom;
+        float innerLeft = detailBounds.x + PROFILE_PADDING;
+        float innerTop = detailBounds.y + detailBounds.height - PROFILE_PADDING;
+        BitmapFont nameFont = assets.gameplayFontXLarge;
+        nameFont.setColor(BattleUiAssets.TEXT);
+        drawBold(nameFont, fitOrEllipsize(nameFont, character.name,
+            detailBounds.width - PROFILE_PADDING * 2f), innerLeft, innerTop);
         List<Move> moves = learnedMovesFor(character);
-        float movePanelPadding = movePanelPadding();
-        float movePanelHeaderHeight = movePanelHeaderHeight();
-        float desiredMovesHeight = movePanelHeaderHeight + movePanelPadding * 2f
-            + moveSetSegmentHeight() + moveSetActionHeight() + moveSetActionGap();
-        float minimumInfoHeight = Math.min(
-            windowsLayout ? WINDOWS_MIN_CHARACTER_INFO_HEIGHT : MIN_CHARACTER_INFO_HEIGHT,
-            contentHeight * 0.58f);
-        float maximumMovesHeight = Math.max(0f,
-            contentHeight - minimumInfoHeight - movePanelGap());
-        float movesPanelHeight = Math.min(desiredMovesHeight, maximumMovesHeight);
-        float sectionGap = movesPanelHeight > 0f ? movePanelGap() : 0f;
-        float techniqueBottom = contentBottom + movesPanelHeight + sectionGap;
-        float techniqueSectionHeight = hasCursedTechnique(character)
-            ? macTechniqueSectionHeight(contentTop - techniqueBottom)
-            : 0f;
-        float techniqueSectionGap = techniqueSectionHeight > 0f ? movePanelGap() : 0f;
-        float infoBottom = techniqueBottom + techniqueSectionHeight + techniqueSectionGap;
-        float infoHeight = contentTop - infoBottom;
-
-        // Left column: profile sprite with HP/CE bars, sized around the moves panel.
-        float leftWidth = Math.min(innerWidth * 0.52f, windowsLayout ? 540f : 360f);
-        float leftCenterX = innerLeft + leftWidth / 2f;
-        float barHeight = windowsLayout ? 42f : 28f;
-        float barGap = windowsLayout ? 12f : 8f;
-        boolean hasCursedTechnique = character.innateTechniqueName != null
-            && !character.innateTechniqueName.isBlank();
-        boolean showInlineTechniqueName = hasCursedTechnique && techniqueSectionHeight <= 0f;
-        float barsAndSpacing = (windowsLayout ? 36f : 24f)
-            + barHeight * 2f + barGap;
-        // Technique details use the right column, leaving every portrait at the
-        // same size as Maki's technique-free profile.
-        float portraitHeight = contentTop - techniqueBottom;
-        float spriteSize = Math.min(leftWidth, Math.max(0f, portraitHeight - barsAndSpacing));
-        spriteSize = Math.min(spriteSize, windowsLayout ? 504f : 336f);
-        if (spriteSize > 0f) {
-            float spriteX = leftCenterX - spriteSize / 2f;
-            float spriteY = contentTop - spriteSize;
-            assets.battleUi.palette.draw(batch, spriteX - 10f, spriteY - 10f,
-                spriteSize + 20f, spriteSize + 20f);
-            Texture sprite = assets.characterSprite(character.spriteAsset, assets.playerSprite);
-            batch.draw(sprite, spriteX, spriteY, spriteSize, spriteSize);
-
-            float barWidth = spriteSize;
-            float barX = leftCenterX - barWidth / 2f;
-            float hpY = spriteY - (windowsLayout ? 36f : 24f) - barHeight;
-            float ceY = hpY - barGap - barHeight;
-            CombatStats fallbackStats = new CombatStats(character.toCharacterStats(), statMode);
-            int maximumHp = profileCombatant != null
-                ? profileCombatant.getMaxHp() : fallbackStats.getMaxHp();
-            int maximumCe = profileCombatant != null
-                ? profileCombatant.getMaxCursedEnergy() : fallbackStats.getMaxCursedEnergy();
-            float statusBarTextGeometryScale = windowsLayout ? 1.5f : 1f;
-            StatusBar hp = new StatusBar(
-                "HP", new Color(0.260f, 0.820f, 0.360f, 1f), statusBarTextGeometryScale);
-            hp.setBounds(barX, hpY, barWidth, barHeight);
-            hp.setValues(maximumHp, maximumHp);
-            hp.draw(batch, assets.fontMedium, assets.battleUi, true);
-            StatusBar ce = new StatusBar(
-                "CE", new Color(0.220f, 0.500f, 0.940f, 1f), statusBarTextGeometryScale);
-            ce.setBounds(barX, ceY, barWidth, barHeight);
-            ce.setValues(maximumCe, maximumCe);
-            ce.draw(batch, assets.fontMedium, assets.battleUi, true);
+        if (summaryBounds.height > 0f) {
+            beginClip(summaryBounds);
+            drawProfileSummary(character, summaryBounds.x,
+                summaryBounds.y + summaryBounds.height, summaryBounds.y);
+            endClip();
         }
-
-        // Right column: compact stats leave the remaining vertical space for the description.
-        float rightX = innerLeft + leftWidth + (windowsLayout ? 36f : 24f);
-        float rightWidth = innerRight - rightX;
-        float descriptionTargetHeight = windowsLayout
-            ? WINDOWS_DESCRIPTION_TARGET_HEIGHT : DESCRIPTION_TARGET_HEIGHT;
-        float statsRowHeight = Math.min(windowsLayout ? 34.5f : 23f,
-            Math.max(windowsLayout ? 22.5f : 15f,
-                (infoHeight - descriptionTargetHeight - (windowsLayout ? 21f : 14f))
-                    / STAT_LABELS.length));
-        BitmapFont detailFont = statsRowHeight < (windowsLayout ? 33f : 22f)
-            ? assets.fontSmall : assets.fontMedium;
-        drawStats(character, rightX, rightWidth, contentTop, statsRowHeight, detailFont);
-        float descriptionTop = contentTop - STAT_LABELS.length * statsRowHeight
-            - (windowsLayout ? 21f : 14f);
-        if (showInlineTechniqueName) {
-            assets.fontSmall.setColor(Color.BLACK);
-            assets.fontSmall.draw(batch,
-                fitOrEllipsize(assets.fontSmall, character.innateTechniqueName, rightWidth),
-                rightX,
-                descriptionTop);
-            descriptionTop -= assets.fontSmall.getCapHeight() + 8f;
+        if (techniqueBounds.height > 0f) {
+            beginClip(techniqueBounds);
+            drawTechniqueSection(character, techniqueBounds.x, techniqueBounds.width,
+                techniqueBounds.y + techniqueBounds.height, techniqueBounds.y);
+            endClip();
         }
-        drawDescription(displayDescription(character), rightX, rightWidth, descriptionTop, infoBottom, detailFont);
-
-        if (techniqueSectionHeight > 0f) {
-            drawMacTechniqueSection(
-                character,
-                rightX,
-                rightWidth,
-                techniqueBottom + techniqueSectionHeight,
-                techniqueBottom);
-        }
-
-        drawMoveSet(character, moves, innerLeft, contentBottom, innerWidth, movesPanelHeight);
+        drawMoveSet(character, moves, moveSetPanelBounds.x, moveSetPanelBounds.y,
+            moveSetPanelBounds.width, moveSetPanelBounds.height);
     }
 
-    private void drawMacTechniqueSection(
+    private void drawProfileSummary(
         CharacterData character,
         float x,
-        float width,
         float top,
         float bottom
     ) {
-        BitmapFont titleFont = assets.fontMedium;
-        titleFont.setColor(BattleUiAssets.TEXT);
-        String title = "CURSED TECHNIQUE: " + character.innateTechniqueName;
-        titleFont.draw(batch, fitOrEllipsize(titleFont, title, width), x, top);
-
-        float contentTop = top - 28f;
-        if (contentTop - 18f <= bottom) return;
-        float dividerX = x + width * 0.50f;
-        float columnGap = 16f;
-        float descriptionWidth = Math.max(0f, dividerX - columnGap - x);
-        float listsX = dividerX + columnGap;
-        float listsWidth = Math.max(0f, x + width - listsX);
-        float listGap = 12f;
-        float listWidth = Math.max(0f, (listsWidth - listGap) / 2f);
-        float abilitiesX = listsX + listWidth + listGap;
-
-        batch.setColor(new Color(0.560f, 0.640f, 0.800f, 1f));
-        batch.draw(assets.battleUi.pixel,
-            dividerX, bottom, 2f, Math.max(0f, contentTop - bottom));
-        batch.setColor(Color.WHITE);
-
-        assets.fontSmall.setColor(BattleUiAssets.MUTED);
-        assets.fontSmall.draw(batch, "TECHNIQUE DESCRIPTION", x, contentTop);
-        assets.fontSmall.draw(batch, "MOVES", listsX, contentTop);
-        assets.fontSmall.draw(batch, "ABILITIES", abilitiesX, contentTop);
-
-        float bodyTop = contentTop - 20f;
-        drawWrappedText(
-            profileTechniqueDescription(character),
-            x,
-            bodyTop,
-            descriptionWidth,
-            bottom,
-            BattleUiAssets.TEXT,
-            19f);
-        drawPointList(
-            profileTechniqueMoves.stream().map(Move::getName).toList(),
-            listsX,
-            bodyTop,
-            listWidth,
-            bottom);
-        drawPointList(
-            profileTechniqueAbilities.stream().map(Ability::getName).toList(),
-            abilitiesX,
-            bodyTop,
-            listWidth,
-            bottom);
-    }
-
-    private void drawWindowsCharacterPage(CharacterData character) {
-        assets.battleUi.card.draw(batch, detailBounds.x, detailBounds.y,
-            detailBounds.width, detailBounds.height);
-
-        float innerLeft = detailBounds.x + WINDOWS_PROFILE_PADDING;
-        float innerRight = detailBounds.x + detailBounds.width - WINDOWS_PROFILE_PADDING;
-        float innerTop = detailBounds.y + detailBounds.height - WINDOWS_PROFILE_PADDING;
-        float innerWidth = Math.max(0f, innerRight - innerLeft);
-
-        boolean compactLayout = detailBounds.height < 1100f;
-        BitmapFont nameFont = compactLayout ? assets.fontMedium : assets.fontXLarge;
-        nameFont.setColor(BattleUiAssets.TEXT);
-        drawBold(nameFont, character.name, innerLeft, innerTop);
-
-        float contentTop = innerTop - WINDOWS_PROFILE_TITLE_GAP;
-        float contentBottom = detailBounds.y + WINDOWS_PROFILE_PADDING;
-        float contentHeight = Math.max(0f, contentTop - contentBottom);
-        if (compactLayout && character.description != null && !character.description.isBlank()) {
-            assets.fontSmall.setColor(BattleUiAssets.MUTED);
-            assets.fontSmall.draw(batch,
-                fitOrEllipsize(assets.fontSmall, displayDescription(character), innerWidth),
-                innerLeft,
-                innerTop - 36f);
-        }
-        float requestedMovesHeight = windowsMoveSetPanelHeight();
-        float movesPanelHeight = Math.min(requestedMovesHeight, contentHeight);
-        float sectionGap = contentHeight > movesPanelHeight
-            ? (compactLayout
-                ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP)
-            : 0f;
-        float infoBottom = contentBottom + movesPanelHeight + sectionGap;
-        float infoHeight = Math.max(0f, contentTop - infoBottom);
-        List<Move> moves = learnedMovesFor(character);
-
-        if (infoHeight > 0f) {
-            Rectangle infoClip = new Rectangle(innerLeft, infoBottom, innerWidth, infoHeight);
-            beginClip(infoClip);
-            float requestedSummaryHeight = compactLayout
-                ? WINDOWS_COMPACT_PROFILE_SUMMARY_HEIGHT : WINDOWS_PROFILE_SUMMARY_HEIGHT;
-            float summaryHeight = Math.min(requestedSummaryHeight, infoHeight);
-            float summaryBottom = contentTop - summaryHeight;
-            drawWindowsProfileSummary(
-                character, innerLeft, contentTop, summaryBottom, compactLayout);
-
-            float techniqueGap = compactLayout
-                ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP;
-            float techniqueTop = summaryBottom - techniqueGap;
-            if (techniqueTop > infoBottom) {
-                drawWindowsTechniqueSection(
-                    character, innerLeft, innerWidth, techniqueTop, infoBottom, compactLayout);
-            }
-            endClip();
-        }
-
-        drawMoveSet(character, moves, innerLeft, contentBottom, innerWidth, movesPanelHeight);
-    }
-
-    private void drawWindowsProfileSummary(
-        CharacterData character,
-        float x,
-        float top,
-        float bottom,
-        boolean compactLayout
-    ) {
-        int screenWidth = Math.round(viewport.getWorldWidth());
-        boolean compactPortrait = compactLayout || screenWidth < 2000;
-        float frameX;
-        float spriteX;
-        float resourceX;
-        float statsX;
-        if (!compactPortrait) {
-            frameX = x;
-            spriteX = x + 8f;
-            resourceX = x;
-            statsX = x + 580f;
-        } else if (screenWidth >= 2000) {
-            frameX = x;
-            spriteX = x + 6f;
-            resourceX = x;
-            statsX = x + 390f;
-        } else if (screenWidth >= 1450) {
-            frameX = x;
-            spriteX = x + 6f;
-            resourceX = x;
-            statsX = x + 254f;
-        } else {
-            frameX = x;
-            spriteX = x + 6f;
-            resourceX = x;
-            statsX = x + 198f;
-        }
-
-        float spriteY = compactPortrait ? top - 106f : top - 452f;
-        float spriteSize = compactPortrait
-            ? WINDOWS_COMPACT_PROFILE_SPRITE_SIZE : WINDOWS_PROFILE_SPRITE_SIZE;
-        assets.battleUi.palette.draw(batch,
-            frameX,
-            compactPortrait ? top - 112f : top - 460f,
-            compactPortrait ? 112f : 460f,
-            compactPortrait ? 112f : 460f);
+        assets.battleUi.palette.draw(batch, x, top - 460f, 460f, 460f);
         Texture sprite = assets.characterSprite(character.spriteAsset, assets.playerSprite);
-        batch.draw(sprite, spriteX, spriteY, spriteSize, spriteSize);
-
-        float barHeight = compactPortrait
-            ? WINDOWS_COMPACT_PROFILE_BAR_HEIGHT : WINDOWS_PROFILE_BAR_HEIGHT;
-        float resourceWidth = compactPortrait ? 112f : 460f;
-        float hpY = compactPortrait ? top - 132f : top - 518f;
-        float ceY = compactPortrait ? top - 155f : top - 560f;
+        batch.draw(sprite, x + 8f, top - 452f, PROFILE_SPRITE_SIZE, PROFILE_SPRITE_SIZE);
         CombatStats fallbackStats = new CombatStats(character.toCharacterStats(), statMode);
         int maximumHp = profileCombatant != null
             ? profileCombatant.getMaxHp() : fallbackStats.getMaxHp();
@@ -1218,63 +965,41 @@ public class CharacterSelectScreen implements Screen {
             ? profileCombatant.getMaxCursedEnergy() : fallbackStats.getMaxCursedEnergy();
         StatusBar hp = new StatusBar(
             "HP", new Color(STAT_MAX_COLOR), 1.5f);
-        hp.setBounds(resourceX, hpY, resourceWidth, barHeight);
+        hp.setBounds(x, top - 518f, 460f, PROFILE_BAR_HEIGHT);
         hp.setValues(maximumHp, maximumHp);
-        hp.draw(batch, assets.fontSmall, assets.battleUi, !compactPortrait);
+        hp.draw(batch, assets.gameplayFontSmall, assets.battleUi, true);
         StatusBar ce = new StatusBar(
             "CE", new Color(0.220f, 0.500f, 0.940f, 1f), 1.5f);
-        ce.setBounds(resourceX, ceY, resourceWidth, barHeight);
+        ce.setBounds(x, top - 560f, 460f, PROFILE_BAR_HEIGHT);
         ce.setValues(maximumCe, maximumCe);
-        ce.draw(batch, assets.fontSmall, assets.battleUi, !compactPortrait);
+        ce.draw(batch, assets.gameplayFontSmall, assets.battleUi, true);
 
-        drawWindowsStats(character, statsX, top, bottom, compactLayout);
+        drawStats(character, x + 580f, top, bottom);
     }
 
-    private void drawWindowsStats(
+    private void drawStats(
         CharacterData character,
         float x,
         float top,
-        float bottom,
-        boolean compactLayout
+        float bottom
     ) {
         int[] values = displayStatValues(character);
-        int screenWidth = Math.round(viewport.getWorldWidth());
-        if (compactLayout) {
-            drawWindowsCompactStats(character, values, x, top, bottom, screenWidth);
-            return;
-        }
-
-        float barOffset;
-        float barWidth;
-        float valueRight;
-        float descriptionWidth;
-        if (screenWidth >= 2000) {
-            barOffset = 250f;
-            barWidth = 880f;
-            valueRight = 1165f;
-            descriptionWidth = 1260f;
-        } else if (screenWidth >= 1450) {
-            barOffset = 190f;
-            barWidth = 260f;
-            valueRight = 485f;
-            descriptionWidth = 485f;
-        } else {
-            barOffset = 150f;
-            barWidth = 170f;
-            valueRight = 350f;
-            descriptionWidth = 350f;
-        }
+        float extraWidth = Math.max(0f, summaryBounds.width - 1914f);
+        float barOffset = 250f;
+        float barWidth = 880f + extraWidth;
+        float valueRight = 1165f + extraWidth;
+        float descriptionWidth = 1260f + extraWidth;
         float rowHeight = 40f;
         float barHeight = 20f;
-        BitmapFont font = assets.fontSmall;
+        BitmapFont font = assets.gameplayFontSmall;
         float bstBaseline = top - 24f;
         if (bstBaseline - 22.5f < bottom) return;
-        drawWindowsBst(character, font, x, bstBaseline);
+        drawBst(character, font, x, bstBaseline);
         float originalScaleX = font.getData().scaleX;
         float originalScaleY = font.getData().scaleY;
         font.getData().setScale(
-            originalScaleX * WINDOWS_STATS_FONT_SCALE,
-            originalScaleY * WINDOWS_STATS_FONT_SCALE);
+            originalScaleX * STATS_FONT_SCALE,
+            originalScaleY * STATS_FONT_SCALE);
         try {
             for (int i = 0; i < values.length; i++) {
                 float baseline = top - 78f - i * rowHeight;
@@ -1284,7 +1009,8 @@ public class CharacterSelectScreen implements Screen {
                 drawBold(font, STAT_LABELS[i], x, baseline);
                 drawStatBar(
                     values[i], x + barOffset, baseline - barHeight + 2f, barWidth, barHeight);
-                drawBold(font, value, x + valueRight - textWidth(font, value), baseline);
+                drawBold(font, value, Math.max(x + barOffset + barWidth + 12f,
+                    x + valueRight - textWidth(font, value)), baseline);
             }
 
             float descriptionTop = top - 475f;
@@ -1304,56 +1030,7 @@ public class CharacterSelectScreen implements Screen {
         }
     }
 
-    private void drawWindowsCompactStats(
-        CharacterData character,
-        int[] values,
-        float x,
-        float top,
-        float bottom,
-        int screenWidth
-    ) {
-        float secondColumnOffset;
-        float barOffset;
-        float barWidth;
-        float valueRight;
-        if (screenWidth >= 2000) {
-            secondColumnOffset = 430f;
-            barOffset = 180f;
-            barWidth = 165f;
-            valueRight = 395f;
-        } else if (screenWidth >= 1450) {
-            secondColumnOffset = 300f;
-            barOffset = 150f;
-            barWidth = 85f;
-            valueRight = 285f;
-        } else {
-            secondColumnOffset = 240f;
-            barOffset = 125f;
-            barWidth = 55f;
-            valueRight = 225f;
-        }
-
-        BitmapFont font = assets.fontSmall;
-        float bstBaseline = top;
-        if (bstBaseline - 22.5f >= bottom) {
-            drawWindowsBst(character, font, x, bstBaseline);
-        }
-        for (int i = 0; i < values.length; i++) {
-            int column = i / 5;
-            int row = i % 5;
-            float itemX = x + column * secondColumnOffset;
-            float baseline = top - 36f - row * 24f;
-            if (baseline - 22.5f < bottom) continue;
-            String value = String.valueOf(values[i]);
-            font.setColor(BattleUiAssets.TEXT);
-            drawBold(font, STAT_LABELS[i], itemX, baseline);
-            drawStatBar(values[i], itemX + barOffset, baseline - 8f, barWidth, 10f);
-            drawBold(font, value,
-                itemX + valueRight - textWidth(font, value), baseline);
-        }
-    }
-
-    private void drawWindowsBst(
+    private void drawBst(
         CharacterData character,
         BitmapFont font,
         float x,
@@ -1363,11 +1040,11 @@ public class CharacterSelectScreen implements Screen {
         float originalScaleX = font.getData().scaleX;
         float originalScaleY = font.getData().scaleY;
         font.getData().setScale(
-            originalScaleX * WINDOWS_BST_FONT_SCALE,
-            originalScaleY * WINDOWS_BST_FONT_SCALE);
+            originalScaleX * BST_FONT_SCALE,
+            originalScaleY * BST_FONT_SCALE);
         font.setColor(BattleUiAssets.TEXT);
         drawBold(font, "BST:", x, baseline);
-        drawBold(font, total, x + 82f, baseline);
+        drawBold(font, total, x + Math.max(82f, textWidth(font, "BST:") + 16f), baseline);
         font.getData().setScale(originalScaleX, originalScaleY);
     }
 
@@ -1394,52 +1071,28 @@ public class CharacterSelectScreen implements Screen {
         batch.setColor(Color.WHITE);
     }
 
-    private void drawWindowsTechniqueSection(
+    private void drawTechniqueSection(
         CharacterData character,
         float x,
         float width,
         float top,
-        float bottom,
-        boolean compactLayout
+        float bottom
     ) {
-        int screenWidth = Math.round(viewport.getWorldWidth());
-        float columnWidth;
-        float rightColumnOffset;
-        float dividerOffset;
-        float listWidth;
-        float secondMovesOffset;
-        float abilitiesOffset;
-        if (screenWidth >= 2000) {
-            columnWidth = 945f;
-            rightColumnOffset = 969f;
-            dividerOffset = 957f;
-            listWidth = 295f;
-            secondMovesOffset = 315f;
-            abilitiesOffset = 630f;
-        } else if (screenWidth >= 1450) {
-            columnWidth = 535f;
-            rightColumnOffset = 559f;
-            dividerOffset = 547f;
-            listWidth = 165f;
-            secondMovesOffset = 185f;
-            abilitiesOffset = 370f;
-        } else {
-            columnWidth = 414f;
-            rightColumnOffset = 434f;
-            dividerOffset = 424f;
-            listWidth = 124f;
-            secondMovesOffset = 145f;
-            abilitiesOffset = 290f;
-        }
+        float columnWidth = (width - 24f) / 2f;
+        float rightColumnOffset = columnWidth + 24f;
+        float dividerOffset = columnWidth + 12f;
+        float listWidth = (columnWidth - 60f) / 3f;
+        float secondMovesOffset = listWidth + 20f;
+        float abilitiesOffset = secondMovesOffset * 2f;
 
         String techniqueName = hasCursedTechnique(character)
             ? character.innateTechniqueName : "NONE";
-        BitmapFont titleFont = compactLayout ? assets.fontSmall : assets.fontMedium;
+        BitmapFont titleFont = assets.gameplayFontMedium;
         titleFont.setColor(BattleUiAssets.TEXT);
         String title = "CURSED TECHNIQUE: " + techniqueName;
         titleFont.draw(batch, fitOrEllipsize(titleFont, title, width), x, top);
 
-        float contentTop = top - (compactLayout ? 24f : 36f);
+        float contentTop = top - 36f;
         if (contentTop - 24f <= bottom) return;
         float rightX = x + rightColumnOffset;
         float dividerX = x + dividerOffset;
@@ -1448,8 +1101,8 @@ public class CharacterSelectScreen implements Screen {
             dividerX, bottom, 2f, Math.max(0f, contentTop - bottom));
         batch.setColor(Color.WHITE);
 
-        assets.fontSmall.setColor(BattleUiAssets.MUTED);
-        assets.fontSmall.draw(batch, "TECHNIQUE DESCRIPTION", x, contentTop);
+        assets.gameplayFontSmall.setColor(BattleUiAssets.MUTED);
+        assets.gameplayFontSmall.draw(batch, "TECHNIQUE DESCRIPTION", x, contentTop);
         drawWrappedText(
             profileTechniqueDescription(character),
             x,
@@ -1464,12 +1117,12 @@ public class CharacterSelectScreen implements Screen {
         List<String> secondMoves = moveNames.subList(secondMovesStart, moveNames.size());
         float secondMovesX = rightX + secondMovesOffset;
         float abilitiesX = rightX + abilitiesOffset;
-        assets.fontSmall.setColor(BattleUiAssets.MUTED);
-        assets.fontSmall.draw(batch, "MOVES", rightX, contentTop);
+        assets.gameplayFontSmall.setColor(BattleUiAssets.MUTED);
+        assets.gameplayFontSmall.draw(batch, "MOVES", rightX, contentTop);
         if (!secondMoves.isEmpty()) {
-            assets.fontSmall.draw(batch, "CONT.", secondMovesX, contentTop);
+            assets.gameplayFontSmall.draw(batch, "CONT.", secondMovesX, contentTop);
         }
-        assets.fontSmall.draw(batch, "ABILITIES", abilitiesX, contentTop);
+        assets.gameplayFontSmall.draw(batch, "ABILITIES", abilitiesX, contentTop);
         drawPointList(
             firstMoves,
             rightX,
@@ -1524,11 +1177,12 @@ public class CharacterSelectScreen implements Screen {
         float lineStep
     ) {
         String text = value == null || value.isBlank() ? "-" : value;
-        assets.fontSmall.setColor(color);
+        lineStep = Math.max(lineStep, assets.gameplayFontSmall.getCapHeight() * 1.8f);
+        assets.gameplayFontSmall.setColor(color);
         float baseline = top;
-        for (String line : wrap(assets.fontSmall, text, width)) {
+        for (String line : wrap(assets.gameplayFontSmall, text, width)) {
             if (baseline < bottom + 4f) break;
-            assets.fontSmall.draw(batch, line, x, baseline);
+            assets.gameplayFontSmall.draw(batch, line, x, baseline);
             baseline -= lineStep;
         }
     }
@@ -1542,12 +1196,13 @@ public class CharacterSelectScreen implements Screen {
     ) {
         if (values.isEmpty()) {
             if (top < bottom + 4f) return;
-            assets.fontSmall.setColor(BattleUiAssets.MUTED);
-            assets.fontSmall.draw(batch, "None learned.", x, top);
+            assets.gameplayFontSmall.setColor(BattleUiAssets.MUTED);
+            assets.gameplayFontSmall.draw(batch, "None learned.", x, top);
             return;
         }
+        float lineStep = Math.max(22.5f, assets.gameplayFontSmall.getCapHeight() * 1.8f);
         int capacity = Math.max(0,
-            1 + (int) Math.floor((top - bottom - 4f) / 22.5f));
+            1 + (int) Math.floor((top - bottom - 4f) / lineStep));
         if (capacity == 0) return;
         int visibleCount = Math.min(values.size(), capacity);
         boolean overflow = values.size() > capacity;
@@ -1559,27 +1214,10 @@ public class CharacterSelectScreen implements Screen {
             batch.setColor(BattleUiAssets.YELLOW);
             batch.draw(assets.battleUi.pixel, x, baseline - 10f, 6f, 6f);
             batch.setColor(Color.WHITE);
-            assets.fontSmall.setColor(BattleUiAssets.TEXT);
-            assets.fontSmall.draw(batch,
-                fitOrEllipsize(assets.fontSmall, value, width - 15f), x + 15f, baseline);
-            baseline -= 22.5f;
-        }
-    }
-
-    private void drawStats(CharacterData character, float x, float width, float topY, float rowHeight,
-                           BitmapFont font) {
-        int[] values = displayStatValues(character);
-        for (int i = 0; i < values.length; i++) {
-            float y = topY - i * rowHeight;
-            String value = String.valueOf(values[i]);
-            float valueX = x + width - textWidth(font, value);
-            float barX = x + width * 0.43f;
-            float barWidth = Math.max(0f, valueX - barX - 8f);
-            font.setColor(BattleUiAssets.TEXT);
-            drawBold(font, STAT_LABELS[i], x, y);
-            drawStatBar(values[i], barX, y - rowHeight * 0.55f,
-                barWidth, Math.max(8f, rowHeight * 0.43f));
-            drawBold(font, value, valueX, y);
+            assets.gameplayFontSmall.setColor(BattleUiAssets.TEXT);
+            assets.gameplayFontSmall.draw(batch,
+                fitOrEllipsize(assets.gameplayFontSmall, value, width - 15f), x + 15f, baseline);
+            baseline -= lineStep;
         }
     }
 
@@ -1635,22 +1273,6 @@ public class CharacterSelectScreen implements Screen {
     private String displayDescription(String description) {
         return ContentNameTokens.resolve(description,
             CharacterData.descriptionNameLookup(moveRepo, abilityRepo));
-    }
-
-    private void drawDescription(String description, float x, float width, float topY, float bottomY,
-                                 BitmapFont font) {
-        if (topY < bottomY + font.getCapHeight()) return;
-        String text = description == null || description.isBlank() ? "No character description." : description;
-        font.setColor(BattleUiAssets.MUTED);
-        font.draw(batch, "DESCRIPTION", x, topY);
-        font.setColor(BattleUiAssets.TEXT);
-        List<String> lines = wrap(font, text, width);
-        float lineY = topY - (windowsLayout ? 27f : 18f);
-        for (String line : lines) {
-            if (lineY < bottomY + (windowsLayout ? 15f : 10f)) break;
-            font.draw(batch, line, x, lineY);
-            lineY -= font.getLineHeight() + (windowsLayout ? 4.5f : 3f);
-        }
     }
 
     private List<Move> learnedMovesFor(CharacterData character) {
@@ -1735,12 +1357,12 @@ public class CharacterSelectScreen implements Screen {
     private void rebuildLearnedDrawerCards() {
         float cardWidth = learnedDrawerCardWidth();
         float cardHeight = learnedDrawerCardHeight();
-        float geometryScale = windowsLayout ? WINDOWS_FULL_MOVE_CARD_SCALE : 1f;
+        float geometryScale = FULL_MOVE_CARD_SCALE;
         List<MoveCardView> cards = new ArrayList<>(learnedMoves.size());
         for (Move move : learnedMoves) {
             MoveCardView card = new MoveCardView(
                 move, 0f, 0f, geometryScale, cardWidth, cardHeight, 5,
-                windowsLayout ? WINDOWS_MIN_SMALL_FONT_SCALE : 0.3f);
+                1f);
             if (profileCombatant != null) {
                 card.setDisplayDescription(MoveDescriptionVariables.resolve(
                     move, TechniqueMasteryResolver.masteryOf(profileCombatant)));
@@ -1892,44 +1514,38 @@ public class CharacterSelectScreen implements Screen {
 
         assets.battleUi.palette.draw(batch, x, y, width, height);
         float padding = movePanelPadding();
-        float headerHeight = movePanelHeaderHeight();
         List<Move> selected = moveSetMovesFor(character);
         String title = selected.isEmpty() ? "MOVE SET" : "MOVE SET (" + selected.size() + ")";
-        assets.fontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
-        assets.fontSmall.draw(batch, title, x + padding,
-            y + height - (windowsLayout ? 12f : 8f));
+        assets.gameplayFontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.gameplayFontSmall.draw(batch, title, x + padding,
+            y + height - 12f);
         drawMoveSetCounters(selected, x, y, width, height, padding);
 
         if (learnedMovesError != null) {
-            assets.fontSmall.setColor(Color.RED);
-            assets.fontSmall.draw(batch, "MOVE DATA UNAVAILABLE", x + padding, y + height / 2f);
+            assets.gameplayFontSmall.setColor(Color.RED);
+            assets.gameplayFontSmall.draw(batch, "MOVE DATA UNAVAILABLE", x + padding, y + height / 2f);
             return;
         }
         if (moveSetSaveError != null) {
-            assets.fontSmall.setColor(Color.RED);
-            assets.fontSmall.draw(batch, moveSetSaveError,
+            assets.gameplayFontSmall.setColor(Color.RED);
+            assets.gameplayFontSmall.draw(batch, moveSetSaveError,
                 x + padding, y + height / 2f);
         }
         if (moveSetRequiredWarning != null) {
-            assets.fontSmall.setColor(Color.RED);
-            assets.fontSmall.draw(batch, moveSetRequiredWarning,
-                x + padding, y + height / 2f - (windowsLayout ? 22f : 15f));
+            assets.gameplayFontSmall.setColor(Color.RED);
+            assets.gameplayFontSmall.draw(batch, moveSetRequiredWarning,
+                x + padding, y + height / 2f - 22f);
         }
 
-        float actionHeight = moveSetActionHeight();
-        float actionGap = moveSetActionGap();
-        float viewportHeight = Math.min(moveSetSegmentHeight(), Math.max(0f,
-            height - headerHeight - padding * 2f - actionHeight - actionGap));
-        float viewportWidth = Math.max(0f, width - padding * 2f);
-        moveSetViewportBounds.set(x + padding, y + padding, viewportWidth, viewportHeight);
-        layoutMoveSetActions(x + padding,
-            moveSetViewportBounds.y + viewportHeight + actionGap,
-            viewportWidth, actionHeight);
+        layoutMoveSetBounds(moveSetPanelBounds, moveSetViewportBounds,
+            recommendedMoveSetBounds, customizeMoveSetBounds, randomizeMoveSetBounds);
         drawMoveSetActions();
+        float viewportWidth = moveSetViewportBounds.width;
+        float viewportHeight = moveSetViewportBounds.height;
         if (viewportWidth <= 0f || viewportHeight <= 0f) return;
         if (selected.isEmpty()) {
-            assets.fontSmall.setColor(BattleUiAssets.MUTED);
-            assets.fontSmall.draw(batch,
+            assets.gameplayFontSmall.setColor(BattleUiAssets.MUTED);
+            assets.gameplayFontSmall.draw(batch,
                 "Open Learned Moves and click or drag a card here.",
                 moveSetViewportBounds.x,
                 moveSetViewportBounds.y + moveSetViewportBounds.height / 2f);
@@ -1953,7 +1569,7 @@ public class CharacterSelectScreen implements Screen {
                 selected.get(index), segmentX, segmentY,
                 segmentWidth, moveSetSegmentHeight());
             view.setHighlighted(view.getBounds().contains(movePointerX, movePointerY));
-            view.draw(batch, assets.fontSmall, assets.battleUi);
+            view.draw(batch, assets.gameplayFontSmall, assets.battleUi);
             views.add(view);
         }
         if (draggingLearnedMove && isVisibleMoveSetDropTarget(movePointerX, movePointerY)) {
@@ -1962,19 +1578,19 @@ public class CharacterSelectScreen implements Screen {
                 + insertion * (segmentWidth + gap) - moveSetScrollOffset - gap / 2f;
             batch.setColor(BattleUiAssets.YELLOW);
             batch.draw(assets.battleUi.pixel, markerX, moveSetViewportBounds.y,
-                windowsLayout ? 4f : 3f, moveSetViewportBounds.height);
+                4f, moveSetViewportBounds.height);
             batch.setColor(Color.WHITE);
         }
         endClip();
         moveSetViews = List.copyOf(views);
 
         if (moveSetScrollMax > 0f) {
-            float trackHeight = windowsLayout ? 7f : 5f;
+            float trackHeight = 7f;
             float trackY = y + Math.max(1f, padding / 4f);
             batch.setColor(BattleUiAssets.INK);
             batch.draw(assets.battleUi.pixel, moveSetViewportBounds.x, trackY,
                 moveSetViewportBounds.width, trackHeight);
-            float thumbWidth = Math.max(windowsLayout ? 42f : 28f,
+            float thumbWidth = Math.max(42f,
                 moveSetViewportBounds.width * moveSetViewportBounds.width / contentWidth);
             float travel = moveSetViewportBounds.width - thumbWidth;
             float progress = moveSetScrollMax == 0f ? 0f
@@ -2009,22 +1625,31 @@ public class CharacterSelectScreen implements Screen {
         String counters = "COMBAT ARTS " + usage.getOrDefault(MovePool.COMBAT_ARTS, 0)
             + "/" + combatLimit + "  |  JUJUTSU ARTS "
             + usage.getOrDefault(MovePool.JUJUTSU_ARTS, 0) + "/" + jujutsuLimit;
-        assets.fontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
-        assets.fontSmall.draw(batch, counters,
-            x + width - padding - textWidth(assets.fontSmall, counters),
-            y + height - (windowsLayout ? 12f : 8f));
+        assets.gameplayFontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.gameplayFontSmall.draw(batch, counters,
+            x + width - padding - textWidth(assets.gameplayFontSmall, counters),
+            y + height - 12f);
     }
 
-    private void layoutMoveSetActions(float x, float y, float width, float height) {
-        float gap = windowsLayout ? 9f : 6f;
+    static void layoutMoveSetBounds(
+        Rectangle panel, Rectangle moveViewport, Rectangle recommended,
+        Rectangle customize, Rectangle randomize
+    ) {
+        float viewportHeight = Math.min(MOVE_SET_SEGMENT_HEIGHT, Math.max(0f,
+            panel.height - MOVE_PANEL_HEADER_HEIGHT - MOVE_PANEL_PADDING * 2f
+                - MOVE_SET_ACTION_HEIGHT - MOVE_SET_ACTION_GAP));
+        float width = Math.max(0f, panel.width - MOVE_PANEL_PADDING * 2f);
+        float x = panel.x + MOVE_PANEL_PADDING;
+        moveViewport.set(x, panel.y + MOVE_PANEL_PADDING, width, viewportHeight);
+        float y = moveViewport.y + viewportHeight + MOVE_SET_ACTION_GAP;
+        float gap = 9f;
         float available = Math.max(0f, width - gap * 2f);
         float recommendedWidth = available * 0.40f;
         float customizeWidth = available * 0.30f;
         float randomizeWidth = Math.max(0f, available - recommendedWidth - customizeWidth);
-        recommendedMoveSetBounds.set(x, y, recommendedWidth, height);
-        customizeMoveSetBounds.set(x + recommendedWidth + gap, y, customizeWidth, height);
-        randomizeMoveSetBounds.set(
-            customizeMoveSetBounds.x + customizeWidth + gap, y, randomizeWidth, height);
+        recommended.set(x, y, recommendedWidth, MOVE_SET_ACTION_HEIGHT);
+        customize.set(x + recommendedWidth + gap, y, customizeWidth, MOVE_SET_ACTION_HEIGHT);
+        randomize.set(customize.x + customizeWidth + gap, y, randomizeWidth, MOVE_SET_ACTION_HEIGHT);
     }
 
     private void drawMoveSetActions() {
@@ -2039,23 +1664,24 @@ public class CharacterSelectScreen implements Screen {
         (hovered ? assets.battleUi.cardOver : assets.battleUi.card).draw(
             batch, bounds.x, bounds.y, bounds.width, bounds.height);
         String fitted = fitOrEllipsize(
-            assets.fontSmall, label, Math.max(1f, bounds.width - 12f));
-        assets.fontSmall.setColor(BattleUiAssets.TEXT);
-        assets.fontSmall.draw(batch, fitted,
-            bounds.x + (bounds.width - textWidth(assets.fontSmall, fitted)) / 2f,
-            bounds.y + bounds.height / 2f + assets.fontSmall.getCapHeight() / 2f);
+            assets.gameplayFontSmall, label, Math.max(1f, bounds.width - 12f));
+        assets.gameplayFontSmall.setColor(BattleUiAssets.TEXT);
+        assets.gameplayFontSmall.draw(batch, fitted,
+            bounds.x + (bounds.width - textWidth(assets.gameplayFontSmall, fitted)) / 2f,
+            bounds.y + bounds.height / 2f + assets.gameplayFontSmall.getCapHeight() / 2f);
     }
 
     private void layoutLearnedDrawer(float screenWidth, float screenHeight) {
         float padding = learnedDrawerPadding();
         float drawerWidth = learnedDrawerCardWidth() + padding * 2f
-            + learnedDrawerScrollbarWidth() + (windowsLayout ? 6f : 4f);
+            + learnedDrawerScrollbarWidth() + 6f;
         float drawerX = Math.max(0f, screenWidth - drawerWidth);
         float drawerTop = headerBounds.y + headerBounds.height;
         learnedDrawerBounds.set(
             drawerX, listBounds.y, drawerWidth, drawerTop - listBounds.y);
-        float toggleWidth = windowsLayout ? 174f : 116f;
-        float toggleHeight = windowsLayout ? 48f : 32f;
+        float toggleWidth = 174f * UiScaleSystem.bodyTextScale(
+            viewport.getScreenWidth() / viewport.getWorldWidth(), assets.gameplayFontSmall.getCapHeight());
+        float toggleHeight = 48f;
         float toggleX = learnedDrawerExpanded
             ? Math.max(0f, learnedDrawerBounds.x - toggleWidth)
             : Math.max(0f, screenWidth - toggleWidth);
@@ -2087,15 +1713,15 @@ public class CharacterSelectScreen implements Screen {
             .filter(move -> !selectedIds.contains(move.getId()))
             .count();
         String title = "LEARNED MOVES (" + availableCount + "/" + learnedMoves.size() + ")";
-        assets.fontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
-        assets.fontSmall.draw(batch, title,
+        assets.gameplayFontSmall.setColor(new Color(0.720f, 0.800f, 0.950f, 1f));
+        assets.gameplayFontSmall.draw(batch, title,
             learnedDrawerBounds.x + learnedDrawerPadding(),
             learnedDrawerBounds.y + learnedDrawerBounds.height
-                - (windowsLayout ? 18f : 12f));
+                - 18f);
 
         if (learnedMovesError != null) {
-            assets.fontSmall.setColor(Color.RED);
-            assets.fontSmall.draw(batch, "MOVE DATA UNAVAILABLE",
+            assets.gameplayFontSmall.setColor(Color.RED);
+            assets.gameplayFontSmall.draw(batch, "MOVE DATA UNAVAILABLE",
                 learnedDrawerViewportBounds.x,
                 learnedDrawerViewportBounds.y + learnedDrawerViewportBounds.height / 2f);
             drawLearnedDrawerToggle();
@@ -2124,13 +1750,13 @@ public class CharacterSelectScreen implements Screen {
             card.setDragging(card.getMove() == pressedLearnedMove);
             int ceCost = index < learnedMoveCeCosts.size()
                 ? learnedMoveCeCosts.get(index) : card.getMove().getBaseCeCost();
-            card.draw(batch, assets.fontSmall, assets.fontSmall, assets.battleUi, ceCost);
+            card.draw(batch, assets.gameplayFontSmall, assets.gameplayFontSmall, assets.battleUi, ceCost);
             visibleIndex++;
         }
         endClip();
         if (availableCount == 0) {
-            assets.fontSmall.setColor(BattleUiAssets.MUTED);
-            assets.fontSmall.draw(batch, "Every learned move is in the move set.",
+            assets.gameplayFontSmall.setColor(BattleUiAssets.MUTED);
+            assets.gameplayFontSmall.draw(batch, "Every learned move is in the move set.",
                 learnedDrawerViewportBounds.x,
                 learnedDrawerViewportBounds.y + learnedDrawerViewportBounds.height / 2f);
         }
@@ -2146,7 +1772,7 @@ public class CharacterSelectScreen implements Screen {
         float height = learnedDrawerViewportBounds.height;
         batch.setColor(BattleUiAssets.INK);
         batch.draw(assets.battleUi.pixel, x, y, width, height);
-        float thumbHeight = Math.max(windowsLayout ? 36f : 24f,
+        float thumbHeight = Math.max(36f,
             height * height / contentHeight);
         float progress = learnedDrawerScrollMax == 0f ? 0f
             : learnedDrawerScrollOffset / learnedDrawerScrollMax;
@@ -2162,13 +1788,13 @@ public class CharacterSelectScreen implements Screen {
             learnedDrawerToggleBounds.x, learnedDrawerToggleBounds.y,
             learnedDrawerToggleBounds.width, learnedDrawerToggleBounds.height);
         String label = learnedDrawerExpanded ? "CLOSE >" : "< LEARNED MOVES";
-        assets.fontSmall.setColor(BattleUiAssets.TEXT);
-        assets.fontSmall.draw(batch, label,
+        assets.gameplayFontSmall.setColor(BattleUiAssets.TEXT);
+        assets.gameplayFontSmall.draw(batch, label,
             learnedDrawerToggleBounds.x
-                + (learnedDrawerToggleBounds.width - textWidth(assets.fontSmall, label)) / 2f,
+                + (learnedDrawerToggleBounds.width - textWidth(assets.gameplayFontSmall, label)) / 2f,
             learnedDrawerToggleBounds.y
                 + learnedDrawerToggleBounds.height / 2f
-                + assets.fontSmall.getCapHeight() / 2f);
+                + assets.gameplayFontSmall.getCapHeight() / 2f);
     }
 
     private void drawLearnedMoveDragAvatar() {
@@ -2180,7 +1806,7 @@ public class CharacterSelectScreen implements Screen {
         ActionSegmentView ghost = new ActionSegmentView(
             pressedLearnedMove, x, y, width, height);
         ghost.setHighlighted(true);
-        ghost.draw(batch, assets.fontSmall, assets.battleUi);
+        ghost.draw(batch, assets.gameplayFontSmall, assets.battleUi);
     }
 
     private boolean handleMoveSetTouchDown(float x, float y, int button) {
@@ -2367,23 +1993,15 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private float moveSetSegmentWidth() {
-        return windowsLayout ? WINDOWS_MOVE_SET_SEGMENT_WIDTH : MOVE_SET_SEGMENT_WIDTH;
+        return MOVE_SET_SEGMENT_WIDTH;
     }
 
     private float moveSetSegmentHeight() {
-        return windowsLayout ? WINDOWS_MOVE_SET_SEGMENT_HEIGHT : MOVE_SET_SEGMENT_HEIGHT;
+        return MOVE_SET_SEGMENT_HEIGHT;
     }
 
     private float moveSetSegmentGap() {
-        return windowsLayout ? WINDOWS_MOVE_SET_SEGMENT_GAP : MOVE_SET_SEGMENT_GAP;
-    }
-
-    private float moveSetActionHeight() {
-        return windowsLayout ? WINDOWS_MOVE_SET_ACTION_HEIGHT : MOVE_SET_ACTION_HEIGHT;
-    }
-
-    private float moveSetActionGap() {
-        return windowsLayout ? WINDOWS_MOVE_SET_ACTION_GAP : MOVE_SET_ACTION_GAP;
+        return MOVE_SET_SEGMENT_GAP;
     }
 
     private void clearMoveSetActionBounds() {
@@ -2393,29 +2011,27 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private float learnedDrawerPadding() {
-        return windowsLayout ? WINDOWS_LEARNED_DRAWER_PADDING : LEARNED_DRAWER_PADDING;
+        return LEARNED_DRAWER_PADDING;
     }
 
     private float learnedDrawerHeaderHeight() {
-        return windowsLayout
-            ? WINDOWS_LEARNED_DRAWER_HEADER_HEIGHT : LEARNED_DRAWER_HEADER_HEIGHT;
+        return LEARNED_DRAWER_HEADER_HEIGHT;
     }
 
     private float learnedDrawerScrollbarWidth() {
-        return windowsLayout
-            ? WINDOWS_LEARNED_DRAWER_SCROLLBAR_WIDTH : LEARNED_DRAWER_SCROLLBAR_WIDTH;
+        return LEARNED_DRAWER_SCROLLBAR_WIDTH;
     }
 
     private float learnedDrawerCardGap() {
-        return windowsLayout ? WINDOWS_LEARNED_DRAWER_CARD_GAP : LEARNED_DRAWER_CARD_GAP;
+        return LEARNED_DRAWER_CARD_GAP;
     }
 
     private float learnedDrawerCardWidth() {
-        return windowsLayout ? WINDOWS_FULL_MOVE_CARD_WIDTH : MoveCardView.CARD_W;
+        return FULL_MOVE_CARD_WIDTH;
     }
 
     private float learnedDrawerCardHeight() {
-        return windowsLayout ? WINDOWS_FULL_MOVE_CARD_HEIGHT : MoveCardView.CARD_H;
+        return FULL_MOVE_CARD_HEIGHT;
     }
 
     private static String ellipsize(BitmapFont font, String text, float width) {
@@ -2440,14 +2056,14 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private boolean scrollRoster(float amount) {
-        if (!windowsLayout || amount == 0f || rosterScrollMax <= 0f) return false;
+        if (amount == 0f || rosterScrollMax <= 0f) return false;
         Vector2 world = worldPointer(Gdx.input.getX(), Gdx.input.getY());
         float pointerX = world.x;
         float pointerY = world.y;
         if (!rosterViewportBounds.contains(pointerX, pointerY)) return false;
 
         rosterScrollOffset = clamp(
-            rosterScrollOffset + amount * WINDOWS_ROW_HEIGHT,
+            rosterScrollOffset + amount * ROW_HEIGHT,
             0f,
             rosterScrollMax);
         return true;
@@ -2458,12 +2074,12 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private void revealRosterCursor() {
-        if (!windowsLayout || characters.isEmpty()) return;
+        if (characters.isEmpty()) return;
         rosterScrollOffset = rosterScrollOffsetForSelection(
             rosterScrollOffset,
             cursorIndex,
             rosterRowCount(),
-            WINDOWS_ROW_HEIGHT,
+            ROW_HEIGHT,
             rosterViewportBounds.height);
     }
 
@@ -2486,47 +2102,13 @@ public class CharacterSelectScreen implements Screen {
         return clamp(offset, 0f, maximumOffset);
     }
 
-    static float windowsRosterWidth(float screenWidth) {
-        return Math.max(0f, screenWidth * WINDOWS_ROSTER_WIDTH_RATIO);
+    static float rosterWidth(float screenWidth) {
+        return Math.max(0f, screenWidth * ROSTER_WIDTH_RATIO);
     }
 
-    static float windowsTechniqueSectionHeight(float detailHeight) {
-        boolean compact = detailHeight < 1100f;
-        float contentHeight = Math.max(0f,
-            detailHeight - WINDOWS_PROFILE_PADDING * 2f - WINDOWS_PROFILE_TITLE_GAP);
-        float movesHeight = Math.min(windowsMoveSetPanelHeight(), contentHeight);
-        float panelGap = contentHeight > movesHeight
-            ? (compact
-                ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP)
-            : 0f;
-        float infoHeight = Math.max(0f, contentHeight - movesHeight - panelGap);
-        float summaryHeight = Math.min(
-            compact
-                ? WINDOWS_COMPACT_PROFILE_SUMMARY_HEIGHT : WINDOWS_PROFILE_SUMMARY_HEIGHT,
-            infoHeight);
-        float techniqueGap = compact
-            ? WINDOWS_COMPACT_PROFILE_SECTION_GAP : WINDOWS_PROFILE_SECTION_GAP;
-        return Math.max(0f, infoHeight - summaryHeight - techniqueGap);
-    }
-
-    static float macTechniqueSectionHeight(float availableProfileHeight) {
-        float available = availableProfileHeight
-            - MAC_PROFILE_SUMMARY_MIN_HEIGHT - MOVE_PANEL_GAP;
-        if (available < MAC_TECHNIQUE_SECTION_MIN_HEIGHT) return 0f;
-        return Math.min(MAC_TECHNIQUE_SECTION_TARGET_HEIGHT, available);
-    }
-
-    private static float windowsMoveSetPanelHeight() {
-        return WINDOWS_MOVE_PANEL_HEADER_HEIGHT + WINDOWS_MOVE_PANEL_PADDING * 2f
-            + WINDOWS_MOVE_SET_SEGMENT_HEIGHT + WINDOWS_MOVE_SET_ACTION_HEIGHT
-            + WINDOWS_MOVE_SET_ACTION_GAP;
-    }
-
-    static int windowsTechniqueVisibleRows(float detailHeight) {
-        boolean compact = detailHeight < 1100f;
-        float reservedHeight = compact ? 52f : 64f;
-        float available = windowsTechniqueSectionHeight(detailHeight) - reservedHeight;
-        return available < 0f ? 0 : 1 + (int) Math.floor(available / 22.5f);
+    private static float moveSetPanelHeight() {
+        return MOVE_PANEL_HEADER_HEIGHT + MOVE_PANEL_PADDING * 2f
+            + MOVE_SET_SEGMENT_HEIGHT + MOVE_SET_ACTION_HEIGHT + MOVE_SET_ACTION_GAP;
     }
 
     static float statBarFillRatio(int value) {
@@ -2549,19 +2131,11 @@ public class CharacterSelectScreen implements Screen {
     }
 
     private float rowHeight() {
-        return windowsLayout ? WINDOWS_ROW_HEIGHT : ROW_HEIGHT;
-    }
-
-    private float movePanelGap() {
-        return windowsLayout ? WINDOWS_MOVE_PANEL_GAP : MOVE_PANEL_GAP;
+        return ROW_HEIGHT;
     }
 
     private float movePanelPadding() {
-        return windowsLayout ? WINDOWS_MOVE_PANEL_PADDING : MOVE_PANEL_PADDING;
-    }
-
-    private float movePanelHeaderHeight() {
-        return windowsLayout ? WINDOWS_MOVE_PANEL_HEADER_HEIGHT : MOVE_PANEL_HEADER_HEIGHT;
+        return MOVE_PANEL_PADDING;
     }
 
     private void resetRosterScroll() {

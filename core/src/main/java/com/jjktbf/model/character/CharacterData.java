@@ -3,6 +3,7 @@ package com.jjktbf.model.character;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import com.jjktbf.model.move.MoveRepository;
@@ -234,6 +235,23 @@ public class CharacterData {
         CursedToolRepository cursedToolRepo,
         List<String> requestedMoveSetIds
     ) {
+        return toCharacter(
+            moveRepo, abilityRepo, techniqueRepo, cursedToolRepo, null, requestedMoveSetIds);
+    }
+
+    /**
+     * Full domain build with an explicit ordered subset of learned moves.
+     * {@code domainRepo} resolves {@code *domain:id*} description reference
+     * tokens; pass {@code null} to leave Domain references verbatim.
+     */
+    public Character toCharacter(
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        TechniqueRepository techniqueRepo,
+        CursedToolRepository cursedToolRepo,
+        DomainRepository domainRepo,
+        List<String> requestedMoveSetIds
+    ) {
         CharacterStats stats = toCharacterStats();
         List<Move> moves = new ArrayList<>();
         List<InnateTechniqueData> techniques = techniqueRepo == null ? null : techniqueRepo.getAll();
@@ -255,7 +273,7 @@ public class CharacterData {
         validateSelectedMoveNodes(moveRepo, techniques, prerequisiteWaiver);
 
         ContentNameTokens.NameLookup descriptionNames =
-            descriptionNameLookup(moveRepo, abilityRepo);
+            descriptionNameLookup(moveRepo, abilityRepo, domainRepo);
         for (String moveId : resolvedMoveIds) {
                 if (moveId == null || moveId.isBlank()) {
                     System.err.println("[WARN] Blank move ID skipped for character '" + name + "'");
@@ -316,11 +334,29 @@ public class CharacterData {
         MoveRepository moveRepo,
         AbilityRepository abilityRepo
     ) {
+        return descriptionNameLookup(moveRepo, abilityRepo, null);
+    }
+
+    /**
+     * Name lookup for {@code *move:id*} / {@code *ability:id*} /
+     * {@code *domain:id*} description reference tokens, built from whatever
+     * repositories are at hand. Null repositories resolve nothing, so tests
+     * building partial graphs keep authored text verbatim.
+     */
+    public static ContentNameTokens.NameLookup descriptionNameLookup(
+        MoveRepository moveRepo,
+        AbilityRepository abilityRepo,
+        DomainRepository domainRepo
+    ) {
         return (type, id) -> {
             if (id == null) return null;
             if (ContentNameTokens.MOVE_PREFIX.equalsIgnoreCase(type)) {
                 return moveRepo == null ? null
                     : moveRepo.findById(id).map(move -> move.name).orElse(null);
+            }
+            if (ContentNameTokens.DOMAIN_PREFIX.equalsIgnoreCase(type)) {
+                return domainRepo == null ? null
+                    : domainRepo.findById(id).map(domain -> domain.name).orElse(null);
             }
             return abilityRepo == null ? null
                 : abilityRepo.findById(id).map(ability -> ability.name).orElse(null);

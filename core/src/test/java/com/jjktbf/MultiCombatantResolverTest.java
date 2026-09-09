@@ -292,6 +292,38 @@ class MultiCombatantResolverTest {
     }
 
     @Test
+    void simpleDomainParryDoesNotApplyToIntangibleAttacks() {
+        BattleCombatant attacker = fighter("Attacker");
+        BattleCombatant defender = simpleDomainFighter("Defender", false);
+        BattleState state = new BattleState(
+            BattleState.teamOfFighters(BattleTeamId.PLAYER, List.of(attacker)),
+            BattleState.teamOfFighters(BattleTeamId.ENEMY, List.of(defender)));
+        armSimpleDomain(defender);
+        Move intangibleAttack = new Move.Builder("UNSEEN_WORDS")
+            .name("Unseen Words").category(MoveCategory.PHYSICAL).neverMiss(true)
+            .tags(Set.of(MoveTag.PHYSICAL, MoveTag.ATTACK, MoveTag.RANGED))
+            .apCost(2).unleashPoint(1)
+            .hitComponents(List.of(new HitComponent(20,
+                Set.of(MoveTag.PHYSICAL, MoveTag.INTANGIBLE), 0, false, true)))
+            .build();
+        BattlePlan plan = planFor(attacker);
+        plan.place(intangibleAttack, 5, 0, defender.getInstanceId());
+        attacker.setTimeline(plan.toLegacyTimeline());
+        int defenderHp = defender.getCurrentHp();
+
+        List<CombatEvent> events = resolveRoundEventsWithDomains(state);
+
+        assertTrue(defender.getCurrentHp() < defenderHp,
+            "an INTANGIBLE attack lands through the Simple Domain stance");
+        assertTrue(events.stream().noneMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_PARRIED),
+            "INTANGIBLE attacks are invisible to the New Shadow Style parry");
+        assertEquals(2, defender.getCodedAbilities().state(NewShadowStyleAbility.KEY)
+            .orElseThrow().currentValue(),
+            "the unseen attack does not spend the one-use parry");
+    }
+
+    @Test
     void simpleDomainParryCountersMeleeAttackers() {
         BattleCombatant attacker = fighter("Attacker");
         BattleCombatant defender = simpleDomainFighter("Defender", false);

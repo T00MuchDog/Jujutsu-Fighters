@@ -1,6 +1,10 @@
 package com.jjktbf.graphics.ui.battle;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveData;
 import org.junit.jupiter.api.Test;
@@ -17,6 +21,50 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MoveCardViewTest {
+
+    @Test
+    void titlesShrinkWithoutEllipsisUntilTheyFitWithinTwoLines() {
+        List<String> drawn = new ArrayList<>();
+        List<Float> drawnScales = new ArrayList<>();
+        BitmapFont.BitmapFontData data = new BitmapFont.BitmapFontData() {
+            @Override public void setGlyphRegion(BitmapFont.Glyph glyph, TextureRegion region) { }
+        };
+        data.lineHeight = 20f;
+        data.capHeight = 12f;
+        data.spaceXadvance = 6f;
+        for (char c = 32; c < 127; c++) {
+            BitmapFont.Glyph glyph = new BitmapFont.Glyph();
+            glyph.id = c;
+            glyph.width = 6;
+            glyph.height = 12;
+            glyph.xadvance = 6;
+            data.setGlyph(c, glyph);
+        }
+        BitmapFont font = new BitmapFont(data, new TextureRegion(), false) {
+            @Override public GlyphLayout draw(Batch batch, CharSequence text, float x, float y) {
+                drawn.add(text.toString());
+                drawnScales.add(getData().scaleX);
+                assertTrue(new GlyphLayout(this, text).width <= 90f);
+                return new GlyphLayout(this, text);
+            }
+        };
+        for (String text : List.of("Jab", "A Longer Title", "A Much Longer Title With More Words",
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ")) {
+            drawn.clear();
+            drawnScales.clear();
+            MoveCardView.drawTitleFitted(null, font, text, 0f, 100f, 90f, 2);
+            assertTrue(drawn.size() <= 2);
+            assertEquals(1f, font.getData().scaleX);
+            assertTrue(drawn.stream().noneMatch(line -> line.endsWith("...")));
+            if (text.equals("Jab")) assertEquals(List.of("Jab"), drawn);
+            else if (text.equals("A Longer Title")) assertEquals(List.of("A Longer Title"), drawn);
+            else assertTrue(drawnScales.stream().allMatch(scale -> scale < 1f));
+        }
+        drawn.clear();
+        MoveCardView.drawTitleFitted(
+            null, font, "First Line Second Line", 0f, 100f, 90f, 2);
+        assertEquals(List.of("First Line", "Second Line"), drawn);
+    }
 
     @Test
     void windowsGeometryEnlargesCardBoundsWithoutChangingDefaultBounds() {

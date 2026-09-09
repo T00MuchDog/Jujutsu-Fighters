@@ -45,6 +45,19 @@ class AbilityEffectTypeApplicabilityTest {
         assertFalse(AbilityEffectType.APPLY_STATUS.masteryProgressionFields(effect)
             .contains(TechniqueMasteryProgressions.DURATION_TICKS));
 
+        effect.stringValue = StatusEffectType.RESTRAINED.name();
+        AbilityEffectType.APPLY_STATUS.prepare(effect);
+        assertTrue(AbilityEffectType.APPLY_STATUS.uses(
+            AbilityEffectParameter.MAGNITUDE, effect));
+        assertEquals(StatusEffectType.RESTRAINED_DEFAULT_MAGNITUDE, effect.magnitude);
+        assertNull(AbilityEffectType.APPLY_STATUS.validationError(effect));
+        effect.magnitude = 0.9;
+        assertEquals("Restrained magnitude must be between 1 and 10.",
+            AbilityEffectType.APPLY_STATUS.validationError(effect));
+        effect.magnitude = 10.1;
+        assertEquals("Restrained magnitude must be between 1 and 10.",
+            AbilityEffectType.APPLY_STATUS.validationError(effect));
+
         effect.stringValue = StatusEffectType.STRENGTH_DECREASE.name();
         AbilityEffectType.APPLY_STATUS.prepare(effect);
         assertTrue(AbilityEffectType.APPLY_STATUS.uses(
@@ -63,6 +76,22 @@ class AbilityEffectTypeApplicabilityTest {
         assertFalse(AbilityEffectType.APPLY_STATUS.uses(
             AbilityEffectParameter.PER_TICK_REMOVAL_CHANCE, effect));
         assertNull(effect.perTickRemovalChance);
+    }
+
+    @Test
+    void roundDurationValidationNamesTheSelectedStatus() {
+        AbilityEffectData effect = AbilityEffectType.APPLY_STATUS.createDefault();
+        effect.stringValue = StatusEffectType.SLEEP.name();
+        effect.durationRounds = 0;
+        effect.durationTicks = 80;
+
+        assertEquals(
+            "Sleep must use a positive round duration or be permanent, with 0 AP ticks.",
+            AbilityEffectType.APPLY_STATUS.validationError(effect));
+
+        effect.durationRounds = -1;
+        effect.durationTicks = 0;
+        assertNull(AbilityEffectType.APPLY_STATUS.validationError(effect));
     }
 
     @Test

@@ -275,88 +275,30 @@ class IdleTransfigurationAbilityTest {
             "damage that is not restored drags its injury along");
     }
 
-    // ── Soul Manipulation: passive melee proc ─────────────────────────────────
-
-    @Test
-    void meleeProcRollsFivePercentOnSuccessfulHits() {
-        // No proc: the roll lands above 5%.
-        runProcScenario(new SequenceRandom(0.5, 0.5, 0.0), false, false);
-        // Proc + successful attempt.
-        runProcScenario(new SequenceRandom(0.5, 0.04, 0.04), true, true);
-        // Proc + resisted attempt.
-        runProcScenario(new SequenceRandom(0.5, 0.04, 0.06), true, false);
-    }
-
-    private void runProcScenario(RandomSource rng, boolean expectProc, boolean expectSuccess) {
-        // CTM 80 against an 80-resistance target pins the attempt chance at
-        // exactly 5%, so the scripted rolls address the authored percentages.
-        BattleCombatant mahito = mahitoWithCtm(80);
-        BattleCombatant enemy = fighter("ENEMY");
-        BattleState state = new BattleState(mahito, enemy);
-        Move strike = neverMissMelee("STRIKE", 20);
-        place(mahito, strike, List.of(enemy));
-
-        state.transitionTo(BattleState.Phase.RESOLUTION);
-        List<CombatEvent> events = new CombatResolver(rng).resolveRound(state);
-
-        List<CombatEvent> attempts = attempts(events);
-        if (!expectProc) {
-            assertTrue(attempts.isEmpty(), "no attempt should happen above the proc chance");
-            assertFalse(enemy.isDefeated());
-            return;
-        }
-        assertEquals(1, attempts.size());
-        if (expectSuccess) {
-            assertTrue(enemy.isDefeated());
-            assertEquals("Mahito's Soul Manipulation activates. TARGET fails to resist "
-                + "and is transformed into something inhuman.", attempts.get(0).getMessage());
-        } else {
-            assertFalse(enemy.isDefeated());
-            assertEquals("Mahito's Soul Manipulation activates. TARGET resists. Mahito "
-                + "gains a deeper understanding of TARGET's soul.", attempts.get(0).getMessage());
-        }
-    }
-
-    @Test
-    void rangedHitsNeverProcThePassiveSoulAttempt() {
-        BattleCombatant mahito = mahito(soulManipulation());
-        BattleCombatant enemy = fighter("ENEMY");
-        BattleState state = new BattleState(mahito, enemy);
-        Move beam = neverMissRanged("BEAM", 20);
-        place(mahito, beam, List.of(enemy));
-
-        state.transitionTo(BattleState.Phase.RESOLUTION);
-        List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.0)).resolveRound(state);
-
-        assertTrue(attempts(events).isEmpty());
-        assertFalse(enemy.isDefeated());
-    }
-
     // ── Soul Manipulation: stacks and scaling ──────────────────────────────────
 
     @Test
     void failedAttemptsStackAndRaiseLaterSuccessProbability() {
-        BattleCombatant mahito = mahito(soulManipulation());
+        Move touch = idleTransfigurationTouch();
+        BattleCombatant mahito = mahitoKnowing(touch);
         BattleCombatant enemy = fighter("ENEMY");
         BattleState state = new BattleState(mahito, enemy);
-        Move strike = neverMissMelee("STRIKE", 20);
 
-        // Base chance is 5% (CTM 80, resisted by 80 CE). Two failures stack
-        // +12% each; 0.15 then succeeds where it would have failed unstacked.
-        for (int round = 1; round <= 2; round++) {
-            place(mahito, strike, List.of(enemy));
-            state.transitionTo(BattleState.Phase.RESOLUTION);
-            List<CombatEvent> events =
-                new CombatResolver(new SequenceRandom(0.5, 0.04, 0.9)).resolveRound(state);
+        // Base chance is 13% (CTM 165, resisted by 80 CE). Two failures stack
+        // +12% each; 0.2 then succeeds where it would have failed unstacked.
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            List<CombatEvent> events = new AbilityActivationEngine(
+                    new SequenceRandom(0.9))
+                .processMoveEffects(
+                    state, mahito, enemy, touch, MoveEffectTrigger.ON_HIT, 0, attempt);
             assertEquals(1, attempts(events).size());
             assertFalse(enemy.isDefeated());
         }
 
-        place(mahito, strike, List.of(enemy));
-        state.transitionTo(BattleState.Phase.RESOLUTION);
-        List<CombatEvent> events =
-            new CombatResolver(new SequenceRandom(0.5, 0.04, 0.15)).resolveRound(state);
-        assertTrue(enemy.isDefeated(), "5% + 2 stacks = 29% beats a 0.15 roll");
+        List<CombatEvent> events = new AbilityActivationEngine(
+                new SequenceRandom(0.2))
+            .processMoveEffects(state, mahito, enemy, touch, MoveEffectTrigger.ON_HIT, 0, 3);
+        assertTrue(enemy.isDefeated(), "13% + 2 stacks = 37% beats a 0.2 roll");
     }
 
     @Test
@@ -382,30 +324,23 @@ class IdleTransfigurationAbilityTest {
     }
 
     private int reportedChancePercent(BattleCombatant target) {
-        BattleCombatant mahito = mahito(soulManipulation());
-        BattleState state = new BattleState(mahito, target);
-        Move strike = neverMissMelee("STRIKE", 20);
-        place(mahito, strike, List.of(target));
-
-        state.transitionTo(BattleState.Phase.RESOLUTION);
-        List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.5, 0.04, 0.99))
-            .resolveRound(state);
-        List<CombatEvent> attempts = attempts(events);
-        assertEquals(1, attempts.size());
-        return attempts.get(0).getIntValue();
+        return reportedChancePercent(mahitoKnowing(idleTransfigurationTouch()), target);
     }
 
     private int reportedChancePercent(int mahitoCtm) {
-        BattleCombatant mahito = mahitoWithCtm(mahitoCtm);
-        BattleCombatant enemy = fighter("ENEMY");
-        BattleState state = new BattleState(mahito, enemy);
-        Move strike = neverMissMelee("STRIKE", 20);
-        place(mahito, strike, List.of(enemy));
+        return reportedChancePercent(
+            mahitoKnowingWithCtm(idleTransfigurationTouch(), mahitoCtm), fighter("ENEMY"));
+    }
 
-        state.transitionTo(BattleState.Phase.RESOLUTION);
-        List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.5, 0.04, 0.99))
-            .resolveRound(state);
-        return attempts(events).get(0).getIntValue();
+    /** One resisted touch attempt; the reported event carries the chance used. */
+    private int reportedChancePercent(BattleCombatant mahito, BattleCombatant target) {
+        Move touch = idleTransfigurationTouch();
+        BattleState state = new BattleState(mahito, target);
+        List<CombatEvent> events = new AbilityActivationEngine(new SequenceRandom(0.99))
+            .processMoveEffects(state, mahito, target, touch, MoveEffectTrigger.ON_HIT, 0, 1);
+        List<CombatEvent> attempts = attempts(events);
+        assertEquals(1, attempts.size());
+        return attempts.get(0).getIntValue();
     }
 
     @Test
@@ -419,13 +354,12 @@ class IdleTransfigurationAbilityTest {
     }
 
     private boolean runSeededAttempt(long seed) {
-        BattleCombatant mahito = mahito(soulManipulation());
+        Move touch = idleTransfigurationTouch();
+        BattleCombatant mahito = mahitoKnowing(touch);
         BattleCombatant enemy = fighter("ENEMY");
         BattleState state = new BattleState(mahito, enemy);
-        Move strike = neverMissMelee("STRIKE", 20);
-        place(mahito, strike, List.of(enemy));
-        state.transitionTo(BattleState.Phase.RESOLUTION);
-        new CombatResolver(new SeededRandomSource(seed)).resolveRound(state);
+        new AbilityActivationEngine(new SeededRandomSource(seed))
+            .processMoveEffects(state, mahito, enemy, touch, MoveEffectTrigger.ON_HIT, 0, 1);
         return enemy.isDefeated();
     }
 
@@ -555,42 +489,32 @@ class IdleTransfigurationAbilityTest {
     }
 
     @Test
-    void passiveSoulAttemptsRetaliateEveryTimeAndOnlyAgainstTheManipulator() {
-        BattleCombatant attacker = mahito(soulManipulation(), maintainingTheSoul());
+    void soulAttemptsRetaliateEveryTimeAndOnlyAgainstTheManipulator() {
+        Move touch = idleTransfigurationTouch();
+        Character attackerCharacter = new CursedSpiritCharacter(
+            "MAHITO", "Mahito", stats(165), "Idle Transfiguration",
+            List.of(touch), List.of(maintainingTheSoul()));
+        BattleCombatant attacker = new BattleCombatant(attackerCharacter);
         BattleCombatant bystander = fighter("BYSTANDER");
         BattleCombatant vessel = retaliatingFighter(0.25);
         BattleState state = new BattleState(
-            BattleState.teamOfFighters(com.jjktbf.model.combat.BattleTeamId.PLAYER,
-                List.of(attacker, bystander)),
-            BattleState.teamOfFighters(com.jjktbf.model.combat.BattleTeamId.ENEMY, List.of(vessel)));
+            BattleState.teamOfFighters(
+                com.jjktbf.model.combat.BattleTeamId.PLAYER, List.of(attacker, bystander)),
+            BattleState.teamOfFighters(
+                com.jjktbf.model.combat.BattleTeamId.ENEMY, List.of(vessel)));
         AbilityActivationEngine engine = new AbilityActivationEngine(new SequenceRandom(0.0, 0.0));
-        Move strike = neverMissMelee("STRIKE", 10);
         int damage = (int) Math.round(attacker.getMaxHp() * 0.25);
         int ceBefore = attacker.getCurrentCe();
 
         for (int tick = 1; tick <= 2; tick++) {
-            List<CombatEvent> events = engine.process(state, AbilityTrigger.attackHit(
-                attacker, vessel, strike, strike.getHitComponents().get(0), tick));
+            List<CombatEvent> events = engine.processMoveEffects(
+                state, attacker, vessel, touch, MoveEffectTrigger.ON_HIT, 0, tick);
             assertEquals(attacker.getMaxHp() - tick * damage, attacker.getCurrentHp());
             assertEquals(1, events.stream().filter(e -> e.getType() == CombatEvent.Type.DAMAGE_DEALT
                 && e.getSource() == vessel && e.getTarget() == attacker).count());
         }
         assertEquals(ceBefore, attacker.getCurrentCe(), "soul retaliation is not restored");
         assertEquals(bystander.getMaxHp(), bystander.getCurrentHp());
-    }
-
-    @Test
-    void attacksThatDoNotProcSoulManipulationDoNotRetaliate() {
-        BattleCombatant attacker = mahito(soulManipulation());
-        BattleCombatant vessel = retaliatingFighter(0.75);
-        BattleState state = new BattleState(attacker, vessel);
-        Move strike = neverMissMelee("STRIKE", 10);
-        AbilityActivationEngine engine = new AbilityActivationEngine(new SequenceRandom(0.99));
-
-        engine.process(state, AbilityTrigger.attackHit(
-            attacker, vessel, strike, strike.getHitComponents().get(0), 1));
-
-        assertEquals(attacker.getMaxHp(), attacker.getCurrentHp());
     }
 
     @Test
@@ -650,6 +574,92 @@ class IdleTransfigurationAbilityTest {
         assertTrue(attempts(events).isEmpty());
     }
 
+    // ── Maintaining the Soul: soul-manipulation immunity ──────────────────────
+
+    @Test
+    void maintainedSoulNegatesTheDedicatedTouchMoveWithoutARoll() {
+        Move touch = idleTransfigurationTouch();
+        BattleCombatant attacker = mahitoKnowing(touch);
+        BattleCombatant mirror = mahito(maintainingTheSoul());
+        BattleState state = new BattleState(attacker, mirror);
+        AbilityActivationEngine engine = new AbilityActivationEngine(new SequenceRandom(0.0));
+
+        int ceBefore = mirror.getCurrentCe();
+        List<CombatEvent> events = engine.processMoveEffects(
+            state, attacker, mirror, touch, MoveEffectTrigger.ON_HIT, 0, 1);
+
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.SOUL_MANIPULATION_NEGATED
+                && event.getTarget() == mirror));
+        assertTrue(attempts(events).isEmpty());
+        assertFalse(mirror.isDefeated());
+        assertEquals(mirror.getMaxHp(), mirror.getCurrentHp());
+        assertEquals(ceBefore, mirror.getCurrentCe(), "immunity itself costs no CE");
+        assertEquals(0, learnedShapes(attacker),
+            "a negated attempt teaches the manipulator nothing");
+    }
+
+    @Test
+    void maintainedSoulNegatesTheDomainSureHit() {
+        Move touch = idleTransfigurationTouch();
+        BattleCombatant attacker = mahitoKnowing(touch);
+        BattleCombatant mirror = mahito(maintainingTheSoul());
+        BattleState state = new BattleState(attacker, mirror);
+        AbilityActivationEngine engine = new AbilityActivationEngine(new SequenceRandom(0.0));
+        AbilityEffectData row = AbilityEffectType.CODED_MOVE_ACTION.createDefault();
+        row.codedAbilityKey = IdleTransfigurationAbility.KEY;
+        row.codedAction = IdleTransfigurationAbility.ACTION_SOUL_MANIPULATION;
+
+        List<CombatEvent> events =
+            engine.executeDomainEffect(state, attacker, mirror, row, 1, "DOMAIN");
+
+        assertTrue(events.stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.SOUL_MANIPULATION_NEGATED
+                && event.getTarget() == mirror));
+        assertTrue(attempts(events).isEmpty());
+        assertFalse(mirror.isDefeated());
+    }
+
+    @Test
+    void aManipulatorWhoAlsoMaintainsTheirSoulDoesNotNegateTheirOwnAttempt() {
+        Move touch = idleTransfigurationTouch();
+        Character mirrorAttacker = new CursedSpiritCharacter(
+            "MAHITO", "Mahito", stats(165), "Idle Transfiguration",
+            List.of(touch), List.of(maintainingTheSoul()));
+        BattleCombatant attacker = new BattleCombatant(mirrorAttacker);
+        BattleCombatant mirror = mahito(maintainingTheSoul());
+        BattleState state = new BattleState(attacker, mirror);
+        AbilityActivationEngine engine = new AbilityActivationEngine(new SequenceRandom(0.0));
+
+        List<CombatEvent> events = engine.processMoveEffects(
+            state, attacker, mirror, touch, MoveEffectTrigger.ON_HIT, 0, 1);
+
+        List<CombatEvent> negations = events.stream()
+            .filter(event -> event.getType() == CombatEvent.Type.SOUL_MANIPULATION_NEGATED)
+            .toList();
+        assertEquals(1, negations.size(), "only the targeted soul negates");
+        assertEquals(mirror, negations.get(0).getTarget());
+        assertTrue(attempts(events).isEmpty());
+    }
+
+    @Test
+    void idleTransfigurationWithoutMaintainingTheSoulIsNotImmune() {
+        Move touch = idleTransfigurationTouch();
+        BattleCombatant attacker = mahitoKnowing(touch);
+        BattleCombatant target = mahito(malleableBody());
+        BattleState state = new BattleState(attacker, target);
+        AbilityActivationEngine engine = new AbilityActivationEngine(new SequenceRandom(0.0));
+
+        List<CombatEvent> events = engine.processMoveEffects(
+            state, attacker, target, touch, MoveEffectTrigger.ON_HIT, 0, 1);
+
+        assertTrue(events.stream().noneMatch(event ->
+            event.getType() == CombatEvent.Type.SOUL_MANIPULATION_NEGATED),
+            "only Maintaining the Soul grants immunity");
+        assertEquals(1, attempts(events).size());
+        assertTrue(target.isDefeated());
+    }
+
     // ── Successful transfiguration kills immediately, before the rest of the tick ──
 
     @Test
@@ -667,22 +677,6 @@ class IdleTransfigurationAbilityTest {
         assertFalse(enemy.isActive());
         assertFalse(enemy.hasEffect(StatusEffectType.STRENGTH_DECREASE),
             "the instant kill preempts the move's remaining effect rows");
-    }
-
-    @Test
-    void successfulPassiveProcKillPreemptsTheHitsOnHitRows() {
-        Move strike = staggerOnHitMelee();
-        BattleCombatant attacker = mahito(soulManipulation());
-        BattleCombatant enemy = fighter("TARGET");
-        BattleState state = new BattleState(attacker, enemy);
-        place(attacker, strike, List.of(enemy));
-        state.transitionTo(BattleState.Phase.RESOLUTION);
-
-        new CombatResolver(new SequenceRandom(0.0, 0.0, 0.0, 0.0)).resolveRound(state);
-
-        assertTrue(enemy.isDefeated());
-        assertFalse(enemy.hasEffect(StatusEffectType.STRENGTH_DECREASE),
-            "a proc-based kill at attack-hit time preempts the on-hit rows");
     }
 
     @Test
@@ -785,8 +779,7 @@ class IdleTransfigurationAbilityTest {
     private static Ability soulManipulation() {
         return codedPassive(
             "SOUL_MANIP", IdleTransfigurationAbility.SOUL_MANIPULATION,
-            Map.of(IdleTransfigurationAbility.PROC_CHANCE_PERCENT, 5,
-                IdleTransfigurationAbility.BASE_SUCCESS_PERCENT, 5,
+            Map.of(IdleTransfigurationAbility.BASE_SUCCESS_PERCENT, 5,
                 IdleTransfigurationAbility.CTM_SUCCESS_PER_TEN_POINTS, 1,
                 IdleTransfigurationAbility.SUCCESS_PER_STACK_PERCENT, 12,
                 IdleTransfigurationAbility.RESIST_PER_TEN_CE, 1,
@@ -820,14 +813,15 @@ class IdleTransfigurationAbilityTest {
         return new BattleCombatant(character);
     }
 
-    private static BattleCombatant mahitoWithCtm(int ctm) {
-        return mahito(List.of(soulManipulation()), ctm);
-    }
-
     /** Mahito whose character knows a move; coded move rows need this. */
     private static BattleCombatant mahitoKnowing(Move move) {
+        return mahitoKnowingWithCtm(move, 165);
+    }
+
+    /** Mahito with explicit mastery who knows a move. */
+    private static BattleCombatant mahitoKnowingWithCtm(Move move, int ctm) {
         Character character = new CursedSpiritCharacter(
-            "MAHITO", "Mahito", stats(165), "Idle Transfiguration",
+            "MAHITO", "Mahito", stats(ctm), "Idle Transfiguration",
             List.of(move), List.of());
         return new BattleCombatant(character);
     }
@@ -944,23 +938,6 @@ class IdleTransfigurationAbilityTest {
             .build();
     }
 
-    /** Melee strike carrying one on-hit stagger row after its damage. */
-    private static Move staggerOnHitMelee() {
-        return new Move.Builder("STRIKE_PLUS")
-            .name("Strike Plus")
-            .category(MoveCategory.PHYSICAL)
-            .tags(Set.of(MoveTag.ATTACK, MoveTag.PHYSICAL))
-            .basePower(10)
-            .neverMiss(true)
-            .apCost(1)
-            .unleashPoint(1)
-            .hitComponents(List.of(new HitComponent(
-                10, Set.of(MoveTag.PHYSICAL, MoveTag.MELEE), 0, false, true,
-                1.0, List.of())))
-            .effects(List.of(debuffRow("effect-000000")))
-            .build();
-    }
-
     /** Round-scaled debuff row: survives a full resolveRound, unlike a tick status. */
     private static MoveEffectData debuffRow(String effectId) {
         MoveEffectData row = AbilityEffectType.APPLY_STATUS.createDefaultMoveEffect();
@@ -1001,6 +978,14 @@ class IdleTransfigurationAbilityTest {
         return combatant.getCodedAbilities().states().stream()
             .filter(state -> MiraclesAbility.KEY.equals(state.key()))
             .findFirst()
+            .orElseThrow()
+            .currentValue();
+    }
+
+    /** Failed-attempt count the manipulator's runtime reports for this battle. */
+    private static int learnedShapes(BattleCombatant combatant) {
+        return combatant.getCodedAbilities()
+            .state(IdleTransfigurationAbility.KEY)
             .orElseThrow()
             .currentValue();
     }

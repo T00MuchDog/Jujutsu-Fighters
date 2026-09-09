@@ -60,10 +60,10 @@ public enum StatusEffectType {
      */
     STAGGER("Stagger", 0),
 
-    /** Prevents actions while active and ends on damage, natural recovery, or round expiry. */
+    /** Prevents actions until damage or natural recovery wakes the holder. */
     SLEEP("Sleep", 0, 0.05),
 
-    /** Halves Speed and rolls Strength-based escape plus a separate action stun each tick. */
+    /** Halves Speed and uses magnitude for Strength-based escape difficulty. */
     RESTRAINED("Restrained", StatKey.SPEED, 0.5),
 
     /** Reduces Speed by 20% and enables elemental reactions from electric and ice hits. */
@@ -97,6 +97,10 @@ public enum StatusEffectType {
     private final int direction;
     private final double defaultPerTickRemovalChance;
     private final Double statMultiplier;
+
+    public static final double RESTRAINED_MIN_MAGNITUDE = 1.0;
+    public static final double RESTRAINED_DEFAULT_MAGNITUDE = 5.0;
+    public static final double RESTRAINED_MAX_MAGNITUDE = 10.0;
 
     StatusEffectType(String displayName, StatKey baseStat, int direction) {
         this(displayName, baseStat, null, direction, 0.0, null);
@@ -182,7 +186,7 @@ public enum StatusEffectType {
 
     /** Whether this status uses the descriptor's magnitude field. */
     public boolean usesMagnitude() {
-        return isStatModifier();
+        return isStatModifier() || this == RESTRAINED;
     }
 
     /** Whether this status must be configured exclusively in AP ticks. */

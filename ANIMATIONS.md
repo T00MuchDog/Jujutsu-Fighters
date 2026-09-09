@@ -308,6 +308,34 @@ without pinning editable move costs, powers, effect rows, or character stats.
 
 ## Implementation And Verification
 
+### Blood Manipulation Pair
+
+Convergence `000097` and Piercing Blood `000098` share one eight-logical-pixel
+compressed-blood motif in `scripts/animation_art/techniques/blood-ratio.json`.
+Convergence is 24 x 50ms (1.2s), source-local preparation with a 350ms sphere hold.
+Piercing is 18 x 40ms (0.72s): an eight-frame source load, a three-frame beam
+starting at 240ms, and a small target puncture at the same instant. The beam's
+visible four logical pixel rows occupy 0.03 fighter heights regardless of distance.
+No persistent Compression visual or gameplay changes are involved.
+
+The technique exporter accepts per-effect `frameDurationMs` and numeric motion
+keys such as `{"keys":[[0,32],[0.4,26],[0.8,10],[1,3]]}`. Existing scalar and
+two-value interpolation remains unchanged. Art is still 96px logical geometry
+exported to 192px RGBA cels with integer nearest-neighbour sampling.
+
+```bash
+python3 scripts/build_technique_animations.py
+python3 scripts/build_technique_animations.py --check
+python3 scripts/review_blood_animations.py
+python3 scripts/review_blood_animations.py --check
+```
+
+Research, three linked studies, side-by-side sphere comparisons, seven review
+lenses, and the opt-in real-GL battle command are documented in
+`docs/animations/blood-manipulation/README.md`. Review GIFs are not runtime assets.
+
+### Runtime Tests
+
 - `graphics/.../animation/BattleEffectPack.java`: validated manifests, sheets, contact clips, texture ownership.
 - `BattleChoreography.java`: profile schema and pure keyframe interpolation.
 - `BattleAnimationPlayer.java`: shared event routing, timeline, layers, source/target lookup.

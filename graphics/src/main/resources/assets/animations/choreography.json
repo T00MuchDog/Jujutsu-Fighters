@@ -2439,30 +2439,21 @@
     },
     "ct-convergence": {
       "durationSeconds": 1.2,
-      "impactSeconds": 0.72,
-      "size": 1.5,
+      "impactSeconds": 0.8,
+      "size": 0.9,
       "source": [
         {
           "at": 0
         },
         {
-          "at": 0.6,
-          "scaleX": 0.97,
-          "green": 0.85
+          "at": 0.3
         },
         {
-          "at": 1
-        }
-      ],
-      "background": [
-        {
-          "at": 0
+          "at": 0.66,
+          "scaleX": 0.98
         },
         {
-          "at": 0.6,
-          "red": 0.6,
-          "green": 0.4,
-          "blue": 0.48
+          "at": 0.8
         },
         {
           "at": 1
@@ -2470,19 +2461,23 @@
       ]
     },
     "ct-piercing-blood": {
-      "durationSeconds": 1.1,
-      "impactSeconds": 0.6,
-      "size": 1.4,
+      "durationSeconds": 0.72,
+      "impactSeconds": 0.24,
+      "size": 0.9,
       "source": [
         {
           "at": 0
         },
         {
-          "at": 0.48
+          "at": 0.33333334
         },
         {
-          "at": 0.55,
-          "x": -0.15
+          "at": 0.3888889,
+          "x": -0.025
+        },
+        {
+          "at": 0.64,
+          "easing": "smooth"
         },
         {
           "at": 1
@@ -2493,12 +2488,21 @@
           "at": 0
         },
         {
-          "at": 0.54
+          "at": 0.33333334
         },
         {
-          "at": 0.58,
-          "x": 0.15,
+          "at": 0.3888889,
+          "x": 0.16,
+          "rotation": -6
+        },
+        {
+          "at": 0.55,
+          "x": 0.12,
           "rotation": -4
+        },
+        {
+          "at": 0.9,
+          "easing": "smooth"
         },
         {
           "at": 1
@@ -2509,16 +2513,16 @@
           "effect": "ct-pressure-core",
           "placement": "source",
           "plane": "front",
-          "durationSeconds": 0.5,
-          "size": 0.8
+          "durationSeconds": 0.32,
+          "size": 0.9
         },
         {
           "effect": "ct-piercing-stream",
           "placement": "beam",
           "plane": "front",
-          "startSeconds": 0.5,
-          "durationSeconds": 0.36,
-          "size": 0.7
+          "startSeconds": 0.24,
+          "durationSeconds": 0.12,
+          "size": 0.72
         }
       ]
     },

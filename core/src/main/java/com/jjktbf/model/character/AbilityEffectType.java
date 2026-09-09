@@ -853,7 +853,7 @@ public enum AbilityEffectType {
         }
         if (uses(DURATION, effect) && effect.durationTicks == null) effect.durationTicks = 0;
         if (uses(MAGNITUDE, effect) && effect.magnitude == null) {
-            effect.magnitude = defaults.magnitude;
+            effect.magnitude = defaultStatusMagnitude(effect, defaults.magnitude);
         }
         if (uses(PER_TICK_REMOVAL_CHANCE, effect) && effect.perTickRemovalChance == null) {
             effect.perTickRemovalChance = defaultPerTickRemovalChance(effect.stringValue);
@@ -1062,7 +1062,8 @@ public enum AbilityEffectType {
                 return status != null && status.requiresTickDuration()
                     ? "Stagger must use 0 rounds and at least 1 AP tick."
                     : status != null && status.requiresRoundDuration()
-                        ? "Poison must use a positive round duration or be permanent, with 0 AP ticks."
+                        ? status.displayName()
+                            + " must use a positive round duration or be permanent, with 0 AP ticks."
                     : "Use -1 rounds and 0 ticks for permanent, or enter at least one round or tick.";
             }
             if (AbilityEffectTiming.ROUND_START.name().equals(effect.timing)
@@ -1071,8 +1072,13 @@ public enum AbilityEffectType {
                 return "A ROUND_START status must last exactly 1 round and 0 ticks so it refreshes without stacking.";
             }
         }
-        if (uses(MAGNITUDE, effect) && (!isFinite(effect.magnitude) || effect.magnitude < 0)) {
-            return "Enter a non-negative status amount.";
+        if (uses(MAGNITUDE, effect)) {
+            if (!isFinite(effect.magnitude)) return "Enter a non-negative status amount.";
+            try {
+                StatusEffect.validateMagnitude(status, effect.magnitude);
+            } catch (IllegalArgumentException ex) {
+                return ex.getMessage() + ".";
+            }
         }
         if (uses(PER_TICK_REMOVAL_CHANCE, effect) && effect.perTickRemovalChance != null
             && (!isFinite(effect.perTickRemovalChance)
@@ -1554,6 +1560,15 @@ public enum AbilityEffectType {
 
     private static boolean isFinite(Double value) {
         return value != null && Double.isFinite(value);
+    }
+
+    private static double defaultStatusMagnitude(AbilityEffectData effect, Double fallback) {
+        try {
+            if (StatusEffectType.fromName(effect.stringValue) == StatusEffectType.RESTRAINED) {
+                return StatusEffectType.RESTRAINED_DEFAULT_MAGNITUDE;
+            }
+        } catch (IllegalArgumentException ignored) { }
+        return fallback == null ? 0.0 : fallback;
     }
 
     private static double defaultPerTickRemovalChance(String statusName) {

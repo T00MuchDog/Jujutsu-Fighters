@@ -189,7 +189,7 @@ class CursedSpeechTechniqueTest {
     }
 
     @Test
-    void successfulCommandsBypassBlockAndSleepStopsActionsUntilRoundEnd() {
+    void successfulCommandsBypassBlockAndSleepPersistsUntilWoken() {
         Move sleep = command("SLEEP", CursedSpeechAbility.SLEEP, 95, 0, 0, 0);
         BattleCombatant inumaki = cursedSpeechUser("INUMAKI", sleep);
         BattleCombatant target = fighter("TARGET");
@@ -208,6 +208,11 @@ class CursedSpeechTechniqueTest {
         CombatResolver resolver = new CombatResolver(sequenceWithFallback(0.5, 0.0));
         List<CombatEvent> sleepEvents = resolver.resolveRound(state);
         assertTrue(target.hasEffect(StatusEffectType.SLEEP));
+        StatusEffect activeSleep = target.getActiveEffects().stream()
+            .filter(effect -> effect.getType() == StatusEffectType.SLEEP)
+            .findFirst().orElseThrow();
+        assertEquals(-1, activeSleep.getDurationRounds());
+        assertEquals(0, activeSleep.getDurationTicks());
         assertTrue(blockSegment.hasFired(), "the block is active before Sleep lands");
         assertFalse(blockSegment.isStunned(), "Sleep cannot undo an action that already fired");
         assertTrue(laterSegment.isStunned(), "Sleep stops later actions at their fire tick");
@@ -227,9 +232,9 @@ class CursedSpeechTechniqueTest {
         state.transitionTo(BattleState.Phase.ROUND_END);
         resolver.processRoundEnd(state);
         state.transitionTo(BattleState.Phase.PLANNING);
-        assertFalse(target.hasEffect(StatusEffectType.SLEEP),
-            "Sleep expires before the next planning phase");
-        assertNull(MoveAvailability.restrictionReason(
+        assertTrue(target.hasEffect(StatusEffectType.SLEEP),
+            "Sleep must not expire at round end");
+        assertNotNull(MoveAvailability.restrictionReason(
             state, target, physicalAttack("TRY_AGAIN", 1)));
     }
 
@@ -340,6 +345,19 @@ class CursedSpeechTechniqueTest {
             CursedSpeechAbility.commandMode(roundTripped));
         StatusEffect effect = roundTripped.getHitComponents().get(0).getOnHitEffects().get(0);
         assertEquals(6, effect.getCodedParameters().get(CursedSpeechAbility.BASE_RECOIL));
+    }
+
+    @Test
+    void legacySleepMigrationUsesIndefiniteDuration() {
+        MoveData data = commandData(CursedSpeechAbility.SLEEP, 75, 6);
+
+        assertTrue(data.migrateLegacyEffects());
+        MoveEffectData sleep = data.effects.stream()
+            .filter(effect -> AbilityEffectType.APPLY_STATUS.name().equals(effect.type))
+            .filter(effect -> StatusEffectType.SLEEP.name().equals(effect.stringValue))
+            .findFirst().orElseThrow();
+        assertEquals(-1, sleep.durationRounds);
+        assertEquals(0, sleep.durationTicks);
     }
 
     @Test

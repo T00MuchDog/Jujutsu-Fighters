@@ -1464,7 +1464,7 @@ public class MoveData {
         MoveEffectData outcome = switch (String.valueOf(command.codedTarget).toUpperCase()) {
             case CursedSpeechAbility.DONT_MOVE -> statusOutcome(StatusEffectType.STAGGER, 0, 6);
             case CursedSpeechAbility.BLAST_AWAY -> statusOutcome(StatusEffectType.STAGGER, 0, 3);
-            case CursedSpeechAbility.SLEEP -> statusOutcome(StatusEffectType.SLEEP, 1, 0);
+            case CursedSpeechAbility.SLEEP -> statusOutcome(StatusEffectType.SLEEP, -1, 0);
             case CursedSpeechAbility.PLUMMET -> statusOutcome(StatusEffectType.STAGGER, 0, 4);
             case CursedSpeechAbility.RETURN ->
                 AbilityEffectType.DESUMMON_TARGET_SHIKIGAMI.createDefaultMoveEffect();

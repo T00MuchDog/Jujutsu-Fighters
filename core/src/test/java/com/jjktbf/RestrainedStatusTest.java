@@ -22,6 +22,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RestrainedStatusTest {
@@ -29,8 +30,8 @@ class RestrainedStatusTest {
     @Test
     void restrainedHalvesCurrentSpeedAndRefreshesInsteadOfStacking() {
         BattleCombatant combatant = combatant("USER", null, 85, 100);
-        combatant.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 1, 0.0));
-        combatant.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 2, 0.0));
+        combatant.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 1, 5.0));
+        combatant.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 2, 8.0));
 
         assertEquals(43, combatant.getEffectiveStats().getSpeed());
         assertEquals(1, combatant.getActiveEffects().stream()
@@ -39,16 +40,49 @@ class RestrainedStatusTest {
         assertEquals(2, combatant.getActiveEffects().stream()
             .filter(effect -> effect.getType() == StatusEffectType.RESTRAINED)
             .findFirst().orElseThrow().getDurationRounds());
+        assertEquals(8.0, combatant.getActiveEffects().stream()
+            .filter(effect -> effect.getType() == StatusEffectType.RESTRAINED)
+            .findFirst().orElseThrow().getMagnitude());
     }
 
     @Test
-    void breakoutOddsUseTheSpecifiedStrengthCurve() {
-        assertEquals(0.01, CombatResolver.restraintBreakoutChance(10), 0.000001);
-        assertEquals(0.05, CombatResolver.restraintBreakoutChance(50), 0.000001);
-        assertEquals(0.40, CombatResolver.restraintBreakoutChance(400), 0.000001);
-        assertEquals(0.45, CombatResolver.restraintBreakoutChance(450), 0.000001);
-        assertEquals(0.50, CombatResolver.restraintBreakoutChance(472), 0.000001);
-        assertEquals(0.50, CombatResolver.restraintBreakoutChance(600), 0.000001);
+    void magnitudeFivePreservesTheExistingStrengthCurve() {
+        assertEquals(0.01, CombatResolver.restraintBreakoutChance(10, 5), 0.000001);
+        assertEquals(0.05, CombatResolver.restraintBreakoutChance(50, 5), 0.000001);
+        assertEquals(0.40, CombatResolver.restraintBreakoutChance(400, 5), 0.000001);
+        assertEquals(0.45, CombatResolver.restraintBreakoutChance(450, 5), 0.000001);
+        assertEquals(0.50, CombatResolver.restraintBreakoutChance(472, 5), 0.000001);
+        assertEquals(0.50, CombatResolver.restraintBreakoutChance(600, 5), 0.000001);
+    }
+
+    @Test
+    void eachMagnitudeHasItsConfiguredMinimumAndMaximumBreakoutChance() {
+        double[] minimums = {
+            0.10, 0.06, 0.035, 0.02, 0.01, 0.006, 0.003, 0.0015, 0.0008, 0.0005
+        };
+        double[] maximums = {
+            0.995, 0.875, 0.75, 0.625, 0.50, 0.35, 0.23, 0.14, 0.08, 0.05
+        };
+        for (int magnitude = 1; magnitude <= 10; magnitude++) {
+            assertEquals(minimums[magnitude - 1],
+                CombatResolver.restraintBreakoutChance(10, magnitude), 0.000001);
+            assertEquals(maximums[magnitude - 1],
+                CombatResolver.restraintBreakoutChance(472, magnitude), 0.000001);
+        }
+    }
+
+    @Test
+    void fractionalMagnitudesInterpolateBetweenLevels() {
+        assertEquals(0.0045, CombatResolver.restraintBreakoutChance(10, 6.5), 0.000001);
+        assertEquals(0.29, CombatResolver.restraintBreakoutChance(472, 6.5), 0.000001);
+    }
+
+    @Test
+    void restrainedMagnitudeMustBeBetweenOneAndTen() {
+        assertThrows(IllegalArgumentException.class,
+            () -> new StatusEffect(StatusEffectType.RESTRAINED, 1, 0.9));
+        assertThrows(IllegalArgumentException.class,
+            () -> new StatusEffect(StatusEffectType.RESTRAINED, 1, 10.1));
     }
 
     @Test
@@ -56,7 +90,7 @@ class RestrainedStatusTest {
         Move move = utility("MOVE");
         BattleCombatant user = combatant("USER", move, 80, 100);
         BattleCombatant enemy = combatant("ENEMY", null, 80, 100);
-        user.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 1, 0.0));
+        user.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 1, 5.0));
         BattleState state = stateWithMove(user, enemy, move);
 
         List<CombatEvent> events = new CombatResolver(new SequenceRandom(0.99, 0.0))
@@ -74,7 +108,7 @@ class RestrainedStatusTest {
         Move move = utility("MOVE");
         BattleCombatant user = combatant("USER", move, 80, 100);
         BattleCombatant enemy = combatant("ENEMY", null, 80, 100);
-        user.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 1, 0.0));
+        user.addStatusEffect(new StatusEffect(StatusEffectType.RESTRAINED, 1, 5.0));
         BattleState state = stateWithMove(user, enemy, move);
         SequenceRandom random = new SequenceRandom(0.0);
 

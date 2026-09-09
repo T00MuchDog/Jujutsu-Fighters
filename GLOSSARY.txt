@@ -1331,11 +1331,11 @@ Non-stat control statuses:
     character status, not STUN_CURRENT_ACTION, so HEAVY does not resist it.
 
   SLEEP
-    Must use rounds > 0 with 0 ticks. When an affected combatant reaches an
-    action's fire tick, that action fails and the battle log names the attempted
-    move. Damage wakes the combatant immediately and allows later actions. It
-    also has a 5% chance to end at the start of each resolution tick; otherwise
-    SLEEP expires at the end of the current round.
+    Uses the permanent duration sentinel (rounds = -1, ticks = 0). When an
+    affected combatant reaches an action's fire tick, that action fails and the
+    battle log names the attempted move. Damage wakes the combatant immediately
+    and allows later actions. It also has a 5% chance to end at the start of each
+    resolution tick.
 
   RESTRAINED
     Multiplies Speed by 0.5. Each active tick rolls both Strength-based escape and

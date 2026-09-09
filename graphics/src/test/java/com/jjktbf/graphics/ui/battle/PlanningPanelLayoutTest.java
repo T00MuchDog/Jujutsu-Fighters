@@ -46,11 +46,20 @@ class PlanningPanelLayoutTest {
 
         assertEquals(6, snapshot.cards().size());
         for (Rectangle card : snapshot.cards()) {
-            assertEquals(285.6f, card.width, 0.0001f);
-            assertEquals(266.56f, card.height, 0.0001f);
-            assertEquals(33f, card.y, 0.0001f);
+            assertEquals(342.72f, card.width, 0.0001f);
+            assertEquals(127f, card.height, 0.0001f);
+            assertEquals(172.56f, card.y, 0.0001f);
         }
-        assertEquals(300.6f,
+        assertEquals(new Rectangle(33f, 33f, 2494f, 127.56f),
+            snapshot.moveDetail().bounds());
+        assertEquals("LAYOUT_MOVE_0", snapshot.inspectedMoveId());
+        assertEquals(new Rectangle(49f, 49f, 400f, 95.56f),
+            snapshot.moveDetail().title());
+        assertEquals(new Rectangle(465f, 49f, 500f, 95.56f),
+            snapshot.moveDetail().values());
+        assertEquals(new Rectangle(981f, 49f, 1530f, 95.56f),
+            snapshot.moveDetail().description());
+        assertEquals(357.72f,
             snapshot.cards().get(1).x - snapshot.cards().get(0).x, 0.0001f);
         assertEquals(0f, snapshot.paletteScrollMaximum(), 0.0001f);
     }
@@ -61,7 +70,7 @@ class PlanningPanelLayoutTest {
 
         assertBounds(new Rectangle(0f, 0f, 2560f, 537.96f), snapshot.section());
         assertEquals(new Rectangle(72f, 326.96f, 186f, 172f), snapshot.lock());
-        assertEquals(285.6f, snapshot.cards().get(0).width, 0.0001f);
+        assertEquals(342.72f, snapshot.cards().get(0).width, 0.0001f);
     }
 
     @Test
@@ -81,7 +90,7 @@ class PlanningPanelLayoutTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"2560,1440", "1920,1080", "1366,768", "1512,982", "2560,1600", "3440,1440"})
+    @CsvSource({"2560,1440", "1920,1080", "1366,768", "1512,982", "2000,1243", "2560,1600", "3440,1440"})
     void allViewportsKeepSafeControlsAndExtendOnlyPlannerChrome(float width, float height) {
         PlanningPanel.LayoutSnapshot reference = sharedPanel(2560f, 1440f).layoutSnapshot();
         PlanningPanel panel = sharedPanel(width, height);
@@ -100,6 +109,28 @@ class PlanningPanelLayoutTest {
         panel.resize(2560f, 1440f);
         panel.resize(width, height);
         assertEquals(snapshot, panel.layoutSnapshot());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"7,0", "8,352.76", "12,1783.64"})
+    void widerCardsKeepTheirGapAndScrollInsteadOfShrinking(int count, float overflow) {
+        List<Move> moves = IntStream.range(0, count).mapToObj(PlanningPanelLayoutTest::move).toList();
+        PlanningPanel panel = new PlanningPanel(
+            300, moves, costs(moves), 150, 0, 100, null, null, 2560f, 1440f);
+        var snapshot = panel.layoutSnapshot();
+        assertEquals(overflow, snapshot.paletteScrollMaximum(), 0.001f);
+        for (int i = 0; i < count; i++) {
+            Rectangle card = snapshot.cards().get(i);
+            assertEquals(342.72f, card.width, 0.001f);
+            assertEquals(127f, card.height, 0.001f);
+            assertTrue(card.y + card.height <= snapshot.paletteViewport().y + snapshot.paletteViewport().height);
+            assertEquals(12f, card.y - snapshot.moveDetail().bounds().y
+                - snapshot.moveDetail().bounds().height, 0.001f);
+            if (i > 0) {
+                Rectangle previous = snapshot.cards().get(i - 1);
+                assertEquals(15f, card.x - previous.x - previous.width, 0.001f);
+            }
+        }
     }
 
     private static PlanningPanel sharedPanel(float width, float height) {

@@ -27,10 +27,11 @@ import java.util.function.Predicate;
  * authored {@code ESTABLISH_DOMAIN} row (a legacy coded activation row is still
  * recognised). While the stance's own establishment stands, this runtime grants
  * a one-use parry that fully blocks the next incoming ATTACK-tagged move —
- * ranged or melee — and answers a MELEE attacker with the stance move's
- * referenced counter move. The parry re-arms only when the stance establishes a
- * fresh anti-Domain, and drops as soon as that Domain instance leaves the
- * battlefield.</p>
+ * ranged or melee, but never one whose hits are INTANGIBLE (those are invisible
+ * to every parry and block) — and answers a MELEE attacker with the stance
+ * move's referenced counter move. The parry re-arms only when the stance
+ * establishes a fresh anti-Domain, and drops as soon as that Domain instance
+ * leaves the battlefield.</p>
  *
  * <p>With the {@code SIMPLE_DOMAIN_BINDING_VOW} feature, using any ATTACK or
  * DODGE move dismisses <em>every</em> Simple Domain the owner maintains,
@@ -112,7 +113,8 @@ public final class NewShadowStyleAbility implements CodedAbilityRuntime {
         List<CombatEvent> events = new ArrayList<>();
         boolean domainPresent = reconcile(state, tick, events);
         if (defender != owner || !domainPresent || !parryAvailable
-            || move == null || !move.hasTag(MoveTag.ATTACK.name())) {
+            || move == null || !move.hasTag(MoveTag.ATTACK.name())
+            || move.isIntangible()) {
             return new CodedMoveResponse(false, List.of(), events);
         }
 

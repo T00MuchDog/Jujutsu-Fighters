@@ -92,7 +92,7 @@
     {
       "id": "ct-convergence",
       "name": "Convergence",
-      "description": "Opposed palms squeeze orbiting blood inward to one dense compressed sphere.",
+      "description": "Opposed palms force loose liquid and inward-curving drops into a held eight-pixel blood sphere. Finite preparation, no release.",
       "moveIds": [
         "000097"
       ],
@@ -100,27 +100,27 @@
       "role": "utility",
       "sheet": "sprites/ct-convergence.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-piercing-blood",
       "name": "Piercing Blood",
-      "description": "A sonic needle of compressed blood drives through a tiny puncture with red splinters.",
+      "description": "Stored compression releases at 240ms into a needle-thin blood stream; small puncture and directional liquid fragments, not an explosion.",
       "moveIds": [
         "000098"
       ],
       "placement": "target",
       "role": "attack",
       "sheet": "sprites/ct-piercing-blood.png",
-      "frameCount": 24,
+      "frameCount": 18,
       "frameDurationMs": 40,
       "loop": false,
       "anchor": [
@@ -128,7 +128,7 @@
         0.5
       ],
       "impactFrames": [
-        14
+        6
       ]
     },
     {
@@ -154,7 +154,7 @@
       "placement": "beam",
       "role": "utility",
       "sheet": "sprites/ct-piercing-stream.png",
-      "frameCount": 24,
+      "frameCount": 3,
       "frameDurationMs": 40,
       "loop": false,
       "anchor": [
@@ -162,7 +162,7 @@
         0.5
       ],
       "impactFrames": [
-        12
+        1
       ]
     },
     {
@@ -171,7 +171,7 @@
       "placement": "source",
       "role": "utility",
       "sheet": "sprites/ct-pressure-core.png",
-      "frameCount": 24,
+      "frameCount": 8,
       "frameDurationMs": 40,
       "loop": false,
       "anchor": [
@@ -179,7 +179,7 @@
         0.5
       ],
       "impactFrames": [
-        12
+        4
       ]
     },
     {

@@ -26,12 +26,13 @@ import java.util.function.Function;
  * <ul>
  *   <li>{@code MAINTAINING_THE_SOUL} — pays CE every resolution tick and
  *       restores the HP lost to each non-soul damage instance, at a CE cost
- *       bracketed by the final applied damage.</li>
+ *       bracketed by the final applied damage. The maintained soul also
+ *       negates any incoming Soul Manipulation attempt before its roll.</li>
  *   <li>{@code MALLEABLE_BODY} — integrates with the restoration: a restored
  *       body does not keep anatomy-dependent injury statuses.</li>
- *   <li>{@code SOUL_MANIPULATION} — every successful melee hit rolls a small
- *       chance to attempt transfiguring the target's soul through the shared
- *       {@link #attemptSoulManipulation} resolver.</li>
+ *   <li>{@code SOUL_MANIPULATION} — tunes the success odds of the shared
+ *       {@link #attemptSoulManipulation} resolver (base chance, mastery and
+ *       stack scaling, resistance bounds) for its guaranteed coded rows.</li>
  *   <li>action {@code SOUL_MANIPULATION} — the same resolver invoked as a
  *       guaranteed coded row, both from the dedicated technique move and from
  *       Domain sure-hit programs.</li>
@@ -60,7 +61,6 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
     };
 
     // ── Soul Manipulation parameters ─────────────────────────────────────────
-    public static final String PROC_CHANCE_PERCENT = "procChancePercent";
     public static final String BASE_SUCCESS_PERCENT = "baseSuccessPercent";
     public static final String CTM_SUCCESS_PER_TEN_POINTS = "ctmSuccessPerTenPoints";
     public static final String SUCCESS_PER_STACK_PERCENT = "successPerStackPercent";
@@ -68,7 +68,6 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
     public static final String MIN_SUCCESS_PERCENT = "minSuccessPercent";
     public static final String MAX_SUCCESS_PERCENT = "maxSuccessPercent";
 
-    public static final int DEFAULT_PROC_CHANCE_PERCENT = 5;
     public static final int DEFAULT_BASE_SUCCESS_PERCENT = 5;
     public static final int DEFAULT_CTM_SUCCESS_PER_TEN_POINTS = 1;
     public static final int DEFAULT_SUCCESS_PER_STACK_PERCENT = 12;
@@ -121,13 +120,17 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
                 if (!featureActive.test(MAINTAINING_THE_SOUL)) return List.of();
                 return maintainTheSoul(trigger.amount(), trigger.tick());
             }
-            case ATTACK_HIT: {
-                if (!featureActive.test(SOUL_MANIPULATION) || rng == null) return List.of();
-                if (trigger.actor() != owner || trigger.target() == null) return List.of();
-                if (trigger.hitComponent() == null || !trigger.hitComponent().isMelee()) {
-                    return List.of();
-                }
-                return rollPassiveSoulProc(trigger.target(), rng, trigger.tick(), reactions);
+            case SOUL_MANIPULATION_ATTEMPT: {
+                // A soul held in its own shape by Maintaining the Soul cannot be
+                // transfigured by another user; the attempt dies before its roll.
+                if (trigger.target() != owner) return List.of();
+                if (!featureActive.test(MAINTAINING_THE_SOUL)) return List.of();
+                return List.of(CombatEvent.of(CombatEvent.Type.SOUL_MANIPULATION_NEGATED)
+                    .source(owner).target(owner).tick(trigger.tick())
+                    .message(owner.getCharacter().getName()
+                        + " maintains the shape of their soul; Soul Manipulation "
+                        + "cannot take hold.")
+                    .build());
             }
             default:
                 return List.of();
@@ -249,21 +252,6 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
 
     // ── Soul Manipulation ─────────────────────────────────────────────────────
 
-    private List<CombatEvent> rollPassiveSoulProc(
-        BattleCombatant defender,
-        RandomSource rng,
-        int tick,
-        Function<AbilityTrigger, List<CombatEvent>> reactions
-    ) {
-        if (!defender.isActive() || defender.isDefeated() || defender.isAlliedWith(owner)) {
-            return List.of();
-        }
-        int procChance = featureParameter(
-            SOUL_MANIPULATION, PROC_CHANCE_PERCENT, DEFAULT_PROC_CHANCE_PERCENT);
-        if (rng.nextDouble() >= procChance / 100.0) return List.of();
-        return attemptSoulManipulation(defender, rng, tick, reactions);
-    }
-
     /**
      * The one canonical transfiguration resolver. Success probability rises
      * with the attacker's effective Cursed Technique Mastery and with each
@@ -272,14 +260,6 @@ public final class IdleTransfigurationAbility implements CodedAbilityRuntime {
      * Cursed Energy Output. Success transfigures (defeats) the target unless
      * fatal protection intervenes; failure leaves a persistent stack.
      */
-    public List<CombatEvent> attemptSoulManipulation(
-        BattleCombatant defender,
-        RandomSource rng,
-        int tick
-    ) {
-        return attemptSoulManipulation(defender, rng, tick, ignored -> List.of());
-    }
-
     private List<CombatEvent> attemptSoulManipulation(
         BattleCombatant defender, RandomSource rng, int tick,
         Function<AbilityTrigger, List<CombatEvent>> reactions

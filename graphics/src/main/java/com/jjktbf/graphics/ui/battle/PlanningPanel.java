@@ -75,6 +75,8 @@ public class PlanningPanel {
     private static final float PALETTE_SCROLL_SPEED = 0.2f;
     private static final float PALETTE_SCROLL_SMOOTHING = 12f;
     private static final float DRAG_THRESHOLD = 5f;
+    private static final float COMPACT_CARD_HEIGHT = 127f;
+    private static final float MOVE_DETAIL_GAP = 12f;
     private static final float UNIFIED_SECTION_HEIGHT = BattleCanvas.BOTTOM_SECTION_HEIGHT;
     private static final float UNIFIED_TIMELINE_LEFT = 470f;
     private static final float UNIFIED_TIMELINE_RIGHT = 2325f;
@@ -83,7 +85,7 @@ public class PlanningPanel {
     private static final float UNIFIED_STAT_GAP = 15f;
     private static final float UNIFIED_TIMELINE_HEIGHT = 78f;
     private static final float UNIFIED_CARD_SCALE = 1.4f * 0.85f;
-    private static final float UNIFIED_CARD_TEXT_SCALE = 0.85f;
+    private static final float UNIFIED_CARD_TEXT_SCALE = 1f;
     private static final Color UNIFIED_DIVIDER = new Color(0.82f, 0.86f, 0.92f, 0.92f);
     private static final Color READ_ONLY_OVERLAY = new Color(0.32f, 0.32f, 0.34f, 0.62f);
 
@@ -121,6 +123,7 @@ public class PlanningPanel {
     private TimelineBar offensiveBar;
     private TimelineBar defensiveBar;
     private final List<MoveCardView> cards = new ArrayList<>();
+    private final MoveDetailView moveDetailView = new MoveDetailView();
     private final List<ActionSegmentView> offensiveViews = new ArrayList<>();
     private final List<ActionSegmentView> defensiveViews = new ArrayList<>();
     private final Rectangle headerBounds = new Rectangle();
@@ -171,6 +174,7 @@ public class PlanningPanel {
     private ActionSegment hoveredSegment;
     private ActionSegment selectedSegment;
     private int hoveredCard = -1;
+    private int inspectedCard = -1;
     private boolean lockHovered;
     private boolean confirmed;
     private boolean allowManualUnlock;
@@ -706,6 +710,8 @@ public class PlanningPanel {
         Rectangle apStat,
         Rectangle ceStat,
         Rectangle paletteViewport,
+        MoveDetailView.LayoutSnapshot moveDetail,
+        String inspectedMoveId,
         List<Rectangle> cards
     ) { }
 
@@ -722,16 +728,20 @@ public class PlanningPanel {
             new Rectangle(apStatBounds),
             new Rectangle(ceStatBounds),
             new Rectangle(paletteViewportBounds),
+            moveDetailView.layoutSnapshot(),
+            inspectedMove() == null ? null : inspectedMove().getId(),
             cards.stream().map(card -> new Rectangle(card.getBounds())).toList());
     }
 
     private void buildPalette() {
+        String inspectedMoveId = inspectedMove() == null ? null : inspectedMove().getId();
         cards.clear();
         float cardGeometryScale = UNIFIED_CARD_SCALE;
         for (int i = 0; i < knownMoves.size(); i++) {
             MoveCardView card = new MoveCardView(
                 knownMoves.get(i), 0f, 0f, cardGeometryScale,
                 cardWidth(), cardHeight(), 5);
+            card.setCompact(true);
             card.setReinforced(isPaletteReinforced(knownMoves.get(i)));
             cards.add(card);
         }
@@ -741,6 +751,13 @@ public class PlanningPanel {
             paletteBounds.y + scaled(PALETTE_PADDING),
             Math.max(0f, paletteBounds.width - scaled(PALETTE_PADDING) * 2f),
             Math.max(0f, paletteBounds.height - scaled(PALETTE_PADDING) * 2f));
+        float detailHeight = Math.max(0f,
+            MoveCardView.CARD_H * UNIFIED_CARD_SCALE - cardHeight() - MOVE_DETAIL_GAP);
+        moveDetailView.setBounds(
+            paletteViewportBounds.x, paletteViewportBounds.y,
+            paletteViewportBounds.width, detailHeight);
+        inspectedCard = inspectedMoveId == null ? -1 : indexOfMove(inspectedMoveId);
+        if (inspectedCard < 0 && !cards.isEmpty()) inspectedCard = 0;
         int columns = knownMoves.size();
         paletteContentWidth = columns == 0
             ? 0f
@@ -757,7 +774,8 @@ public class PlanningPanel {
         for (int i = 0; i < cards.size(); i++) {
             float x = paletteViewportBounds.x
                 + i * (cardWidth() + scaled(CARD_GAP)) - paletteScrollX;
-            cards.get(i).getBounds().setPosition(x, paletteViewportBounds.y);
+            cards.get(i).getBounds().setPosition(
+                x, moveDetailView.getBounds().y + moveDetailView.getBounds().height + MOVE_DETAIL_GAP);
         }
     }
 
@@ -813,11 +831,12 @@ public class PlanningPanel {
     }
 
     private float cardWidth() {
-        return MoveCardView.CARD_W * UNIFIED_CARD_SCALE;
+        // Keep the approved wider picker width; overflow remains horizontally scrollable.
+        return MoveCardView.CARD_W * UNIFIED_CARD_SCALE * 1.2f;
     }
 
     private float cardHeight() {
-        return MoveCardView.CARD_H * UNIFIED_CARD_SCALE;
+        return COMPACT_CARD_HEIGHT;
     }
 
     private void refresh() {
@@ -831,7 +850,7 @@ public class PlanningPanel {
             card.setDisplayedTiming(
                 plan.effectiveApCost(move), plan.effectiveUnleashPoint(move));
             card.setDisabled(readOnly || !plan.canPlace(move, ceCost(move)));
-            card.setHovered(i == hoveredCard);
+            card.setHovered(i == inspectedCard);
             card.setDragging(move == draggingMove);
         }
 
@@ -890,6 +909,14 @@ public class PlanningPanel {
             }
             for (MoveCardView card : cards) {
                 card.draw(batch, titleFont, statFont, ui, plannedCeCost(card.getMove()));
+            }
+            MoveCardView detailCard = inspectedCard >= 0 && inspectedCard < cards.size()
+                ? cards.get(inspectedCard) : null;
+            if (detailCard != null) {
+                moveDetailView.draw(
+                    batch, ui, font, titleFont, statFont,
+                    detailCard.getMove(), detailCard.getDisplayDescription(),
+                    detailCard.isReinforced());
             }
         } finally {
             titleFont.getData().setScale(originalTitleScaleX, originalTitleScaleY);
@@ -994,8 +1021,8 @@ public class PlanningPanel {
     }
 
     private void drawKeywordTooltip(Batch batch, BitmapFont font, BitmapFont titleFont) {
-        if (hoveredCard < 0 || hoveredCard >= cards.size() || draggedMove() != null) return;
-        MoveCardView.KeywordHover hover = cards.get(hoveredCard).keywordAt(dragMouseX, dragMouseY);
+        if (draggedMove() != null) return;
+        MoveCardView.KeywordHover hover = moveDetailView.keywordAt(dragMouseX, dragMouseY);
         if (hover == null) return;
 
         float popupWidth = Math.max(1f, Math.min(scaled(320f), screenWidth - scaled(20f)));
@@ -1523,9 +1550,11 @@ public class PlanningPanel {
 
             if (button == Buttons.RIGHT) {
                 if (paletteViewportBounds.contains(dragMouseX, dragMouseY)) {
-                    for (MoveCardView card : cards) {
+                    for (int i = 0; i < cards.size(); i++) {
+                        MoveCardView card = cards.get(i);
                         if (!card.getBounds().contains(dragMouseX, dragMouseY)
                             || !canReinforce(card.getMove())) continue;
+                        inspectedCard = i;
                         String id = card.getMove().getId();
                         if (!reinforcedPaletteMoves.add(id)) reinforcedPaletteMoves.remove(id);
                         card.setReinforced(isPaletteReinforced(card.getMove()));
@@ -1575,6 +1604,7 @@ public class PlanningPanel {
                 for (int i = 0; i < cards.size(); i++) {
                     MoveCardView card = cards.get(i);
                     if (!card.isDisabled() && card.getBounds().contains(dragMouseX, dragMouseY)) {
+                        inspectedCard = i;
                         selectedSegment = null;
                         draggingMove = card.getMove();
                         draggingSegment = null;
@@ -1700,7 +1730,8 @@ public class PlanningPanel {
             updatePointer(screenX, screenY);
             refresh();
             updateHover();
-            return hoveredCard >= 0 || hoveredSegment != null || lockHovered;
+            return hoveredCard >= 0 || hoveredSegment != null || lockHovered
+                || moveDetailView.getBounds().contains(dragMouseX, dragMouseY);
         }
 
         @Override
@@ -1828,9 +1859,22 @@ public class PlanningPanel {
         for (int i = 0; i < cards.size(); i++) {
             if (cards.get(i).getBounds().contains(dragMouseX, dragMouseY)) {
                 hoveredCard = i;
+                inspectedCard = i;
                 return;
             }
         }
+    }
+
+    private Move inspectedMove() {
+        return inspectedCard >= 0 && inspectedCard < cards.size()
+            ? cards.get(inspectedCard).getMove() : null;
+    }
+
+    private int indexOfMove(String moveId) {
+        for (int i = 0; i < cards.size(); i++) {
+            if (cards.get(i).getMove().getId().equals(moveId)) return i;
+        }
+        return -1;
     }
 
     private static float clamp(float value, float minimum, float maximum) {

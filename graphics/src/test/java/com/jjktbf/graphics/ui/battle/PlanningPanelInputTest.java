@@ -76,7 +76,7 @@ class PlanningPanelInputTest {
         ));
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
 
-        input.touchDown(50, HEIGHT - 50, 0, Buttons.LEFT);
+        input.touchDown(50, HEIGHT - 220, 0, Buttons.LEFT);
         input.touchDragged(800, HEIGHT - 450, 0);
         input.touchUp(800, HEIGHT - 450, 0, Buttons.LEFT);
 
@@ -139,13 +139,13 @@ class PlanningPanelInputTest {
         panel.setSoundPlayer(cues::add);
         PlanningPanel.PlanningInputProcessor input = panel.inputProcessor();
 
-        input.touchDown(50, HEIGHT - 50, 0, Buttons.LEFT);
-        input.touchDragged(52, HEIGHT - 52, 0);
-        input.touchUp(52, HEIGHT - 52, 0, Buttons.LEFT);
+        input.touchDown(50, HEIGHT - 220, 0, Buttons.LEFT);
+        input.touchDragged(52, HEIGHT - 222, 0);
+        input.touchUp(52, HEIGHT - 222, 0, Buttons.LEFT);
         assertEquals(List.of(SoundCue.UI_PLAN_PLACE), cues);
 
         cues.clear();
-        input.touchDown(50, HEIGHT - 50, 0, Buttons.LEFT);
+        input.touchDown(50, HEIGHT - 220, 0, Buttons.LEFT);
         input.touchDragged(800, HEIGHT - 450, 0);
         input.touchUp(800, HEIGHT - 450, 0, Buttons.LEFT);
         assertEquals(List.of(SoundCue.UI_PICKUP, SoundCue.UI_PLAN_PLACE), cues);
@@ -466,8 +466,33 @@ class PlanningPanelInputTest {
         assertTrue(snapshot.paletteScrollMaximum() > 0f);
     }
 
+    @Test
+    void hoveringACompactCardChangesThePersistentDetailWithoutQueuingIt() {
+        Move first = move("FIRST_DETAIL", 10);
+        Move second = move("SECOND_DETAIL", 10);
+        PlanningPanel panel = new PlanningPanel(
+            300, List.of(first, second), Map.of(), 150, 0, 0,
+            null, null, WIDTH, HEIGHT);
+
+        assertEquals("FIRST_DETAIL", panel.layoutSnapshot().inspectedMoveId());
+        assertTrue(panel.inputProcessor().mouseMoved(400, HEIGHT - 220));
+
+        assertEquals("SECOND_DETAIL", panel.layoutSnapshot().inspectedMoveId());
+        assertTrue(panel.getPlan().allSegments().isEmpty());
+    }
+
+    @Test
+    void clickingTheDetailPanelDoesNotQueueTheDisplayedMove() {
+        PlanningPanel panel = panel(move("DETAIL_ONLY", 10), 150);
+
+        assertFalse(panel.inputProcessor().touchDown(800, HEIGHT - 80, 0, Buttons.LEFT));
+
+        assertTrue(panel.getPlan().allSegments().isEmpty());
+        assertEquals("DETAIL_ONLY", panel.layoutSnapshot().inspectedMoveId());
+    }
+
     @ParameterizedTest
-    @CsvSource({"2560,1440", "1920,1080", "1366,768", "1512,982", "2560,1600", "3440,1440"})
+    @CsvSource({"2560,1440", "1920,1080", "1366,768", "1512,982", "2000,1243", "2560,1600", "3440,1440"})
     void cardDragAndLockUseTheSameTransformAfterResize(int width, int height) {
         Move move = move("RESPONSIVE_INPUT", 10);
         PlanningPanel panel = targetedPanel(move);
@@ -567,8 +592,8 @@ class PlanningPanelInputTest {
     }
 
     private static void clickCard(PlanningPanel.PlanningInputProcessor input) {
-        input.touchDown(50, HEIGHT - 50, 0, Buttons.LEFT);
-        input.touchUp(50, HEIGHT - 50, 0, Buttons.LEFT);
+        input.touchDown(50, HEIGHT - 220, 0, Buttons.LEFT);
+        input.touchUp(50, HEIGHT - 220, 0, Buttons.LEFT);
     }
 
     private static Move move(String id, int apCost) {

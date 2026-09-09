@@ -233,9 +233,6 @@ public final class CodedAbilityRegistry {
                         "CE upkeep per tick", 0, 99,
                         IdleTransfigurationAbility.DEFAULT_CE_DRAIN_PER_TICK));
                 case IdleTransfigurationAbility.SOUL_MANIPULATION -> List.of(
-                    percent(IdleTransfigurationAbility.PROC_CHANCE_PERCENT,
-                        "Melee proc chance %", 0, 100,
-                        IdleTransfigurationAbility.DEFAULT_PROC_CHANCE_PERCENT),
                     percent(IdleTransfigurationAbility.BASE_SUCCESS_PERCENT,
                         "Base success %", 0, 100,
                         IdleTransfigurationAbility.DEFAULT_BASE_SUCCESS_PERCENT),

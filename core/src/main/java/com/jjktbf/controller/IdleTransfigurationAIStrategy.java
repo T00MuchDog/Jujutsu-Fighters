@@ -1,5 +1,6 @@
 package com.jjktbf.controller;
 
+import com.jjktbf.model.character.Ability;
 import com.jjktbf.model.character.AbilityEffectData;
 import com.jjktbf.model.character.AbilityEffectType;
 import com.jjktbf.model.combat.BattleCombatant;
@@ -24,7 +25,9 @@ import java.util.Optional;
  * <ul>
  *   <li>Values the guaranteed Soul Manipulation touch more as the target's
  *       cursed energy drains and as failed attempts accumulate (both inputs
- *       are read from battle state, never from named opponents).</li>
+ *       are read from battle state, never from named opponents). A target
+ *       that maintains their own soul is immune, so the touch is never
+ *       placed against one.</li>
  *   <li>Spends the Transfigured Human stock deliberately: the assault only
  *       fires at healthy targets, and a summon appears only when nothing of
  *       his own is fielded and the opponent's committed offence justifies
@@ -90,7 +93,7 @@ public class IdleTransfigurationAIStrategy implements AIStrategy {
         }
 
         // --- Control into touch: the signature sequence. ---
-        if (kit.soulTouch != null && plan.canPlace(
+        if (kit.soulTouch != null && !hasMaintainedSoul(opponent) && plan.canPlace(
                 kit.soulTouch, ai.computeMoveCeCost(kit.soulTouch))) {
             var touchSegment = SmartAIScoring.placeAtOrAfter(
                 plan, kit.soulTouch, ai.computeMoveCeCost(kit.soulTouch), 2);
@@ -157,7 +160,9 @@ public class IdleTransfigurationAIStrategy implements AIStrategy {
         double learned = learnedShapes(ai);
         double value = SmartAIScoring.domainMoveValue(
             domainLookup(), state, ai, domainMove);
-        if (resistance <= ENEMY_CE_DRAINED_FRACTION) value *= 2.0;
+        if (resistance <= ENEMY_CE_DRAINED_FRACTION && !hasMaintainedSoul(opponent)) {
+            value *= 2.0;
+        }
         value *= 1.0 + learned * 0.25;
         return value;
     }
@@ -289,6 +294,29 @@ public class IdleTransfigurationAIStrategy implements AIStrategy {
                     && com.jjktbf.model.character.coded.IdleTransfigurationAbility.KEY
                         .equalsIgnoreCase(effect.codedAbilityKey)) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True when the opponent carries an active Maintaining the Soul binding:
+     * their soul cannot be transfigured, so soul attempts against them are
+     * guaranteed to be negated. Read structurally from coded bindings, never
+     * from named opponents.
+     */
+    private static boolean hasMaintainedSoul(BattleCombatant opponent) {
+        if (opponent == null) return false;
+        for (Ability ability : opponent.getAbilities()) {
+            if (ability == null || !ability.isPassive()) continue;
+            for (AbilityEffectData effect : ability.getEffects()) {
+                if (effect != null && effect.isCoded()
+                        && com.jjktbf.model.character.coded.IdleTransfigurationAbility.KEY
+                            .equalsIgnoreCase(effect.codedAbilityKey)
+                        && com.jjktbf.model.character.coded.IdleTransfigurationAbility
+                            .MAINTAINING_THE_SOUL.equalsIgnoreCase(effect.codedFeature)) {
+                    return true;
+                }
             }
         }
         return false;

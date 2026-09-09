@@ -320,13 +320,67 @@ public final class SharedUiPreview extends ApplicationAdapter {
         return IntStream.range(0, 18).mapToObj(i -> {
             MoveData data = new MoveData();
             data.id = "fixture-move-" + i;
-            data.name = "Technique Move " + (i + 1);
-            data.description = "A controlled attack. Select a target and place it on the timeline.";
-            data.tags = List.of("ATTACK", "PHYSICAL");
-            data.apCost = 10;
-            data.unleashPoint = 5;
+            data.name = switch (i) {
+                case 0 -> "Barrage";
+                case 1 -> "Flower Offering: Life-Force Beam";
+                case 2 -> "Don't Move";
+                case 3 -> "Root Barrier";
+                case 4 -> "Flowing Red Scale Dodge";
+                default -> "Technique Move " + (i + 1);
+            };
+            data.description = switch (i) {
+                case 0 -> "Strike three times with PHYSICAL CURSED ENERGY MELEE hits for 60 combined BASE POWER.";
+                case 1 -> "Consume every FLOWER OFFERING charge and release 60 BASE POWER per charge as a Potency 3 RANGED GUARD BREAK.";
+                case 2 -> "Command up to three enemies to halt. Success STAGGERs them for 6 AP TICKS and drops their EVASION to 0.";
+                case 3 -> "Construct a barrier of roots that BLOCKs incoming damage for a short duration.";
+                case 4 -> "DODGE MELEE attacks with a focused burst of movement.";
+                default -> "A controlled attack. Select a target and place it on the timeline.";
+            };
+            data.tags = i == 2
+                ? List.of("ATTACK", "CURSED_ENERGY", "AOE")
+                : i == 3 || i == 4
+                    ? List.of("DEFENSIVE", "PHYSICAL", "CURSED_ENERGY")
+                    : List.of("ATTACK", "PHYSICAL", "CURSED_ENERGY");
+            data.apCost = i == 0 || i == 1 ? 22 : i == 2 ? 7 : 10;
+            data.unleashPoint = i == 0 ? 4 : i == 1 ? 17 : 1;
+            data.baseCeCost = i == 0 ? 7 : i == 1 ? 72 : i == 2 ? 32 : 10;
+            data.hasCeCost = true;
+            if (i == 0) {
+                data.baseAccuracy = 0.86;
+                data.hitComponents = List.of(
+                    previewHit(18, 0.86), previewHit(18, 0.86), previewHit(24, 0.86));
+            } else if (i == 1) {
+                data.baseAccuracy = 0.84;
+                data.potency = 3;
+                data.hitComponents = List.of(previewHit(60, 0.84));
+            } else if (i == 2) {
+                data.neverMiss = true;
+                data.aoeType = "MULTIPLE";
+                data.aoeTargetCount = 3;
+                MoveData.HitComponentData hit = previewHit(0, 1.0);
+                hit.tags = List.of("CURSED_ENERGY", "RANGED", "INTANGIBLE");
+                data.hitComponents = List.of(hit);
+            } else if (i == 3) {
+                data.defenseType = "BLOCK";
+                data.blockStyle = "FLAT";
+                data.blockFlatReduction = 30;
+                data.blockDuration = 8;
+            } else if (i == 4) {
+                data.defenseType = "DODGE";
+                data.dodgeChance = 90;
+                data.dodgeScope = "MELEE";
+                data.blockDuration = 6;
+            }
             return data.toMove();
         }).toList();
+    }
+
+    private static MoveData.HitComponentData previewHit(int power, double accuracy) {
+        MoveData.HitComponentData hit = new MoveData.HitComponentData();
+        hit.basePower = power;
+        hit.baseAccuracy = accuracy;
+        hit.tags = List.of("PHYSICAL", "CURSED_ENERGY", "MELEE");
+        return hit;
     }
 
     private static Object field(Object owner, String name) {

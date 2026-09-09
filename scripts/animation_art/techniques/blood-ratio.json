@@ -1,5 +1,66 @@
 {
   "motifs": {
+    "compressed-blood": [
+      {"ellipse":[44,44,51,51],"fill":"#24090e"},
+      {"ellipse":[45,45,50,50],"fill":"#590b16"},
+      {"polygon":[[46,45],[49,45],[50,47],[48,49],[45,48],[45,46]],"fill":"#930d1d"},
+      {"line":[[46,46],[48,46],[49,47]],"fill":"#bd2030"},
+      {"line":[[46,46],[47,46]],"fill":"#e34b4b"}
+    ],
+    "liquid-blood-mass": [
+      {"ellipse":[39,51,49,64],"fill":"#24090e"},
+      {"ellipse":[32,33,63,60],"fill":"#24090e"},
+      {"ellipse":[34,35,61,58],"fill":"#930d1d"},
+      {"ellipse":[41,52,47,62],"fill":"#590b16"},
+      {"polygon":[[36,51],[40,54],[49,55],[56,52],[59,47],[60,44],[61,49],[58,55],[53,58],[46,58],[40,57]],"fill":"#590b16"},
+      {"line":[[37,44],[38,40],[42,38],[47,37],[50,38]],"fill":"#bd2030","width":2},
+      {"line":[[39,40],[41,39],[43,39]],"fill":"#e34b4b"},
+      {"line":[[52,41],[55,43],[54,47],[50,49]],"fill":"#590b16"}
+    ],
+    "wet-blood-drop": [
+      {"polygon":[[48,38],[50,44],[52,48],[52,52],[50,55],[46,55],[44,52],[44,49],[46,45]],"fill":"#24090e"},
+      {"polygon":[[48,42],[49,47],[51,50],[50,53],[46,53],[45,50]],"fill":"#930d1d"},
+      {"line":[[47,48],[46,50],[47,51]],"fill":"#bd2030"},
+      {"rect":[46,49,46,49],"fill":"#e34b4b"}
+    ],
+    "compression-palm": [
+      {"polygon":[[32,65],[32,53],[35,48],[36,36],[38,30],[41,28],[43,30],[42,39],[44,30],[47,28],[49,30],[47,41],[50,33],[53,32],[55,34],[52,45],[55,39],[58,39],[59,42],[54,52],[57,49],[61,49],[62,52],[56,57],[51,63],[44,66]],"fill":"#35272b"},
+      {"polygon":[[34,63],[35,53],[38,48],[38,36],[40,31],[41,31],[40,44],[43,44],[46,31],[47,31],[45,46],[48,47],[52,35],[53,35],[50,49],[53,49],[56,42],[57,42],[51,54],[55,53],[59,51],[59,52],[53,57],[49,61],[43,64]],"fill":"#b59080"},
+      {"polygon":[[34,63],[35,54],[40,50],[44,51],[46,55],[43,60],[43,64]],"fill":"#79626a"},
+      {"line":[[40,48],[44,48],[48,52],[47,56]],"fill":"#35272b"},
+      {"line":[[38,37],[38,45]],"fill":"#d1af98"},
+      {"line":[[39,57],[40,53],[42,52]],"fill":"#d1af98"},
+      {"line":[[34,62],[41,63]],"fill":"#35272b"}
+    ],
+    "braced-firing-hands": [
+      {"polygon":[[9,35],[21,35],[27,32],[32,32],[35,34],[39,34],[42,36],[46,36],[49,38],[49,41],[47,43],[49,45],[47,47],[39,48],[30,49],[22,46],[9,46]],"fill":"#35272b"},
+      {"polygon":[[10,37],[22,37],[28,34],[31,34],[34,36],[39,36],[42,38],[46,38],[47,40],[45,41],[36,40],[31,41],[38,43],[46,43],[47,45],[43,46],[31,47],[23,44],[10,44]],"fill":"#b59080"},
+      {"line":[[33,37],[37,37],[40,39],[45,39]],"fill":"#d1af98"},
+      {"line":[[26,38],[29,38],[32,40]],"fill":"#79626a"},
+      {"line":[[23,43],[29,43],[33,45]],"fill":"#79626a"},
+      {"polygon":[[9,53],[21,52],[27,48],[33,46],[38,47],[41,49],[47,49],[49,51],[48,54],[44,55],[43,58],[37,60],[29,59],[22,60],[9,61]],"fill":"#35272b"},
+      {"polygon":[[10,55],[22,54],[28,50],[33,48],[37,49],[40,51],[46,51],[47,52],[43,53],[37,53],[33,52],[31,53],[37,55],[42,55],[41,57],[36,58],[29,57],[22,58],[10,59]],"fill":"#79626a"},
+      {"line":[[25,54],[29,51],[32,50],[35,51]],"fill":"#b59080"},
+      {"line":[[34,56],[38,56]],"fill":"#b59080"}
+    ],
+    "blood-aperture-snap": [
+      {"ellipse":[43,45,54,50],"fill":"#24090e"},
+      {"ellipse":[44,46,52,49],"fill":"#590b16"},
+      {"line":[[46,47],[51,47]],"fill":"#930d1d"},
+      {"rect":[46,46,47,46],"fill":"#bd2030"}
+    ],
+    "blood-stream-grain": [
+      {"line":[[5,47],[10,47]],"fill":"#bd2030"},
+      {"line":[[39,48],[45,48]],"fill":"#590b16"},
+      {"line":[[66,47],[69,47]],"fill":"#bd2030"}
+    ],
+    "blood-puncture": [
+      {"ellipse":[45,45,50,50],"fill":"#24090e"},
+      {"line":[[48,47],[55,45]],"fill":"#590b16"},
+      {"line":[[49,49],[57,51]],"fill":"#930d1d"},
+      {"line":[[46,46],[48,46]],"fill":"#bd2030"},
+      {"line":[[46,47],[46,48]],"fill":"#930d1d"}
+    ],
     "blood-chakram": [
       {"ellipse":[17,24,79,72],"fill":"#400e22","outline":"#200f1b","width":2},
       {"ellipse":[19,25,77,70],"outline":"#cc263d","width":6},
@@ -40,10 +101,10 @@
       {"line":[[11,71],[25,71],[29,61],[33,79],[38,66],[43,71],[80,71]],"fill":"#aa263e","width":2}
     ],
     "blood-thread": [
-      {"line":[[0,48],[95,48]],"fill":"#3a0d22","width":7},
-      {"line":[[0,47],[95,47]],"fill":"#c32740","width":4},
-      {"line":[[0,46],[95,46]],"fill":"#ff8580"},
-      {"line":[[0,54],[17,52],[38,53],[64,51],[95,54]],"fill":"#841930"}
+      {"rect":[0,46,95,49],"fill":"#590b16"},
+      {"rect":[0,47,95,48],"fill":"#930d1d"},
+      {"line":[[7,47],[15,47]],"fill":"#bd2030"},
+      {"line":[[51,47],[55,47]],"fill":"#bd2030"}
     ],
     "ratio-ruler": [
       {"line":[[8,48],[88,48]],"fill":"#20242e","width":5},
@@ -91,15 +152,30 @@
     {"id":"ct-slicing-exorcism","name":"Slicing Exorcism","moveIds":["000096"],"family":"blood","placement":"target","role":"attack","impact":14,"description":"The hollow four-spiked blood chakram travels across the gap and shears through contact.",
      "art":[{"kind":"art:blood-chakram","scale":[0.9,1.1],"rotate":[-40,-200],"time":[0.44,0.9]},{"kind":"slash","palette":"blood","scale":[0.3,1.1],"rotate":-28,"time":[0.52,1]},{"kind":"droplet","palette":"blood","scale":0.12,"repeat":4,"radius":[5,36],"time":[0.55,1]}],
      "profile":{"durationSeconds":1.05,"impactSeconds":0.61,"size":1.5,"source":[{"at":0},{"at":0.2,"rotation":5},{"at":0.43,"x":0.12,"rotation":-6},{"at":1}],"target":[{"at":0},{"at":0.57},{"at":0.64,"x":0.14,"rotation":-7},{"at":1}],"layers":[{"effect":"ct-blood-chakram-flight","placement":"projectile","plane":"front","durationSeconds":0.54,"size":1.2}]}},
-    {"id":"ct-convergence","name":"Convergence","moveIds":["000097"],"family":"blood","placement":"source","role":"utility","description":"Opposed palms squeeze orbiting blood inward to one dense compressed sphere.",
-     "art":[{"kind":"hand","palette":"flesh","scale":0.55,"x":[20,35],"rotate":-80},{"kind":"hand","palette":"flesh","scale":0.55,"x":[76,61],"rotate":80,"flip":true},{"kind":"droplet","palette":"blood","scale":[0.19,0.04],"repeat":7,"radius":[35,0],"orbit":2.1,"time":[0,0.7]},{"kind":"orb","palette":"blood","scale":[0.44,0.16],"time":[0.12,1]},{"kind":"star","palette":"blood","scale":0.24,"time":[0.6,0.85]}],
-     "profile":{"durationSeconds":1.2,"impactSeconds":0.72,"size":1.5,"source":[{"at":0},{"at":0.6,"scaleX":0.97,"green":0.85},{"at":1}],"background":[{"at":0},{"at":0.6,"red":0.6,"green":0.4,"blue":0.48},{"at":1}]}},
-    {"id":"ct-piercing-blood","name":"Piercing Blood","moveIds":["000098"],"family":"blood","placement":"target","role":"attack","impact":14,"description":"A sonic needle of compressed blood drives through a tiny puncture with red splinters.",
-     "art":[{"kind":"star","palette":"blood","scale":[0.15,0.8],"time":[0.5,0.75]},{"kind":"slash","palette":"blood","scale":[0.3,0.8],"rotate":-42,"time":[0.52,0.95]},{"kind":"droplet","palette":"blood","scale":0.09,"repeat":7,"radius":[3,37],"time":[0.57,1]}],
-     "profile":{"durationSeconds":1.1,"impactSeconds":0.6,"size":1.4,"source":[{"at":0},{"at":0.48},{"at":0.55,"x":-0.15},{"at":1}],"target":[{"at":0},{"at":0.54},{"at":0.58,"x":0.15,"rotation":-4},{"at":1}],"layers":[{"effect":"ct-pressure-core","placement":"source","plane":"front","durationSeconds":0.5,"size":0.8},{"effect":"ct-piercing-stream","placement":"beam","plane":"front","startSeconds":0.5,"durationSeconds":0.36,"size":0.7}]}},
+    {"id":"ct-convergence","name":"Convergence","moveIds":["000097"],"family":"blood","placement":"source","role":"utility","frames":24,"frameDurationMs":50,"impact":16,"description":"Opposed palms force loose liquid and inward-curving drops into a held eight-pixel blood sphere. Finite preparation, no release.",
+     "art":[
+       {"kind":"art:compression-palm","x":{"keys":[[0,13],[0.35,15],[0.7,25],[1,25]]},"rotate":-80,"time":[-0.01,0.96],"fadeIn":0.001,"fadeOut":0.001},
+       {"kind":"art:compression-palm","x":{"keys":[[0,83],[0.35,81],[0.7,71],[1,71]]},"rotate":-80,"flip":true,"time":[-0.01,0.96],"fadeIn":0.001,"fadeOut":0.001},
+       {"kind":"art:wet-blood-drop","scale":[0.65,0.16],"repeat":3,"radius":{"keys":[[0,32],[0.4,26],[0.8,10],[1,3]]},"orbit":0.3,"radial":true,"rotate":-90,"time":[-0.01,0.69],"fadeIn":0.001,"fadeOut":0.001},
+       {"kind":"art:liquid-blood-mass","scale":{"keys":[[0,1],[0.35,0.92],[0.7,0.58],[1,0.25]]},"rotate":[-8,12],"time":[-0.01,0.695],"fadeIn":0.001,"fadeOut":0.001},
+       {"kind":"art:compressed-blood","time":[0.695,0.96],"fadeIn":0.001,"fadeOut":0.001}
+     ],
+     "profile":{"durationSeconds":1.2,"impactSeconds":0.8,"size":0.9,"source":[{"at":0},{"at":0.3},{"at":0.66,"scaleX":0.98},{"at":0.8},{"at":1}]}},
+    {"id":"ct-piercing-blood","name":"Piercing Blood","moveIds":["000098"],"family":"blood","placement":"target","role":"attack","frames":18,"impact":6,"description":"Stored compression releases at 240ms into a needle-thin blood stream; small puncture and directional liquid fragments, not an explosion.",
+     "art":[
+       {"kind":"art:blood-puncture","time":[0.35,0.59],"scale":[1,0.6],"fadeIn":0.001,"fadeOut":0.001},
+       {"kind":"art:wet-blood-drop","scale":[0.26,0.12],"rotate":70,"x":[51,69],"y":[46,41],"time":[0.36,0.76],"fadeIn":0.001,"fadeOut":0.001},
+       {"kind":"art:wet-blood-drop","scale":[0.22,0.1],"rotate":105,"x":[50,65],"y":[49,56],"time":[0.36,0.82],"fadeIn":0.001,"fadeOut":0.001},
+       {"kind":"art:wet-blood-drop","scale":[0.18,0.1],"rotate":85,"x":[52,76],"y":[48,49],"time":[0.36,0.7],"fadeIn":0.001,"fadeOut":0.001}
+     ],
+     "profile":{"durationSeconds":0.72,"impactSeconds":0.24,"size":0.9,"source":[{"at":0},{"at":0.33333334},{"at":0.3888889,"x":-0.025},{"at":0.64,"easing":"smooth"},{"at":1}],"target":[{"at":0},{"at":0.33333334},{"at":0.3888889,"x":0.16,"rotation":-6},{"at":0.55,"x":0.12,"rotation":-4},{"at":0.9,"easing":"smooth"},{"at":1}],"layers":[{"effect":"ct-pressure-core","placement":"source","plane":"front","durationSeconds":0.32,"size":0.9},{"effect":"ct-piercing-stream","placement":"beam","plane":"front","startSeconds":0.24,"durationSeconds":0.12,"size":0.72}]}},
     {"id":"ct-blood-chakram-flight","name":"Spinning Blood Chakram","placement":"projectile","role":"utility","art":[{"kind":"art:blood-chakram","rotate":[0,-320]}]},
-    {"id":"ct-piercing-stream","name":"Compressed Blood Stream","placement":"beam","role":"utility","art":[{"kind":"art:blood-thread","fadeIn":0.01,"fadeOut":0.08}]},
-    {"id":"ct-pressure-core","name":"Compressed Blood Muzzle","placement":"source","role":"utility","art":[{"kind":"orb","palette":"blood","scale":[0.4,0.17]},{"kind":"droplet","palette":"blood","scale":0.09,"repeat":6,"radius":[29,4],"orbit":1.5}]},
+    {"id":"ct-piercing-stream","name":"Compressed Blood Stream","placement":"beam","role":"utility","frames":3,"art":[{"kind":"art:blood-thread","time":[-0.01,1.01],"fadeIn":0.001,"fadeOut":0.001},{"kind":"art:blood-stream-grain","x":[48,72],"time":[-0.01,1.01],"fadeIn":0.001,"fadeOut":0.001}]},
+    {"id":"ct-pressure-core","name":"Compressed Blood Muzzle","placement":"source","role":"utility","frames":8,"art":[
+      {"kind":"art:braced-firing-hands","x":{"keys":[[0,45],[0.4,48],[1,48]]},"time":[-0.01,1.01],"fadeIn":0.001,"fadeOut":0.001},
+      {"kind":"art:compressed-blood","x":{"keys":[[0,45],[0.6,48],[1,48]]},"time":[-0.01,0.7],"fadeIn":0.001,"fadeOut":0.001},
+      {"kind":"art:blood-aperture-snap","time":[0.7,0.85],"fadeIn":0.001,"fadeOut":0.001}
+    ]},
     {"id":"ct-ratio-mark","name":"Ratio Mark","moveIds":["000023"],"family":"ratio","placement":"target","role":"targeted","description":"A ten-section white ruler resolves a red weak point precisely seven sections from its left end.",
      "art":[{"kind":"art:ratio-ruler","scale":[0.8,1],"fadeIn":0.35,"fadeOut":0.15}],
      "profile":{"durationSeconds":0.88,"impactSeconds":0.4,"size":1.6,"background":[{"at":0},{"at":0.4,"red":0.4,"green":0.46,"blue":0.52},{"at":1}]}},

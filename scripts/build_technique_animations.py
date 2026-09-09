@@ -15,12 +15,26 @@ from pathlib import Path
 
 from PIL import Image, ImageColor, ImageDraw, ImageFont
 
-from build_cursed_spirit_animations import primitive, interpolate
+from build_cursed_spirit_animations import primitive, interpolate as linear_interpolate
 
 ROOT = Path(__file__).resolve().parents[1]
 ART = Path(__file__).with_name("animation_art") / "techniques"
 ASSETS = ROOT / "graphics/src/main/resources/assets"
 MOTIFS = {}
+
+
+def interpolate(value, t):
+    """Optional unevenly spaced keys permit compression acceleration and held cels."""
+    if not isinstance(value, dict):
+        return linear_interpolate(value, t)
+    keys = value["keys"]
+    assert len(keys) >= 2 and all(a[0] < b[0] for a, b in zip(keys, keys[1:])), keys
+    if t <= keys[0][0]:
+        return keys[0][1]
+    for (start, a), (end, b) in zip(keys, keys[1:]):
+        if t <= end:
+            return linear_interpolate([a, b], (t - start) / (end - start))
+    return keys[-1][1]
 
 
 @lru_cache(maxsize=None)
@@ -147,7 +161,7 @@ def main():
         for i, cel in enumerate(frames):
             sheet.paste(cel, ((i % 6)*192, (i//6)*192))
         e = {k: spec[k] for k in ("id", "name", "description", "moveIds", "placement", "role", "castEffect") if k in spec}
-        e.update(sheet=f"sprites/{spec['id']}.png", frameCount=n, frameDurationMs=40,
+        e.update(sheet=f"sprites/{spec['id']}.png", frameCount=n, frameDurationMs=spec.get("frameDurationMs", 40),
                  loop=False, anchor=[.5, .5], impactFrames=[spec.get("impact", count//2) + i*count
                      for i in range(spec.get("contacts", 1))])
         manifest["effects"].append(e)

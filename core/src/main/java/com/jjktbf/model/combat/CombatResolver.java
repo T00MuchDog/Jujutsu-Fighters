@@ -47,6 +47,12 @@ public class CombatResolver {
     private static final double ICE_FREEZE_CHANCE = 0.05;
     private static final double WET_ICE_FREEZE_CHANCE = 0.50;
     private static final double ELECTRIC_STUN_CHANCE = 0.10;
+    private static final double[] RESTRAINT_MIN_BREAKOUT_CHANCES = {
+        0.10, 0.06, 0.035, 0.02, 0.01, 0.006, 0.003, 0.0015, 0.0008, 0.0005
+    };
+    private static final double[] RESTRAINT_MAX_BREAKOUT_CHANCES = {
+        0.995, 0.875, 0.75, 0.625, 0.50, 0.35, 0.23, 0.14, 0.08, 0.05
+    };
 
     private final RandomSource rng;
     private final AbilityActivationEngine abilityActivations;
@@ -685,9 +691,13 @@ public class CombatResolver {
         List<CombatEvent> events
     ) {
         for (BattleCombatant combatant : state.activeCombatants()) {
-            if (!combatant.hasEffect(StatusEffectType.RESTRAINED)) continue;
+            StatusEffect restraint = combatant.getActiveEffects().stream()
+                .filter(effect -> effect.getType() == StatusEffectType.RESTRAINED)
+                .findFirst()
+                .orElse(null);
+            if (restraint == null) continue;
             double breakoutChance = restraintBreakoutChance(
-                combatant.getRuntimeStat(StatKey.STRENGTH));
+                combatant.getRuntimeStat(StatKey.STRENGTH), restraint.getMagnitude());
             if (rng.nextDouble() < breakoutChance) {
                 combatant.removeStatusEffects(StatusEffectType.RESTRAINED);
                 events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
@@ -711,12 +721,35 @@ public class CombatResolver {
         }
     }
 
-    /** Strength-scaled escape odds for the generic restrained status. */
-    public static double restraintBreakoutChance(int scaledStrength) {
+    /** Strength-scaled escape odds interpolated across authored restraint levels 1-10. */
+    public static double restraintBreakoutChance(int scaledStrength, double magnitude) {
+        double boundedMagnitude = Math.max(StatusEffectType.RESTRAINED_MIN_MAGNITUDE,
+            Math.min(StatusEffectType.RESTRAINED_MAX_MAGNITUDE, magnitude));
+        int lowerLevel = (int) Math.floor(boundedMagnitude);
+        int upperLevel = (int) Math.ceil(boundedMagnitude);
+        double levelProgress = boundedMagnitude - lowerLevel;
+        double minimumChance = interpolate(
+            RESTRAINT_MIN_BREAKOUT_CHANCES[lowerLevel - 1],
+            RESTRAINT_MIN_BREAKOUT_CHANCES[upperLevel - 1],
+            levelProgress);
+        double maximumChance = interpolate(
+            RESTRAINT_MAX_BREAKOUT_CHANCES[lowerLevel - 1],
+            RESTRAINT_MAX_BREAKOUT_CHANCES[upperLevel - 1],
+            levelProgress);
+
+        double strengthProgress = (legacyRestraintBreakoutChance(scaledStrength) - 0.01) / 0.49;
+        return interpolate(minimumChance, maximumChance, strengthProgress);
+    }
+
+    private static double legacyRestraintBreakoutChance(int scaledStrength) {
         int strength = Math.max(10, scaledStrength);
         if (strength <= 450) return Math.max(0.01, strength / 1000.0);
         if (strength >= 472) return 0.50;
         return 0.45 + (strength - 450) * (0.05 / 22.0);
+    }
+
+    private static double interpolate(double start, double end, double progress) {
+        return start + (end - start) * progress;
     }
 
     /** Resolve configured status self-removal before this tick's actions can fire. */
@@ -2584,7 +2617,7 @@ public class CombatResolver {
                     StatusEffectType.STAGGER, 0, 3, componentIndex, tick, events);
             case CursedSpeechAbility.SLEEP ->
                 applyCommandStatus(state, attacker, defender, move,
-                    StatusEffectType.SLEEP, 1, 0, componentIndex, tick, events);
+                    StatusEffectType.SLEEP, -1, 0, componentIndex, tick, events);
             case CursedSpeechAbility.PLUMMET ->
                 applyCommandStatus(state, attacker, defender, move,
                     StatusEffectType.STAGGER, 0, 4, componentIndex, tick, events);

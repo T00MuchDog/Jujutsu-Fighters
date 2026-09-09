@@ -898,12 +898,16 @@ public class EffectListEditor extends Table {
                     effect.stringValue = selectedStatus.equals(statusBox.getSelected())
                         ? storedStatus : statusFromLabel(statusBox.getSelected()).name();
                     StatusEffectType status = statusFromLabel(statusBox.getSelected());
+                    if (status == StatusEffectType.RESTRAINED
+                        && !StatusEffectType.RESTRAINED.displayName().equals(selectedStatus)) {
+                        effect.magnitude = StatusEffectType.RESTRAINED_DEFAULT_MAGNITUDE;
+                    }
                     if (status.requiresTickDuration()) {
                         effect.durationRounds = 0;
                         if (effect.durationTicks == null || effect.durationTicks <= 0) {
                             effect.durationTicks = 1;
                         }
-                        effect.magnitude = 0.0;
+                        effect.magnitude = null;
                     } else if (status.requiresRoundDuration()) {
                         if (effect.durationRounds == null || effect.durationRounds == 0
                             || effect.durationRounds < -1) {
@@ -1030,7 +1034,8 @@ public class EffectListEditor extends Table {
                     effect.magnitude = parseDouble(magnitude.getText());
                 }
             });
-            addRow(fields, "Amount (flat points)", magnitude);
+            addRow(fields, StatusEffectType.RESTRAINED.name().equals(effect.stringValue)
+                ? "Restraint magnitude (1-10)" : "Amount (flat points)", magnitude);
             addMasteryProgression(fields, effect, TechniqueMasteryProgressions.MAGNITUDE,
                 () -> effect.magnitude == null ? 0 : (int) Math.round(effect.magnitude));
         }

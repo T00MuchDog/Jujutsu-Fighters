@@ -230,8 +230,7 @@ public final class StatusEffectStrip {
 
     private static String badgeText(Entry entry) {
         return shortLabel(entry.type(), entry.displayName())
-            + stackText(entry.stacks())
-            + " " + durationText(entry.rounds(), entry.ticks());
+            + stackText(entry.stacks());
     }
 
     /** Draws details last so later HUDs and battlefield effects cannot cover them. */

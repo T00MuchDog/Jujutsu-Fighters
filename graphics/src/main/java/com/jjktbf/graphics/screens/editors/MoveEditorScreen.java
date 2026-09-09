@@ -2957,10 +2957,20 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     }
                     applyMode[0].run(); // refresh coded-action options below
                 } else {
+                    StatusEffectType previous;
+                    try {
+                        previous = StatusEffectType.fromName(eff.type);
+                    } catch (IllegalArgumentException ignored) {
+                        previous = null;
+                    }
                     StatusEffectType matched = statusTypes.stream()
                         .filter(status -> statusLabel(status).equals(sel))
                         .findFirst().orElse(StatusEffectType.STRENGTH_INCREASE);
                     eff.type = matched.name();
+                    if (matched == StatusEffectType.RESTRAINED
+                        && previous != StatusEffectType.RESTRAINED) {
+                        eff.magnitude = StatusEffectType.RESTRAINED_DEFAULT_MAGNITUDE;
+                    }
                     if (matched.requiresTickDuration()) {
                         eff.durationRounds = 0;
                         if (eff.durationTicks <= 0) eff.durationTicks = 1;
@@ -3124,8 +3134,10 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                 catch (NumberFormatException ignored) { }
             }
         });
-        fields.add(new Label(type.requiresRoundDuration()
-            ? "Damage per round" : "Amount (+/- flat points)", skin)).padRight(8);
+        String magnitudeLabel = type == StatusEffectType.RESTRAINED
+            ? "Restraint magnitude (1-10)"
+            : type.requiresRoundDuration() ? "Damage per round" : "Amount (+/- flat points)";
+        fields.add(new Label(magnitudeLabel, skin)).padRight(8);
         fields.add(magnitudeField).growX().row();
         if (type.usesMagnitude()) {
             addMoveProgression(fields, effect, TechniqueMasteryProgressions.MAGNITUDE,

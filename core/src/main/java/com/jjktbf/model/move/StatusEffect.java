@@ -41,7 +41,7 @@ public class StatusEffect {
     /** AP ticks after the configured rounds have elapsed. */
     private final int durationTicks;
 
-    /** Magnitude of a stat-modifying effect. Non-stat statuses store zero. */
+    /** Magnitude of a status that supports authored intensity. */
     private final double magnitude;
 
     /** Chance to remove this status at each resolution tick. */
@@ -210,9 +210,7 @@ public class StatusEffect {
         }
         if (!coded && !summon) {
             validateDuration(type, durationRounds, durationTicks);
-            if (!Double.isFinite(magnitude) || magnitude < 0) {
-                throw new IllegalArgumentException("Status effect amount must be a non-negative number");
-            }
+            validateMagnitude(type, magnitude);
             if (!Double.isFinite(perTickRemovalChance)
                 || perTickRemovalChance < 0.0 || perTickRemovalChance > 1.0) {
                 throw new IllegalArgumentException(
@@ -291,6 +289,18 @@ public class StatusEffect {
             && ((rounds <= 0 && rounds != -1) || ticks != 0)) {
             throw new IllegalArgumentException(type.displayName()
                 + " must use a positive round duration or be permanent");
+        }
+    }
+
+    /** Validate authored status intensity, including status-specific bounds. */
+    public static void validateMagnitude(StatusEffectType type, double magnitude) {
+        if (!Double.isFinite(magnitude) || magnitude < 0) {
+            throw new IllegalArgumentException("Status effect amount must be a non-negative number");
+        }
+        if (type == StatusEffectType.RESTRAINED
+            && (magnitude < StatusEffectType.RESTRAINED_MIN_MAGNITUDE
+                || magnitude > StatusEffectType.RESTRAINED_MAX_MAGNITUDE)) {
+            throw new IllegalArgumentException("Restrained magnitude must be between 1 and 10");
         }
     }
 

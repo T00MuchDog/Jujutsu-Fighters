@@ -142,6 +142,9 @@ public final class HitComponent {
             || copy.contains(MoveTag.NON_INNATE_TECHNIQUE)) {
             copy.remove(MoveTag.CURSED_ENERGY);
         }
+        if (copy.contains(MoveTag.PIERCING)) {
+            copy.add(MoveTag.GUARD_PENETRATE);
+        }
 
         this.basePower = basePower;
         this.tags = Collections.unmodifiableSet(copy);
@@ -190,6 +193,7 @@ public final class HitComponent {
     public boolean isMelee() { return hasTag(MoveTag.MELEE); }
     public boolean isRanged() { return hasTag(MoveTag.RANGED); }
     public boolean isGuardBreak() { return hasTag(MoveTag.GUARD_BREAK); }
+    public boolean isGuardPenetrate() { return hasTag(MoveTag.GUARD_PENETRATE); }
     public boolean isIntangible() { return hasTag(MoveTag.INTANGIBLE); }
     /** True when this component's damage strikes the soul rather than the body. */
     public boolean isSoulDamage() { return soulDamage; }

@@ -424,10 +424,9 @@ public class CharacterData {
         CharacterType resolved = effectiveType();
         return switch (resolved) {
             case SHIKIGAMI -> {
-                if (baseCeDrainPerTick == null || !Double.isFinite(baseCeDrainPerTick)
-                    || baseCeDrainPerTick <= 0.0) {
+                if (baseCeDrainPerTick == null) {
                     throw new IllegalArgumentException(
-                        "Shikigami base CE drain per tick must be greater than 0");
+                        "Shikigami base CE drain per tick must be set (0 allowed)");
                 }
                 yield new ShikigamiCharacter(id, name, stats, innateTechniqueName,
                     moves, abilities, equipment, baseCeDrainPerTick);
@@ -452,10 +451,9 @@ public class CharacterData {
             innateTechniqueName, abilities);
         return switch (resolved) {
             case SHIKIGAMI -> {
-                if (baseCeDrainPerTick == null || !Double.isFinite(baseCeDrainPerTick)
-                    || baseCeDrainPerTick <= 0.0) {
+                if (baseCeDrainPerTick == null) {
                     throw new IllegalArgumentException(
-                        "Shikigami base CE drain per tick must be greater than 0");
+                        "Shikigami base CE drain per tick must be set (0 allowed)");
                 }
                 yield new ShikigamiCharacter(id, name, stats, innateTechniqueName,
                     learnedMoves, null, abilities, accessibleTechniques,

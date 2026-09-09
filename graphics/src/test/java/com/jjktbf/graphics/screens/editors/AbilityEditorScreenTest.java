@@ -74,13 +74,42 @@ class AbilityEditorScreenTest {
     }
 
     @Test
-    void recordSectionsSeparatePassiveAndActiveAbilities() {
+    void recordSectionsNestSourceGroupsUnderPassiveAndActiveAbilities() {
         AbilityData ability = new AbilityData();
         ability.category = "PASSIVE";
-        assertEquals("PASSIVE", AbilityEditorScreen.abilityRecordSection(ability));
+        ability.sourceType = "CHARACTER";
+        assertEquals("PASSIVE/GENERAL", AbilityEditorScreen.abilityRecordSection(ability));
 
         ability.category = "active";
-        assertEquals("ACTIVE", AbilityEditorScreen.abilityRecordSection(ability));
+        ability.sourceType = "ABILITY";
+        assertEquals("ACTIVE/GENERAL", AbilityEditorScreen.abilityRecordSection(ability));
+
+        ability.sourceType = "TECHNIQUE";
+        ability.sourceValue = " Ratio ";
+        assertEquals("ACTIVE/CURSED TECHNIQUES/Ratio",
+            AbilityEditorScreen.abilityRecordSection(ability));
+
+        ability.sourceType = "CURSED_SPIRIT";
+        assertEquals("ACTIVE/RACIAL", AbilityEditorScreen.abilityRecordSection(ability));
+    }
+
+    @Test
+    void abilityRecordSectionsOrderAndNestTechniqueNames() {
+        assertEquals(List.of(
+                "PASSIVE",
+                "PASSIVE/GENERAL",
+                "PASSIVE/CURSED TECHNIQUES",
+                "PASSIVE/CURSED TECHNIQUES/Limitless",
+                "PASSIVE/CURSED TECHNIQUES/Ratio",
+                "PASSIVE/RACIAL",
+                "ACTIVE",
+                "ACTIVE/GENERAL",
+                "ACTIVE/CURSED TECHNIQUES",
+                "ACTIVE/CURSED TECHNIQUES/Limitless",
+                "ACTIVE/CURSED TECHNIQUES/Ratio",
+                "ACTIVE/RACIAL"),
+            AbilityEditorScreen.abilityRecordSections(List.of(
+                "Ratio", " Limitless ", "LIMITLESS")));
     }
 
     @Test

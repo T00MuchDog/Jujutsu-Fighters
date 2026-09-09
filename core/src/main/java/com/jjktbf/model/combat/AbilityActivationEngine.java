@@ -870,6 +870,32 @@ public final class AbilityActivationEngine {
         };
     }
 
+    private void removeStatuses(
+        BattleCombatant owner,
+        BattleCombatant target,
+        Set<StatusEffectType> types,
+        Move move,
+        Integer componentIndex,
+        int tick,
+        List<CombatEvent> events,
+        ArrayDeque<AbilityTrigger> followUps
+    ) {
+        int previousMaxHp = target.getMaxHp();
+        int previousMaxCe = target.getMaxCursedEnergy();
+        List<StatusEffectType> removed = target.getActiveEffects().stream()
+            .map(StatusEffect::getType).filter(types::contains).distinct().toList();
+        if (removed.isEmpty()) return;
+        removed.forEach(target::removeStatusEffects);
+        events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
+            .source(owner).target(target).move(move).componentIndex(componentIndex)
+            .tick(tick).build());
+        appendResourceMaximumEvents(owner, target, previousMaxHp, previousMaxCe, tick, events);
+        for (StatusEffectType status : removed) {
+            followUps.add(AbilityTrigger.status(
+                AbilityTrigger.Type.STATUS_REMOVED, target, status, tick));
+        }
+    }
+
     private static boolean containsConditionType(
         AbilityConditionData condition,
         AbilityConditionType expected
@@ -916,6 +942,17 @@ public final class AbilityActivationEngine {
         switch (type) {
             case HEAL_HP -> {
                 for (BattleCombatant target : targets) {
+                    if (moveContext && !target.isDefeated()
+                        && amount(effect, target.getMaxHp()) > 0) {
+                        Set<StatusEffectType> cured = target.getActiveEffects().stream()
+                            .map(StatusEffect::getType)
+                            .filter(StatusEffectType::isCuredByHealingMove)
+                            .collect(java.util.stream.Collectors.toSet());
+                        removeStatuses(owner, target, cured, move, effectComponentIndex,
+                            tick, events, followUps);
+                    }
+                    // Poison's maximum-pool reduction is gone before calculating
+                    // percentage healing. A full-HP recipient is still cleansed.
                     int requested = amount(effect, target.getMaxHp());
                     int healed = target.heal(requested);
                     if (healed <= 0) continue;
@@ -1054,25 +1091,8 @@ public final class AbilityActivationEngine {
                     StatusEffectType.referencedTypes(effect.stringValue);
                 if (referenced.isEmpty()) return;
                 for (BattleCombatant target : targets) {
-                    int previousMaxHp = target.getMaxHp();
-                    int previousMaxCe = target.getMaxCursedEnergy();
-                    List<StatusEffectType> removed = target.getActiveEffects().stream()
-                        .map(StatusEffect::getType)
-                        .filter(referenced::contains)
-                        .distinct()
-                        .toList();
-                    if (removed.isEmpty()) continue;
-                    removed.forEach(target::removeStatusEffects);
-                    events.add(CombatEvent.of(CombatEvent.Type.STATUS_EXPIRED)
-                        .source(owner).target(target).move(move)
-                        .componentIndex(effectComponentIndex).tick(tick)
-                        .build());
-                    appendResourceMaximumEvents(
-                        owner, target, previousMaxHp, previousMaxCe, tick, events);
-                    for (StatusEffectType status : removed) {
-                        followUps.add(AbilityTrigger.status(
-                            AbilityTrigger.Type.STATUS_REMOVED, target, status, tick));
-                    }
+                    removeStatuses(owner, target, referenced, move, effectComponentIndex,
+                        tick, events, followUps);
                 }
             }
             case CLEAR_STATUSES -> {

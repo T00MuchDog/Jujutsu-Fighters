@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Consumer;
 
 /** Graphical CRUD editor for always-on passive and conditionally activated abilities. */
@@ -57,8 +58,9 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
     private static final String SELECT_CURSED_TOOL = "[select a cursed tool]";
     private static final String PASSIVE_SECTION = "PASSIVE";
     private static final String ACTIVE_SECTION = "ACTIVE";
-    private static final List<String> ABILITY_RECORD_SECTIONS = List.of(
-        PASSIVE_SECTION, ACTIVE_SECTION);
+    private static final String GENERAL_SECTION = "GENERAL";
+    private static final String CURSED_TECHNIQUES_SECTION = "CURSED TECHNIQUES";
+    private static final String RACIAL_SECTION = "RACIAL";
 
     private final AbilityRepository repo;
     private final MoveRepository moveRepo;
@@ -145,16 +147,99 @@ public class AbilityEditorScreen extends EditorScreenBase<AbilityData> {
 
     @Override
     protected List<String> recordSections() {
-        return ABILITY_RECORD_SECTIONS;
+        return abilityRecordSections(cursedTechniqueNames());
     }
 
     @Override
     protected String recordSection(AbilityData record) {
-        return abilityRecordSection(record);
+        String section = abilityRecordSection(record);
+        String techniquePrefix = abilityMainSection(record) + "/"
+            + CURSED_TECHNIQUES_SECTION + "/";
+        if (section.startsWith(techniquePrefix)) {
+            String requestedName = section.substring(techniquePrefix.length());
+            section = techniquePrefix + canonicalTechniqueName(requestedName);
+        }
+        return section;
+    }
+
+    @Override
+    protected String recordSectionParent(String section) {
+        int separator = section.lastIndexOf('/');
+        return separator < 0 ? null : section.substring(0, separator);
+    }
+
+    @Override
+    protected String recordSectionLabel(String section) {
+        int separator = section.lastIndexOf('/');
+        return separator < 0 ? section : section.substring(separator + 1);
     }
 
     static String abilityRecordSection(AbilityData record) {
+        String mainSection = abilityMainSection(record);
+        SourceTypeEnum source = safeSource(record == null ? null : record.sourceType);
+        if (source == SourceTypeEnum.TECHNIQUE) {
+            String technique = record.sourceValue == null ? "" : record.sourceValue.trim();
+            return mainSection + "/" + CURSED_TECHNIQUES_SECTION
+                + (technique.isEmpty() ? "" : "/" + technique);
+        }
+        if (source == SourceTypeEnum.SHIKIGAMI
+            || source == SourceTypeEnum.CURSED_SPIRIT
+            || source == SourceTypeEnum.CURSED_CORPSE) {
+            return mainSection + "/" + RACIAL_SECTION;
+        }
+        return mainSection + "/" + GENERAL_SECTION;
+    }
+
+    static List<String> abilityRecordSections(List<String> techniqueNames) {
+        TreeMap<String, String> sortedNames = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        if (techniqueNames != null) {
+            for (String name : techniqueNames) {
+                if (name != null && !name.isBlank()) {
+                    sortedNames.putIfAbsent(name.trim(), name.trim());
+                }
+            }
+        }
+
+        List<String> sections = new ArrayList<>();
+        for (String mainSection : List.of(PASSIVE_SECTION, ACTIVE_SECTION)) {
+            sections.add(mainSection);
+            sections.add(mainSection + "/" + GENERAL_SECTION);
+            sections.add(mainSection + "/" + CURSED_TECHNIQUES_SECTION);
+            for (String techniqueName : sortedNames.values()) {
+                sections.add(mainSection + "/" + CURSED_TECHNIQUES_SECTION
+                    + "/" + techniqueName);
+            }
+            sections.add(mainSection + "/" + RACIAL_SECTION);
+        }
+        return List.copyOf(sections);
+    }
+
+    private static String abilityMainSection(AbilityData record) {
         return record != null && record.isActive() ? ACTIVE_SECTION : PASSIVE_SECTION;
+    }
+
+    private List<String> cursedTechniqueNames() {
+        TreeMap<String, String> names = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (InnateTechniqueData technique : techniqueRepo.getAll()) {
+            if (technique.name != null && !technique.name.isBlank()) {
+                names.putIfAbsent(technique.name.trim(), technique.name.trim());
+            }
+        }
+        for (AbilityData ability : records) {
+            if (safeSource(ability.sourceType) == SourceTypeEnum.TECHNIQUE
+                && ability.sourceValue != null && !ability.sourceValue.isBlank()) {
+                String name = ability.sourceValue.trim();
+                names.putIfAbsent(name, name);
+            }
+        }
+        return List.copyOf(names.values());
+    }
+
+    private String canonicalTechniqueName(String requestedName) {
+        return cursedTechniqueNames().stream()
+            .filter(name -> name.equalsIgnoreCase(requestedName))
+            .findFirst()
+            .orElse(requestedName);
     }
 
     @Override

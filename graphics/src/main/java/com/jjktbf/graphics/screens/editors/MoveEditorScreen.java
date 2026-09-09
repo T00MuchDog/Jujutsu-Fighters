@@ -115,6 +115,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
         MoveTag.MELEE,
         MoveTag.RANGED,
         MoveTag.GUARD_BREAK,
+        MoveTag.GUARD_PENETRATE,
         MoveTag.INTANGIBLE,
         MoveTag.BLUNT,
         MoveTag.SLASHING,
@@ -1193,11 +1194,6 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
             misc.add(labelledRow("Move Types", moveTypes)).growX().row();
             misc.add(formHint("Any matching character class may learn this move; select at least one."))
                 .left().row();
-            if (d.effectiveMoveTypes().contains(MoveType.CURSED_SPIRIT)) {
-                misc.add(formHint(
-                    "Cursed Spirit moves must explicitly include the CURSED_ENERGY tag."))
-                    .left().row();
-            }
         }
 
         CheckBox grantedCb = new CheckBox(" Must be granted", skin);
@@ -2973,7 +2969,9 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     }
                     if (matched.requiresTickDuration()) {
                         eff.durationRounds = 0;
-                        if (eff.durationTicks <= 0) eff.durationTicks = 1;
+                        if (matched != previous || eff.durationTicks <= 0) {
+                            eff.durationTicks = matched.defaultDurationTicks();
+                        }
                         eff.magnitude = 0.0;
                     } else if (matched.requiresRoundDuration()) {
                         if (eff.durationRounds == 0 || eff.durationRounds < -1) {
@@ -3074,7 +3072,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
 
         if (type.requiresTickDuration()) {
             effect.durationRounds = 0;
-            if (effect.durationTicks <= 0) effect.durationTicks = 1;
+            if (effect.durationTicks <= 0) effect.durationTicks = type.defaultDurationTicks();
             effect.magnitude = 0.0;
             TextField ticksField = new HoverTextField(String.valueOf(effect.durationTicks), skin);
             ticksField.setTextFieldFilter((tf, c) -> Character.isDigit(c));
@@ -3084,7 +3082,7 @@ public class MoveEditorScreen extends EditorScreenBase<MoveData> {
                     catch (NumberFormatException ignored) { }
                 }
             });
-            fields.add(new Label("Stagger duration (AP ticks)", skin)).padRight(8);
+            fields.add(new Label("Duration (AP ticks)", skin)).padRight(8);
             fields.add(ticksField).growX().row();
             addMoveProgression(fields, effect, TechniqueMasteryProgressions.DURATION_TICKS,
                 () -> effect.durationTicks, masteryEligible);

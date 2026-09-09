@@ -172,6 +172,14 @@ public enum MoveTag {
     GUARD_BREAK,
 
     /**
+     * Per-hit modifier that halves effective BLOCK reduction, including full
+     * blocks. Dodges, parries, and ordinary Defense are unaffected.
+     * Automatically granted to every {@link #PIERCING} hit; does not stack with
+     * itself, and {@link #GUARD_BREAK} still bypasses the entire block.
+     */
+    GUARD_PENETRATE,
+
+    /**
      * Heavy modifier — an action segment carrying this move cannot be cancelled by
      * a stun-current-action effect. Interrupts and ongoing statuses are unaffected.
      *
@@ -210,21 +218,21 @@ public enum MoveTag {
     /**
      * Slashing damage-type hit modifier — the hit deals its damage through
      * cutting edges (blades, claws, slicing projectiles).
-     * See {@link #BLUNT} for the damage-type tag semantics.
+     * Connected hits have a 30% chance to inflict Bleed.
      */
     SLASHING,
 
     /**
      * Piercing damage-type hit modifier — the hit deals its damage through
      * penetration (thrusts, stabs, arrows, spears, drills).
-     * See {@link #BLUNT} for the damage-type tag semantics.
+     * Implies {@link #GUARD_PENETRATE}; connected hits have a 10% chance to inflict Bleed.
      */
     PIERCING,
 
     /** Ice damage-type hit modifier. Ice hits can freeze, cure Burned, and react with Wet. */
     ICE,
 
-    /** Electric damage-type hit modifier. Electric hits can stun and deal more damage to Wet targets. */
+    /** Electric hits independently have 10% chances to stun and inflict Bleed, and deal more damage to Wet targets. */
     ELECTRIC,
 
     /** Fire damage-type hit modifier. Fire hits can burn and cure Frozen and Wet. */
@@ -245,9 +253,8 @@ public enum MoveTag {
     public static final Set<MoveTag> RANGE_TAGS = Set.of(MELEE, RANGED);
 
     /**
-     * Damage-type tags that belong to an individual hit component. The four
-     * elemental types (ICE, ELECTRIC, FIRE, WATER) additionally carry connected
-     * hit reactions; BLUNT, SLASHING, and PIERCING are pure classification.
+     * Damage-type tags that belong to an individual hit component. All except
+     * BLUNT additionally carry connected-hit reactions.
      */
     public static final Set<MoveTag> DAMAGE_TYPE_TAGS = Set.of(
         BLUNT, SLASHING, PIERCING, ICE, ELECTRIC, FIRE, WATER);
@@ -257,7 +264,7 @@ public enum MoveTag {
 
     /** Tags that belong only to an individual attack hit, never the parent move. */
     public static final Set<MoveTag> HIT_ONLY_TAGS = Set.of(
-        MELEE, RANGED, GUARD_BREAK, INTANGIBLE,
+        MELEE, RANGED, GUARD_BREAK, GUARD_PENETRATE, INTANGIBLE,
         BLUNT, SLASHING, PIERCING, ICE, ELECTRIC, FIRE, WATER);
 
     /** Every tag that may be authored on a hit component. */

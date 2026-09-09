@@ -32,6 +32,7 @@ public final class StatusEffectMessages {
         if (type == StatusEffectType.WET) return target + " became Wet!";
         if (type == StatusEffectType.FROZEN) return target + " was Frozen!";
         if (type == StatusEffectType.BURNED) return target + " was Burned!";
+        if (type == StatusEffectType.BLEED) return target + " suffered a bleeding wound!";
         if (type == StatusEffectType.FATIGUED) return target + " became Fatigued!";
         if (type == StatusEffectType.CURSED_SPEECH_WARD) {
             return target + " covers their ears in cursed energy!";

@@ -904,8 +904,9 @@ public class EffectListEditor extends Table {
                     }
                     if (status.requiresTickDuration()) {
                         effect.durationRounds = 0;
-                        if (effect.durationTicks == null || effect.durationTicks <= 0) {
-                            effect.durationTicks = 1;
+                        if (!status.displayName().equals(selectedStatus)
+                            || effect.durationTicks == null || effect.durationTicks <= 0) {
+                            effect.durationTicks = status.defaultDurationTicks();
                         }
                         effect.magnitude = null;
                     } else if (status.requiresRoundDuration()) {
@@ -982,15 +983,16 @@ public class EffectListEditor extends Table {
             if (tickOnlyStatus) {
                 effect.durationRounds = 0;
                 if (effect.durationTicks == null || effect.durationTicks <= 0) {
-                    effect.durationTicks = 1;
-                    durationTicksField.setText("1");
+                    effect.durationTicks = StatusEffectType.fromName(effect.stringValue)
+                        .defaultDurationTicks();
+                    durationTicksField.setText(String.valueOf(effect.durationTicks));
                 }
                 durationTicksField.addListener(new ChangeListener() {
                     @Override public void changed(ChangeEvent event, Actor actor) {
                         effect.durationTicks = parseInteger(durationTicksField.getText());
                     }
                 });
-                addRow(fields, "Stagger duration (AP ticks)", durationTicksField);
+                addRow(fields, "Duration (AP ticks)", durationTicksField);
                 addMasteryProgression(fields, effect,
                     TechniqueMasteryProgressions.DURATION_TICKS,
                     () -> effect.durationTicks == null ? 0 : effect.durationTicks);

@@ -565,32 +565,37 @@ Parent type tags are normally synchronized from the union of component type tags
                           immunity are unaffected. Lives only in the tag set.
 
   DAMAGE TYPE HIT TAGS (MoveTag.DAMAGE_TYPE_TAGS; authored per hit component).
-  The first three are pure classification; the four elemental types also carry
-  connected-hit reactions (MoveTag.ELEMENTAL_TAGS):
+  All except BLUNT carry connected-hit reactions; the four elemental types form
+  MoveTag.ELEMENTAL_TAGS:
     BLUNT                 The hit deals damage through impact or crushing force
                           (fists, kicks, hammers, staves, constrictions, blasts).
                           No connected-hit reaction.
     SLASHING              The hit deals damage through cutting edges (blades,
-                          claws, slicing projectiles). No connected-hit reaction.
+                          claws, slicing projectiles). A connected hit has a 30%
+                          chance to inflict a 60-tick BLEED wound.
     PIERCING              The hit deals damage through penetration (thrusts,
-                          stabs, arrows, spears, drills). No connected-hit
-                          reaction.
+                          stabs, arrows, spears, drills). Automatically grants
+                          GUARD_PENETRATE. A connected hit has a 10% chance to
+                          inflict a 60-tick BLEED wound.
     ICE                   A connected hit has a 5% chance to apply FROZEN, raised
                           to 50% when the target is WET. An ICE hit always cures
                           BURNED.
     ELECTRIC              A connected hit has a 10% chance to stun the target's
-                          current action. Damage is doubled against WET targets.
+                          current action and a separate 10% chance to inflict a
+                          60-tick BLEED wound. Damage is doubled against WET targets.
     FIRE                  A connected hit has a 10% chance to apply BURNED for one
                           round and always cures FROZEN and WET. A FROZEN combatant
                           may use a FIRE move; successfully firing it also cures the
                           user.
     WATER                 A connected hit always cures BURNED and applies WET for
                           one round.
-    Elemental reactions occur on connected hits, including hits fully negated by
+    Tag reactions occur on connected hits, including hits fully negated by
     BLOCK, but not on misses, dodges, or parries. Damage-type tags do not affect
     the Power formula, move category, or Black Flash eligibility. They can gate a
     BLOCK/PARRY through blockDamageTypeTags and can alter a block through an
     INCOMING_HIT_HAS_TAG condition.
+    Each qualifying damage tag rolls for BLEED independently on each hit. Wounds
+    use the normal BLEED stacking rules (up to five independent wounds).
 
   IMMEDIATE EFFECTS:
     STUN_CURRENT_ACTION   Cancels the target's not-yet-fired action segment(s)
@@ -599,6 +604,11 @@ Parent type tags are normally synchronized from the union of component type tags
                           and optional activation chance. HEAVY segments resist.
 
   OTHER HIT / MOVE MODIFIERS:
+    GUARD_PENETRATE        Halves effective BLOCK reduction: 80% becomes 40%,
+                          flat reduction is halved, and full blocks (including
+                          Perfect Reads) become 50% reduction. Does not stack
+                          with itself. GUARD_BREAK takes precedence. Dodges,
+                          parries, parry stagger, and ordinary Defense are unaffected.
     GUARD_BREAK           A hit ignores the defender's BLOCK defensive
                           moves — the block applies no reduction and cannot negate
                           the hit. Dodges and parries are unaffected; only blocks

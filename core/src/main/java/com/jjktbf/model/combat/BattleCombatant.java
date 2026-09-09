@@ -779,6 +779,15 @@ public class BattleCombatant {
         }
         if (effect.getType().refreshesOnReapply()) {
             removeStatusForRefresh(effect.getType());
+        } else if (effect.getType().maxStacks() < Integer.MAX_VALUE) {
+            List<StatusEffect> stacks = activeEffects.stream()
+                .filter(active -> active.getType() == effect.getType()).toList();
+            for (int i = 0; i <= stacks.size() - effect.getType().maxStacks(); i++) {
+                StatusEffect oldest = stacks.get(i);
+                activeEffects.remove(oldest);
+                statusSources.remove(oldest);
+                statusLeases.remove(oldest);
+            }
         }
         StatusEffect applied = rounds == effect.getDurationRounds()
             ? effect : effect.withDuration(rounds, ticks);
@@ -1031,7 +1040,8 @@ public class BattleCombatant {
             return 0;
         }
         double progress = statusDamageProgress.getOrDefault(type, 0.0)
-            + getMaxHp() * maxHpFraction;
+            + getMaxHp() * maxHpFraction * activeEffects.stream()
+                .filter(effect -> effect.getType() == type).count();
         int due = (int) Math.min(Integer.MAX_VALUE,
             Math.floor(progress + 1.0e-9));
         progress -= due;

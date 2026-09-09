@@ -72,6 +72,7 @@ public class CharacterSelectScreen implements Screen {
     private static final float PROFILE_TITLE_GAP = 60f;
     private static final float PROFILE_SUMMARY_HEIGHT = 580f;
     private static final float PROFILE_SECTION_GAP = 16f;
+    private static final float PROFILE_SUMMARY_TO_TECHNIQUE_GAP = 36f;
     private static final float PROFILE_SPRITE_SIZE = 444f;
     private static final float PROFILE_BAR_HEIGHT = 34f;
     private static final float FULL_MOVE_CARD_WIDTH = 324f;
@@ -136,6 +137,7 @@ public class CharacterSelectScreen implements Screen {
     private final Rectangle detailBounds = new Rectangle();
     private final Rectangle summaryBounds = new Rectangle();
     private final Rectangle techniqueBounds = new Rectangle();
+    private final Rectangle profileInfoClipBounds = new Rectangle();
     private final Rectangle moveSetPanelBounds = new Rectangle();
     private final Rectangle moveSetViewportBounds = new Rectangle();
     private final Rectangle learnedDrawerBounds = new Rectangle();
@@ -700,6 +702,11 @@ public class CharacterSelectScreen implements Screen {
         rosterScrollOffset = clamp(rosterScrollOffset, 0f, rosterScrollMax);
         revealRosterCursor();
         layoutProfileBounds(detailBounds, summaryBounds, techniqueBounds, moveSetPanelBounds);
+        profileInfoClipBounds.set(
+            summaryBounds.x,
+            techniqueBounds.y,
+            summaryBounds.width,
+            summaryBounds.y + summaryBounds.height - techniqueBounds.y);
         layoutLearnedDrawer(width, height);
     }
 
@@ -732,7 +739,7 @@ public class CharacterSelectScreen implements Screen {
         float summaryHeight = Math.min(PROFILE_SUMMARY_HEIGHT, Math.max(0f, top - infoBottom));
         summary.set(x, top - summaryHeight, width, summaryHeight);
         technique.set(x, infoBottom, width,
-            Math.max(0f, summary.y - PROFILE_SECTION_GAP - infoBottom));
+            Math.max(0f, summary.y - PROFILE_SUMMARY_TO_TECHNIQUE_GAP - infoBottom));
     }
 
     private void draw() {
@@ -933,16 +940,20 @@ public class CharacterSelectScreen implements Screen {
         drawBold(nameFont, fitOrEllipsize(nameFont, character.name,
             detailBounds.width - PROFILE_PADDING * 2f), innerLeft, innerTop);
         List<Move> moves = learnedMovesFor(character);
+        if (summaryBounds.height > 0f || techniqueBounds.height > 0f) {
+            beginClip(profileInfoClipBounds);
+        }
         if (summaryBounds.height > 0f) {
-            beginClip(summaryBounds);
+            float summaryContentBottom = techniqueBounds.height > 0f
+                ? techniqueBounds.y + techniqueBounds.height : summaryBounds.y;
             drawProfileSummary(character, summaryBounds.x,
-                summaryBounds.y + summaryBounds.height, summaryBounds.y);
-            endClip();
+                summaryBounds.y + summaryBounds.height, summaryContentBottom);
         }
         if (techniqueBounds.height > 0f) {
-            beginClip(techniqueBounds);
             drawTechniqueSection(character, techniqueBounds.x, techniqueBounds.width,
                 techniqueBounds.y + techniqueBounds.height, techniqueBounds.y);
+        }
+        if (summaryBounds.height > 0f || techniqueBounds.height > 0f) {
             endClip();
         }
         drawMoveSet(character, moves, moveSetPanelBounds.x, moveSetPanelBounds.y,

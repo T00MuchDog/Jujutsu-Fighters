@@ -203,6 +203,24 @@
       "stat" : "jujutsuSkill",
       "minimum" : 50
     } ]
+  }, {
+    "id" : "node-000005",
+    "contentType" : "MOVE",
+    "contentId" : "000151",
+    "x" : 1110.0,
+    "y" : 337.0,
+    "prerequisites" : [ {
+      "type" : "NODE",
+      "nodeId" : "node-000003",
+      "attached" : true
+    }, {
+      "type" : "MASTERY",
+      "minimum" : 70
+    }, {
+      "type" : "STAT",
+      "stat" : "strength",
+      "minimum" : 100
+    } ]
   } ]
 }, {
   "id" : "000002",
@@ -1412,6 +1430,14 @@
       "type" : "STAT",
       "stat" : "jujutsuSkill",
       "minimum" : 65
+    }, {
+      "type" : "NODE",
+      "nodeId" : "node-000000",
+      "attached" : true
+    }, {
+      "type" : "NODE",
+      "nodeId" : "node-000016",
+      "attached" : true
     } ]
   }, {
     "id" : "node-000004",

@@ -350,6 +350,7 @@ public final class StatusEffectStrip {
             case WET -> "WET";
             case FROZEN -> "FRZ";
             case BURNED -> "BURN";
+            case BLEED -> "BLEED";
             case FATIGUED -> "FAT";
             case CURSED_SPEECH_WARD -> "WARD";
             case CURSED_ENERGY_PARASITE -> "PARA";
@@ -373,11 +374,12 @@ public final class StatusEffectStrip {
             case RESTRAINED -> "Halves Speed; each AP tick can break the restraint or lose an action.";
             case WET -> "Reduces Speed by 20% and amplifies electric hits.";
             case FROZEN -> "Halves Defense and interrupts non-fire actions.";
-            case BURNED -> "Halves outgoing melee damage and deals damage each active AP tick.";
+            case BURNED -> "Halves outgoing melee damage and deals damage each active AP tick. Cured by healing moves.";
+            case BLEED -> "Each wound deals 0.04% max HP per AP tick after actions. Up to 5 wounds with independent timers; new wounds replace the oldest at the cap. Healing moves cure all wounds.";
             case FATIGUED -> "Adds 2 AP ticks to move cost and firing time.";
             case CURSED_SPEECH_WARD -> "Blocks incoming Cursed Speech commands.";
             case CURSED_ENERGY_PARASITE -> "Voluntary move CE payments also damage the holder.";
-            case POISON -> "Reduces every base stat by 20% and deals damage each active AP tick.";
+            case POISON -> "Reduces every base stat by 20% and deals damage each active AP tick. Cured by healing moves.";
             default -> type.displayName() + ".";
         };
     }
@@ -454,7 +456,8 @@ public final class StatusEffectStrip {
         if (type == null) return NEUTRAL;
         if (type.name().endsWith("_INCREASE")) return POSITIVE;
         if (type.name().endsWith("_DECREASE") || type == StatusEffectType.BURNED
-            || type == StatusEffectType.POISON || type == StatusEffectType.WET
+            || type == StatusEffectType.POISON || type == StatusEffectType.BLEED
+            || type == StatusEffectType.WET
             || type == StatusEffectType.CURSED_ENERGY_PARASITE) {
             return NEGATIVE;
         }

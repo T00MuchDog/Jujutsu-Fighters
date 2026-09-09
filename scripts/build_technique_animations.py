@@ -149,7 +149,7 @@ def main():
     choreography_path = args.destination / "choreography.json"
     choreography = json.loads(choreography_path.read_text())
     boards = {}
-    hashes = set()
+    hashes = {}
     if not args.check:
         (pack / "sprites").mkdir(parents=True, exist_ok=True)
         args.review.mkdir(parents=True, exist_ok=True)
@@ -162,7 +162,7 @@ def main():
             sheet.paste(cel, ((i % 6)*192, (i//6)*192))
         e = {k: spec[k] for k in ("id", "name", "description", "moveIds", "placement", "role", "castEffect") if k in spec}
         e.update(sheet=f"sprites/{spec['id']}.png", frameCount=n, frameDurationMs=spec.get("frameDurationMs", 40),
-                 loop=False, anchor=[.5, .5], impactFrames=[spec.get("impact", count//2) + i*count
+                 loop=False, anchor=spec.get("anchor", [.5, .5]), impactFrames=[spec.get("impact", count//2) + i*count
                      for i in range(spec.get("contacts", 1))])
         manifest["effects"].append(e)
         path = pack / e["sheet"]
@@ -172,8 +172,9 @@ def main():
                 assert saved.tobytes() == sheet.tobytes(), f"Stale art: {spec['id']}"
             assert sheet.getchannel("A").getextrema() == (0, 255), spec["id"]
             digest = hashlib.sha256(sheet.tobytes()).hexdigest()
-            assert digest not in hashes, f"Duplicate art: {spec['id']}"
-            hashes.add(digest)
+            # Identical authored compositions may intentionally share a visual (e.g. dog signs).
+            assert digest not in hashes or hashes[digest] == spec["art"], f"Duplicate art: {spec['id']}"
+            hashes[digest] = spec["art"]
             if "profile" in spec:
                 assert choreography["profiles"][spec["id"]] == spec["profile"], f"Stale profile: {spec['id']}"
                 assert choreography["effects"][spec["id"]] == spec["id"]
@@ -187,7 +188,7 @@ def main():
         assert json.loads((pack / "manifest.json").read_text()) == manifest, "Stale manifest"
         catalog = json.loads((args.destination / "catalog.json").read_text())
         assert catalog["packs"][0] == "techniques", "Technique bindings must precede generic examples"
-        print(f"Validated {len(bindings)} moves, {len(specs)} distinct sheets, all export pixels and profiles.")
+        print(f"Validated {len(bindings)} moves, {len(specs)} sheets, all export pixels and profiles.")
         return
     (pack / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     choreography_path.write_text(json.dumps(choreography, indent=2) + "\n")

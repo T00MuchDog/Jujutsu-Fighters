@@ -52,9 +52,8 @@ public final class BattleFormatScreen implements Screen {
     private Consumer<BattleConfiguration> onFormatSelected;
     private Runnable onBack;
     private BattleStatMode statMode = BattleStatMode.STANDARD;
-    private int selectedButtonIndex = -1;
+    private int selectedButtonIndex = 0;
     private int hoveredButtonIndex = -1;
-    private boolean keyboardNavigation;
     private boolean disposed;
 
     public BattleFormatScreen(JJKGame game, AssetLoader assets) {
@@ -128,7 +127,7 @@ public final class BattleFormatScreen implements Screen {
         stage.addCaptureListener(new InputListener() {
             @Override
             public boolean mouseMoved(InputEvent event, float x, float y) {
-                enterCursorMode(event.getStageX(), event.getStageY());
+                updateHover(event.getStageX(), event.getStageY());
                 return false;
             }
 
@@ -181,6 +180,8 @@ public final class BattleFormatScreen implements Screen {
         button.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                selectedButtonIndex = formatButtons.indexOf(button);
+                updateButtonStates();
                 button.activate();
             }
         });
@@ -188,21 +189,10 @@ public final class BattleFormatScreen implements Screen {
     }
 
     private void moveSelection(int direction) {
-        if (!keyboardNavigation) {
-            if (hoveredButtonIndex < 0) {
-                selectedButtonIndex = direction < 0 ? 0 : formatButtons.size() - 1;
-                keyboardNavigation = true;
-                updateHighlights();
-                game.audio().play(SoundCue.UI_NAVIGATE);
-                return;
-            }
-            selectedButtonIndex = hoveredButtonIndex;
-            hoveredButtonIndex = -1;
-            keyboardNavigation = true;
-        }
         selectedButtonIndex = (selectedButtonIndex + direction + formatButtons.size())
             % formatButtons.size();
-        updateHighlights();
+        hoveredButtonIndex = -1;
+        updateButtonStates();
         game.audio().play(SoundCue.UI_NAVIGATE);
     }
 
@@ -221,20 +211,12 @@ public final class BattleFormatScreen implements Screen {
     }
 
     private void activateSelection() {
-        if (!keyboardNavigation) {
-            selectedButtonIndex = hoveredButtonIndex >= 0 ? hoveredButtonIndex : 0;
-            hoveredButtonIndex = -1;
-            keyboardNavigation = true;
-            updateHighlights();
-        }
         formatButtons.get(selectedButtonIndex).activate();
     }
 
-    private void enterCursorMode(float stageX, float stageY) {
-        keyboardNavigation = false;
-        selectedButtonIndex = -1;
+    private void updateHover(float stageX, float stageY) {
         hoveredButtonIndex = findButtonAt(stageX, stageY);
-        updateHighlights();
+        updateButtonStates();
     }
 
     private int findButtonAt(float stageX, float stageY) {
@@ -249,16 +231,16 @@ public final class BattleFormatScreen implements Screen {
     }
 
     private void resetNavigation() {
-        keyboardNavigation = false;
-        selectedButtonIndex = -1;
+        selectedButtonIndex = 0;
         hoveredButtonIndex = -1;
-        updateHighlights();
+        updateButtonStates();
     }
 
-    private void updateHighlights() {
-        int highlighted = keyboardNavigation ? selectedButtonIndex : hoveredButtonIndex;
+    private void updateButtonStates() {
         for (int i = 0; i < formatButtons.size(); i++) {
-            formatButtons.get(i).setHighlighted(i == highlighted);
+            FormatButton button = formatButtons.get(i);
+            button.setSelected(i == selectedButtonIndex);
+            button.setHighlighted(i == hoveredButtonIndex);
         }
     }
 
@@ -271,6 +253,7 @@ public final class BattleFormatScreen implements Screen {
             Math.min(300f * scale, height * 0.45f));
         for (int i = 0; i < formatButtons.size(); i++) {
             formatButtons.get(i).getLabel().setFontScale(2.2f * scale / AssetLoader.FONT_OVERSAMPLE);
+            formatButtons.get(i).selectionLabel.setFontScale(scale / AssetLoader.FONT_OVERSAMPLE);
             formatButtonCells.get(i).height(buttonHeight).pad(8f * scale);
         }
         root.invalidateHierarchy();
@@ -314,20 +297,37 @@ public final class BattleFormatScreen implements Screen {
         stage.dispose();
     }
 
-    /** Same primary-button styling as the main menu, with explicit keyboard hover. */
+    /** Persistent selection uses a text marker as well as the primary-button highlight. */
     private static final class FormatButton extends TextButton {
         private final Runnable action;
+        private final Label selectionLabel;
         private boolean highlighted;
 
         private FormatButton(String text, AssetLoader assets, Runnable action) {
             super(text, assets.editorSkin, "primary");
             this.action = action;
+            TextButtonStyle style = new TextButtonStyle(getStyle());
+            style.checked = style.over;
+            style.checkedOver = style.over;
+            setStyle(style);
+            setProgrammaticChangeEvents(false);
             getLabel().setAlignment(Align.center);
+            getLabelCell().expand(false, false).fill(false, false);
+            row();
+            selectionLabel = new Label("SELECTED", assets.editorSkin, "small-white");
+            selectionLabel.setAlignment(Align.center);
+            // Invisible markers still reserve their row so changing selection never shifts titles.
+            add(selectionLabel).padTop(10f);
+            setSelected(false);
         }
 
         private void activate() {
-            setChecked(false);
             action.run();
+        }
+
+        private void setSelected(boolean selected) {
+            setChecked(selected);
+            selectionLabel.setVisible(selected);
         }
 
         private void setHighlighted(boolean highlighted) {

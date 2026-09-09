@@ -221,6 +221,7 @@ public final class DamageCalculator {
         Timeline defTimeline = defender.getTimeline();
         boolean intangible = component.isIntangible();
         boolean guardBreak = component.isGuardBreak();
+        double guardMultiplier = component.isGuardPenetrate() ? 0.5 : 1.0;
 
         // --- 0. Accuracy priority and dodge ---
         // Never Miss wins ties. Never Hit therefore needs a strictly higher tier
@@ -330,7 +331,8 @@ public final class DamageCalculator {
             }
         }
 
-        if (forceFullBlock && !guardBreak && !intangible) {
+        boolean forcedBlock = forceFullBlock && !guardBreak && !intangible;
+        if (forcedBlock && guardMultiplier == 1.0) {
             return DamageResult.blocked(move, component, null, codedModifiers.events())
                 .withRecoil(codedModifiers.recoilDamage());
         }
@@ -342,7 +344,7 @@ public final class DamageCalculator {
         // Blocks are potency-gated: a block only applies when block.potency >=
         // attack.potency.
         ActionSegment activeBlockSegment = null;
-        if (!bypassBlock && defTimeline != null) {
+        if (!forcedBlock && !bypassBlock && defTimeline != null) {
             ActionSegment blk = defTimeline.activeDefenseAt(
                 currentTick, move, component, com.jjktbf.model.move.DefenseType.BLOCK,
                 requireFiredDefense);
@@ -351,8 +353,8 @@ public final class DamageCalculator {
             }
         }
         // Contesting with the block spends one of its activations. A perfect
-        // read (fire tick == this impact tick) escalates to a full negate for
-        // both block styles.
+        // read (fire tick == this impact tick) escalates both block styles to
+        // 100% reduction, which GUARD_PENETRATE can still halve.
         boolean perfectBlock = false;
         if (activeBlockSegment != null) {
             activeBlockSegment.consumeDefenseUse();
@@ -377,16 +379,23 @@ public final class DamageCalculator {
             * executionBasePowerMultiplier
             * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
             * power;
-        if (activeBlockSegment != null) {
-            if (perfectBlock) {
+        if (forcedBlock) {
+            attackValue *= 1.0 - guardMultiplier;
+        } else if (activeBlockSegment != null) {
+            if (perfectBlock && guardMultiplier == 1.0) {
                 return DamageResult.blocked(
                     move, component, activeBlockSegment, codedModifiers.events())
                     .withRecoil(codedModifiers.recoilDamage())
                     .withPerfectRead(true);
             }
-            double blockMultiplier = blockEffectivenessHook == null ? 1.0
-                : blockEffectivenessHook.multiplierFor(activeBlockSegment.getMove());
-            attackValue = applyBlock(activeBlockSegment, attackValue, blockMultiplier);
+            if (perfectBlock) {
+                attackValue *= 1.0 - guardMultiplier;
+            } else {
+                double blockMultiplier = blockEffectivenessHook == null ? 1.0
+                    : blockEffectivenessHook.multiplierFor(activeBlockSegment.getMove());
+                attackValue = applyBlock(
+                    activeBlockSegment, attackValue, blockMultiplier, guardMultiplier);
+            }
             if (attackValue == 0) {
                 return DamageResult.blocked(
                     move, component, activeBlockSegment, codedModifiers.events())
@@ -415,25 +424,27 @@ public final class DamageCalculator {
 
         return DamageResult.hit(move, component, finalDamage, rawDamage, blackFlash,
             bypassBlock, codedModifiers.events(), activeBlockSegment)
-            .withRecoil(codedModifiers.recoilDamage());
+            .withRecoil(codedModifiers.recoilDamage())
+            .withPerfectRead(perfectBlock);
     }
 
     private static double applyBlock(
         ActionSegment segment,
         double incomingDamage,
-        double effectivenessMultiplier
+        double effectivenessMultiplier,
+        double guardMultiplier
     ) {
         double multiplier = Double.isFinite(effectivenessMultiplier)
             ? Math.max(0.0, effectivenessMultiplier) : Double.MAX_VALUE;
         return switch (segment.getMove().getBlockStyle()) {
             case PERCENTAGE -> {
                 double reduction = Math.min(
-                    100.0, segment.effectiveBlockDamageReduction() * multiplier);
+                    100.0, segment.effectiveBlockDamageReduction() * multiplier) * guardMultiplier;
                 if (reduction >= 100.0) yield 0;
                 yield Math.max(1.0, incomingDamage * (100.0 - reduction) / 100.0);
             }
             case FLAT -> Math.max(
-                1.0, incomingDamage - segment.effectiveBlockFlatReduction() * multiplier);
+                1.0, incomingDamage - segment.effectiveBlockFlatReduction() * multiplier * guardMultiplier);
         };
     }
 

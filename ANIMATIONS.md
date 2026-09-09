@@ -334,6 +334,20 @@ Research, three linked studies, side-by-side sphere comparisons, seven review
 lenses, and the opt-in real-GL battle command are documented in
 `docs/animations/blood-manipulation/README.md`. Review GIFs are not runtime assets.
 
+### Ten Shadows Summons
+
+The eight normal Ten Shadows summons use source-centered reference-based hand
+signs over one shared `ct-ten-shadows-rise` foot layer: 24 x 50ms, 1.2s total,
+800ms impact. The ink stays abstract; actual shikigami entrance and all commands
+and attacks remain separate. Dog variants share the authorized Divine Dogs sign;
+the fusion uses the authorized Nue-then-Toad sequence, without a longer timeline.
+
+Source motifs, reference decisions, bindings and the small-scale composite review
+are documented in `docs/animations/techniques/TEN_SHADOWS.md`. Regenerate with the
+technique exporter above; review with `python3 scripts/review_ten_shadows_animations.py`
+or audit with its `--check` option. The exporter honors optional per-effect
+`anchor` values and permits identical sheets for identical authored compositions.
+
 ### Runtime Tests
 
 - `graphics/.../animation/BattleEffectPack.java`: validated manifests, sheets, contact clips, texture ownership.

@@ -332,6 +332,22 @@ class BattleScreenSpriteBoundsTest {
     }
 
     @Test
+    void abilityMeterCentersOnSelectedSecondFighterHud() {
+        Rectangle primaryHud = new Rectangle(100f, 200f, 150f, 100f);
+        Rectangle firstHud = BattleScreen.combatantHudBounds(
+            0, 2, primaryHud, 150f, 10f, 10f, false);
+        Rectangle secondHud = BattleScreen.combatantHudBounds(
+            1, 2, primaryHud, 150f, 10f, 10f, false);
+
+        assertEquals(120f,
+            BattleScreen.centeredMeterY(secondHud.y + secondHud.height / 2f, 40f),
+            0.0001f);
+        assertEquals(230f,
+            BattleScreen.centeredMeterY(firstHud.y + firstHud.height / 2f, 40f),
+            0.0001f);
+    }
+
+    @Test
     void statusBandExpandsHudDownwardWithoutMovingItsTop() {
         Rectangle expanded = BattleScreen.expandedHudBounds(
             new Rectangle(100f, 200f, 150f, 100f), 25f, 0f);

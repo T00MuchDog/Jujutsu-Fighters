@@ -75,6 +75,9 @@ public enum StatusEffectType {
     /** Halves outgoing melee damage and deals 0.03% max-HP damage each active tick. */
     BURNED("Burned", 0),
 
+    /** Up to five independent wounds, each dealing 0.04% max HP per active tick. */
+    BLEED("Bleed", 0),
+
     /** Adds two AP ticks to both the cost and firing point of every planned move. */
     FATIGUED("Fatigued", 0),
 
@@ -191,7 +194,22 @@ public enum StatusEffectType {
 
     /** Whether this status must be configured exclusively in AP ticks. */
     public boolean requiresTickDuration() {
-        return this == STAGGER;
+        return this == STAGGER || this == BLEED;
+    }
+
+    /** Initial duration when authoring a tick-only status. */
+    public int defaultDurationTicks() {
+        return this == BLEED ? 60 : requiresTickDuration() ? 1 : 0;
+    }
+
+    /** Target-wide limit; excess applications replace the oldest live instance. */
+    public int maxStacks() {
+        return this == BLEED ? 5 : refreshesOnReapply() ? 1 : Integer.MAX_VALUE;
+    }
+
+    /** Conditions cured on the recipient when a healing move resolves. */
+    public boolean isCuredByHealingMove() {
+        return this == BLEED || this == POISON || this == BURNED;
     }
 
     /** Whether this status rejects AP-tick durations. */
@@ -229,7 +247,7 @@ public enum StatusEffectType {
      * statuses, soul effects, and plain stat debuffs are excluded.
      */
     public boolean isBodilyInjury() {
-        return this == BURNED || this == FROZEN || this == POISON;
+        return this == BLEED || this == BURNED || this == FROZEN || this == POISON;
     }
 
     /** Resolve current names plus stat-based equivalents from pre-rework catalogs. */

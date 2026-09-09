@@ -1186,12 +1186,6 @@ public class Move {
                         + name + "')");
 
             Set<MoveTag> effectiveTags = tags != null ? tags : category.getTags();
-            if (moveTypes.contains(MoveType.CURSED_SPIRIT)
-                && (tags == null || !tags.contains(MoveTag.CURSED_ENERGY))) {
-                throw new IllegalStateException(
-                    "Cursed Spirit moves must explicitly include CURSED_ENERGY (name='"
-                        + name + "')");
-            }
             if (effectiveTags.contains(MoveTag.FRIENDLY_FIRE)
                 && !effectiveTags.contains(MoveTag.AOE)) {
                 throw new IllegalStateException("FRIENDLY_FIRE requires AOE");

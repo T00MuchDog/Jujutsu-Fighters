@@ -1632,6 +1632,78 @@ class HeadlessBattleSessionTest {
         assertTrue(result.events().stream().anyMatch(event -> event.type() == BattleEventType.BATTLE_OVER));
     }
 
+    @Test
+    void authoritativeWoundsKeepIndividualTimersAndHealingCleansesTheirWireState() throws Exception {
+        MoveEffectData wound = AbilityEffectType.APPLY_STATUS.createDefaultMoveEffect();
+        wound.effectId = "wound";
+        wound.trigger = MoveEffectTrigger.ON_HIT.name();
+        wound.target = "ENEMY";
+        wound.stringValue = "BLEED";
+        wound.durationRounds = 0;
+        wound.durationTicks = 60;
+        MoveEffectData poison = AbilityEffectType.APPLY_STATUS.createDefaultMoveEffect();
+        poison.effectId = "poison";
+        poison.trigger = MoveEffectTrigger.ON_HIT.name();
+        poison.target = "ENEMY";
+        poison.stringValue = "POISON";
+        poison.durationRounds = 2;
+        MoveEffectData burn = AbilityEffectType.APPLY_STATUS.createDefaultMoveEffect();
+        burn.effectId = "burn";
+        burn.trigger = MoveEffectTrigger.ON_HIT.name();
+        burn.target = "ENEMY";
+        burn.stringValue = "BURNED";
+        burn.durationRounds = 2;
+        Move attack = new Move.Builder("WOUNDING_ATTACK").name("Wounding attack")
+            .category(MoveCategory.PHYSICAL)
+            .tags(Set.of(MoveTag.ATTACK, MoveTag.PHYSICAL))
+            .apCost(1).unleashPoint(1).neverMiss(true).freeMove(true)
+            .hitComponents(java.util.stream.IntStream.range(0, 6)
+                .mapToObj(i -> new HitComponent(1,
+                    Set.of(MoveTag.PHYSICAL, MoveTag.MELEE), 0, false, true))
+                .toList())
+            .effects(List.of(wound, poison, burn)).build();
+        MoveEffectData restore = AbilityEffectType.HEAL_HP.createDefaultMoveEffect();
+        restore.effectId = "heal";
+        restore.trigger = MoveEffectTrigger.ON_FIRE.name();
+        restore.target = "SELF";
+        restore.valueMode = AbilityEffectType.ValueMode.PERCENT.name();
+        restore.doubleValue = 0.15;
+        Move heal = new Move.Builder("HEAL").name("Heal")
+            .category(MoveCategory.UTILITY).tags(Set.of(MoveTag.UTILITY))
+            .apCost(1).unleashPoint(1).freeMove(true).effects(List.of(restore)).build();
+        HeadlessBattleSession session = session(42L, attack, heal);
+        int grid = com.jjktbf.model.combat.Timeline.gridLengthForStrongestAp(
+            session.snapshot().players().stream()
+                .mapToInt(player -> player.character().plan().apBudget()).max().orElseThrow());
+        CommandResult woundPlan = session.applyCommand("player-1", command(session, "wound-plan",
+            targeted(attack, grid - 1, PlayerSide.PLAYER_ONE)));
+        assertTrue(woundPlan.accepted(), () -> String.valueOf(woundPlan.error()));
+        CommandResult wounded = session.applyCommand("player-2", command(session, "empty-plan"));
+        assertTrue(wounded.accepted());
+        assertEquals(BattlePhase.ROUND_END, wounded.state().phase());
+
+        ObjectMapper mapper = new ObjectMapper();
+        MatchState wire = mapper.readValue(mapper.writeValueAsString(wounded.state()), MatchState.class);
+        var statuses = wire.player(PlayerSide.PLAYER_TWO).orElseThrow().character().statusEffects();
+        assertEquals(5, statuses.stream().filter(status -> "BLEED".equals(status.type())).count());
+        assertTrue(statuses.stream().filter(status -> "BLEED".equals(status.type()))
+            .allMatch(status -> status.remainingRounds() == 0 && status.remainingTicks() == 58));
+        assertTrue(statuses.stream().anyMatch(status -> "POISON".equals(status.type())));
+        assertTrue(statuses.stream().anyMatch(status -> "BURNED".equals(status.type())));
+
+        long readyVersion = session.getStateVersion();
+        assertTrue(session.applyCommand("player-1", readyAt("wound-ready-1", readyVersion)).accepted());
+        assertTrue(session.applyCommand("player-2", readyAt("wound-ready-2", readyVersion)).accepted());
+        assertTrue(session.applyCommand("player-1", command(session, "empty-next-plan")).accepted());
+        CommandResult healed = session.applyCommand("player-2", command(session, "heal-plan",
+            new PlanPlacement(heal.getId(), 1, PLAYER_TWO_ID, List.of())));
+        assertTrue(healed.accepted());
+        assertTrue(healed.state().player(PlayerSide.PLAYER_TWO).orElseThrow()
+            .character().statusEffects().isEmpty());
+        assertTrue(healed.events().stream().anyMatch(event -> event.type() == BattleEventType.HP_RESTORED));
+        assertTrue(healed.events().stream().anyMatch(event -> event.type() == BattleEventType.STATUS_EXPIRED));
+    }
+
     private static void submitBoth(HeadlessBattleSession session, Move first, Move second) {
         submitBoth(session, first, second, "");
     }

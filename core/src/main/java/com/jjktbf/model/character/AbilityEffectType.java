@@ -233,7 +233,8 @@ public enum AbilityEffectType {
 
     HEAL_HP(
         "Heal HP",
-        "Immediately restores either a flat amount or a percentage of maximum HP.",
+        "Immediately restores either a flat amount or a percentage of maximum HP. "
+            + "Healing moves also cure all Bleed, Poison, and Burned on the recipient.",
         TARGET, VALUE_MODE, INTEGER, DECIMAL),
     RESTORE_CE(
         "Restore CE",
@@ -848,10 +849,14 @@ public enum AbilityEffectType {
             effect.transformationHpMode = defaults.transformationHpMode;
         }
         if (uses(TIMING) && isBlank(effect.timing)) effect.timing = defaults.timing;
+        StatusEffectType durationStatus = selectedStatus(effect);
         if (uses(DURATION, effect) && effect.durationRounds == null) {
-            effect.durationRounds = defaults.durationRounds != null ? defaults.durationRounds : 1;
+            effect.durationRounds = durationStatus != null && durationStatus.requiresTickDuration()
+                ? 0 : defaults.durationRounds != null ? defaults.durationRounds : 1;
         }
-        if (uses(DURATION, effect) && effect.durationTicks == null) effect.durationTicks = 0;
+        if (uses(DURATION, effect) && effect.durationTicks == null) {
+            effect.durationTicks = durationStatus == null ? 0 : durationStatus.defaultDurationTicks();
+        }
         if (uses(MAGNITUDE, effect) && effect.magnitude == null) {
             effect.magnitude = defaultStatusMagnitude(effect, defaults.magnitude);
         }
@@ -1060,7 +1065,7 @@ public enum AbilityEffectType {
                 StatusEffect.validateDuration(status, effect.durationRounds, ticks);
             } catch (IllegalArgumentException ignored) {
                 return status != null && status.requiresTickDuration()
-                    ? "Stagger must use 0 rounds and at least 1 AP tick."
+                    ? status.displayName() + " must use 0 rounds and at least 1 AP tick."
                     : status != null && status.requiresRoundDuration()
                         ? status.displayName()
                             + " must use a positive round duration or be permanent, with 0 AP ticks."

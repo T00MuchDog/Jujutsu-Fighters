@@ -19,6 +19,7 @@ final class MoveDetailView {
     private static final float PADDING = 16f;
     private static final float GAP = 16f;
     private static final float EDGE = 2f;
+    private static final Color BACKGROUND = new Color(0.115f, 0.150f, 0.235f, 1f);
 
     private final Rectangle bounds = new Rectangle();
     private final Rectangle titleBounds = new Rectangle();
@@ -53,6 +54,9 @@ final class MoveDetailView {
             descriptionLayout = null;
             return;
         }
+
+        batch.setColor(BACKGROUND);
+        batch.draw(ui.pixel, bounds.x, bounds.y, bounds.width, bounds.height);
 
         Color type = MoveCardView.typeColorFor(move, reinforced);
         batch.setColor(type);

@@ -264,6 +264,7 @@ public class BattleScreen implements Screen, BattleView {
     private final MiraclesMeter miraclesMeter = new MiraclesMeter();
     private final RatioMeter ratioMeter = new RatioMeter();
     private final AbilityStateMeter abilityStateMeter = new AbilityStateMeter();
+    private CombatantPanel displayedAbilityMeterPanel;
     private Texture playerSprite;
     private Texture enemySprite;
     /** Per-side execution sprites in the same order as the local or online render roster. */
@@ -4264,6 +4265,11 @@ public class BattleScreen implements Screen, BattleView {
         if (!planningUiEditable()) return null;
         int teamPageCount = teamPlanningPanel == null ? 0 : teamPlanningPanel.pageCount();
         if (!shouldDrawPlanningHighlight(planningPanel != null, teamPageCount)) return null;
+        return plannerCombatantPanel();
+    }
+
+    private CombatantPanel plannerCombatantPanel() {
+        if (teamPlanningPanel == null) return null;
         String actorId = teamPlanningPanel.activeActorId();
         if (actorId == null || actorId.isBlank()) return null;
 
@@ -5190,14 +5196,6 @@ public class BattleScreen implements Screen, BattleView {
         float height,
         boolean remapTransientEffects
     ) {
-        float originX = SHARED_EXECUTION_X;
-        width = SHARED_EXECUTION_WIDTH;
-        height = SHARED_EXECUTION_HEIGHT;
-        BattleUiLayout.Execution layout = uiLayout.execution;
-        float textGeometryScale = executionTextGeometryScale();
-        float margin = Math.min(layout.outerMarginMax,
-            Math.max(layout.outerMarginMin,
-                Math.min(width, height) * layout.outerMarginFraction));
         List<Texture> visibleEnemySprites = visibleTeamSprites(enemyTeamSprites);
         List<Texture> visiblePlayerSprites = visibleTeamSprites(playerTeamSprites);
         List<Boolean> visibleEnemyStatuses = visibleStatusPresence(false);
@@ -5240,42 +5238,6 @@ public class BattleScreen implements Screen, BattleView {
         remapFaintAnimationPanels();
         remapEntranceAnimationPanels();
         updateDisplayedAbilityMeters();
-
-        float miracleSize = Math.min(
-            MiraclesMeter.sizeForViewport(height, textGeometryScale),
-            Math.min(playerHud.height, width * layout.miraclesWidthFraction));
-        miraclesMeter.setBounds(
-            Math.max(originX + margin, playerHud.x - miracleSize - layout.meterHudGap),
-            playerHud.y + (playerHud.height - miracleSize) / 2f,
-            miracleSize,
-            textGeometryScale
-        );
-        float ratioHeight = Math.min(
-            RatioMeter.heightForViewport(height, textGeometryScale),
-            Math.min(playerHud.height * 0.75f, width * layout.ratioWidthFraction));
-        float ratioWidth = RatioMeter.widthForHeight(ratioHeight);
-        ratioMeter.setBounds(
-            Math.max(originX + margin, playerHud.x - ratioWidth - layout.meterHudGap),
-            playerHud.y + (playerHud.height - ratioHeight) / 2f,
-            ratioHeight,
-            textGeometryScale
-        );
-        float resourceWidth = Math.min(250f * textGeometryScale,
-            Math.max(170f * textGeometryScale, playerHud.width * 0.42f));
-        float resourceRowHeight = Math.min(38f * textGeometryScale,
-            Math.max(28f * textGeometryScale, playerHud.height * 0.24f));
-        float resourceHeight = abilityStateMeter.stateCount() == 0 ? 0f
-            : abilityStateMeter.stateCount() * (resourceRowHeight + 4f) - 4f;
-        float bespokeMeterWidth = 0f;
-        if (miraclesMeter.isVisible()) bespokeMeterWidth = miracleSize;
-        if (ratioMeter.isVisible()) bespokeMeterWidth = Math.max(bespokeMeterWidth, ratioWidth);
-        abilityStateMeter.setBounds(
-            Math.max(originX + margin, playerHud.x - bespokeMeterWidth
-                - (bespokeMeterWidth > 0f ? layout.meterHudGap : 0f)
-                - resourceWidth - layout.meterHudGap),
-            playerHud.y + (playerHud.height - resourceHeight) / 2f,
-            resourceWidth,
-            resourceRowHeight);
 
         sharedExecutionClip.set(sharedCanvas.executionSurface());
         logBounds.set(sharedCanvas.logSurface());
@@ -6010,6 +5972,8 @@ public class BattleScreen implements Screen, BattleView {
             miraclesMeter.setState(findMiraclesState(activePlannerStates));
             ratioMeter.setState(findRatioState(activePlannerStates));
             abilityStateMeter.setStates(activePlannerStates);
+            displayedAbilityMeterPanel = plannerCombatantPanel();
+            layoutDisplayedAbilityMeters();
             return;
         }
         if (mode == BattleMode.MULTIPLAYER) {
@@ -6019,6 +5983,9 @@ public class BattleScreen implements Screen, BattleView {
             OnlineCombatantKey key = onlineKey(multiplayerSetup.playerSide(), displayedPlayer);
             abilityStateMeter.setStates(displayedPlayer == null ? List.of()
                 : onlineAbilityStates.getOrDefault(key, displayedPlayer.codedAbilities()));
+            displayedAbilityMeterPanel = onlinePanelFor(
+                multiplayerSetup.playerSide(), displayedPlayer);
+            layoutDisplayedAbilityMeters();
             return;
         }
         List<CodedAbilityState> primaryStates = renderPlayer == null
@@ -6027,6 +5994,65 @@ public class BattleScreen implements Screen, BattleView {
         miraclesMeter.setState(findMiraclesState(primaryStates));
         ratioMeter.setState(findRatioState(primaryStates));
         abilityStateMeter.setStates(primaryStates);
+        displayedAbilityMeterPanel = panelForCombatant(renderPlayer);
+        layoutDisplayedAbilityMeters();
+    }
+
+    private void layoutDisplayedAbilityMeters() {
+        int playerCount = visibleTeamSprites(playerTeamSprites).size();
+        Rectangle playerHud = sharedExecutionGeometry(0, playerCount).playerHud();
+        BattleUiLayout.Execution layout = uiLayout.execution;
+        float width = SHARED_EXECUTION_WIDTH;
+        float height = SHARED_EXECUTION_HEIGHT;
+        float textGeometryScale = executionTextGeometryScale();
+        float margin = Math.min(layout.outerMarginMax,
+            Math.max(layout.outerMarginMin,
+                Math.min(width, height) * layout.outerMarginFraction));
+        float meterCenterY = displayedAbilityMeterPanel == null
+            ? playerHud.y + playerHud.height / 2f
+            : displayedAbilityMeterPanel.hudCenterY();
+
+        float miracleSize = Math.min(
+            MiraclesMeter.sizeForViewport(height, textGeometryScale),
+            Math.min(playerHud.height, width * layout.miraclesWidthFraction));
+        miraclesMeter.setBounds(
+            Math.max(SHARED_EXECUTION_X + margin,
+                playerHud.x - miracleSize - layout.meterHudGap),
+            centeredMeterY(meterCenterY, miracleSize),
+            miracleSize,
+            textGeometryScale
+        );
+        float ratioHeight = Math.min(
+            RatioMeter.heightForViewport(height, textGeometryScale),
+            Math.min(playerHud.height * 0.75f, width * layout.ratioWidthFraction));
+        float ratioWidth = RatioMeter.widthForHeight(ratioHeight);
+        ratioMeter.setBounds(
+            Math.max(SHARED_EXECUTION_X + margin,
+                playerHud.x - ratioWidth - layout.meterHudGap),
+            centeredMeterY(meterCenterY, ratioHeight),
+            ratioHeight,
+            textGeometryScale
+        );
+        float resourceWidth = Math.min(250f * textGeometryScale,
+            Math.max(170f * textGeometryScale, playerHud.width * 0.42f));
+        float resourceRowHeight = Math.min(38f * textGeometryScale,
+            Math.max(28f * textGeometryScale, playerHud.height * 0.24f));
+        float resourceHeight = abilityStateMeter.stateCount() == 0 ? 0f
+            : abilityStateMeter.stateCount() * (resourceRowHeight + 4f) - 4f;
+        float bespokeMeterWidth = 0f;
+        if (miraclesMeter.isVisible()) bespokeMeterWidth = miracleSize;
+        if (ratioMeter.isVisible()) bespokeMeterWidth = Math.max(bespokeMeterWidth, ratioWidth);
+        abilityStateMeter.setBounds(
+            Math.max(SHARED_EXECUTION_X + margin, playerHud.x - bespokeMeterWidth
+                - (bespokeMeterWidth > 0f ? layout.meterHudGap : 0f)
+                - resourceWidth - layout.meterHudGap),
+            centeredMeterY(meterCenterY, resourceHeight),
+            resourceWidth,
+            resourceRowHeight);
+    }
+
+    static float centeredMeterY(float hudCenterY, float meterHeight) {
+        return hudCenterY - meterHeight / 2f;
     }
 
     /** Returns null outside team planning so execution keeps its primary-fighter meters. */

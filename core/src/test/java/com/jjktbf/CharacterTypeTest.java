@@ -384,7 +384,7 @@ class CharacterTypeTest {
     }
 
     @Test
-    void shikigamiRequiresPositiveBaseCeDrain() {
+    void shikigamiRequiresNonNegativeBaseCeDrain() {
         CharacterData shikigami = new CharacterData();
         shikigami.id = "000006";
         shikigami.name = "D";
@@ -394,14 +394,20 @@ class CharacterTypeTest {
         assertThrows(IllegalArgumentException.class, () -> shikigami.constructTypedCharacter(
             shikigami.toCharacterStats(), java.util.List.of(), java.util.List.of()));
 
-        shikigami.baseCeDrainPerTick = 0.0;
+        shikigami.baseCeDrainPerTick = -0.5;
         assertThrows(IllegalArgumentException.class, () -> shikigami.constructTypedCharacter(
             shikigami.toCharacterStats(), java.util.List.of(), java.util.List.of()));
+
+        shikigami.baseCeDrainPerTick = 0.0;
+        Character zeroDrain = shikigami.constructTypedCharacter(
+            shikigami.toCharacterStats(), java.util.List.of(), java.util.List.of());
+        assertInstanceOf(ShikigamiCharacter.class, zeroDrain);
+        assertEquals(0.0, zeroDrain.getBaseCeDrainPerTick());
     }
 
     @Test
-    void cursedSpiritMovesRequireAnExplicitCursedEnergyTag() {
-        assertThrows(IllegalStateException.class, () -> new Move.Builder("UNCURSED")
+    void cursedSpiritMovesDoNotRequireACursedEnergyTag() {
+        assertDoesNotThrow(() -> new Move.Builder("UNCURSED")
             .name("Uncursed")
             .moveType(MoveType.CURSED_SPIRIT)
             .category(MoveCategory.PHYSICAL_CURSED_ENERGY)
@@ -419,16 +425,11 @@ class CharacterTypeTest {
     }
 
     private static Move move(String id, MoveType type) {
-        Move.Builder builder = new Move.Builder(id)
+        return new Move.Builder(id)
             .name(id)
             .moveType(type)
             .category(MoveCategory.UTILITY)
-            .freeMove(true);
-        if (type == MoveType.CURSED_SPIRIT) {
-            builder.tags(java.util.Set.of(
-                com.jjktbf.model.move.MoveTag.UTILITY,
-                com.jjktbf.model.move.MoveTag.CURSED_ENERGY));
-        }
-        return builder.build();
+            .freeMove(true)
+            .build();
     }
 }

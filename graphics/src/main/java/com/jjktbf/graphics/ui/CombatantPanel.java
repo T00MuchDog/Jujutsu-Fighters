@@ -185,6 +185,10 @@ public class CombatantPanel {
         return spriteBounds.y + spriteBounds.height / 2f;
     }
 
+    public float hudCenterY() {
+        return hudBounds.y + hudBounds.height / 2f;
+    }
+
     public float spriteHeight() { return spriteBounds.height; }
 
     /** Visible pixel height, excluding padding in the sprite's texture canvas. */

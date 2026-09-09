@@ -24,6 +24,8 @@ import com.jjktbf.model.combat.CombatEvent;
 import com.jjktbf.model.combat.CombatResolver;
 import com.jjktbf.model.combat.RandomSource;
 import com.jjktbf.model.combat.SeededRandomSource;
+import com.jjktbf.model.move.BlockStyle;
+import com.jjktbf.model.move.DefenseType;
 import com.jjktbf.model.move.HitComponent;
 import com.jjktbf.model.move.Move;
 import com.jjktbf.model.move.MoveCategory;
@@ -400,6 +402,36 @@ class IdleTransfigurationAbilityTest {
         assertEquals("Mahito's Soul Manipulation activates. TARGET resists. Mahito "
             + "gains a deeper understanding of TARGET's soul.",
             attempts(events).get(0).getMessage());
+    }
+
+    @Test
+    void dedicatedIdleTransfigurationMoveCanBeDodged() {
+        DefenseResolution resolution = resolveTouchAgainst(DefenseType.DODGE);
+
+        assertTrue(resolution.events().stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_DODGED));
+        assertTrue(attempts(resolution.events()).isEmpty());
+        assertFalse(resolution.defender().isDefeated());
+    }
+
+    @Test
+    void dedicatedIdleTransfigurationMoveCanBeParried() {
+        DefenseResolution resolution = resolveTouchAgainst(DefenseType.PARRY);
+
+        assertTrue(resolution.events().stream().anyMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_PARRIED));
+        assertTrue(attempts(resolution.events()).isEmpty());
+        assertFalse(resolution.defender().isDefeated());
+    }
+
+    @Test
+    void dedicatedIdleTransfigurationMoveConnectsThroughBlockAndRunsItsEffect() {
+        DefenseResolution resolution = resolveTouchAgainst(DefenseType.BLOCK);
+
+        assertTrue(resolution.events().stream().noneMatch(event ->
+            event.getType() == CombatEvent.Type.MOVE_BLOCKED
+                || event.getType() == CombatEvent.Type.MOVE_BLOCK_REDUCED));
+        assertEquals(1, attempts(resolution.events()).size());
     }
 
     @Test
@@ -886,6 +918,10 @@ class IdleTransfigurationAbilityTest {
 
     /** The dedicated technique move: 0 damage, soul-damaging touch, coded row. */
     private static Move idleTransfigurationTouch() {
+        return idleTransfigurationTouch(true);
+    }
+
+    private static Move idleTransfigurationTouch(boolean neverMiss) {
         MoveEffectData soulRow = AbilityEffectType.CODED_MOVE_ACTION.createDefaultMoveEffect();
         soulRow.effectId = "effect-000000";
         soulRow.trigger = MoveEffectTrigger.ON_HIT.name();
@@ -899,17 +935,63 @@ class IdleTransfigurationAbilityTest {
             .category(MoveCategory.INNATE_TECHNIQUE)
             .tags(Set.of(MoveTag.ATTACK, MoveTag.INNATE_TECHNIQUE))
             .basePower(0)
-            .neverMiss(true)
+            .neverMiss(neverMiss)
             .apCost(1)
             .unleashPoint(1)
             .hitComponents(List.of(new HitComponent(
-                0, Set.of(MoveTag.INNATE_TECHNIQUE, MoveTag.MELEE), 0, false, true,
+                0, Set.of(MoveTag.INNATE_TECHNIQUE, MoveTag.MELEE, MoveTag.GUARD_BREAK),
+                0, false, true,
                 1.0, List.of(), false, 0, true)))
             .effects(List.of(soulRow))
             .requiredTechniqueId("Idle Transfiguration")
             .prerequisites(Map.of("cursedTechniqueMastery", 20))
             .build();
     }
+
+    private static DefenseResolution resolveTouchAgainst(DefenseType defenseType) {
+        Move touch = idleTransfigurationTouch(false);
+        Move defense = defense(defenseType);
+        BattleCombatant mahito = mahitoKnowing(touch);
+        BattleCombatant defender = new BattleCombatant(new SorcererCharacter(
+            "TARGET", "TARGET", stats(80), null, List.of(defense)));
+        BattleState state = new BattleState(mahito, defender);
+
+        BattlePlan defensePlan = new BattlePlan(defender.getMaxApBar(), defender.getCurrentCe());
+        assertNotNull(defensePlan.place(defense, 1, 0));
+        defender.setTimeline(defensePlan.toLegacyTimeline());
+
+        BattlePlan attackPlan = new BattlePlan(mahito.getMaxApBar(), mahito.getCurrentCe());
+        var attack = attackPlan.place(touch, 2, 0);
+        assertNotNull(attack);
+        attack.setTargets(List.of(defender.getInstanceId()));
+        mahito.setTimeline(attackPlan.toLegacyTimeline());
+
+        state.transitionTo(BattleState.Phase.RESOLUTION);
+        List<CombatEvent> events = new CombatResolver(
+            new SequenceRandom(0.0, 0.5, 0.99)).resolveRound(state);
+        return new DefenseResolution(defender, events);
+    }
+
+    private static Move defense(DefenseType defenseType) {
+        Move.Builder builder = new Move.Builder(defenseType.name())
+            .name(defenseType.name())
+            .category(MoveCategory.DEFENSIVE)
+            .defenseType(defenseType)
+            .blockDuration(5)
+            .apCost(1)
+            .unleashPoint(1);
+        if (defenseType == DefenseType.DODGE) {
+            builder.dodgeChance(100).dodgeScope("BOTH");
+        } else if (defenseType == DefenseType.BLOCK) {
+            builder.blockStyle(BlockStyle.PERCENTAGE).blockDamageReduction(100);
+        }
+        return builder.build();
+    }
+
+    private record DefenseResolution(
+        BattleCombatant defender,
+        List<CombatEvent> events
+    ) { }
 
     /** Touch whose coded soul row is followed by one more on-hit row. */
     private static Move touchWithFollowUpRow() {

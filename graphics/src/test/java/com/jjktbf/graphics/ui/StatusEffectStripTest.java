@@ -67,4 +67,18 @@ class StatusEffectStripTest {
 
         assertEquals(2, strip.size());
     }
+
+    @Test
+    void bleedSnapshotsPreserveIndependentExpiryGroups() {
+        StatusEffectStrip strip = new StatusEffectStrip();
+        strip.setEffects(List.of(
+            new StatusEffectState("BLEED", "Bleed", 0, 60, 0.0),
+            new StatusEffectState("BLEED", "Bleed", 0, 60, 0.0),
+            new StatusEffectState("BLEED", "Bleed", 0, 40, 0.0),
+            new StatusEffectState("BLEED", "Bleed", 0, 20, 0.0),
+            new StatusEffectState("BLEED", "Bleed", 0, 20, 0.0)));
+
+        assertEquals(3, strip.size());
+        assertEquals("BLEED", StatusEffectStrip.shortLabel(StatusEffectType.BLEED, "ignored"));
+    }
 }

@@ -112,12 +112,32 @@
     "description": "Defeat a cursed spirit with cursed power rather than leaving it at 1 HP after fatal ordinary physical damage."
   },
   {
+    "term": "ELECTRIC",
+    "description": "A hit tag with independent 10% chances to stun the target's current action and inflict a 60-tick Bleed wound on connection, including through Block. Deals double damage to Wet targets."
+  },
+  {
     "term": "GUARD BREAK",
     "description": "A move tag that bypasses Block but not Parry or Dodge."
   },
   {
     "term": "GUARD_BREAK",
     "description": "A move tag that bypasses Block but not Parry or Dodge."
+  },
+  {
+    "term": "GUARD PENETRATE",
+    "description": "A hit tag that halves effective Block reduction, including flat reduction and full blocks. A 100% block becomes 50%. Does not affect Parry or Dodge; Guard Break takes precedence."
+  },
+  {
+    "term": "GUARD_PENETRATE",
+    "description": "A hit tag that halves effective Block reduction, including flat reduction and full blocks. A 100% block becomes 50%. Does not affect Parry or Dodge; Guard Break takes precedence."
+  },
+  {
+    "term": "PIERCING",
+    "description": "A hit tag that automatically grants Guard Penetrate and has a 10% chance to inflict a 60-tick Bleed wound on connection, including through Block. Each damage tag rolls independently."
+  },
+  {
+    "term": "SLASHING",
+    "description": "A hit tag with a 30% chance to inflict a 60-tick Bleed wound on connection, including through Block. Each damage tag rolls independently."
   },
   {
     "term": "HEAVY",
@@ -449,7 +469,15 @@
   },
   {
     "term": "POISON",
-    "description": "A status that multiplies all base stats by 0.8 and deals 0.06% max-HP damage each active tick."
+    "description": "A status that multiplies all base stats by 0.8 and deals 0.06% max-HP damage each active tick. Cured on the recipient when a healing move resolves."
+  },
+  {
+    "term": "BLEED",
+    "description": "A bodily injury that stacks up to five wounds across all attackers. Each wound defaults to 60 AP ticks and deals 0.04% max-HP damage per active tick after actions, including its application tick. Every eligible hit can apply a wound. Wounds expire independently; reapplication at five stacks replaces the oldest wound. Healing moves cure all Bleed, Poison, and Burned on their recipient, even at full HP."
+  },
+  {
+    "term": "BURNED",
+    "description": "A bodily injury that halves outgoing melee damage and deals 0.03% max-HP damage each active tick. Cured on the recipient when a healing move resolves."
   },
   {
     "term": "RCT",

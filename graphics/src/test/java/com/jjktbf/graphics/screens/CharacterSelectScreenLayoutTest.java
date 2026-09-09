@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CharacterSelectScreenLayoutTest {
+    private static final float REFERENCE_TECHNIQUE_HEIGHT = 329f;
+
     private final Graphics previousGraphics = Gdx.graphics;
     private final GL20 previousGl = Gdx.gl;
 
@@ -53,7 +55,7 @@ class CharacterSelectScreenLayoutTest {
         assertEquals(new Rectangle(36f, 36f, 512f, 1267f), bounds.roster);
         assertEquals(new Rectangle(562f, 36f, 1962f, 1267f), bounds.detail);
         assertEquals(new Rectangle(586f, 639f, 1914f, 580f), bounds.summary);
-        assertEquals(new Rectangle(586f, 274f, 1914f, 349f), bounds.technique);
+        assertEquals(new Rectangle(586f, 274f, 1914f, REFERENCE_TECHNIQUE_HEIGHT), bounds.technique);
         assertEquals(new Rectangle(586f, 60f, 1914f, 198f), bounds.moves);
         assertEquals(new Rectangle(601f, 75f, 1884f, 81f), bounds.moveViewport);
     }
@@ -96,7 +98,9 @@ class CharacterSelectScreenLayoutTest {
         assertFalse(bounds.summary.overlaps(bounds.technique));
         assertFalse(bounds.technique.overlaps(bounds.moves));
         assertEquals(580f, bounds.summary.height, 0.001f);
-        assertTrue(bounds.technique.height >= 349f - 0.001f);
+        assertTrue(bounds.technique.height >= REFERENCE_TECHNIQUE_HEIGHT - 0.001f,
+            () -> "Technique height at " + width + "x" + height + ": " + bounds.technique.height
+                + "; expected at least " + REFERENCE_TECHNIQUE_HEIGHT);
         assertEquals(198f, bounds.moves.height, 0.001f);
         assertInside(bounds.moves, bounds.moveViewport);
         assertEquals(81f, bounds.moveViewport.height, 0.001f);

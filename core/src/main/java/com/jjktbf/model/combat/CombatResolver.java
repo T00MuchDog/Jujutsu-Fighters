@@ -43,10 +43,14 @@ public class CombatResolver {
 
     private static final double BURNED_MAX_HP_DAMAGE_PER_TICK = 0.0003;
     private static final double POISON_MAX_HP_DAMAGE_PER_TICK = 0.0006;
+    private static final double BLEED_MAX_HP_DAMAGE_PER_STACK_PER_TICK = 0.0004;
     private static final double FIRE_BURN_CHANCE = 0.10;
     private static final double ICE_FREEZE_CHANCE = 0.05;
     private static final double WET_ICE_FREEZE_CHANCE = 0.50;
     private static final double ELECTRIC_STUN_CHANCE = 0.10;
+    private static final double ELECTRIC_BLEED_CHANCE = 0.10;
+    private static final double PIERCING_BLEED_CHANCE = 0.10;
+    private static final double SLASHING_BLEED_CHANCE = 0.30;
     private static final double[] RESTRAINT_MIN_BREAKOUT_CHANCES = {
         0.10, 0.06, 0.035, 0.02, 0.01, 0.006, 0.003, 0.0015, 0.0008, 0.0005
     };
@@ -404,6 +408,12 @@ public class CombatResolver {
             // every tick it is active — including its application and expiry
             // ticks.
             processStatusCeMaintenances(state, tick, events);
+            if (finishBattleIfNeeded(state, events, tick)) return events;
+            // Wounds damage after actions and before duration tick-down: a new
+            // 60-tick wound receives exactly 60 installments, while a healing
+            // move can close it before this tick's installment is charged.
+            processDamagingStatus(state, tick, events, StatusEffectType.BLEED,
+                BLEED_MAX_HP_DAMAGE_PER_STACK_PER_TICK);
             if (finishBattleIfNeeded(state, events, tick)) return events;
             processTimelineEffectExpiry(state, tick, events);
             if (finishBattleIfNeeded(state, events, tick)) return events;
@@ -2077,7 +2087,7 @@ public class CombatResolver {
                 componentIndex, tick, events, execution);
             events.addAll(abilityActivations.process(state, AbilityTrigger.move(
                 AbilityTrigger.Type.MOVE_BLOCKED, attacker, defender, move, tick)));
-            resolveElementalHit(
+            resolveHitTagReactions(
                 state, attacker, defender, move, component, componentIndex, tick, events);
             return true;
         }
@@ -2155,7 +2165,7 @@ public class CombatResolver {
             wakeFromSleep(state, attacker, defender, move, componentIndex, tick, events);
         }
 
-        resolveElementalHit(
+        resolveHitTagReactions(
             state, attacker, defender, move, component, componentIndex, tick, events);
 
         if (result.isBlackFlash()) {
@@ -2349,7 +2359,7 @@ public class CombatResolver {
             AbilityTrigger.Type.STATUS_REMOVED, user, StatusEffectType.FROZEN, tick)));
     }
 
-    private void resolveElementalHit(
+    private void resolveHitTagReactions(
         BattleState state,
         BattleCombatant attacker,
         BattleCombatant defender,
@@ -2371,7 +2381,7 @@ public class CombatResolver {
                 defender.getCharacter().getName() + " dried after being hit by fire!",
                 events);
             if (rng.nextDouble() < FIRE_BURN_CHANCE) {
-                applyElementalStatus(
+                applyHitTagStatus(
                     state, attacker, defender, move, componentIndex, tick,
                     new StatusEffect(StatusEffectType.BURNED, 1, 0.0), events);
             }
@@ -2386,7 +2396,7 @@ public class CombatResolver {
             double freezeChance = defender.hasEffect(StatusEffectType.WET)
                 ? WET_ICE_FREEZE_CHANCE : ICE_FREEZE_CHANCE;
             if (rng.nextDouble() < freezeChance) {
-                applyElementalStatus(
+                applyHitTagStatus(
                     state, attacker, defender, move, componentIndex, tick,
                     new StatusEffect(StatusEffectType.FROZEN, -1, 0, 0.0), events);
             }
@@ -2398,7 +2408,7 @@ public class CombatResolver {
                 StatusEffectType.BURNED,
                 defender.getCharacter().getName() + "'s Burned status was cured by water!",
                 events);
-            applyElementalStatus(
+            applyHitTagStatus(
                 state, attacker, defender, move, componentIndex, tick,
                 new StatusEffect(StatusEffectType.WET, 1, 0.0), events);
         }
@@ -2413,9 +2423,26 @@ public class CombatResolver {
                     + ", who could not move.")
                 .build());
         }
+
+        // Each damage tag rolls independently, just like the elemental riders.
+        // A hit may open multiple wounds; the status system owns the stack cap.
+        for (MoveTag tag : List.of(MoveTag.ELECTRIC, MoveTag.PIERCING, MoveTag.SLASHING)) {
+            double chance = switch (tag) {
+                case ELECTRIC -> ELECTRIC_BLEED_CHANCE;
+                case PIERCING -> PIERCING_BLEED_CHANCE;
+                case SLASHING -> SLASHING_BLEED_CHANCE;
+                default -> 0.0;
+            };
+            if (component.hasTag(tag) && rng.nextDouble() < chance) {
+                applyHitTagStatus(
+                    state, attacker, defender, move, componentIndex, tick,
+                    new StatusEffect(StatusEffectType.BLEED, 0,
+                        StatusEffectType.BLEED.defaultDurationTicks(), 0.0), events);
+            }
+        }
     }
 
-    private void applyElementalStatus(
+    private void applyHitTagStatus(
         BattleState state,
         BattleCombatant source,
         BattleCombatant target,
@@ -2425,8 +2452,8 @@ public class CombatResolver {
         StatusEffect status,
         List<CombatEvent> events
     ) {
-        if (target.hasEffect(status.getType())
-            || !target.addStatusEffect(status, state.getCurrentPhase())) {
+        if ((status.getType().maxStacks() == 1 && target.hasEffect(status.getType()))
+            || !target.addStatusEffect(status, state.getCurrentPhase(), source)) {
             return;
         }
         events.add(CombatEvent.of(CombatEvent.Type.STATUS_APPLIED)

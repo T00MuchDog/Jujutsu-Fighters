@@ -585,9 +585,27 @@
       ]
     },
     {
+      "id": "ct-ten-shadows-rise",
+      "name": "Ten Shadows Shared Summoning Ink",
+      "description": "One near-black irregular pool, rounded liquid columns, then a quick sink. No creature, aura or portal.",
+      "placement": "source-feet",
+      "role": "utility",
+      "sheet": "sprites/ct-ten-shadows-rise.png",
+      "frameCount": 24,
+      "frameDurationMs": 50,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.1458333333
+      ],
+      "impactFrames": [
+        16
+      ]
+    },
+    {
       "id": "ct-white-dog",
       "name": "Summon White Dog",
-      "description": "An ivory wolf with the red triangular forehead mark steps out of liquid shadow.",
+      "description": "The Divine Dogs hand sign above the shared abstract liquid-shadow rise.",
       "moveIds": [
         "000030"
       ],
@@ -595,20 +613,20 @@
       "role": "utility",
       "sheet": "sprites/ct-white-dog.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-black-dog",
       "name": "Summon Black Dog",
-      "description": "A charcoal wolf gathers from the ink, red three-part forehead mark and yellow eyes first.",
+      "description": "The Divine Dogs hand sign above the shared abstract liquid-shadow rise.",
       "moveIds": [
         "000031"
       ],
@@ -616,20 +634,20 @@
       "role": "utility",
       "sheet": "sprites/ct-black-dog.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-summon-nue",
       "name": "Summon Nue",
-      "description": "Rust-orange feathers unfurl around a toothed ivory mask; violet current runs through the wings.",
+      "description": "Nue's crossed wrists and fanned fingers above the shared abstract liquid-shadow rise.",
       "moveIds": [
         "000035"
       ],
@@ -637,20 +655,20 @@
       "role": "utility",
       "sheet": "sprites/ct-summon-nue.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-summon-toad",
       "name": "Summon Toad",
-      "description": "The broad green toad rises belly-first, exposing pale eyes and its stomach seal.",
+      "description": "Toad's opposed curved fingers and meeting thumbs above the shared abstract liquid-shadow rise.",
       "moveIds": [
         "000036"
       ],
@@ -658,20 +676,20 @@
       "role": "utility",
       "sheet": "sprites/ct-summon-toad.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-summon-serpent",
       "name": "Summon Great Serpent",
-      "description": "A huge ivory snake uncoils from shadow, dark forehead seal and yellow belly plates visible.",
+      "description": "Great Serpent's overlapping palms and raised thumb above the shared abstract liquid-shadow rise.",
       "moveIds": [
         "000037"
       ],
@@ -679,20 +697,20 @@
       "role": "utility",
       "sheet": "sprites/ct-summon-serpent.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-summon-totality",
       "name": "Summon Divine Dog Totality",
-      "description": "The larger hunched wolf rises on long ivory forearms, with black mane, white cheeks, and red forehead seal.",
+      "description": "The authorized Divine Dogs hand sign above the shared abstract liquid-shadow rise; no wolf emergence.",
       "moveIds": [
         "000038"
       ],
@@ -700,20 +718,20 @@
       "role": "utility",
       "sheet": "sprites/ct-summon-totality.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-summon-winged-toads",
       "name": "Summon Toad/Nue Fusion",
-      "description": "Three green toads with pale feathered wings lift out of the same ink pool.",
+      "description": "The authorized Nue then Toad hand-sign sequence above the same liquid-shadow rise, without a longer summon.",
       "moveIds": [
         "000039"
       ],
@@ -721,20 +739,20 @@
       "role": "utility",
       "sheet": "sprites/ct-summon-winged-toads.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {
       "id": "ct-summon-elephant",
       "name": "Summon Max Elephant",
-      "description": "Pink Max Elephant emerges with red ear rims, short tusks and gold circular tattoos.",
+      "description": "Max Elephant's layered horizontal hands above the shared abstract liquid-shadow rise.",
       "moveIds": [
         "000040"
       ],
@@ -742,14 +760,14 @@
       "role": "utility",
       "sheet": "sprites/ct-summon-elephant.png",
       "frameCount": 24,
-      "frameDurationMs": 40,
+      "frameDurationMs": 50,
       "loop": false,
       "anchor": [
         0.5,
         0.5
       ],
       "impactFrames": [
-        12
+        16
       ]
     },
     {

@@ -135,7 +135,7 @@
   "id" : "000004",
   "name" : "Ratio Reinforcement",
   "flavourText" : "Even ordinary cursed-energy reinforcement can briefly reveal the seven-to-three weak point.",
-  "mechanicText" : "Set RATIO STACK capacity. Connected REINFORCEMENT ATTACKS have a chance to apply RATIO, bypassing BLOCK and reducing DEFENSE to 30% for that hit.",
+  "mechanicText" : "Set RATIO STACK capacity. Connected REINFORCEMENT ATTACKS have a chance to apply RATIO, bypassing BLOCK and reducing DEFENSE to 30%, capped at 35 effective DEFENSE for that hit.",
   "category" : "ACTIVE",
   "sourceType" : "TECHNIQUE",
   "sourceValue" : "Ratio",
@@ -173,7 +173,8 @@
     "codedFeature" : "REINFORCEMENT_RATIO",
     "codedParameters" : {
       "stackCapacity" : 3,
-      "defensePercent" : 30
+      "defensePercent" : 30,
+      "effectiveDefenseCap" : 35
     },
     "masteryProgression" : {
       "stackCapacity" : {
@@ -879,7 +880,7 @@
   }, {
     "condition" : {
       "type" : "ROUND_REACHED",
-      "round" : 6
+      "round" : 4
     },
     "targetEffectIds" : [ "effect-000006", "effect-000007", "effect-000008", "effect-000009", "effect-000010", "effect-000011" ]
   } ],

@@ -22,15 +22,13 @@ import java.util.Map;
  * <p>Shikigami are simple, offense-first summons: a desummon (self-dismissal)
  * move plus a handful of attacks, occasionally a utility move. This archetype
  * makes them play that way — press with attacks, prefer the hardest-hitting and
- * effect-bearing options, respect the opponent's committed melee/ranged dodges
+ * effect-bearing options, respect the opponent's available melee/ranged dodges
  * and blocks, spread attacks across the round, spend the AP bar, and bail out
  * (desummon) when nearly dead or on a small random chance.
  *
- * <p><b>"The AI knows the player's moves."</b> The opponent's committed plan is
- * readable here because the player's team plan is attached to combatants before
- * the AI is invoked (see {@code BattleController#runPlanningPhase}). This
- * archetype uses that to count the player's pending melee/ranged dodges and
- * blocks and factor them into attack selection.
+ * <p><b>"The AI knows the player's moves."</b> The opponent's authored move pool
+ * is readable here. This archetype uses currently available melee/ranged dodge
+ * and block options and factors them into attack selection.
  *
  * <p><b>Selection</b> is weighted-random by a per-attack score, so the strongest
  * option is favoured but the AI still varies round to round (less robotic than a
@@ -125,7 +123,7 @@ public class ShikigamiAIStrategy implements AIStrategy {
 
         // --- Random desummon bail: fight through the round, then leave. ---
         // Desummon is a utility move (defensive board), so it never collides with
-        // the attacks above. Place it at the end so committed attacks fire first;
+        // the attacks above. Place it at the end so the attacks fire first;
         // if nothing was picked, leave immediately (tick 1).
         if (bailForDesummon && desummon != null) {
             int ceCost = ai.computeMoveCeCost(desummon);
@@ -186,7 +184,7 @@ public class ShikigamiAIStrategy implements AIStrategy {
     /**
      * Relative attractiveness of one attack: raw damage (authored base power ×
      * the attacker's power for the move's category), boosted when the move
-     * carries effect rows, and dampened by the opponent's committed defenses
+     * carries effect rows, and dampened by the opponent's available defenses
      * that would negate or reduce it.
      */
     static double scoreAttack(Move move, BattleCombatant ai, OpponentDefenses defenses) {
@@ -194,38 +192,31 @@ public class ShikigamiAIStrategy implements AIStrategy {
         int power = Math.max(1, PowerCalculator.compute(
             move.getCategory(), ai.getEffectiveStats(), ai.getStatMode()));
         double score = (double) basePower * power;
-        if (hasMeaningfulEffects(move)) {
-            score *= EFFECT_BONUS;
-        }
+        score *= SmartAIScoring.effectMultiplier(move);
         return score * defensePenalty(move, defenses);
-    }
-
-    /** Whether a move carries any authored effect rows (on-hit tech, buffs, ...). */
-    private static boolean hasMeaningfulEffects(Move move) {
-        List<MoveEffectData> effects = move.getEffects();
-        return effects != null && !effects.isEmpty();
     }
 
     /**
      * Multiplier in (0, 1] that reduces an attack's score when the opponent has
-     * committed defenses it would apply to: melee-scoped dodges penalise melee
+     * available defenses it would apply to: melee-scoped dodges penalise melee
      * attacks, ranged-scoped dodges penalise ranged attacks, and any block/parry
      * penalises both mildly (a block only reduces damage, it doesn't negate it).
      */
     private static double defensePenalty(Move move, OpponentDefenses defenses) {
-        boolean melee = move.hasTag("MELEE");
-        boolean ranged = move.hasTag("RANGED");
+        boolean melee = move.isMelee();
+        boolean ranged = move.isRanged();
+        int meleeDodge = Math.min(1, defenses.meleeDodge);
+        int rangedDodge = Math.min(1, defenses.rangedDodge);
+        int blockers = Math.min(1, defenses.blockParry);
         if (melee && !ranged) {
-            return 1.0 / (1.0 + DODGE_WEIGHT * defenses.meleeDodge
-                                + BLOCK_WEIGHT * defenses.blockParry);
+            return 1.0 / (1.0 + DODGE_WEIGHT * meleeDodge + BLOCK_WEIGHT * blockers);
         }
         if (ranged && !melee) {
-            return 1.0 / (1.0 + DODGE_WEIGHT * defenses.rangedDodge
-                                + BLOCK_WEIGHT * defenses.blockParry);
+            return 1.0 / (1.0 + DODGE_WEIGHT * rangedDodge + BLOCK_WEIGHT * blockers);
         }
         // Both range tags or neither: average the dodge exposure.
-        double dodgeExposure = (defenses.meleeDodge + defenses.rangedDodge) * 0.5;
-        return 1.0 / (1.0 + DODGE_WEIGHT * dodgeExposure + BLOCK_WEIGHT * defenses.blockParry);
+        double dodgeExposure = (meleeDodge + rangedDodge) * 0.5;
+        return 1.0 / (1.0 + DODGE_WEIGHT * dodgeExposure + BLOCK_WEIGHT * blockers);
     }
 
     // -------------------------------------------------------------------------
@@ -234,16 +225,16 @@ public class ShikigamiAIStrategy implements AIStrategy {
 
     /**
      * Count the melee/ranged dodges and blocks/parries in the opponent's
-     * committed plan. Returns zeros when there is no opponent or no plan yet.
+     * available arsenal. Returns zeros when there is no opponent or no moves.
      * Delegates to the shared {@link OpponentIntel} so every archetype reads the
      * opponent the same way.
      */
     static OpponentDefenses countOpponentDefenses(BattleCombatant opponent) {
         OpponentIntel intel = OpponentIntel.forOpponent(opponent);
         OpponentDefenses d = new OpponentDefenses();
-        d.meleeDodge = intel.committedMeleeDodge;
-        d.rangedDodge = intel.committedRangedDodge;
-        d.blockParry = intel.committedBlock + intel.committedParry;
+        d.meleeDodge = intel.availableMeleeDodge;
+        d.rangedDodge = intel.availableRangedDodge;
+        d.blockParry = intel.availableBlock + intel.availableParry;
         return d;
     }
 
@@ -261,7 +252,7 @@ public class ShikigamiAIStrategy implements AIStrategy {
         return false;
     }
 
-    /** Pending defenses read from the opponent's committed plan. */
+    /** Defense options read from the opponent's currently available arsenal. */
     static final class OpponentDefenses {
         int meleeDodge;
         int rangedDodge;
@@ -278,12 +269,9 @@ public class ShikigamiAIStrategy implements AIStrategy {
     private static final double RANDOM_DESUMMON_CHANCE = 0.02;
     /** Chance to also commit a non-desummon utility move when one exists. */
     private static final double UTILITY_CHANCE = 0.10;
-    /** Attacks carrying effect rows are weighted this much higher. */
-    private static final double EFFECT_BONUS = 1.5;
-    /** Per matching opponent dodge, an attack's score divides by {@code 1 + this·count}. */
-    private static final double DODGE_WEIGHT = 0.6;
-    /** Per opponent block/parry, an attack's score divides by {@code 1 + this·count}. */
-    private static final double BLOCK_WEIGHT = 0.25;
+    /** Matchup discounts for available options, not known active defenses. */
+    private static final double DODGE_WEIGHT = SmartAIScoring.DODGE_WEIGHT;
+    private static final double BLOCK_WEIGHT = SmartAIScoring.AVAILABLE_BLOCK_WEIGHT;
     /** Floor so even a weak attack has a small chance to be picked. */
     private static final double MIN_WEIGHT = 0.5;
 }

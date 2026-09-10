@@ -113,7 +113,7 @@
   },
   {
     "term": "ELECTRIC",
-    "description": "A hit tag with independent 10% chances to stun the target's current action and inflict a 60-tick Bleed wound on connection, including through Block. Deals double damage to Wet targets."
+    "description": "A hit tag with a 10% chance to stun the target's current action on connection, including through Block. Deals double damage to Wet targets."
   },
   {
     "term": "GUARD BREAK",
@@ -209,7 +209,7 @@
   },
   {
     "term": "RATIO",
-    "description": "The Ratio technique's 7:3 weak point, which bypasses Block and calculates one hit against 30% Defense."
+    "description": "The Ratio technique's 7:3 weak point, which bypasses Block and calculates one hit against 30% Defense, capped at 35 effective Defense."
   },
   {
     "term": "RATIO STACK",

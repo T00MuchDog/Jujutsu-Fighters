@@ -33,10 +33,12 @@ public final class RatioAbility implements CodedAbilityRuntime {
     public static final int STACK_DURATION_TICKS = 50;
     public static final double STACK_TRIGGER_CHANCE = 0.70;
     public static final double DEFENSE_MULTIPLIER = 0.3;
+    public static final int EFFECTIVE_DEFENSE_CAP = 35;
     public static final String STACK_CAPACITY = "stackCapacity";
     public static final String STACK_DURATION_PARAMETER = "stackDurationTicks";
     public static final String TRIGGER_CHANCE_PERCENT = "triggerChancePercent";
     public static final String DEFENSE_PERCENT = "defensePercent";
+    public static final String EFFECTIVE_DEFENSE_CAP_PARAMETER = "effectiveDefenseCap";
 
     private final BattleCombatant owner;
     private final Map<String, List<CodedAbilityBinding>> bindingsByFeature;
@@ -88,9 +90,13 @@ public final class RatioAbility implements CodedAbilityRuntime {
         int defensePercent = TechniqueMasteryResolver.codedParameter(
             effect.getCodedParameters(), DEFENSE_PERCENT,
             (int) Math.round(DEFENSE_MULTIPLIER * 100));
+        int effectiveDefenseCap = TechniqueMasteryResolver.codedParameter(
+            effect.getCodedParameters(), EFFECTIVE_DEFENSE_CAP_PARAMETER,
+            EFFECTIVE_DEFENSE_CAP);
         int created = 0;
         while (created < requested && stacks.size() < capacity) {
-            stacks.add(new RatioStack(defender, duration, triggerChance, defensePercent));
+            stacks.add(new RatioStack(
+                defender, duration, triggerChance, defensePercent, effectiveDefenseCap));
             created++;
         }
         if (created == 0) return List.of();
@@ -158,14 +164,27 @@ public final class RatioAbility implements CodedAbilityRuntime {
             message
         ));
         int defensePercent = 100;
+        int effectiveDefenseCap = Integer.MAX_VALUE;
         if (directRatio) defensePercent = Math.min(defensePercent,
             TechniqueMasteryResolver.codedParameter(
                 directEffect.getCodedParameters(), DEFENSE_PERCENT, 30));
-        if (stackRatio) defensePercent = Math.min(defensePercent, consumed.defensePercent);
+        if (directRatio) effectiveDefenseCap = Math.min(effectiveDefenseCap,
+            TechniqueMasteryResolver.codedParameter(
+                directEffect.getCodedParameters(), EFFECTIVE_DEFENSE_CAP_PARAMETER,
+                EFFECTIVE_DEFENSE_CAP));
+        if (stackRatio) {
+            defensePercent = Math.min(defensePercent, consumed.defensePercent);
+            effectiveDefenseCap = Math.min(
+                effectiveDefenseCap, consumed.effectiveDefenseCap);
+        }
         if (reinforcementRatio) defensePercent = Math.min(defensePercent,
             featureParameter(REINFORCEMENT_RATIO, DEFENSE_PERCENT, 30));
+        if (reinforcementRatio) effectiveDefenseCap = Math.min(effectiveDefenseCap,
+            featureParameter(REINFORCEMENT_RATIO, EFFECTIVE_DEFENSE_CAP_PARAMETER,
+                EFFECTIVE_DEFENSE_CAP));
         return ratioApplied
-            ? new CodedHitModifiers(true, defensePercent / 100.0, events)
+            ? new CodedHitModifiers(
+                true, defensePercent / 100.0, effectiveDefenseCap, events)
             : new CodedHitModifiers(false, 1.0, events);
     }
 
@@ -273,17 +292,20 @@ public final class RatioAbility implements CodedAbilityRuntime {
         private int remainingTicks;
         private final int triggerChancePercent;
         private final int defensePercent;
+        private final int effectiveDefenseCap;
 
         private RatioStack(
             BattleCombatant target,
             int remainingTicks,
             int triggerChancePercent,
-            int defensePercent
+            int defensePercent,
+            int effectiveDefenseCap
         ) {
             this.target = target;
             this.remainingTicks = remainingTicks;
             this.triggerChancePercent = triggerChancePercent;
             this.defensePercent = defensePercent;
+            this.effectiveDefenseCap = effectiveDefenseCap;
         }
     }
 

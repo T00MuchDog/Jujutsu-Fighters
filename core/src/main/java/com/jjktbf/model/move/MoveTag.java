@@ -232,7 +232,7 @@ public enum MoveTag {
     /** Ice damage-type hit modifier. Ice hits can freeze, cure Burned, and react with Wet. */
     ICE,
 
-    /** Electric hits independently have 10% chances to stun and inflict Bleed, and deal more damage to Wet targets. */
+    /** Electric damage-type hit modifier. Electric hits can stun and deal more damage to Wet targets. */
     ELECTRIC,
 
     /** Fire damage-type hit modifier. Fire hits can burn and cure Frozen and Wet. */

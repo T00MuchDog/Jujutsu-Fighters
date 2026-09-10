@@ -24,6 +24,52 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SmartAIScoringTest {
 
     @Test
+    void defensesWithoutMatchingThreatsHaveNoValue() {
+        OpponentIntel unarmed = OpponentIntel.forOpponent(AIFixtures.sorcerer("unarmed"));
+        assertEquals(0, SmartAIScoring.defenseValue(AIFixtures.dodge("d", "BOTH"), unarmed));
+        assertEquals(0, SmartAIScoring.defenseValue(AIFixtures.parry("p"), unarmed));
+        OpponentIntel ranged = OpponentIntel.forOpponent(
+            AIFixtures.sorcerer("ranged", AIFixtures.rangedAttack("shot", 20, 10)));
+        assertEquals(0, SmartAIScoring.defenseValue(AIFixtures.dodge("melee", "MELEE"), ranged));
+    }
+
+    @Test
+    void dodgeReliabilityMattersAndDefenseOptionCountsAreCapped() {
+        Move unreliable = dodgeWithChance("unreliable", 10);
+        Move reliable = dodgeWithChance("reliable", 90);
+        Move attack = AIFixtures.rangedAttack("shot", 20, 10);
+        OpponentIntel threat = OpponentIntel.forOpponent(AIFixtures.sorcerer("enemy", attack));
+        assertTrue(SmartAIScoring.defenseValue(reliable, threat)
+            > SmartAIScoring.defenseValue(unreliable, threat));
+        OpponentIntel one = OpponentIntel.forOpponent(AIFixtures.sorcerer("one", reliable));
+        OpponentIntel two = OpponentIntel.forOpponent(AIFixtures.sorcerer("two", reliable, unreliable));
+        assertEquals(SmartAIScoring.dodgeExposureMultiplier(attack, one),
+            SmartAIScoring.dodgeExposureMultiplier(attack, two));
+    }
+
+    @Test
+    void resourceCostsDoNotEarnTheBeneficialEffectBonus() {
+        com.jjktbf.model.move.MoveEffectData cost =
+            com.jjktbf.model.character.AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.createDefaultMoveEffect();
+        cost.trigger = "ON_START";
+        cost.target = "SELF";
+        cost.sourceResourceKey = "AMMO";
+        cost.sourceResourceAmount = 1;
+        cost.targetResourceAmount = 0;
+        Move attack = new Move.Builder("costly").name("costly").category(MoveCategory.PHYSICAL)
+            .tags(Set.of(MoveTag.ATTACK, MoveTag.PHYSICAL)).basePower(20)
+            .apCost(10).unleashPoint(1).effects(List.of(cost)).build();
+        assertEquals(1.0, SmartAIScoring.effectMultiplier(attack));
+    }
+
+    private static Move dodgeWithChance(String id, int chance) {
+        return new Move.Builder(id).name(id).category(MoveCategory.DEFENSIVE)
+            .tags(Set.of(MoveTag.DEFENSIVE))
+            .defenseType(com.jjktbf.model.move.DefenseType.DODGE)
+            .dodgeScope("BOTH").dodgeChance(chance).apCost(5).unleashPoint(1).build();
+    }
+
+    @Test
     void blockUsefulnessIsPositiveWhenItCoversAnOpponentAttack() {
         BattleCombatant physicalOpp = AIFixtures.sorcerer("opp",
             AIFixtures.meleeAttack("punch", 20, 10));
@@ -67,12 +113,11 @@ class SmartAIScoringTest {
     }
 
     @Test
-    void meleeAttackIsPenalisedByCommittedMeleeDodges() {
+    void meleeAttackIsPenalisedByAvailableMeleeDodges() {
         Move meleeDodge = AIFixtures.dodge("mDodge", "MELEE");
         BattleCombatant opp = AIFixtures.sorcerer("opp", meleeDodge, AIFixtures.meleeAttack("p", 20, 10));
-        AIFixtures.commitTimeline(opp, 60, meleeDodge);
         OpponentIntel intel = OpponentIntel.forOpponent(opp);
-        assertEquals(1, intel.committedMeleeDodge);
+        assertEquals(1, intel.availableMeleeDodge);
 
         double meleeMult = SmartAIScoring.dodgeExposureMultiplier(AIFixtures.meleeAttack("m", 20, 10), intel);
         double rangedMult = SmartAIScoring.dodgeExposureMultiplier(AIFixtures.rangedAttack("r", 20, 10), intel);

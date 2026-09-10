@@ -581,8 +581,7 @@ Parent type tags are normally synchronized from the union of component type tags
                           to 50% when the target is WET. An ICE hit always cures
                           BURNED.
     ELECTRIC              A connected hit has a 10% chance to stun the target's
-                          current action and a separate 10% chance to inflict a
-                          60-tick BLEED wound. Damage is doubled against WET targets.
+                          current action. Damage is doubled against WET targets.
     FIRE                  A connected hit has a 10% chance to apply BURNED for one
                           round and always cures FROZEN and WET. A FROZEN combatant
                           may use a FIRE move; successfully firing it also cures the

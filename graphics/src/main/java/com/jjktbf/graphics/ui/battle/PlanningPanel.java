@@ -105,7 +105,7 @@ public class PlanningPanel {
     private final int ceOutput;
     private final com.jjktbf.model.character.AbilityApplicator.AbilityFlags abilityFlags;
     private final Map<String, Integer> authoritativeCeCosts;
-    private final Set<String> reinforcedPaletteMoves = new java.util.HashSet<>();
+    private Set<String> reinforcedPaletteMoves = new LinkedHashSet<>();
     private final BattleCombatant localCombatant;
     private BattleState localBattleState;
     private List<CodedAbilityState> abilityStates = List.of();
@@ -317,6 +317,14 @@ public class PlanningPanel {
 
     public void setSoundPlayer(Consumer<SoundCue> soundPlayer) {
         this.soundPlayer = soundPlayer == null ? cue -> {} : soundPlayer;
+    }
+
+    /** Uses battle-scoped preferences so move-card reinforcement survives planner rebuilds. */
+    public void bindReinforcementPreferences(Set<String> preferences) {
+        reinforcedPaletteMoves = preferences == null ? new LinkedHashSet<>() : preferences;
+        for (MoveCardView card : cards) {
+            card.setReinforced(isPaletteReinforced(card.getMove()));
+        }
     }
 
     public void setBattleState(BattleState state) {
@@ -1457,7 +1465,7 @@ public class PlanningPanel {
     }
 
     private boolean isPaletteReinforced(Move move) {
-        return move != null && reinforcedPaletteMoves.contains(move.getId());
+        return canReinforce(move) && reinforcedPaletteMoves.contains(move.getId());
     }
 
     private int reinforcementCeCost(Move move) {

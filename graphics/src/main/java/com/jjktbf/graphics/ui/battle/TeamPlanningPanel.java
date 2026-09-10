@@ -25,8 +25,10 @@ import com.jjktbf.multiplayer.protocol.StatusEffectState;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /** Persistent per-combatant planning pages submitted as one atomic team plan. */
@@ -572,6 +574,16 @@ public final class TeamPlanningPanel {
     public String activePageName() { return pages.get(activePage).name(); }
     public PlanningPanel activePlanningPanel() { return active(); }
     public String activeActorId() { return active().getActorId(); }
+
+    /** Binds each combatant page to its battle-scoped reinforcement preferences. */
+    public void bindReinforcementPreferences(Map<String, Set<String>> preferences) {
+        if (preferences == null) return;
+        for (Page page : pages) {
+            String actorId = page.panel().getActorId();
+            page.panel().bindReinforcementPreferences(
+                preferences.computeIfAbsent(actorId, ignored -> new LinkedHashSet<>()));
+        }
+    }
 
     public void previousPage() {
         if (pages.size() > 1) {

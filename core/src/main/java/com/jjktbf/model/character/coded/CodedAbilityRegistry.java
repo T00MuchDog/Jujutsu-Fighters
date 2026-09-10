@@ -218,7 +218,9 @@ public final class CodedAbilityRegistry {
             return List.of(
                 integer(RatioAbility.STACK_CAPACITY, "Ratio stack capacity", 1, 99,
                     RatioAbility.MAX_STACKS),
-                percent(RatioAbility.DEFENSE_PERCENT, "Defense remaining %", 1, 100, 30));
+                percent(RatioAbility.DEFENSE_PERCENT, "Defense remaining %", 1, 100, 30),
+                integer(RatioAbility.EFFECTIVE_DEFENSE_CAP_PARAMETER,
+                    "Effective Defense cap", 1, 9999, RatioAbility.EFFECTIVE_DEFENSE_CAP));
         }
         if (CursedSpeechAbility.KEY.equals(normalizedKey)
             && CursedSpeechAbility.REFINED_COMMANDS.equals(normalizedFeature)) {
@@ -277,12 +279,16 @@ public final class CodedAbilityRegistry {
                         RatioAbility.STACK_DURATION_TICKS),
                     percent(RatioAbility.TRIGGER_CHANCE_PERCENT, "Stack trigger chance %", 0, 100,
                         (int) Math.round(RatioAbility.STACK_TRIGGER_CHANCE * 100)),
-                    percent(RatioAbility.DEFENSE_PERCENT, "Defense remaining %", 1, 100, 30));
+                    percent(RatioAbility.DEFENSE_PERCENT, "Defense remaining %", 1, 100, 30),
+                    integer(RatioAbility.EFFECTIVE_DEFENSE_CAP_PARAMETER,
+                        "Effective Defense cap", 1, 9999, RatioAbility.EFFECTIVE_DEFENSE_CAP));
             }
             if (RatioAbility.APPLY_TO_MOVE.equals(normalizedTarget)) {
                 return List.of(
                     percent(RatioAbility.TRIGGER_CHANCE_PERCENT, "Ratio chance %", 0, 100, 100),
-                    percent(RatioAbility.DEFENSE_PERCENT, "Defense remaining %", 1, 100, 30));
+                    percent(RatioAbility.DEFENSE_PERCENT, "Defense remaining %", 1, 100, 30),
+                    integer(RatioAbility.EFFECTIVE_DEFENSE_CAP_PARAMETER,
+                        "Effective Defense cap", 1, 9999, RatioAbility.EFFECTIVE_DEFENSE_CAP));
             }
         }
         if (CursedSpeechAbility.KEY.equals(normalizedKey)

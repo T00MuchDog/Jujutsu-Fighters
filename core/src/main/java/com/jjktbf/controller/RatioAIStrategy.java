@@ -45,7 +45,7 @@ import java.util.Set;
  *       (authored effects, dodge exposure, reinforcement bypass), a boost for a
  *       stack-consuming normal attack, and a large boost when the move's
  *       estimated damage is lethal. Defenses align to the opponent's earliest
- *       committed attack when he is fast enough to contest it.</li>
+ *       anticipated attack when he is fast enough to contest it.</li>
  * </ul>
  *
  * <p>Stack capacity/current counts come from the compiled {@link RatioAbility}
@@ -151,7 +151,7 @@ public class RatioAIStrategy implements AIStrategy {
         // --- Offence with Ratio sequencing. ---
         placeOffence(ai, opponent, plan, intel, marks, strikes, normals, profile, stacks, rng);
 
-        // --- Defenses aligned to the opponent's earliest committed threat. ---
+        // --- Defenses aligned to the opponent's earliest anticipated threat. ---
         placeDefenses(ai, opponent, plan, defenses, intel, profile);
         return plan;
     }
@@ -280,8 +280,8 @@ public class RatioAIStrategy implements AIStrategy {
         for (Move d : useful) {
             if (placed >= profile.defenseCap()) break;
             int ceCost = ai.computeMoveCeCost(d);
-            Integer threatFireTick = intel.committedAttackFireTicks.isEmpty()
-                ? null : intel.committedAttackFireTicks.get(0);
+            Integer threatFireTick = intel.anticipatedAttackFireTicks.isEmpty()
+                ? null : intel.anticipatedAttackFireTicks.get(0);
             ActionSegment segment = threatFireTick == null ? null
                 : SmartAIScoring.placeAlignedToThreat(
                     plan, d, ceCost, threatFireTick, ai, opponent);

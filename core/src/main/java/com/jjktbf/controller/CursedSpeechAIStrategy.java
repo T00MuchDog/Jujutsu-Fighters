@@ -28,7 +28,7 @@ import java.util.Set;
  *   <li>Likes to dodge/deflect; support-oriented, not a primary damage dealer.</li>
  *   <li>Higher-damage commands are weighted up once a target drops below 40% HP.</li>
  *   <li><b>Never</b> commits a command whose recoil would kill him.</li>
- *   <li>Status commands are weighted up vs opponents with many committed attacks;
+ *   <li>Status commands are weighted up vs opponents with many anticipated attacks;
  *       damaging commands vs opponents turtling behind defenses.</li>
  *   <li>When Sleep is placed, the next attack is placed at the far end of the
  *       timeline to maximise the disable window.</li>
@@ -211,11 +211,11 @@ public class CursedSpeechAIStrategy implements AIStrategy {
     private static double contextMultiplier(Move move, OpponentIntel intel) {
         double mult = 1.0;
         if (CursedSpeechPlanning.isStatusCommand(move)
-            && intel.committedAttackFireTicks.size() >= STATUS_VS_ATTACKS_THRESHOLD) {
+            && intel.anticipatedAttackFireTicks.size() >= STATUS_VS_ATTACKS_THRESHOLD) {
             mult *= STATUS_VS_ATTACKS_BOOST;
         }
         if (CursedSpeechPlanning.isDamagingCommand(move)
-            && (intel.committedBlock + intel.committedParry) >= DAMAGING_VS_DEFENSES_THRESHOLD) {
+            && (intel.availableBlock + intel.availableParry) >= DAMAGING_VS_DEFENSES_THRESHOLD) {
             mult *= DAMAGING_VS_DEFENSES_BOOST;
         }
         return mult;

@@ -28,6 +28,7 @@ import com.jjktbf.model.move.StatusEffect;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -123,6 +124,39 @@ class RatioTechniqueTest {
             owner, target, ratio, 1, new ConstantRandom(1.0), 1);
         assertTrue(throughBlock.isHit());
         assertTrue(throughBlock.bypassedBlock());
+    }
+
+    @Test
+    void effectiveDefenseCapOnlyBuffsRatioAgainstHighDefenseTargets() {
+        Move capped = directRatioAttack("CAPPED_RATIO", RatioAbility.EFFECTIVE_DEFENSE_CAP);
+        Move uncapped = directRatioAttack("UNCAPPED_RATIO", 9999);
+        BattleCombatant owner = combatant("OWNER", List.of(capped, uncapped));
+
+        BattleCombatant ordinaryTarget = combatant("ORDINARY", List.of());
+        assertTrue(ordinaryTarget.computeCurrentDefense(1) * RatioAbility.DEFENSE_MULTIPLIER
+            < RatioAbility.EFFECTIVE_DEFENSE_CAP);
+        int ordinaryCappedDamage = DamageCalculator.resolve(
+            owner, ordinaryTarget, capped, 1, new ConstantRandom(0.0), 1).getFinalDamage();
+        int ordinaryUncappedDamage = DamageCalculator.resolve(
+            owner, ordinaryTarget, uncapped, 1, new ConstantRandom(0.0), 1).getFinalDamage();
+        assertEquals(ordinaryUncappedDamage, ordinaryCappedDamage,
+            "The cap must not change Ratio damage below 35 effective Defense");
+
+        CharacterStats tankStats = new CharacterStats.Builder()
+            .vitality(140)
+            .durability(180)
+            .cursedEnergyReserves(130)
+            .cursedEnergyOutput(140)
+            .build();
+        BattleCombatant tankTarget = combatant("TANK", List.of(), tankStats);
+        assertTrue(tankTarget.computeCurrentDefense(1) * RatioAbility.DEFENSE_MULTIPLIER
+            > RatioAbility.EFFECTIVE_DEFENSE_CAP);
+        int tankCappedDamage = DamageCalculator.resolve(
+            owner, tankTarget, capped, 1, new ConstantRandom(0.0), 1).getFinalDamage();
+        int tankUncappedDamage = DamageCalculator.resolve(
+            owner, tankTarget, uncapped, 1, new ConstantRandom(0.0), 1).getFinalDamage();
+        assertTrue(tankCappedDamage > tankUncappedDamage,
+            "The 35 effective-Defense cap must increase Ratio damage against tanks");
     }
 
     @Test
@@ -369,8 +403,16 @@ class RatioTechniqueTest {
     }
 
     private static BattleCombatant combatant(String id, List<Move> moves) {
+        return combatant(id, moves, new CharacterStats.Builder().build());
+    }
+
+    private static BattleCombatant combatant(
+        String id,
+        List<Move> moves,
+        CharacterStats stats
+    ) {
         Character character = new SorcererCharacter(
-            id, id, new CharacterStats.Builder().build(), null, moves);
+            id, id, stats, null, moves);
         return new BattleCombatant(character);
     }
 
@@ -388,6 +430,27 @@ class RatioTechniqueTest {
             .neverMiss(true)
             .apCost(10)
             .unleashPoint(1)
+            .build();
+    }
+
+    private static Move directRatioAttack(String id, int effectiveDefenseCap) {
+        StatusEffect ratio = StatusEffect.coded(
+            RatioAbility.KEY,
+            RatioAbility.RATIO_EFFECT,
+            RatioAbility.APPLY_TO_MOVE,
+            null,
+            Map.of(
+                RatioAbility.DEFENSE_PERCENT, 30,
+                RatioAbility.EFFECTIVE_DEFENSE_CAP_PARAMETER, effectiveDefenseCap),
+            Map.of());
+        return new Move.Builder(id)
+            .name(id)
+            .category(MoveCategory.PHYSICAL)
+            .basePower(100)
+            .neverMiss(true)
+            .apCost(10)
+            .unleashPoint(1)
+            .onHitEffects(List.of(ratio))
             .build();
     }
 

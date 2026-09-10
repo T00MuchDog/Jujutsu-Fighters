@@ -406,7 +406,8 @@ public final class DamageCalculator {
         // --- 5/6. Defense + damage formula ---
         // damage = ((basePower × power) after block / defense) × DAMAGE_SCALE × roll
         int rawDamage = applyDamageFormula(attacker, defender, move, component,
-            attackValue, currentTick, rng, codedModifiers.defenseMultiplier());
+            attackValue, currentTick, rng, codedModifiers.defenseMultiplier(),
+            codedModifiers.effectiveDefenseCap());
 
         // --- 7. Black Flash roll ---
         boolean blackFlash = false;
@@ -461,10 +462,12 @@ public final class DamageCalculator {
         double          attackValue,
         int             currentTick,
         RandomSource    rng,
-        double          defenseMultiplier
+        double          defenseMultiplier,
+        int             effectiveDefenseCap
     ) {
-        double defense = Math.max(1.0,
-            target.computeCurrentDefense(currentTick) * defenseMultiplier);
+        double defense = Math.max(1.0, Math.min(
+            target.computeCurrentDefense(currentTick) * defenseMultiplier,
+            effectiveDefenseCap));
 
         double randomRoll = ROLL_MIN + (1.0 - ROLL_MIN) * rng.nextDouble();
         double elementalStatusMultiplier = 1.0;
@@ -514,7 +517,7 @@ public final class DamageCalculator {
             * attacker.getAbilityFlags().basePowerMultiplierFor(move, attacker::getRuntimeStat)
             * power;
         return applyDamageFormula(attacker, attacker, move, component,
-            attackValue, currentTick, rng, 1.0);
+            attackValue, currentTick, rng, 1.0, Integer.MAX_VALUE);
     }
 
     private static HitComponent firstComponent(Move move) {

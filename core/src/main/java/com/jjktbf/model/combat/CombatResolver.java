@@ -48,7 +48,6 @@ public class CombatResolver {
     private static final double ICE_FREEZE_CHANCE = 0.05;
     private static final double WET_ICE_FREEZE_CHANCE = 0.50;
     private static final double ELECTRIC_STUN_CHANCE = 0.10;
-    private static final double ELECTRIC_BLEED_CHANCE = 0.10;
     private static final double PIERCING_BLEED_CHANCE = 0.10;
     private static final double SLASHING_BLEED_CHANCE = 0.30;
     private static final double[] RESTRAINT_MIN_BREAKOUT_CHANCES = {
@@ -2426,9 +2425,8 @@ public class CombatResolver {
 
         // Each damage tag rolls independently, just like the elemental riders.
         // A hit may open multiple wounds; the status system owns the stack cap.
-        for (MoveTag tag : List.of(MoveTag.ELECTRIC, MoveTag.PIERCING, MoveTag.SLASHING)) {
+        for (MoveTag tag : List.of(MoveTag.PIERCING, MoveTag.SLASHING)) {
             double chance = switch (tag) {
-                case ELECTRIC -> ELECTRIC_BLEED_CHANCE;
                 case PIERCING -> PIERCING_BLEED_CHANCE;
                 case SLASHING -> SLASHING_BLEED_CHANCE;
                 default -> 0.0;

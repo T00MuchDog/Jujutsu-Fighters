@@ -10,13 +10,14 @@ public record CodedHitModifiers(
     boolean bypassBlock,
     boolean bypassConventionalDefenses,
     double defenseMultiplier,
+    int effectiveDefenseCap,
     boolean negateHit,
     int recoilDamage,
     List<CombatEvent> events
 ) {
 
     private static final CodedHitModifiers NONE = new CodedHitModifiers(
-        false, false, 1.0, false, 0, List.of());
+        false, false, 1.0, Integer.MAX_VALUE, false, 0, List.of());
 
     /** Source-compatible constructor for coded effects that only alter block/defense. */
     public CodedHitModifiers(
@@ -24,12 +25,37 @@ public record CodedHitModifiers(
         double defenseMultiplier,
         List<CombatEvent> events
     ) {
-        this(bypassBlock, false, defenseMultiplier, false, 0, events);
+        this(bypassBlock, false, defenseMultiplier, Integer.MAX_VALUE, false, 0, events);
+    }
+
+    public CodedHitModifiers(
+        boolean bypassBlock,
+        double defenseMultiplier,
+        int effectiveDefenseCap,
+        List<CombatEvent> events
+    ) {
+        this(bypassBlock, false, defenseMultiplier, effectiveDefenseCap, false, 0, events);
+    }
+
+    /** Source-compatible constructor for coded effects without a Defense cap. */
+    public CodedHitModifiers(
+        boolean bypassBlock,
+        boolean bypassConventionalDefenses,
+        double defenseMultiplier,
+        boolean negateHit,
+        int recoilDamage,
+        List<CombatEvent> events
+    ) {
+        this(bypassBlock, bypassConventionalDefenses, defenseMultiplier,
+            Integer.MAX_VALUE, negateHit, recoilDamage, events);
     }
 
     public CodedHitModifiers {
         if (!Double.isFinite(defenseMultiplier) || defenseMultiplier <= 0) {
             throw new IllegalArgumentException("Defense multiplier must be positive and finite");
+        }
+        if (effectiveDefenseCap <= 0) {
+            throw new IllegalArgumentException("Effective Defense cap must be positive");
         }
         if (recoilDamage < 0) {
             throw new IllegalArgumentException("Recoil damage must be non-negative");
@@ -50,6 +76,7 @@ public record CodedHitModifiers(
             bypassBlock || other.bypassBlock,
             bypassConventionalDefenses || other.bypassConventionalDefenses,
             Math.min(defenseMultiplier, other.defenseMultiplier),
+            Math.min(effectiveDefenseCap, other.effectiveDefenseCap),
             negateHit || other.negateHit,
             Math.addExact(recoilDamage, other.recoilDamage),
             combinedEvents

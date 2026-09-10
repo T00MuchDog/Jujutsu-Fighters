@@ -31,8 +31,8 @@ import java.util.Set;
  *   <li>Ratio sorcerer → {@link RatioAIStrategy} (state-aware effort assessment
  *       and Ratio stack sequencing; routed through {@link #selectTeamPlan}).</li>
  *   <li>Blood Manipulation sorcerer → {@link BloodManipulationAIStrategy}
- *       (cautious blood-economy planning that turns aggressive inside a Flowing
- *       Red Scale window; routed through {@link #selectTeamPlan}).</li>
+ *       (offensive blood-economy planning with setup/follow-up comparison;
+ *       routed through {@link #selectTeamPlan}).</li>
  *   <li>Disaster Plants cursed spirit → {@link HanamiAIStrategy} (Flower Offering
  *       sequencing and durable battlefield control).</li>
  *   <li>Everyone else → {@link GreedyAIStrategy}.</li>
@@ -131,7 +131,9 @@ public class ArchetypeAIStrategy implements AIStrategy {
             if (plan.gridLength() != commonGridLength) {
                 plan = normalise(plan, commonGridLength);
             }
-            plan = SmartAIScoring.promoteGuaranteedKillOpening(state, ai, plan, rng);
+            plan = SmartAIScoring.promoteGuaranteedKillOpening(state, ai, plan, rng,
+                move -> !DISASTER_PLANTS.equalsIgnoreCase(ai.getCharacter().getInnateTechniqueName())
+                    || hanamiStrategy.allowsOpening(state, ai, move));
             alreadyPlanned.clear();
             for (ActionSegment segment : new ArrayList<>(plan.allSegments())) {
                 if (MoveAvailability.restrictionReason(

@@ -67,18 +67,13 @@ class ShikigamiAIStrategyTest {
     }
 
     // -------------------------------------------------------------------------
-    // Opponent-awareness: counting the player's committed defenses
+    // Opponent-awareness: counting available defense options
     // -------------------------------------------------------------------------
 
     @Test
-    void countsMeleeAndRangedDodgesAndBlocksFromTheOpponentsPlan() {
-        BattleCombatant opponent = sorcerer("Opp");
-        Timeline timeline = new Timeline(60);
-        timeline.placeAt(dodge("MD", "MELEE"), 1, 0);   // melee only
-        timeline.placeAt(dodge("RD", "RANGED"), 7, 0);  // ranged only
-        timeline.placeAt(block("BK"), 13, 0);           // block
-        timeline.placeAt(dodge("BD", "BOTH"), 19, 0);   // covers both
-        opponent.setTimeline(timeline);
+    void countsMeleeAndRangedDodgesAndBlocksFromAvailableMoves() {
+        BattleCombatant opponent = shikigami(
+            dodge("MD", "MELEE"), dodge("RD", "RANGED"), block("BK"), dodge("BD", "BOTH"));
 
         ShikigamiAIStrategy.OpponentDefenses defenses =
             ShikigamiAIStrategy.countOpponentDefenses(opponent);
@@ -91,7 +86,7 @@ class ShikigamiAIStrategyTest {
     }
 
     @Test
-    void noOpponentPlanYieldsNoDefenses() {
+    void noOpponentDefenseOptionsYieldsNoDefenses() {
         BattleCombatant opponent = sorcerer("Opp"); // fresh combatant, no timeline
         ShikigamiAIStrategy.OpponentDefenses defenses =
             ShikigamiAIStrategy.countOpponentDefenses(opponent);

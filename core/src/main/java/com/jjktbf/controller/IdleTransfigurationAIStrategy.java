@@ -30,7 +30,7 @@ import java.util.Optional;
  *       placed against one.</li>
  *   <li>Spends the Transfigured Human stock deliberately: the assault only
  *       fires at healthy targets, and a summon appears only when nothing of
- *       his own is fielded and the opponent's committed offence justifies
+ *       his own is fielded and the opponent's anticipated offence justifies
  *       the pressure.</li>
  *   <li>Combos control into transfiguration: a stunning attack placed a
  *       couple of ticks ahead of the touch.</li>
@@ -124,7 +124,7 @@ public class IdleTransfigurationAIStrategy implements AIStrategy {
             }
             boolean fielded = state == null
                 || state.directActiveSummonCount(ai) + state.directPendingSummonCount(ai) > 0;
-            if (kit.summon != null && !fielded && intel.committedAttackFireTicks.size() >= 2
+            if (kit.summon != null && !fielded && intel.anticipatedAttackFireTicks.size() >= 2
                 && plan.canPlace(kit.summon, ai.computeMoveCeCost(kit.summon))) {
                 SmartAIScoring.placeAtOrAfter(
                     plan, kit.summon, ai.computeMoveCeCost(kit.summon), 1);
@@ -390,10 +390,10 @@ public class IdleTransfigurationAIStrategy implements AIStrategy {
             ? kit.counterDefense : kit.evasionDefense;
         if (preferred != null && plan.canPlace(
                 preferred, ai.computeMoveCeCost(preferred))
-                && !intel.committedAttackFireTicks.isEmpty()) {
+                && !intel.anticipatedAttackFireTicks.isEmpty()) {
             SmartAIScoring.placeAlignedToThreat(
                 plan, preferred, ai.computeMoveCeCost(preferred),
-                intel.committedAttackFireTicks.get(0), ai, opponent);
+                intel.anticipatedAttackFireTicks.get(0), ai, opponent);
         }
     }
 

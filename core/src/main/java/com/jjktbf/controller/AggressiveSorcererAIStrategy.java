@@ -29,7 +29,7 @@ import java.util.Set;
  * × dodge/defense exposure × reinforcement/crack bonuses}, composed from the
  * shared {@link SmartAIScoring} factors. When it does defend, it picks the
  * single most useful defense (see {@link SmartAIScoring#defenseValue}) aligned
- * to the opponent's biggest committed attack.
+ * to the opponent's latest anticipated attack.
  */
 public class AggressiveSorcererAIStrategy implements AIStrategy {
 
@@ -197,14 +197,14 @@ public class AggressiveSorcererAIStrategy implements AIStrategy {
             Math.max(1, gridLength / 3), reinforced, reinforcementCeCost);
     }
 
-    /** Align the rare defense to the opponent's biggest committed attack, else bunch at the start. */
+    /** Align the rare defense to the opponent's latest anticipated attack, else bunch at the start. */
     private boolean placeDefense(
         Move move, int ceCost, BattlePlan plan, int gridLength,
         BattleCombatant ai, BattleCombatant opponent, OpponentIntel intel,
         boolean reinforced, int reinforcementCeCost
     ) {
-        if (!intel.committedAttackFireTicks.isEmpty()) {
-            int biggest = intel.committedAttackFireTicks.get(intel.committedAttackFireTicks.size() - 1);
+        if (!intel.anticipatedAttackFireTicks.isEmpty()) {
+            int biggest = intel.anticipatedAttackFireTicks.get(intel.anticipatedAttackFireTicks.size() - 1);
             ActionSegment aligned = SmartAIScoring.placeAlignedToThreat(
                 plan, move, ceCost, biggest, ai, opponent,
                 reinforced, reinforcementCeCost);

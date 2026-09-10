@@ -32,8 +32,6 @@ class HitTagBleedTest {
 
     @Test
     void eachBleedTagUsesItsOwnThreshold() {
-        assertBleedThreshold(MoveTag.ELECTRIC, 0.0999, true);
-        assertBleedThreshold(MoveTag.ELECTRIC, 0.10, false);
         assertBleedThreshold(MoveTag.PIERCING, 0.0999, true);
         assertBleedThreshold(MoveTag.PIERCING, 0.10, false);
         assertBleedThreshold(MoveTag.SLASHING, 0.2999, true);
@@ -41,7 +39,7 @@ class HitTagBleedTest {
     }
 
     @Test
-    void electricStunRollDoesNotReplaceElectricBleedRoll() {
+    void electricCanStunButNeverAppliesBleed() {
         Move electric = attack("ELECTRIC", Set.of(
             MoveTag.PHYSICAL, MoveTag.MELEE, MoveTag.ELECTRIC));
         Move response = new Move.Builder("RESPONSE")
@@ -53,14 +51,14 @@ class HitTagBleedTest {
             .build();
 
         Scenario stun = resolveWithResponse(
-            electric, response, new SequenceRandom(0.5, 0.0, 0.9));
+            electric, response, new SequenceRandom(0.5, 0.0, 0.0));
         assertTrue(stun.responseSegment().isStunned());
         assertEquals(0, woundCount(stun.defender()));
 
-        Scenario bleed = resolveWithResponse(
+        Scenario noStun = resolveWithResponse(
             electric, response, new SequenceRandom(0.5, 0.9, 0.0));
-        assertFalse(bleed.responseSegment().isStunned());
-        assertEquals(1, woundCount(bleed.defender()));
+        assertFalse(noStun.responseSegment().isStunned());
+        assertEquals(0, woundCount(noStun.defender()));
     }
 
     @Test
@@ -80,20 +78,20 @@ class HitTagBleedTest {
             .unleashPoint(1)
             .build();
 
-        // Component 0: damage, stun (fails), electric/piercing/slashing bleed.
+        // Component 0: damage, stun (fails), piercing/slashing bleed.
         // Component 1: damage, slashing bleed.
         Scenario scenario = resolve(move, null, 80, 120,
-            new SequenceRandom(0.5, 0.9, 0.0, 0.0, 0.0, 0.5, 0.0));
+            new SequenceRandom(0.5, 0.9, 0.0, 0.0, 0.5, 0.0));
         List<StatusEffect> wounds = wounds(scenario.defender());
         List<CombatEvent> applied = bleedEvents(scenario.events());
 
         assertEquals(60, StatusEffectType.BLEED.defaultDurationTicks());
-        assertEquals(4, wounds.size());
-        assertEquals(List.of(59, 59, 59, 59),
+        assertEquals(3, wounds.size());
+        assertEquals(List.of(59, 59, 59),
             wounds.stream().map(StatusEffect::getDurationTicks).toList());
-        assertEquals(List.of(0, 0, 0, 1),
+        assertEquals(List.of(0, 0, 1),
             applied.stream().map(CombatEvent::getComponentIndex).toList());
-        assertEquals(4, applied.size());
+        assertEquals(3, applied.size());
         for (StatusEffect wound : wounds) {
             assertSame(scenario.attacker(), scenario.defender()
                 .statusSource(wound).orElseThrow());
@@ -173,11 +171,7 @@ class HitTagBleedTest {
         MoveTag tag, double roll, boolean expected
     ) {
         Move move = attack(tag.name(), Set.of(MoveTag.PHYSICAL, MoveTag.MELEE, tag));
-        double stunRoll = tag == MoveTag.ELECTRIC ? 0.9 : 0.0;
-        double[] rolls = tag == MoveTag.ELECTRIC
-            ? new double[] {0.5, stunRoll, roll}
-            : new double[] {0.5, roll};
-        Scenario scenario = resolve(move, null, 80, 120, new SequenceRandom(rolls));
+        Scenario scenario = resolve(move, null, 80, 120, new SequenceRandom(0.5, roll));
         assertEquals(expected ? 1 : 0, woundCount(scenario.defender()),
             tag + " roll " + roll);
     }

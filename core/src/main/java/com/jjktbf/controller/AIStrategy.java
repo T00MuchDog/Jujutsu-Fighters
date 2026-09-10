@@ -58,6 +58,16 @@ public interface AIStrategy {
      */
     BattlePlan selectPlan(BattleCombatant ai, BattleCombatant opponent, RandomSource rng);
 
+    /** State-aware planning entry for archetypes with round or team-dependent decisions. */
+    default BattlePlan buildPlan(BattleState state, BattleCombatant ai, RandomSource rng) {
+        return selectPlan(ai, state.firstActiveEnemyOf(ai), rng);
+    }
+
+    /** Whether automatic finishing-shot promotion may introduce this move. */
+    default boolean allowsOpening(BattleState state, BattleCombatant ai, Move move) {
+        return true;
+    }
+
     /**
      * Build one team's atomic round plan across every living AI-controlled
      * combatant. The default implementation plans each combatant independently
@@ -81,8 +91,7 @@ public interface AIStrategy {
             aiTeam.isEmpty() ? null : aiTeam.get(0).getTeamId(),
             commonGridLength);
         for (BattleCombatant ai : aiTeam) {
-            BattleCombatant opponent = state.firstActiveEnemyOf(ai);
-            BattlePlan plan = selectPlan(ai, opponent, rng);
+            BattlePlan plan = buildPlan(state, ai, rng);
             plan = SmartAIScoring.pruneRestrictedDomainOpenings(
                 domainLookup(), state, ai, plan);
             plan = SmartAIScoring.promoteDomainOpenings(domainLookup(), state, ai, plan);
@@ -112,7 +121,8 @@ public interface AIStrategy {
                 }
                 plan = normalized;
             }
-            plan = SmartAIScoring.promoteGuaranteedKillOpening(state, ai, plan, rng);
+            plan = SmartAIScoring.promoteGuaranteedKillOpening(state, ai, plan, rng,
+                move -> allowsOpening(state, ai, move));
             alreadyPlannedMoves.clear();
             for (com.jjktbf.model.combat.ActionSegment segment
                 : new java.util.ArrayList<>(plan.allSegments())) {

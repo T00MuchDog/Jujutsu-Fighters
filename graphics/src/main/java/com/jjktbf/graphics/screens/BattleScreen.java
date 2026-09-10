@@ -398,6 +398,7 @@ public class BattleScreen implements Screen, BattleView {
     // ── Planning panel (two-board timeline UI) ─────────────────────────────────
     private PlanningPanel planningPanel;
     private TeamPlanningPanel teamPlanningPanel;
+    private final Map<String, Set<String>> reinforcementPreferences = new HashMap<>();
 
     // ── Shared render state (written by controller thread, read by render) ────
     private volatile BattleCombatant renderPlayer;
@@ -576,6 +577,7 @@ public class BattleScreen implements Screen, BattleView {
         logScrollInputAttached = false;
         planningPanel = null;
         teamPlanningPanel = null;
+        reinforcementPreferences.clear();
         logLines.clear();
         pendingTypingQueue.clear();
         typingLine = null;
@@ -2324,6 +2326,7 @@ public class BattleScreen implements Screen, BattleView {
             planningPanel = new com.jjktbf.graphics.ui.battle.PlanningPanel(
                 gridLength, combatant, List.of(opponent), assets.battleUi,
                 Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            bindReinforcementPreferences(planningPanel);
             planningPanel.setLayout(uiLayout);
             configurePlanningViewport();
             planningPanel.setSoundPlayer(game.audio()::play);
@@ -2411,6 +2414,7 @@ public class BattleScreen implements Screen, BattleView {
                 assets.battleUi,
                 Gdx.graphics.getWidth(),
                 Gdx.graphics.getHeight());
+            teamPlanningPanel.bindReinforcementPreferences(reinforcementPreferences);
             teamPlanningPanel.setLayout(uiLayout);
             configurePlanningViewport();
             teamPlanningPanel.setSoundPlayer(game.audio()::play);
@@ -3288,6 +3292,7 @@ public class BattleScreen implements Screen, BattleView {
             Gdx.graphics.getWidth(),
             Gdx.graphics.getHeight()
         );
+        teamPlanningPanel.bindReinforcementPreferences(reinforcementPreferences);
         teamPlanningPanel.setLayout(uiLayout);
         configurePlanningViewport();
         teamPlanningPanel.setSoundPlayer(game.audio()::play);
@@ -4242,6 +4247,11 @@ public class BattleScreen implements Screen, BattleView {
         }
     }
 
+    private void bindReinforcementPreferences(PlanningPanel panel) {
+        panel.bindReinforcementPreferences(reinforcementPreferences.computeIfAbsent(
+            panel.getActorId(), ignored -> new HashSet<>()));
+    }
+
     private void showLocalPreBattlePlanner(BattleState state) {
         List<BattleCombatant> controlled = visibleCombatants(state.playerTeam());
         if (controlled.isEmpty()) return;
@@ -4253,6 +4263,7 @@ public class BattleScreen implements Screen, BattleView {
             assets.battleUi,
             Gdx.graphics.getWidth(),
             Gdx.graphics.getHeight());
+        teamPlanningPanel.bindReinforcementPreferences(reinforcementPreferences);
         teamPlanningPanel.setLayout(uiLayout);
         teamPlanningPanel.lock();
         teamPlanningPanel.setReadOnly(true);

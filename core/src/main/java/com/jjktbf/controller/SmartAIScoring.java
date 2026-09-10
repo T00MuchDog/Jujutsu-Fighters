@@ -41,7 +41,7 @@ import java.util.List;
  * <ul>
  *   <li>{@link #effectMultiplier} — weight moves carrying effect rows higher.</li>
  *   <li>{@link #dodgeExposureMultiplier} — de-weight an attack when the opponent
- *       has committed matching (melee/ranged) dodges or blocks.</li>
+ *       has matching (melee/ranged) dodge or block options.</li>
  *   <li>{@link #reinforcementAttackMultiplier} — modestly value authored
  *       reinforcement and Black Flash potential.</li>
  *   <li>{@link #defenseValue} — score a defensive move by whether it actually
@@ -59,10 +59,9 @@ final class SmartAIScoring {
     // --- Shared tunables (code-only) ---
     /** Moves carrying effect rows are weighted this much higher. */
     static final double EFFECT_BONUS = 1.5;
-    /** Per matching committed dodge, an attack's score divides by {@code 1 + this·count}. */
-    static final double DODGE_WEIGHT = 0.6;
-    /** Per committed block/parry, an attack's score divides by {@code 1 + this·count}. */
-    static final double COMMITTED_BLOCK_WEIGHT = 0.25;
+    /** Modest matchup discount: owning a dodge does not mean it will be used. */
+    static final double DODGE_WEIGHT = 0.25;
+    static final double AVAILABLE_BLOCK_WEIGHT = 0.10;
     /** Guard-break/intangible attack bonus into an opponent turtling behind blocks/parries. */
     static final double DEFENSE_CRACK_BONUS = 1.5;
     /** Defense multiplier when its potency is below the opponent's strongest attack. */
@@ -99,7 +98,10 @@ final class SmartAIScoring {
 
     private static boolean hasMeaningfulEffects(Move move) {
         List<MoveEffectData> effects = move.getEffects();
-        return effects != null && !effects.isEmpty();
+        return effects != null && effects.stream().anyMatch(effect -> effect != null
+            && !AbilityEffectType.TRANSACT_BOUNDED_RESOURCE.name().equalsIgnoreCase(effect.type)
+            && !AbilityEffectType.CONSUME_BOUNDED_RESOURCE_FOR_BASE_POWER.name()
+                .equalsIgnoreCase(effect.type));
     }
 
     // -------------------------------------------------------------------------
@@ -111,24 +113,25 @@ final class SmartAIScoring {
     }
 
     /**
-     * De-weight an attack according to the opponent's committed defenses:
+     * De-weight an attack according to the opponent's available defenses:
      * melee dodges penalise melee attacks, ranged dodges penalise ranged
-     * attacks, and committed blocks/parries penalise everything mildly.
+     * attacks. Discounts are capped: a large kit is not several active defenses.
      */
     static double dodgeExposureMultiplier(Move attack, OpponentIntel intel) {
         boolean melee = attack.isMelee();
         boolean ranged = attack.isRanged();
-        int blockers = intel.committedBlock + intel.committedParry;
+        int blockers = Math.min(1, intel.availableBlock + intel.availableParry);
         if (melee && !ranged) {
-            return 1.0 / (1.0 + DODGE_WEIGHT * intel.committedMeleeDodge
-                                + COMMITTED_BLOCK_WEIGHT * blockers);
+            return 1.0 / (1.0 + DODGE_WEIGHT * Math.min(1, intel.availableMeleeDodge)
+                                + AVAILABLE_BLOCK_WEIGHT * blockers);
         }
         if (ranged && !melee) {
-            return 1.0 / (1.0 + DODGE_WEIGHT * intel.committedRangedDodge
-                                + COMMITTED_BLOCK_WEIGHT * blockers);
+            return 1.0 / (1.0 + DODGE_WEIGHT * Math.min(1, intel.availableRangedDodge)
+                                + AVAILABLE_BLOCK_WEIGHT * blockers);
         }
-        double dodgeExposure = (intel.committedMeleeDodge + intel.committedRangedDodge) * 0.5;
-        return 1.0 / (1.0 + DODGE_WEIGHT * dodgeExposure + COMMITTED_BLOCK_WEIGHT * blockers);
+        double dodgeExposure = (Math.min(1, intel.availableMeleeDodge)
+            + Math.min(1, intel.availableRangedDodge)) * 0.5;
+        return 1.0 / (1.0 + DODGE_WEIGHT * dodgeExposure + AVAILABLE_BLOCK_WEIGHT * blockers);
     }
 
     /** Modest value for authored reinforcement/Black-Flash potential. */
@@ -141,7 +144,7 @@ final class SmartAIScoring {
      * blocks, intangible bypasses blocks and parries.
      */
     static double defenseCrackMultiplier(Move attack, OpponentIntel intel) {
-        int turtling = intel.committedBlock + intel.committedParry;
+        int turtling = intel.availableBlock + intel.availableParry;
         if (turtling <= 0) return 1.0;
         if (attack.isGuardBreak() || attack.isIntangible()) return DEFENSE_CRACK_BONUS;
         return 1.0;
@@ -181,6 +184,7 @@ final class SmartAIScoring {
      * quality (reduction / full-negation), and guard-break/intangible risk.
      */
     static double defenseValue(Move defense, OpponentIntel intel) {
+        if (intel.attacks.isEmpty()) return 0.0;
         double base;
         if (defense.isBlock()) {
             base = blockUsefulness(defense, intel);
@@ -191,7 +195,7 @@ final class SmartAIScoring {
             base *= 1.2; // a parry fully negates — high value when it can contest
         } else if (defense.isDodge()) {
             base = dodgeScopeRelevance(defense, intel);
-            base *= 1.1;
+            base *= 1.1 * Math.max(0, Math.min(100, defense.getDodgeChance())) / 100.0;
         } else {
             return 0.0; // not an active defense
         }
@@ -208,8 +212,8 @@ final class SmartAIScoring {
             if (attack.isRanged()) oppHasRanged = true;
         }
         return switch (scope) {
-            case "MELEE"  -> oppHasMelee ? 1.0 : 0.2;
-            case "RANGED" -> oppHasRanged ? 1.0 : 0.2;
+            case "MELEE"  -> oppHasMelee ? 1.0 : 0.0;
+            case "RANGED" -> oppHasRanged ? 1.0 : 0.0;
             default       -> 1.0; // BOTH
         };
     }
@@ -332,6 +336,14 @@ final class SmartAIScoring {
     static BattlePlan promoteGuaranteedKillOpening(
         BattleState state, BattleCombatant ai, BattlePlan plan, RandomSource rng
     ) {
+        return promoteGuaranteedKillOpening(state, ai, plan, rng, move -> true);
+    }
+
+    /** Respect an archetype's strategic move reservations when promoting a kill. */
+    static BattlePlan promoteGuaranteedKillOpening(
+        BattleState state, BattleCombatant ai, BattlePlan plan, RandomSource rng,
+        java.util.function.Predicate<Move> allowedOpening
+    ) {
         if (state == null || ai == null || plan == null) return plan;
         List<BattleCombatant> enemies = state.activeEnemiesOf(ai);
         if (enemies.isEmpty()) return plan;
@@ -339,7 +351,7 @@ final class SmartAIScoring {
         List<LethalOpening> lethalOpenings = new ArrayList<>();
         for (Move move : ai.getCharacter().getKnownMoves()) {
             MoveTargeting targeting = MoveTargeting.forMove(move);
-            if (targeting == MoveTargeting.NONE
+            if (!allowedOpening.test(move) || targeting == MoveTargeting.NONE
                 || !MoveAvailability.isAvailable(state, ai, move)
                 || CursedSpeechAbility.commandMode(move) != null) {
                 continue;
@@ -692,7 +704,7 @@ final class SmartAIScoring {
     }
 
     /**
-     * Align a defensive move's fire-tick to a committed opponent attack's
+     * Align a defensive move's fire-tick to an anticipated opponent attack's
      * fire-tick, so its window covers the incoming attack. A same-tick defense
      * only contests if it fires first, which requires the AI to be at least as
      * fast as the opponent (defenses are skipped until they've fired). Returns

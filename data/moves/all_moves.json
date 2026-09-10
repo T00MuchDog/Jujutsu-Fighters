@@ -990,7 +990,8 @@
     "codedParameters" : {
       "stackDurationTicks" : 50,
       "triggerChancePercent" : 70,
-      "defensePercent" : 30
+      "defensePercent" : 30,
+      "effectiveDefenseCap" : 35
     },
     "target" : "ENEMY",
     "masteryProgression" : {
@@ -1063,7 +1064,7 @@
 }, {
   "id" : "000024",
   "name" : "Ratio Strike",
-  "description" : "On a MELEE hit, drive RATIO into the target, bypassing BLOCK and resolving the strike against 30% DEFENSE.",
+  "description" : "On a MELEE hit, drive RATIO into the target, bypassing BLOCK and resolving the strike against 30% DEFENSE, capped at 35 effective DEFENSE.",
   "tags" : [ "PHYSICAL", "INNATE_TECHNIQUE", "CURSED_ENERGY", "ATTACK" ],
   "basePower" : 45,
   "hitComponents" : [ {
@@ -1117,7 +1118,8 @@
     "codedTarget" : "APPLY_TO_MOVE",
     "codedParameters" : {
       "triggerChancePercent" : 100,
-      "defensePercent" : 30
+      "defensePercent" : 30,
+      "effectiveDefenseCap" : 35
     },
     "target" : "ENEMY",
     "trigger" : "ON_HIT",
@@ -5882,7 +5884,8 @@
     "codedTarget" : "APPLY_TO_MOVE",
     "codedParameters" : {
       "triggerChancePercent" : 100,
-      "defensePercent" : 30
+      "defensePercent" : 30,
+      "effectiveDefenseCap" : 35
     },
     "target" : "ENEMY",
     "masteryProgression" : {

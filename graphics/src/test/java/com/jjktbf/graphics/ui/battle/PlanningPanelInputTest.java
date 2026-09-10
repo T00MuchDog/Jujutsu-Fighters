@@ -23,6 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -127,6 +128,26 @@ class PlanningPanelInputTest {
         clickCard(panel.inputProcessor());
 
         assertEquals(List.of(SoundCue.UI_PLAN_PLACE), cues);
+    }
+
+    @Test
+    void reinforcementPreferenceSurvivesPlannerRebuild() {
+        Move move = reinforcedMove("PERSISTENT_REINFORCEMENT");
+        Set<String> preferences = new HashSet<>();
+        PlanningPanel firstRound = reinforcementPanel(move);
+        firstRound.bindReinforcementPreferences(preferences);
+
+        assertTrue(firstRound.inputProcessor().touchDown(
+            50, HEIGHT - 220, 0, Buttons.RIGHT));
+        assertEquals(Set.of(move.getId()), preferences);
+
+        PlanningPanel secondRound = reinforcementPanel(move);
+        secondRound.bindReinforcementPreferences(preferences);
+        clickCard(secondRound.inputProcessor());
+
+        ActionSegment placed = secondRound.getPlan().allSegments().get(0);
+        assertTrue(placed.isReinforced());
+        assertEquals(5, placed.getReinforcementCeCost());
     }
 
     @Test
@@ -591,6 +612,13 @@ class PlanningPanelInputTest {
         );
     }
 
+    private static PlanningPanel reinforcementPanel(Move move) {
+        return new PlanningPanel(
+            300, List.of(move), Map.of(move.getId(), 0), 150, 20, 20,
+            null, null, WIDTH, HEIGHT
+        );
+    }
+
     private static void clickCard(PlanningPanel.PlanningInputProcessor input) {
         input.touchDown(50, HEIGHT - 220, 0, Buttons.LEFT);
         input.touchUp(50, HEIGHT - 220, 0, Buttons.LEFT);
@@ -603,6 +631,20 @@ class PlanningPanelInputTest {
         data.tags = List.of("ATTACK");
         data.apCost = apCost;
         data.unleashPoint = 1;
+        return data.toMove();
+    }
+
+    private static Move reinforcedMove(String id) {
+        MoveData data = new MoveData();
+        data.id = id;
+        data.name = id;
+        data.tags = List.of("ATTACK");
+        data.apCost = 10;
+        data.unleashPoint = 1;
+        data.canBeReinforced = true;
+        data.reinforcementBaseCeCost = 5;
+        data.reinforcementMinCeCost = 5;
+        data.reinforcementMaxCeCost = 5;
         return data.toMove();
     }
 

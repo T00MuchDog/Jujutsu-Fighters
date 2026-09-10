@@ -68,6 +68,10 @@ public final class GameAudio implements Disposable {
         if (disposed) return;
 
         cancelEventMusic();
+        playBackgroundMusic(track);
+    }
+
+    private void playBackgroundMusic(MusicTrack track) {
         if (track == requestedTrack && backgroundMusic == music.get(track)) {
             updateMusicVolumes();
             if (!paused && backgroundMusic != null && !backgroundMusic.isPlaying()) {
@@ -152,6 +156,19 @@ public final class GameAudio implements Disposable {
             return;
         }
         playMusic(playableBattleTrack(requested, music.keySet()));
+    }
+
+    /** Re-selects battle background music without interrupting active event music. */
+    public void refreshBattleMusic() {
+        if (disposed) return;
+        MusicTrack requested = settings.battleMusic().resolveTrack().orElse(null);
+        if (requested == null) {
+            stopBackgroundMusic();
+            requestedTrack = null;
+            updateMusicVolumes();
+            return;
+        }
+        playBackgroundMusic(playableBattleTrack(requested, music.keySet()));
     }
 
     /**

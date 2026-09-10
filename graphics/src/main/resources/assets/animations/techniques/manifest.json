@@ -246,6 +246,132 @@
       ]
     },
     {
+      "id": "ct-gorilla-mode",
+      "name": "Gorilla Mode",
+      "description": "The three cursed-corpse cores exchange emphasis. Panda's pale core yields to the brother's warm core; a broad gorilla crest and blue shoulder surge announce the power form.",
+      "moveIds": [
+        "000085"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-gorilla-mode.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-gorilla-pummel",
+      "name": "Gorilla Pummel",
+      "description": "Three separate heavy brown knuckles in black fur, edged with blue reinforcement. Each contact rushes in from a different angle and has its own recoil.",
+      "moveIds": [
+        "000086"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-gorilla-pummel.png",
+      "frameCount": 54,
+      "frameDurationMs": 30,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        9,
+        27,
+        45
+      ]
+    },
+    {
+      "id": "ct-drumming-beat",
+      "name": "Unblockable Drumming Beat",
+      "description": "One planted Gorilla blow sends successive narrow pressure rings through the body. The vibration continues past the fist while the recipient shudders.",
+      "moveIds": [
+        "000087"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "sheet": "sprites/ct-drumming-beat.png",
+      "frameCount": 30,
+      "frameDurationMs": 30,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-panda-core-return",
+      "name": "Return to Panda Core",
+      "description": "The shoulder energy folds inward as the brother's core recedes and Panda's retained pale core returns to the center. The body settles back into its balanced stance.",
+      "moveIds": [
+        "000088"
+      ],
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-panda-core-return.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        12
+      ]
+    },
+    {
+      "id": "ct-collapse",
+      "name": "Collapse",
+      "description": "After the structural weak point breaks at firing, heavy angular masonry falls onto the resolved recipient. Tumbling slabs give way to chips and low dust at the delayed contact.",
+      "moveIds": [
+        "000151"
+      ],
+      "placement": "target",
+      "role": "attack",
+      "castEffect": "ct-collapse-structure",
+      "sheet": "sprites/ct-collapse.png",
+      "frameCount": 30,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        14
+      ]
+    },
+    {
+      "id": "ct-collapse-structure",
+      "name": "Collapse Structural Weak Point",
+      "description": "A ten-section Ratio line marks nearby masonry. A short reinforced punch strikes the 7:3 point; branching cracks and loosened chunks show the building failing before the delayed debris hit.",
+      "placement": "source",
+      "role": "utility",
+      "sheet": "sprites/ct-collapse-structure.png",
+      "frameCount": 24,
+      "frameDurationMs": 40,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "impactFrames": [
+        10
+      ]
+    },
+    {
       "id": "ct-shadow-pool",
       "name": "Liquid Shadow Aperture",
       "placement": "source",

@@ -1,0 +1,130 @@
+{
+  "motifs": {
+    "panda-core": [
+      {"ellipse":[39,39,57,57],"fill":"#171923","outline":"#8596b1"},
+      {"ellipse":[42,41,55,55],"fill":"#d8d8cf"},
+      {"ellipse":[44,43,48,48],"fill":"#fffbe7"},
+      {"line":[[43,51],[48,54],[52,52]],"fill":"#7d8396","width":2}
+    ],
+    "gorilla-core": [
+      {"ellipse":[39,39,57,57],"fill":"#171923","outline":"#8596b1"},
+      {"ellipse":[42,41,55,55],"fill":"#9d703e"},
+      {"ellipse":[44,43,48,48],"fill":"#f2d6a0"},
+      {"line":[[43,51],[48,54],[52,52]],"fill":"#583c2a","width":2}
+    ],
+    "dormant-core": [
+      {"ellipse":[40,40,56,56],"fill":"#25283c","outline":"#626b7b"},
+      {"ellipse":[44,43,48,47],"fill":"#7d8396"}
+    ],
+    "panda-crest": [
+      {"ellipse":[28,30,41,44],"fill":"#171923","outline":"#6c7483"},
+      {"ellipse":[55,30,68,44],"fill":"#171923","outline":"#6c7483"},
+      {"polygon":[[34,35],[44,31],[54,32],[63,38],[65,51],[58,61],[48,65],[37,61],[30,51],[31,41]],"fill":"#deded4","outline":"#171923","width":2},
+      {"polygon":[[33,47],[36,42],[42,40],[45,44],[43,51],[36,54]],"fill":"#242735"},
+      {"polygon":[[52,44],[56,40],[61,43],[64,49],[58,54],[53,51]],"fill":"#242735"},
+      {"rect":[39,45,41,46],"fill":"#fffbe7"},
+      {"rect":[56,45,58,46],"fill":"#fffbe7"},
+      {"polygon":[[43,53],[53,53],[48,57]],"fill":"#171923"},
+      {"line":[[48,57],[48,60],[44,60]],"fill":"#626b7b"},
+      {"line":[[48,60],[52,60]],"fill":"#626b7b"}
+    ],
+    "gorilla-crest": [
+      {"polygon":[[26,45],[29,34],[36,33],[39,26],[47,30],[54,26],[61,34],[67,34],[71,46],[65,52],[62,65],[50,71],[36,66],[32,55]],"fill":"#20232d","outline":"#8596b1"},
+      {"polygon":[[33,38],[38,32],[45,34],[50,31],[60,37],[64,45],[58,48],[56,54],[39,54],[36,47],[31,45]],"fill":"#deded4"},
+      {"polygon":[[35,42],[44,44],[43,48],[36,47]],"fill":"#242735"},
+      {"polygon":[[51,44],[61,41],[59,47],[52,48]],"fill":"#242735"},
+      {"line":[[38,45],[41,46]],"fill":"#a26091"},
+      {"line":[[54,46],[58,44]],"fill":"#a26091"},
+      {"polygon":[[39,51],[46,48],[54,50],[59,56],[56,64],[47,66],[38,61]],"fill":"#a4a69f","outline":"#171923"},
+      {"polygon":[[43,51],[52,51],[49,55],[45,55]],"fill":"#252833"},
+      {"line":[[40,58],[47,60],[56,57]],"fill":"#171923","width":2},
+      {"line":[[42,58],[47,59],[54,57]],"fill":"#fffbe7"}
+    ],
+    "reinforced-knuckles": [
+      {"polygon":[[10,40],[22,33],[35,36],[42,29],[51,29],[57,31],[63,30],[70,34],[76,34],[81,41],[80,54],[75,61],[63,65],[49,63],[39,66],[28,61],[13,63]],"fill":"#142438","outline":"#83bde1","width":2},
+      {"polygon":[[12,42],[22,36],[34,39],[40,35],[46,42],[47,56],[39,63],[29,58],[14,60]],"fill":"#22252c"},
+      {"polygon":[[15,43],[28,40],[33,44],[42,43],[39,52],[30,51],[25,55],[14,56]],"fill":"#3d4049"},
+      {"polygon":[[39,39],[44,32],[51,32],[55,36],[62,33],[68,38],[75,37],[78,43],[77,52],[71,58],[60,62],[49,60],[42,63],[36,56]],"fill":"#896037","outline":"#171923"},
+      {"polygon":[[42,38],[47,34],[51,35],[53,44],[46,47],[40,44]],"fill":"#b28a50"},
+      {"polygon":[[55,38],[61,35],[65,39],[67,47],[57,49]],"fill":"#b28a50"},
+      {"polygon":[[68,41],[73,39],[76,44],[74,51],[69,53]],"fill":"#b28a50"},
+      {"polygon":[[37,53],[45,47],[56,50],[60,55],[56,59],[45,57],[42,61]],"fill":"#a67742","outline":"#503824"},
+      {"line":[[44,37],[49,36]],"fill":"#e0bf85","width":2},
+      {"line":[[57,39],[62,38]],"fill":"#e0bf85","width":2},
+      {"line":[[69,43],[73,43]],"fill":"#e0bf85"},
+      {"line":[[42,54],[46,51],[53,53]],"fill":"#d8b379"},
+      {"line":[[78,40],[82,45],[80,54],[75,60]],"fill":"#d6eeff"}
+    ],
+    "knuckle-speed": [
+      {"polygon":[[4,37],[34,39],[34,41],[9,40]],"fill":"#6497c5"},
+      {"polygon":[[0,48],[31,46],[31,49],[5,51]],"fill":"#d6eeff"},
+      {"polygon":[[8,61],[33,55],[35,57],[14,64]],"fill":"#6497c5"}
+    ],
+    "body-resonance": [
+      {"ellipse":[37,22,59,74],"outline":"#294a70","width":3},
+      {"ellipse":[39,23,58,73],"outline":"#9ecae9","width":2},
+      {"line":[[49,23],[55,29],[58,41]],"fill":"#edf8ff","width":2},
+      {"line":[[57,57],[53,68],[48,72]],"fill":"#edf8ff","width":2}
+    ],
+    "shoulder-surge": [
+      {"polygon":[[9,67],[17,41],[30,31],[24,20],[40,32],[38,40],[24,47],[18,66]],"fill":"#294a70"},
+      {"line":[[12,64],[20,44],[33,34],[29,29]],"fill":"#9ecae9","width":2},
+      {"polygon":[[87,67],[79,41],[66,31],[72,20],[56,32],[58,40],[72,47],[78,66]],"fill":"#294a70"},
+      {"line":[[84,64],[76,44],[63,34],[67,29]],"fill":"#9ecae9","width":2}
+    ]
+  },
+  "effects": [
+    {
+      "id":"ct-gorilla-mode","name":"Gorilla Mode","moveIds":["000085"],"family":"panda","placement":"source","role":"utility","frames":24,"frameDurationMs":40,"impact":12,
+      "description":"The three cursed-corpse cores exchange emphasis. Panda's pale core yields to the brother's warm core; a broad gorilla crest and blue shoulder surge announce the power form.",
+      "art":[
+        {"kind":"art:shoulder-surge","scale":[0.5,1.1],"time":[0.36,1],"fadeOut":0.3},
+        {"kind":"art:dormant-core","x":48,"y":75,"scale":0.65,"alpha":0.6,"time":[0,0.85]},
+        {"kind":"art:panda-core","x":{"keys":[[0,48],[0.35,48],[0.7,26],[1,26]]},"y":59,"scale":[1.2,0.65],"time":[0,0.9]},
+        {"kind":"art:gorilla-core","x":{"keys":[[0,70],[0.35,70],[0.7,48],[1,48]]},"y":59,"scale":[0.65,1.25],"time":[0,0.96]},
+        {"kind":"art:panda-crest","y":30,"scale":[0.7,0.48],"time":[0,0.46]},
+        {"kind":"art:gorilla-crest","y":30,"scale":[0.45,0.95],"time":[0.38,1]},
+        {"kind":"star","palette":"bone","y":59,"scale":[0.08,0.42],"time":[0.46,0.65]}
+      ],
+      "profile":{"durationSeconds":0.96,"impactSeconds":0.48,"size":1.2,"source":[{"at":0},{"at":0.26,"scaleX":0.96,"scaleY":0.92},{"at":0.5,"scaleX":1.1,"scaleY":1.04},{"at":0.72,"scaleX":1.06},{"at":1,"easing":"smooth"}],"background":[{"at":0},{"at":0.42,"red":0.72,"green":0.8,"blue":0.94},{"at":1,"easing":"smooth"}]}
+    },
+    {
+      "id":"ct-gorilla-pummel","name":"Gorilla Pummel","moveIds":["000086"],"family":"panda","placement":"target","role":"attack","contacts":3,"frames":18,"frameDurationMs":30,"impact":9,
+      "description":"Three separate heavy brown knuckles in black fur, edged with blue reinforcement. Each contact rushes in from a different angle and has its own recoil.",
+      "art":[
+        {"kind":"art:knuckle-speed","x":[30,48],"rotate":-15,"contactRotation":15,"time":[0.08,0.58]},
+        {"kind":"art:body-resonance","scale":[0.1,0.85],"scaleX":1.8,"x":57,"time":[0.49,0.95]},
+        {"kind":"art:reinforced-knuckles","x":{"keys":[[0,20],[0.5,43],[0.64,44],[1,28]]},"scale":{"keys":[[0,0.68],[0.5,1],[0.7,1],[1,0.78]]},"rotate":[-22,-16],"contactRotation":16,"time":[0.08,0.92],"fadeOut":0.25},
+        {"kind":"star","palette":"bone","x":65,"scale":[0.16,0.6],"contactRotation":22,"time":[0.49,0.72]}
+      ],
+      "profile":{"durationSeconds":0.54,"impactSeconds":0.27,"size":1.25,"source":[{"at":0},{"at":0.2,"x":-0.07,"rotation":4},{"at":0.5,"x":0.38,"rotation":-6},{"at":0.69,"x":0.24},{"at":1,"easing":"smooth"}],"target":[{"at":0},{"at":0.49},{"at":0.55,"x":0.12,"rotation":-6,"scaleX":0.95},{"at":0.73,"x":0.06},{"at":1,"easing":"smooth"}]}
+    },
+    {
+      "id":"ct-drumming-beat","name":"Unblockable Drumming Beat","moveIds":["000087"],"family":"panda","placement":"target","role":"attack","frames":30,"frameDurationMs":30,"impact":12,
+      "description":"One planted Gorilla blow sends successive narrow pressure rings through the body. The vibration continues past the fist while the recipient shudders.",
+      "art":[
+        {"kind":"art:knuckle-speed","x":[17,44],"scale":1.1,"time":[0.1,0.45]},
+        {"kind":"art:reinforced-knuckles","x":{"keys":[[0,17],[0.47,43],[0.72,44],[1,32]]},"scale":[0.78,1.16],"time":[0.08,0.77],"fadeOut":0.25},
+        {"kind":"star","palette":"bone","x":64,"scale":[0.2,0.85],"time":[0.38,0.53]},
+        {"kind":"art:body-resonance","x":[44,76],"scale":[0.55,1.1],"time":[0.38,0.78]},
+        {"kind":"art:body-resonance","x":[43,77],"scale":[0.4,0.96],"time":[0.47,0.89]},
+        {"kind":"art:body-resonance","x":[43,76],"scale":[0.24,0.78],"time":[0.56,1]}
+      ],
+      "profile":{"durationSeconds":0.9,"impactSeconds":0.36,"size":1.55,"source":[{"at":0},{"at":0.24,"x":-0.12,"scaleY":0.94,"rotation":5},{"at":0.4,"x":0.42,"rotation":-7},{"at":0.64,"x":0.34,"rotation":-5},{"at":1,"easing":"smooth"}],"target":[{"at":0},{"at":0.39},{"at":0.43,"x":0.12,"scaleX":0.89,"rotation":-3},{"at":0.49,"x":0.08,"scaleX":1.04,"rotation":2},{"at":0.55,"x":0.15,"scaleX":0.93,"rotation":-2},{"at":0.62,"x":0.1,"scaleX":1.02},{"at":0.72,"x":0.13,"scaleX":0.98},{"at":1,"easing":"smooth"}],"background":[{"at":0},{"at":0.39},{"at":0.43,"x":0.004,"red":0.82,"green":0.88},{"at":0.49,"x":-0.003},{"at":0.56,"x":0.002},{"at":0.7},{"at":1}]}
+    },
+    {
+      "id":"ct-panda-core-return","name":"Return to Panda Core","moveIds":["000088"],"family":"panda","placement":"source","role":"utility","frames":24,"frameDurationMs":40,"impact":12,
+      "description":"The shoulder energy folds inward as the brother's core recedes and Panda's retained pale core returns to the center. The body settles back into its balanced stance.",
+      "art":[
+        {"kind":"art:shoulder-surge","scale":[1.05,0.35],"time":[0,0.65],"fadeOut":0.35},
+        {"kind":"art:dormant-core","x":48,"y":75,"scale":0.65,"alpha":0.6,"time":[0,0.85]},
+        {"kind":"art:gorilla-core","x":{"keys":[[0,48],[0.35,48],[0.7,70],[1,70]]},"y":59,"scale":[1.25,0.65],"time":[0,0.9]},
+        {"kind":"art:panda-core","x":{"keys":[[0,26],[0.35,26],[0.7,48],[1,48]]},"y":59,"scale":[0.65,1.2],"time":[0,0.96]},
+        {"kind":"art:gorilla-crest","y":30,"scale":[0.95,0.45],"time":[0,0.46]},
+        {"kind":"art:panda-crest","y":30,"scale":[0.48,0.85],"time":[0.38,1]},
+        {"kind":"star","palette":"bone","y":59,"scale":[0.08,0.32],"time":[0.46,0.65]}
+      ],
+      "profile":{"durationSeconds":0.96,"impactSeconds":0.48,"size":1.2,"source":[{"at":0},{"at":0.23,"scaleX":1.04,"scaleY":0.98},{"at":0.5,"scaleX":0.95,"scaleY":0.95},{"at":0.72,"scaleY":0.98},{"at":1,"easing":"smooth"}]}
+    }
+  ]
+}

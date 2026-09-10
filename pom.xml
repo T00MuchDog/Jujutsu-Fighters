@@ -32,7 +32,7 @@
 
     <properties>
         <!-- AUTHORITATIVE VERSION: edit this one value to release. -->
-        <revision>1.4.1</revision>
+        <revision>1.5.3</revision>
 
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>

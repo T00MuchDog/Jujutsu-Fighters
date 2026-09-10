@@ -210,6 +210,18 @@ compatibility handshake rather than failing midway through event decoding.
 
 ## Supplied Coverage
 
+The complete catalog now covers **all 140 authored moves** (2026-09-10). Audit the
+current repository, including editor-added moves and first-pack binding precedence:
+
+```bash
+python3 scripts/check_move_animation_coverage.py
+```
+
+This reports missing IDs/names and checks sheet paths, cast effects, and choreography
+references. Intentional older bindings shadowed by an earlier pack are counted
+separately. The audit follows current move IDs rather than pinning editable stats,
+costs, or effect compositions.
+
 The imported pack binds 44 existing move IDs, including all 31 Sorcerer moves in
 the supplied export, technique examples, and shadow summons. It also binds the
 Black Flash event. Sidestep, Evasive Dash, and Out of the way have distinct fighter
@@ -307,6 +319,28 @@ spirit-type/technique coverage, unique bindings/sheets, RGBA transparency and gr
 without pinning editable move costs, powers, effect rows, or character stats.
 
 ## Implementation And Verification
+
+### Panda Cores And Ratio Collapse
+
+The final five uncovered moves have dedicated sheets and choreography in the
+`techniques` pack:
+
+- Gorilla Mode `000085` and Return to Panda Core `000088`: paired three-core
+  transitions with Panda/Gorilla crests, outward/inward shoulder energy and stance
+  changes. Each lasts 0.96s, with the switch marker at 0.48s.
+- Gorilla Pummel `000086`: three isolated reinforced-knuckle contacts, each 0.54s
+  with a 0.27s hit marker, using the existing resolved-component slicing.
+- Unblockable Drumming Beat `000087`: a heavy punch followed by pressure rings
+  passing through the recipient and a diminishing vibration recoil (0.9s).
+- Collapse `000151`: `castEffect: "ct-collapse-structure"` breaks a Ratio-marked
+  wall on `MOVE_FIRED` (0.96s). Its separate debris sheet plays on the resolved
+  delayed hit (1.2s, contact at 0.56s).
+
+Authoring data is in `scripts/animation_art/techniques/panda.json` and
+`ratio-collapse.json`. The existing technique exporter regenerates all six sheets,
+bindings, profiles and the `panda.png` / `ratio.png` review boards. Reference
+decisions and the audit are documented in
+[`docs/animations/techniques/MOVE_COVERAGE.md`](docs/animations/techniques/MOVE_COVERAGE.md).
 
 ### Blood Manipulation Pair
 

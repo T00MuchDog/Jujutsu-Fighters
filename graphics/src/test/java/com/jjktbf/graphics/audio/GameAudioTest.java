@@ -188,6 +188,37 @@ class GameAudioTest {
     }
 
     @Test
+    void changingBattleMusicKeepsEventMusicAndChangesWhatResumesAfterIt() {
+        FakeMusic firstBackground = new FakeMusic();
+        FakeMusic nextBackground = new FakeMusic();
+        FakeMusic event = new FakeMusic();
+        GameAudio audio = new GameAudio(AudioSettings.defaults(), Map.of(
+            MusicTrack.BATTLE_AIZO, firstBackground,
+            MusicTrack.BATTLE_SPECIALZ, nextBackground,
+            MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, event
+        ));
+
+        audio.playMusic(MusicTrack.BATTLE_AIZO);
+        audio.playEventMusic(MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, DOMAIN_ONE);
+        audio.update(1f);
+        audio.previewSettings(
+            audio.settings().withBattleMusic(BattleMusicSelection.SPECIALZ));
+        audio.refreshBattleMusic();
+
+        assertFalse(firstBackground.playing);
+        assertTrue(nextBackground.playing);
+        assertEquals(0f, nextBackground.volume);
+        assertTrue(event.playing);
+        assertEquals(0, event.stopCalls);
+
+        audio.stopEventMusic(MusicTrack.SELF_EMBODIMENT_OF_PERFECTION, DOMAIN_ONE);
+        audio.update(1f);
+        assertEquals(1f, nextBackground.volume);
+        assertFalse(event.playing);
+        audio.dispose();
+    }
+
+    @Test
     void eventMusicCanFadeWithoutABackgroundTrack() {
         FakeMusic event = new FakeMusic();
         GameAudio audio = new GameAudio(AudioSettings.defaults(), Map.of(

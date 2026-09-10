@@ -394,6 +394,12 @@ Main screens include:
 `MainMenuScreen`, `BattleFormatScreen`, `CharacterSelectScreen`,
 `BattleScreen`, and multiplayer screens.
 
+Main-menu evaluation variants: `MainMenuScreen` retains Legacy;
+`RedesignedMainMenuScreen` owns the new hub. `ui/menu/MainMenuAction` shares routes,
+`MainMenuSupport` shares settings/help/exit behavior, and `JJKGame` selects the
+persisted `MainMenuVariant`. See `docs/main-menu/README.md` for F8 switching,
+optional Author Battle, render previews and validation commands.
+
 Typical local flow:
 
 ```text

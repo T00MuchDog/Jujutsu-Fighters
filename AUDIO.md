@@ -219,9 +219,11 @@ master volume * channel volume * catalog cue gain
 ```
 
 Settings are persisted through the LibGDX preferences named `jjktbf-audio`.
-The main-menu gear controls music/effects volume and battle music. Battle music
-can use any registered battle track, choose one randomly (the default), or be
-disabled. The current API is:
+The settings gears on the main menu and battle screen control music/effects
+volume and battle music. Battle music can use any registered battle track,
+choose one randomly (the default), or be disabled. A mid-battle selection
+changes the background track without interrupting active event music. The
+current API is:
 
 ```java
 game.audio().setMasterVolume(0.8f);

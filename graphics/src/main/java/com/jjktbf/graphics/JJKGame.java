@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.jjktbf.AppPaths;
 import com.jjktbf.controller.BattleController;
@@ -36,6 +37,7 @@ import com.jjktbf.graphics.screens.CharacterSelectScreen;
 import com.jjktbf.graphics.screens.ChallengeBrowserScreen;
 import com.jjktbf.graphics.screens.HostChallengeScreen;
 import com.jjktbf.graphics.screens.MainMenuScreen;
+import com.jjktbf.graphics.screens.RedesignedMainMenuScreen;
 import com.jjktbf.graphics.screens.MultiplayerDisconnectedScreen;
 import com.jjktbf.graphics.screens.MultiplayerMenuScreen;
 import com.jjktbf.graphics.screens.MultiplayerRosterWaitingScreen;
@@ -46,6 +48,7 @@ import com.jjktbf.graphics.screens.editors.DomainEditorScreen;
 import com.jjktbf.graphics.screens.editors.MoveEditorScreen;
 import com.jjktbf.graphics.screens.editors.TechniqueEditorScreen;
 import com.jjktbf.graphics.ui.UiScaleSystem;
+import com.jjktbf.graphics.ui.menu.MainMenuVariant;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
 import com.jjktbf.graphics.ui.profile.BattleUiLayoutStore;
 import com.jjktbf.graphics.ui.profile.UiProfile;
@@ -58,6 +61,7 @@ import com.jjktbf.model.technique.TechniqueRepository;
 import com.jjktbf.model.domain.DomainRepository;
 import com.jjktbf.multiplayer.protocol.MatchSetup;
 import com.jjktbf.multiplayer.protocol.MatchCharacterSelectionRequest;
+import com.jjktbf.multiplayer.protocol.ProtocolVersion;
 
 import java.io.IOException;
 import java.util.List;
@@ -111,13 +115,13 @@ public class JJKGame extends Game {
     private AssetLoader assets;
     private GameAudio audio;
 
-    // Authoring-mode overlay: a small persistent "AUTHORING" badge drawn in the
-    // top-right corner over every screen, so the developer can see at a glance
-    // that saves are going to the source data/ files. Player builds never set
-    // the flag, so this is a no-op (isAuthoringMode() is false) for releases.
+    // Application overlay drawn after every screen. It always shows the version
+    // and adds an authoring badge when saves target the source data files.
     private SpriteBatch overlayBatch;
     private Viewport overlayViewport;
     private final GlyphLayout overlayLayout = new GlyphLayout();
+    private final Color previousFontColor = new Color();
+    private static final Color VERSION_COLOR = new Color(Color.BLACK);
     private static final Color AUTHORING_BADGE_COLOR = new Color(
         0xFF / 255f, 0xE3 / 255f, 0x2E / 255f, 1f); // #FFE32E, the hover yellow
 
@@ -147,7 +151,8 @@ public class JJKGame extends Game {
     // ── Screen instances ───────────────────────────────────────────────────────
     // The menu and editors are rebuilt on entry so inactive-stage pointer state
     // cannot leak across transitions. Other screens retain their reusable state.
-    private MainMenuScreen        mainMenuScreen;
+    private Screen mainMenuScreen;
+    private MainMenuVariant mainMenuVariant;
     private BattleFormatScreen    battleFormatScreen;
     private CharacterSelectScreen characterSelectScreen;
     private BattleScreen          battleScreen;
@@ -203,11 +208,9 @@ public class JJKGame extends Game {
         assets = new AssetLoader(launchOptions.uiProfile());
         assets.load();
         audio = new GameAudio();
-        if (AppPaths.isAuthoringMode()) {
-            overlayBatch = new SpriteBatch();
-            overlayViewport = UiScaleSystem.newViewport(activeUiProfile());
-            overlayViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
-        }
+        overlayBatch = new SpriteBatch();
+        overlayViewport = UiScaleSystem.newViewport(activeUiProfile());
+        overlayViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
         try {
             clientNetworkConfig = ClientNetworkConfig.load();
@@ -232,7 +235,10 @@ public class JJKGame extends Game {
         multiplayerCharacterRepository = new CharacterRepository("data/characters");
         reloadMultiplayerRoster();
 
-        mainMenuScreen        = new MainMenuScreen(this, assets);
+        mainMenuVariant = MainMenuVariant.parse(
+            System.getProperty("jjktbf.mainMenu", Gdx.app.getPreferences("jjktbf-menu")
+                .getString("variant", "REDESIGNED")));
+        mainMenuScreen        = createMainMenu();
         battleFormatScreen    = new BattleFormatScreen(this, assets);
         characterSelectScreen = new CharacterSelectScreen(this, assets);
         battleScreen          = new BattleScreen(this, assets, battleUiLayout);
@@ -272,13 +278,7 @@ public class JJKGame extends Game {
         onCreatedAction = null;
     }
 
-    /**
-     * Render the active screen, then (in authoring mode only) draw a small
-     * "AUTHORING" badge in the top-right corner over the finished frame. This
-     * is the single draw-after-every-screen hook, so the badge persists across
-     * menus, editors, battle, and character select regardless of how each
-     * screen renders.
-     */
+    /** Draw persistent application information over the finished screen frame. */
     @Override
     public void render() {
         super.render();
@@ -290,15 +290,34 @@ public class JJKGame extends Game {
         float h = overlayViewport.getWorldHeight();
         float margin = 12f;
         BitmapFont font = assets.fontSmall;
-        String label = "AUTHORING";
-        overlayLayout.setText(font, label);
-        float x = w - margin - overlayLayout.width;
-        float y = h - margin; // baseline near the top (draw is baseline-anchored)
+        previousFontColor.set(font.getColor());
         overlayBatch.getProjectionMatrix().setToOrtho2D(0, 0, w, h);
         overlayBatch.begin();
-        font.setColor(AUTHORING_BADGE_COLOR);
-        font.draw(overlayBatch, label, x, y);
+        drawOverlayLabel(font, "v" + ProtocolVersion.GAME_VERSION, VERSION_COLOR,
+            w - margin, margin, Align.bottomRight);
+        if (AppPaths.isAuthoringMode()) {
+            drawOverlayLabel(font, "AUTHORING", AUTHORING_BADGE_COLOR,
+                w - margin, h - margin, Align.topRight);
+        }
         overlayBatch.end();
+        font.setColor(previousFontColor);
+    }
+
+    private void drawOverlayLabel(
+        BitmapFont font,
+        String label,
+        Color color,
+        float anchorX,
+        float anchorY,
+        int alignment
+    ) {
+        overlayLayout.setText(font, label);
+        float x = anchorX - overlayLayout.width;
+        float y = alignment == Align.topRight
+            ? anchorY
+            : anchorY + overlayLayout.height;
+        font.setColor(color);
+        font.draw(overlayBatch, label, x, y);
     }
 
     @Override
@@ -356,9 +375,33 @@ public class JJKGame extends Game {
     // -------------------------------------------------------------------------
 
     public void showMainMenu() {
-        mainMenuScreen.dispose();
-        mainMenuScreen = new MainMenuScreen(this, assets);
+        Screen previous = mainMenuScreen;
+        mainMenuScreen = createMainMenu();
         showScreen(mainMenuScreen, MusicTrack.MENU);
+        if (previous != null) previous.dispose();
+    }
+
+    private Screen createMainMenu() {
+        return mainMenuVariant() == MainMenuVariant.LEGACY
+            ? new MainMenuScreen(this, assets)
+            : new RedesignedMainMenuScreen(this, assets);
+    }
+
+    public MainMenuVariant mainMenuVariant() {
+        return mainMenuVariant == null
+            ? MainMenuVariant.REDESIGNED : mainMenuVariant;
+    }
+
+    public void toggleMainMenuVariant() {
+        mainMenuVariant = mainMenuVariant().other();
+        Gdx.app.getPreferences("jjktbf-menu").putString("variant", mainMenuVariant.name()).flush();
+        showMainMenu();
+    }
+
+    /** Authoring permissions remain authoritative; this flag can only hide the mode. */
+    public boolean isAuthorBattleAvailable() {
+        return AppPaths.isAuthoringMode()
+            && Boolean.parseBoolean(System.getProperty("jjktbf.menu.authorBattle", "true"));
     }
 
     public void showCharacterSelect() {

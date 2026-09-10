@@ -3,6 +3,8 @@ package com.jjktbf.graphics.screens;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -13,6 +15,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.jjktbf.graphics.AssetLoader;
 import com.jjktbf.graphics.JJKGame;
 import com.jjktbf.graphics.audio.BattleAudioRouter;
@@ -22,13 +25,16 @@ import com.jjktbf.graphics.multiplayer.MultiplayerMatchService;
 import com.jjktbf.graphics.multiplayer.MultiplayerSession;
 import com.jjktbf.graphics.ui.CombatantPanel;
 import com.jjktbf.graphics.ui.AbilityStateMeter;
+import com.jjktbf.graphics.ui.HoverScrollStage;
 import com.jjktbf.graphics.ui.MiraclesMeter;
 import com.jjktbf.graphics.ui.RatioMeter;
+import com.jjktbf.graphics.ui.UiScaleSystem;
 import com.jjktbf.graphics.ui.battle.BattleUiAssets;
 import com.jjktbf.graphics.ui.battle.PlanningPanel;
 import com.jjktbf.graphics.ui.battle.TeamPlanningPanel;
 import com.jjktbf.graphics.ui.battle.BattleCanvas;
 import com.jjktbf.graphics.ui.profile.BattleUiLayout;
+import com.jjktbf.graphics.ui.profile.UiProfile;
 import com.jjktbf.graphics.multiplayer.TargetListSupport;
 import com.jjktbf.model.character.Character;
 import com.jjktbf.model.character.AbilityEffectType;
@@ -238,10 +244,20 @@ public class BattleScreen implements Screen, BattleView {
         new Color(0.82f, 0.86f, 0.92f, 0.92f);
     /** Set to true when debugging timeline playback. */
     private static final boolean SHOW_TICK_COUNTER      = false;
+    private static final float SETTINGS_MARGIN = 12f;
+    private static final float SETTINGS_BUTTON_SIZE = 46f;
+    private static final float WINDOWS_SETTINGS_MARGIN = 18f;
+    private static final float WINDOWS_SETTINGS_BUTTON_SIZE = 80f;
 
     private final JJKGame     game;
     private final AssetLoader assets;
     private final SpriteBatch batch;
+    private final HoverScrollStage settingsStage;
+    private final SettingsDialogController settingsDialog;
+    private final ImageButton settingsButton;
+    private final InputMultiplexer battleInputMultiplexer = new InputMultiplexer();
+    private InputProcessor battleContentInputProcessor;
+    private boolean battleInputProcessorDirty = true;
     private BattleUiLayout uiLayout;
     private BattleCanvas sharedCanvas = BattleCanvas.fit(
         BattleCanvas.WIDTH, BattleCanvas.HEIGHT);
@@ -467,6 +483,18 @@ public class BattleScreen implements Screen, BattleView {
         this.game   = game;
         this.assets = assets;
         this.batch  = new SpriteBatch();
+        this.settingsStage = new HoverScrollStage(
+            UiScaleSystem.newViewport(game.activeUiProfile()));
+        this.settingsDialog = new SettingsDialogController(
+            game, assets, settingsStage, true, () -> battleInputProcessorDirty = true);
+        this.settingsButton = settingsDialog.createButton();
+        if (game.activeUiProfile() == UiProfile.WINDOWS) {
+            settingsButton.getImageCell().expand().fill();
+        }
+        settingsStage.addActor(settingsButton);
+        settingsStage.getViewport().update(
+            Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        layoutSettingsButton();
         this.uiLayout = Objects.requireNonNull(uiLayout, "uiLayout").copy();
         this.playerSprite = assets.playerSprite;
         this.enemySprite = assets.enemySprite;
@@ -573,7 +601,10 @@ public class BattleScreen implements Screen, BattleView {
         sharedCanvas = BattleCanvas.fit(
             Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         applyPhysicalBatchTransform();
-        Gdx.input.setInputProcessor(null);
+        settingsStage.unfocusAll();
+        battleContentInputProcessor = null;
+        battleInputProcessorDirty = true;
+        syncBattleInputProcessor();
         logScrollInputAttached = false;
         planningPanel = null;
         teamPlanningPanel = null;
@@ -654,6 +685,8 @@ public class BattleScreen implements Screen, BattleView {
         // window before applying the battle canvas transform.
         HdpiUtils.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         float realDelta = Math.max(0f, delta);
+        syncBattleInputProcessor();
+        settingsStage.act(realDelta);
         skipActiveFlashRemaining = Math.max(0f, skipActiveFlashRemaining - realDelta);
         float presentationDelta = realDelta * playbackSpeedMultiplier();
         frameDelta = presentationDelta;
@@ -681,10 +714,21 @@ public class BattleScreen implements Screen, BattleView {
         // PlanningInputProcessor owns Gdx.input, so handleInput() never runs).
         // isKeyJustPressed() is polled, so it fires regardless of the active
         // input processor.
-        if (!battleOver && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+        boolean settingsOpen = settingsDialog.isOpen();
+        if (settingsOpen && (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)
+            || Gdx.input.isKeyJustPressed(Input.Keys.BACK))) {
+            game.audio().play(SoundCue.UI_BACK);
+            settingsDialog.close();
+        } else if (!battleOver && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             abortBattle();
         }
-        handleInput();
+        if (!settingsOpen) {
+            handleInput();
+        } else {
+            nextRoundHovered = false;
+            fastForwardHovered = false;
+            skipHovered = false;
+        }
         BitmapFont font = assets.gameplayFontSmall;
         float scaleX = font.getData().scaleX;
         float scaleY = font.getData().scaleY;
@@ -697,6 +741,7 @@ public class BattleScreen implements Screen, BattleView {
         } finally {
             font.getData().setScale(scaleX, scaleY);
         }
+        settingsStage.draw();
     }
 
     /**
@@ -726,7 +771,7 @@ public class BattleScreen implements Screen, BattleView {
         Gdx.app.postRunnable(() -> {
             planningPanel = null;
             teamPlanningPanel = null;
-            Gdx.input.setInputProcessor(null);
+            setBattleInputProcessor(null);
             game.showMainMenu();
         });
     }
@@ -736,6 +781,8 @@ public class BattleScreen implements Screen, BattleView {
         applyPhysicalBatchTransform();
         if (planningPanel != null) planningPanel.resize(w, h);
         if (teamPlanningPanel != null) teamPlanningPanel.resize(w, h);
+        settingsStage.getViewport().update(w, h, true);
+        layoutSettingsButton();
         configurePlanningViewport();
         layoutExecutionUi(w, h);
     }
@@ -744,6 +791,7 @@ public class BattleScreen implements Screen, BattleView {
     @Override
     public void hide() {
         if (mode == BattleMode.LOCAL) abortRequested = true;
+        settingsDialog.close();
         battleAnimations.clear();
         domainBackdrops.clear();
         animatedPlaybackEvent = null;
@@ -751,6 +799,9 @@ public class BattleScreen implements Screen, BattleView {
             closePlanningPanel();
             detachMultiplayerListener();
         }
+        battleContentInputProcessor = null;
+        battleInputProcessorDirty = true;
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
@@ -761,12 +812,42 @@ public class BattleScreen implements Screen, BattleView {
         battleAnimations.dispose();
         domainBackdrops.dispose();
         detachMultiplayerListener();
+        settingsStage.dispose();
         batch.dispose();
     }
 
     // -------------------------------------------------------------------------
     // Input (render thread only)
     // -------------------------------------------------------------------------
+
+    private void setBattleInputProcessor(InputProcessor processor) {
+        battleContentInputProcessor = processor;
+        battleInputProcessorDirty = true;
+        syncBattleInputProcessor();
+    }
+
+    private void syncBattleInputProcessor() {
+        if (!battleInputProcessorDirty) return;
+        battleInputMultiplexer.clear();
+        battleInputMultiplexer.addProcessor(settingsStage);
+        if (!settingsDialog.isOpen() && battleContentInputProcessor != null) {
+            battleInputMultiplexer.addProcessor(battleContentInputProcessor);
+        }
+        Gdx.input.setInputProcessor(battleInputMultiplexer);
+        battleInputProcessorDirty = false;
+    }
+
+    private void layoutSettingsButton() {
+        boolean windowsLayout = game.activeUiProfile() == UiProfile.WINDOWS;
+        float margin = windowsLayout ? WINDOWS_SETTINGS_MARGIN : SETTINGS_MARGIN;
+        float size = windowsLayout
+            ? WINDOWS_SETTINGS_BUTTON_SIZE : SETTINGS_BUTTON_SIZE;
+        settingsButton.setBounds(
+            settingsStage.getWidth() - margin - size,
+            settingsStage.getHeight() - margin - size,
+            size,
+            size);
+    }
 
     private void handleInput() {
         updateActionBounds();
@@ -802,7 +883,7 @@ public class BattleScreen implements Screen, BattleView {
             // listener only handles the wheel, so the NEXT ROUND click below
             // still works through justTouched() polling.
             if (!logScrollInputAttached) {
-                Gdx.input.setInputProcessor(logScrollInput);
+                setBattleInputProcessor(logScrollInput);
                 logScrollInputAttached = true;
             }
 
@@ -843,7 +924,7 @@ public class BattleScreen implements Screen, BattleView {
         // Left the await-next-round window — release the wheel listener so it
         // doesn't swallow input meant for the planning panel or next screen.
         if (logScrollInputAttached) {
-            Gdx.input.setInputProcessor(null);
+            setBattleInputProcessor(null);
             logScrollInputAttached = false;
         }
         nextRoundHovered = false;
@@ -2334,7 +2415,7 @@ public class BattleScreen implements Screen, BattleView {
                 game.audio().play(SoundCue.UI_PLAN_LOCK);
                 inputConfirmed = true;
             });
-            Gdx.input.setInputProcessor(planningPanel.inputProcessor());
+            setBattleInputProcessor(planningPanel.inputProcessor());
             logScrollInputAttached = false;
             updatePanels();
             inputConfirmed = false;
@@ -2361,7 +2442,7 @@ public class BattleScreen implements Screen, BattleView {
                 && !abortRequested
                 && game.getScreen() == this) {
                 holder.set(planningPanel == null ? null : planningPanel.getPlan());
-                Gdx.input.setInputProcessor(null);
+                setBattleInputProcessor(null);
                 // Keep the locked planner visible until the next planner or the
                 // resolution UI replaces it, preventing an execution-HUD flash.
             }
@@ -2422,7 +2503,7 @@ public class BattleScreen implements Screen, BattleView {
                 game.audio().play(SoundCue.UI_PLAN_LOCK);
                 inputConfirmed = true;
             });
-            Gdx.input.setInputProcessor(teamPlanningPanel.inputProcessor());
+            setBattleInputProcessor(teamPlanningPanel.inputProcessor());
             logScrollInputAttached = false;
             updatePanels();
             inputConfirmed = false;
@@ -2443,7 +2524,7 @@ public class BattleScreen implements Screen, BattleView {
                 && !abortRequested
                 && game.getScreen() == this) {
                 holder.set(teamPlanningPanel == null ? null : teamPlanningPanel.getTeamPlan());
-                Gdx.input.setInputProcessor(null);
+                setBattleInputProcessor(null);
                 // Keep the locked planner visible until the next planner or the
                 // resolution UI replaces it, preventing an execution-HUD flash.
             }
@@ -3306,7 +3387,7 @@ public class BattleScreen implements Screen, BattleView {
         if (readOnly) {
             teamPlanningPanel.lock();
             teamPlanningPanel.setReadOnly(true);
-            Gdx.input.setInputProcessor(null);
+            setBattleInputProcessor(null);
             logScrollInputAttached = false;
             return;
         }
@@ -3314,7 +3395,7 @@ public class BattleScreen implements Screen, BattleView {
             || shouldAutoLockPlanning(multiplayerPlanningRemainingMillis())) {
             teamPlanningPanel.lock();
             teamPlanningPanel.setReadOnly(true);
-            Gdx.input.setInputProcessor(null);
+            setBattleInputProcessor(null);
             logScrollInputAttached = false;
             return;
         }
@@ -3325,7 +3406,7 @@ public class BattleScreen implements Screen, BattleView {
         } else {
             teamPlanningPanel.unlock();
         }
-        Gdx.input.setInputProcessor(teamPlanningPanel.inputProcessor());
+        setBattleInputProcessor(teamPlanningPanel.inputProcessor());
         logScrollInputAttached = false;
     }
 
@@ -3596,7 +3677,7 @@ public class BattleScreen implements Screen, BattleView {
         onlinePlanningTimedOut = true;
         teamPlanningPanel.lock();
         teamPlanningPanel.setReadOnly(true);
-        Gdx.input.setInputProcessor(null);
+        setBattleInputProcessor(null);
         logScrollInputAttached = false;
         submitOnlinePlan(true);
     }
@@ -4149,7 +4230,7 @@ public class BattleScreen implements Screen, BattleView {
     private void closePlanningPanel() {
         planningPanel = null;
         teamPlanningPanel = null;
-        Gdx.input.setInputProcessor(null);
+        setBattleInputProcessor(null);
         logScrollInputAttached = false;
     }
 
@@ -4174,11 +4255,11 @@ public class BattleScreen implements Screen, BattleView {
             teamPlanningPanel.setActionButtonShifted(true);
         }
         if (teamPlanningPanel != null) {
-            Gdx.input.setInputProcessor(teamPlanningPanel.inputProcessor());
+            setBattleInputProcessor(teamPlanningPanel.inputProcessor());
         } else if (planningPanel != null) {
-            Gdx.input.setInputProcessor(planningPanel.inputProcessor());
+            setBattleInputProcessor(planningPanel.inputProcessor());
         } else {
-            Gdx.input.setInputProcessor(null);
+            setBattleInputProcessor(null);
         }
         logScrollInputAttached = false;
     }
@@ -4269,7 +4350,7 @@ public class BattleScreen implements Screen, BattleView {
         teamPlanningPanel.setReadOnly(true);
         teamPlanningPanel.setActionButtonShifted(false);
         configurePlanningViewport();
-        Gdx.input.setInputProcessor(null);
+        setBattleInputProcessor(null);
     }
 
     private CombatantPanel activePlannerCombatantPanel() {
